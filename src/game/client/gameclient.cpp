@@ -149,7 +149,11 @@ void CGameClient::OnConsoleInit()
 					      &m_Ghost,
 					      &m_TClient, // TClient (Must be before chat and players)
 					      &m_Players,
-					      &m_FxRenderer, // XClient: render module gateway
+					      &m_JumpFx, // XClient
+					      &m_Accessory, // XClient
+					      &m_HookFx, // XClient
+					      &m_FxRenderer, // XClient: draws the queued world effects
+					      &m_TeeGlow, // XClient
 					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
 					      &m_MovingTilesForeground, // TClient
@@ -160,6 +164,7 @@ void CGameClient::OnConsoleInit()
 					      &m_NamePlates,
 					      &m_Particles.m_RenderExtra,
 					      &m_Particles.m_RenderGeneral,
+					      &m_Weather, // XClient
 					      &m_FreezeBars,
 					      &m_DamageInd,
 					      &m_PlayerIndicator, // TClient

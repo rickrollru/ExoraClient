@@ -33,6 +33,12 @@ namespace
 		{CXcMenu::PAGE_HOME, -1, nullptr, "Home", "Profile, friends online and DDNet news", "главная профиль друзья новости play играть"},
 		{CXcMenu::PAGE_SERVERS, -1, nullptr, "Servers", "Server cards with filters", "серверы сервер браузер join войти избранное favorites lan ddrace"},
 		{CXcMenu::PAGE_VISUALS, -1, nullptr, "Visuals", "Visual effects", "визуалы эффекты effects"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_glow", "Neon glow", "Soft light and a crisp outline around the tee", "свечение неон обводка контур подсветка glow neon outline"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_trail", "Trail", "A glowing ribbon behind the tee", "шлейф хвост след trail ribbon"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_accessory", "Accessory", "Something on the head that sways with the tee", "аксессуар шапка нимб корона конус china hat halo crown"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_jump", "Jumps", "Effect under the feet on every jump", "прыжки прыжок кольца искры звёзды пыль jump circles rings"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_hook", "Hook", "Colored chain, clean line or a glowing beam", "хук крюк цепь hook chain"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_weather", "Weather", "Falling particles over the map and the menu", "погода снег листья сакура пепел weather snow"},
 		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
 		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##theme", "Theme", "Look of the menu: dark or light, and the accent color", "тема тёмная светлая dark light акцент accent цвет color"},
@@ -215,8 +221,9 @@ void CXcMenu::RenderSearch()
 		ImFont *pSmall = Fonts().m_pSmall;
 		pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(8.0f)), Col(t.m_Text), Tr(Entry.m_pTitle));
 		char aPath[128];
+		static const char *const s_apVisualNames[NUM_VISUALS] = {"Tee", "Movement", "Hook and weapons", "World"};
 		if(Entry.m_Section >= 0)
-			str_format(aPath, sizeof(aPath), "%s  >  %s", Tr(s_apPageNames[Entry.m_Page]), Tr(s_apSectionNames[Entry.m_Section]));
+			str_format(aPath, sizeof(aPath), "%s  >  %s", Tr(s_apPageNames[Entry.m_Page]), Tr(Entry.m_Page == PAGE_VISUALS ? s_apVisualNames[Entry.m_Section] : s_apSectionNames[Entry.m_Section]));
 		else
 			str_copy(aPath, Tr(Entry.m_pDescription));
 		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(28.0f)), Col(t.m_TextMuted), aPath);
@@ -234,7 +241,12 @@ void CXcMenu::RenderSearch()
 		PlayUiSound(SOUND_TAB);
 		m_Page = Entry.m_Page;
 		if(Entry.m_Section >= 0)
-			m_SettingsSection = Entry.m_Section;
+		{
+			if(Entry.m_Page == PAGE_VISUALS)
+				m_VisualsSection = Entry.m_Section;
+			else
+				m_SettingsSection = Entry.m_Section;
+		}
 		m_ScrollTarget = 0.0f;
 		if(Entry.m_pCard)
 		{

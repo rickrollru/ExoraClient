@@ -6,6 +6,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 
+#include <game/client/components/xclient/ui/theme.h>
 #include <game/client/gameclient.h>
 
 #include <cmath>
@@ -56,6 +57,37 @@ namespace XcHelpers
 	ColorRGBA HslConfigColor(unsigned PackedHsl)
 	{
 		return color_cast<ColorRGBA>(ColorHSLA(PackedHsl));
+	}
+
+	ColorRGBA EffectColor(const CGameClient *pGameClient, int Mode, unsigned CustomColor, int ClientId, float HueOffset, float Alpha)
+	{
+		switch(Mode)
+		{
+		case COLOR_ACCENT:
+		{
+			const ImVec4 Accent = XcUi::AccentColor(g_Config.m_XcUiAccent, g_Config.m_XcUiTheme == 0);
+			return ColorRGBA(Accent.x, Accent.y, Accent.z, Alpha);
+		}
+		case COLOR_RAINBOW:
+			return RainbowColor(pGameClient->Client()->GlobalTime() * 0.15f + HueOffset, Alpha);
+		case COLOR_SKIN:
+		{
+			if(ClientId < 0)
+				ClientId = pGameClient->m_aLocalIds[g_Config.m_ClDummy];
+			if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+				break;
+			const CTeeRenderInfo &Info = pGameClient->m_aClients[ClientId].m_RenderInfo;
+			ColorRGBA Color = Info.m_CustomColoredSkin ? Info.m_ColorBody : Info.m_BloodColor;
+			// effects glow, so very dark skins are lifted a little
+			ColorHSLA Hsl = color_cast<ColorHSLA>(Color);
+			Hsl.l = std::max(Hsl.l, 0.45f);
+			Hsl.s = std::max(Hsl.s, 0.35f);
+			return color_cast<ColorRGBA>(Hsl).WithAlpha(Alpha);
+		}
+		default:
+			break;
+		}
+		return HslConfigColor(CustomColor).WithAlpha(Alpha);
 	}
 
 	ColorRGBA RainbowColor(float Hue, float Alpha)

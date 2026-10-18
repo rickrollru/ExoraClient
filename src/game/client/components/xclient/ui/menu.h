@@ -48,6 +48,15 @@ public:
 		NUM_SETTINGS,
 	};
 
+	enum
+	{
+		VISUALS_TEE = 0,
+		VISUALS_MOVEMENT,
+		VISUALS_WEAPONS,
+		VISUALS_WORLD,
+		NUM_VISUALS,
+	};
+
 	int Sizeof() const override { return sizeof(*this); }
 	void OnConsoleInit() override;
 	void OnInit() override;
@@ -200,6 +209,14 @@ private:
 	void UpdateServerList();
 	bool RenderServerCard(const CServerInfo *pInfo, float Width, float Height);
 	void RenderServerDetails(const CServerInfo *pInfo, float Height);
+	// visuals page (menu_visuals.cpp)
+	int m_VisualsSection = VISUALS_TEE;
+	int m_aLastFxStyle[32] = {}; // last chosen style of each style card, to turn it back on
+	bool StyleCard(const char *pId, const char *pTitle, const char *pDescription, const char *pConfig, int *pValue, const char *const *ppStyles, int NumStyles);
+	void RenderVisualsTee();
+	void RenderVisualsMovement();
+	void RenderVisualsWeapons();
+	void RenderVisualsWorld();
 	void RenderVisuals();
 	void RenderConfigs();
 
