@@ -86,6 +86,18 @@ MACRO_CONFIG_INT(XcTrailSelf, xc_trail_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 MACRO_CONFIG_INT(XcTrailDummy, xc_trail_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind your dummy")
 MACRO_CONFIG_INT(XcTrailOthers, xc_trail_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind other players")
 
+// Pickups, projectiles and lasers
+MACRO_CONFIG_INT(XcItemsGlow, xc_items_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Soft halo around pickups (hearts, armor, weapons, ninja)")
+MACRO_CONFIG_INT(XcItemsGlowSize, xc_items_glow_size, 100, 25, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the pickup halo in percent")
+MACRO_CONFIG_INT(XcItemsGlowStrength, xc_items_glow_strength, 100, 10, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Brightness of the pickup halo in percent")
+MACRO_CONFIG_INT(XcItemsSparkles, xc_items_sparkles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Small sparkles rising from pickups")
+MACRO_CONFIG_INT(XcItemsColorMode, xc_items_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of item glows (0 = by type, 1 = menu accent, 2 = own color, 3 = rainbow)")
+MACRO_CONFIG_COL(XcItemsColor, xc_items_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of item glows") // #4F8CFF
+MACRO_CONFIG_INT(XcProjectileGlow, xc_projectile_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Light around bullets and grenades")
+MACRO_CONFIG_INT(XcProjectileTrail, xc_projectile_trail, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Comet tail behind bullets and grenades")
+MACRO_CONFIG_INT(XcLaserGlow, xc_laser_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow along lasers")
+MACRO_CONFIG_INT(XcLaserGlowStrength, xc_laser_glow_strength, 100, 10, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Brightness of the laser glow in percent")
+
 // Accessory on the tee
 MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
 MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")

@@ -38,6 +38,8 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_accessory", "Accessory", "Something on the head that sways with the tee", "аксессуар шапка нимб корона конус china hat halo crown"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_jump", "Jumps", "Effect under the feet on every jump", "прыжки прыжок кольца искры звёзды пыль jump circles rings"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_hook", "Hook", "Colored chain, clean line or a glowing beam", "хук крюк цепь hook chain"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_items", "Pickups", "Hearts, armor, weapons and ninja softly glow", "предметы сердца броня оружие пикапы pickups items hearts armor"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_projectiles", "Bullets and lasers", "Light around shots, comet tails and glowing lasers", "пули гранаты лазер снаряды bullets grenade laser projectiles"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_weather", "Weather", "Falling particles over the map and the menu", "погода снег листья сакура пепел weather snow"},
 		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
 		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},

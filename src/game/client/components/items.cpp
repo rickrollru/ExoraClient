@@ -124,6 +124,7 @@ void CItems::RenderProjectile(const CProjectileData *pCurrent, int ItemId, const
 		Graphics()->SetColor(1.f, 1.f, 1.f, Alpha);
 		Graphics()->RenderQuadContainerAsSprite(m_ItemsQuadContainerIndex, m_aProjectileOffset[CurWeapon], Pos.x, Pos.y);
 	}
+	GameClient()->m_ItemFx.Projectile(Pos, Vel, CurWeapon, Alpha); // XClient
 }
 
 void CItems::RenderPickup(const CNetObj_Pickup *pPrev, const CNetObj_Pickup *pCurrent, bool IsPredicted, int Flags)
@@ -214,6 +215,7 @@ void CItems::RenderPickup(const CNetObj_Pickup *pPrev, const CNetObj_Pickup *pCu
 
 	Graphics()->RenderQuadContainerAsSprite(m_ItemsQuadContainerIndex, QuadOffset, Pos.x, Pos.y, Scale.x, Scale.y);
 	Graphics()->QuadsSetRotation(0);
+	GameClient()->m_ItemFx.Pickup(Pos, pCurrent->m_Type, CurWeapon); // XClient
 }
 
 void CItems::RenderFlags()
@@ -334,6 +336,7 @@ void CItems::RenderLaser(const CLaserData *pCurrent, bool IsPredicted)
 		TicksHead *= (pCurrent->m_Subtype & 1) ? -1 : 1;
 	}
 	RenderLaser(pCurrent->m_From, pCurrent->m_To, OuterColor, InnerColor, Ticks, TicksHead, Type);
+	GameClient()->m_ItemFx.Laser(pCurrent->m_From, pCurrent->m_To, OuterColor, Alpha); // XClient
 }
 
 void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA InnerColor, float TicksBody, float TicksHead, int Type) const

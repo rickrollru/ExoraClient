@@ -2956,6 +2956,8 @@ if(CLIENT)
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
     components/xclient/hud/xc_hud.h
+    components/xclient/item_fx.cpp
+    components/xclient/item_fx.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
     components/xclient/tee_glow.cpp
