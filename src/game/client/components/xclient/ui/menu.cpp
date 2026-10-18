@@ -134,6 +134,7 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 {
 	if(!g_Config.m_XcNewMenu || !m_Backend.IsReady())
 		return false;
+	m_Backend.MakeCurrent(); // the HUD has its own ImGui context
 
 	const bool EscapePressed = (Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_ESCAPE;
 	if(!m_Active)
@@ -486,7 +487,7 @@ void CXcMenu::RenderFrame()
 	if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
 		OpenSearch();
 	RenderSearch();
-	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, (float)ImGui::GetTime(), Open);
+	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Open);
 }
 
 void CXcMenu::RenderTopBar(float Width)

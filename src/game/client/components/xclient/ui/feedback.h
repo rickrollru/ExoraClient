@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_XCLIENT_UI_FEEDBACK_H
 
 struct ImDrawList;
+struct ImFont;
 struct ImVec2;
 
 // Interface sounds and toast notifications. Widgets and pages only call PlayUiSound / Toast,
@@ -30,8 +31,9 @@ namespace XcUi
 	};
 	// shows a short message at the bottom of the screen for a few seconds
 	void Toast(const char *pText, int Kind = TOAST_SUCCESS);
-	// Time: seconds since start, any clock that runs on
-	void RenderToasts(ImDrawList *pDraw, const ImVec2 &DisplaySize, float Time, float Alpha);
+	// Time: seconds from a clock shared by everyone who draws toasts (the client's global time).
+	// The fonts default to the menu fonts; the HUD passes its own (it has another ImGui context).
+	void RenderToasts(ImDrawList *pDraw, const ImVec2 &DisplaySize, float Time, float Alpha, ImFont *pTextFont = nullptr, ImFont *pIconFont = nullptr);
 	bool HasToasts();
 } // namespace XcUi
 
