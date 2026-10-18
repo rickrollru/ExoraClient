@@ -187,6 +187,9 @@ void CHud::RenderSuddenDeath()
 
 void CHud::RenderScoreHud()
 {
+	// XClient: the HUD top list shows the same, in the style of the new HUD
+	if(g_Config.m_XcHud && g_Config.m_XcHudMinitop)
+		return;
 	// render small score hud
 	if(!(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER))
 	{

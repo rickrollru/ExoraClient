@@ -20,6 +20,7 @@ public:
 		ELEMENT_WEAPON,
 		ELEMENT_MUSIC,
 		ELEMENT_KEYS,
+		ELEMENT_MINITOP,
 		NUM_ELEMENTS,
 	};
 
@@ -47,6 +48,9 @@ public:
 	ColorRGBA ScoreboardPanelColor() const;
 	ColorRGBA ScoreboardHighlightColor() const;
 	ColorRGBA ScoreboardHoverColor() const;
+
+	// the own scoreboard replaces the classic one (xc_scoreboard)
+	bool DrawsScoreboard() const;
 
 	// big banner at the top: finish time, new records (Kind 0 = finish, 1 = personal record, 2 = server record)
 	void ShowBanner(const char *pTitle, const char *pSubtitle, int Kind);
@@ -86,6 +90,14 @@ private:
 	void RenderMusic(ImDrawList *pDraw, float Alpha);
 	void RenderBanner(ImDrawList *pDraw);
 	void RenderKeys(ImDrawList *pDraw, float Alpha);
+	// xc_scoreboard.cpp
+	void RenderScoreboard(ImDrawList *pDraw, float Dt);
+	void RenderMiniTop(ImDrawList *pDraw, float Alpha);
+	int PlayerTimeMillis(const struct CNetObj_PlayerInfo *pInfo, bool *pCentis) const;
+	static void TeeCallback(const ImDrawList *pList, const ImDrawCmd *pCmd);
+	void AddTee(ImDrawList *pDraw, int ClientId, ImVec2 Center, float Size, float Alpha);
+	float m_ScoreboardOpen = 0.0f;
+	float m_ScoreboardOpenTime = 0.0f;
 	float m_aKeyPress[5] = {};
 	char m_aBannerTitle[128] = {};
 	char m_aBannerSubtitle[128] = {};
@@ -100,5 +112,8 @@ private:
 	float SpeedBps() const;
 	ImVec2 PlaceRect(int Element, ImVec2 Size);
 };
+
+// text cut with "…" to fit MaxWidth
+void XcFitText(ImFont *pFont, float Size, const char *pText, float MaxWidth, char *pBuf, int BufSize);
 
 #endif
