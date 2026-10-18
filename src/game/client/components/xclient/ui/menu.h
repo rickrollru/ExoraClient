@@ -99,6 +99,9 @@ private:
 	float UiScale() const;
 	void UpdateStyle();
 	void RenderBackground();
+	bool AnimatedBackground() const;
+	void RenderAnimatedBackground(struct ImDrawList *pDraw, float Alpha);
+	float m_BackgroundTime = 0.0f;
 	void RenderFrame();
 	void RenderTopBar(float Width);
 	void RenderHome();

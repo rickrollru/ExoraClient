@@ -169,29 +169,170 @@ void CXcMenu::UpdateStyle()
 	}
 }
 
+bool CXcMenu::AnimatedBackground() const
+{
+	// in the main menu there is no game to blur, so the blur mode shows the animated background too
+	return g_Config.m_XcMenuBackground == 1 || (g_Config.m_XcMenuBackground == 0 && !IsOnline());
+}
+
 void CXcMenu::RenderBackground()
 {
-	const float Width = (float)Graphics()->ScreenWidth();
-	const float Height = (float)Graphics()->ScreenHeight();
-	const STheme &t = Theme();
 	if(!IsOnline())
 	{
-		// main menu: the classic animated map background, or a plain gradient
-		if(!GameClient()->m_MenuBackground.Render())
-		{
-			Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Width, Height));
-			Graphics()->TextureClear();
-			Graphics()->QuadsBegin();
-			const ColorRGBA Top(t.m_Background.x, t.m_Background.y, t.m_Background.z, 1.0f);
-			const ColorRGBA Bottom(std::min(t.m_Background.x + t.m_Accent.x * 0.08f, 1.0f), std::min(t.m_Background.y + t.m_Accent.y * 0.08f, 1.0f), std::min(t.m_Background.z + t.m_Accent.z * 0.08f, 1.0f), 1.0f);
-			Graphics()->SetColor4(Top, Top, Bottom, Bottom);
-			const IGraphics::CQuadItem Item(0.0f, 0.0f, Width, Height);
-			Graphics()->QuadsDrawTL(&Item, 1);
-			Graphics()->QuadsEnd();
-		}
+		if(g_Config.m_XcMenuBackground == 2 && GameClient()->m_MenuBackground.Render())
+			return;
+		if(AnimatedBackground())
+			return; // drawn by ImGui in RenderFrame
+		// the map background is not loaded: plain theme color
+		const float Width = (float)Graphics()->ScreenWidth();
+		const float Height = (float)Graphics()->ScreenHeight();
+		const ImVec4 &Bg = Theme().m_Background;
+		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Width, Height));
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(Bg.x, Bg.y, Bg.z, 1.0f);
+		const IGraphics::CQuadItem Item(0.0f, 0.0f, Width, Height);
+		Graphics()->QuadsDrawTL(&Item, 1);
+		Graphics()->QuadsEnd();
+		return;
 	}
-	if(g_Config.m_XcMenuBlur && g_Config.m_XcMenuBackground == 0)
+	if(g_Config.m_XcMenuBlur && g_Config.m_XcMenuBackground != 2)
 		GameClient()->m_FxRenderer.BlurBackground(m_OpenAnimation);
+}
+
+// a filled circle whose color fades from the center to fully transparent at the edge
+static void SoftCircle(ImDrawList *pDraw, ImVec2 Center, float Radius, ImVec4 Color)
+{
+	const int Segments = 64;
+	// center -> inner ring -> edge, the two steps make the falloff look round instead of conic
+	const float InnerRadius = Radius * 0.45f;
+	const ImU32 CenterCol = ImGui::ColorConvertFloat4ToU32(Color);
+	const ImU32 InnerCol = ImGui::ColorConvertFloat4ToU32(ImVec4(Color.x, Color.y, Color.z, Color.w * 0.6f));
+	const ImU32 EdgeCol = ImGui::ColorConvertFloat4ToU32(ImVec4(Color.x, Color.y, Color.z, 0.0f));
+	const ImVec2 Uv = pDraw->_Data->TexUvWhitePixel;
+	pDraw->PrimReserve(Segments * 9, 1 + Segments * 2);
+	const ImDrawIdx Base = (ImDrawIdx)pDraw->_VtxCurrentIdx;
+	pDraw->PrimWriteVtx(Center, Uv, CenterCol);
+	for(int i = 0; i < Segments; i++)
+	{
+		const float a = (float)i / Segments * 2.0f * IM_PI;
+		const ImVec2 Dir(std::cos(a), std::sin(a));
+		pDraw->PrimWriteVtx(ImVec2(Center.x + Dir.x * InnerRadius, Center.y + Dir.y * InnerRadius), Uv, InnerCol);
+		pDraw->PrimWriteVtx(ImVec2(Center.x + Dir.x * Radius, Center.y + Dir.y * Radius), Uv, EdgeCol);
+	}
+	for(int i = 0; i < Segments; i++)
+	{
+		const ImDrawIdx Inner = Base + 1 + i * 2, Outer = Inner + 1;
+		const ImDrawIdx NextInner = Base + 1 + ((i + 1) % Segments) * 2, NextOuter = NextInner + 1;
+		pDraw->PrimWriteIdx(Base);
+		pDraw->PrimWriteIdx(Inner);
+		pDraw->PrimWriteIdx(NextInner);
+		pDraw->PrimWriteIdx(Inner);
+		pDraw->PrimWriteIdx(Outer);
+		pDraw->PrimWriteIdx(NextOuter);
+		pDraw->PrimWriteIdx(Inner);
+		pDraw->PrimWriteIdx(NextOuter);
+		pDraw->PrimWriteIdx(NextInner);
+	}
+}
+
+static ImVec4 ShiftHue(const ImVec4 &Color, float Shift)
+{
+	float h, s, v;
+	ImGui::ColorConvertRGBtoHSV(Color.x, Color.y, Color.z, h, s, v);
+	h = std::fmod(h + Shift + 1.0f, 1.0f);
+	ImVec4 Out(0, 0, 0, Color.w);
+	ImGui::ColorConvertHSVtoRGB(h, s, v, Out.x, Out.y, Out.z);
+	return Out;
+}
+
+// cheap stable pseudo random number in [0, 1) for particle i
+static float Hash(int i, int Salt)
+{
+	unsigned x = (unsigned)i * 747796405u + (unsigned)Salt * 2891336453u;
+	x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u;
+	x = (x >> 22u) ^ x;
+	return (x & 0xffffff) / (float)0x1000000;
+}
+
+void CXcMenu::RenderAnimatedBackground(ImDrawList *pDraw, float Alpha)
+{
+	const STheme &t = Theme();
+	const ImVec2 Size = ImGui::GetIO().DisplaySize;
+	// time stands still when animations are off
+	if(AnimationSpeed() > 0.0f)
+		m_BackgroundTime += std::min(Client()->RenderFrameTime(), 0.1f);
+	const float Time = m_BackgroundTime;
+	const bool Light = t.m_Background.x > 0.5f;
+
+	// base: theme background with a slightly lighter, accent tinted bottom
+	const ImVec4 Top(t.m_Background.x, t.m_Background.y, t.m_Background.z, Alpha);
+	ImVec4 Bottom = Mix(t.m_Background, t.m_Accent, Light ? 0.06f : 0.05f);
+	Bottom.w = Alpha;
+	pDraw->AddRectFilledMultiColor(ImVec2(0, 0), Size, Col(Top), Col(Top), Col(Bottom), Col(Bottom));
+
+	// big soft glows in the accent color and its neighbours drift slowly around the screen
+	struct SGlow
+	{
+		float m_X, m_Y; // base position, 0..1
+		float m_MoveX, m_MoveY; // how far it wanders
+		float m_SpeedX, m_SpeedY;
+		float m_Radius; // relative to the screen height
+		float m_Hue; // shift from the accent
+		float m_Strength;
+	};
+	static const SGlow s_aGlows[] = {
+		{0.18f, 0.22f, 0.10f, 0.12f, 0.050f, 0.070f, 0.85f, 0.00f, 1.00f},
+		{0.85f, 0.30f, 0.08f, 0.15f, 0.060f, 0.045f, 0.75f, 0.10f, 0.80f},
+		{0.65f, 0.90f, 0.15f, 0.08f, 0.040f, 0.055f, 0.90f, -0.08f, 0.85f},
+		{0.30f, 0.80f, 0.12f, 0.10f, 0.065f, 0.035f, 0.60f, 0.05f, 0.55f},
+	};
+	const float BaseAlpha = (Light ? 0.30f : 0.42f) * Alpha;
+	for(const SGlow &Glow : s_aGlows)
+	{
+		const ImVec2 Center(Size.x * (Glow.m_X + Glow.m_MoveX * std::sin(Time * Glow.m_SpeedX * 2.0f * IM_PI)),
+			Size.y * (Glow.m_Y + Glow.m_MoveY * std::cos(Time * Glow.m_SpeedY * 2.0f * IM_PI)));
+		const float Breath = 1.0f + 0.06f * std::sin(Time * 0.35f + Glow.m_X * 10.0f);
+		ImVec4 Color = ShiftHue(t.m_Accent, Glow.m_Hue);
+		Color.w = BaseAlpha * Glow.m_Strength;
+		SoftCircle(pDraw, Center, Size.y * Glow.m_Radius * Breath, Color);
+	}
+
+	// faint dot grid, a bit brighter where the light falls
+	const float Step = S(28.0f);
+	const float Dot = std::max(S(1.2f), 1.0f);
+	const ImU32 DotCol = Col(t.m_Text, (Light ? 0.07f : 0.045f) * Alpha);
+	for(float y = std::fmod(Size.y * 0.5f, Step); y < Size.y; y += Step)
+		for(float x = std::fmod(Size.x * 0.5f, Step); x < Size.x; x += Step)
+			pDraw->AddRectFilled(ImVec2(x - Dot * 0.5f, y - Dot * 0.5f), ImVec2(x + Dot * 0.5f, y + Dot * 0.5f), DotCol);
+
+	// small sparks rise slowly and twinkle
+	const int NumSparks = 48;
+	for(int i = 0; i < NumSparks; i++)
+	{
+		const float Speed = 0.012f + Hash(i, 1) * 0.02f; // screen heights per second
+		const float Phase = std::fmod(Hash(i, 2) + Time * Speed, 1.0f);
+		const float x = Size.x * (Hash(i, 3) + 0.015f * std::sin(Time * (0.3f + Hash(i, 4)) + i));
+		const float y = Size.y * (1.05f - Phase * 1.1f);
+		// fade in at the bottom, out at the top, and twinkle
+		const float Fade = std::min(Phase * 6.0f, 1.0f) * std::min((1.0f - Phase) * 4.0f, 1.0f);
+		const float Twinkle = 0.55f + 0.45f * std::sin(Time * (1.5f + Hash(i, 5) * 2.0f) + i * 1.7f);
+		const float Radius = S(1.0f + Hash(i, 6) * 1.8f);
+		const ImVec4 Color = Hash(i, 7) < 0.6f ? t.m_Accent : ShiftHue(t.m_Accent, 0.08f);
+		const float SparkAlpha = Fade * Twinkle * Alpha * (Light ? 0.5f : 0.7f);
+		SoftCircle(pDraw, ImVec2(x, y), Radius * 5.0f, ImVec4(Color.x, Color.y, Color.z, SparkAlpha * 0.25f));
+		pDraw->AddCircleFilled(ImVec2(x, y), Radius, Col(Color, SparkAlpha), 12);
+	}
+
+	// vignette: darken the corners a little so the middle stands out
+	if(!Light)
+	{
+		const ImU32 Clear = Col(t.m_Background, 0.0f);
+		const ImU32 Edge = Col(t.m_Background, 0.55f * Alpha);
+		const float Band = Size.y * 0.25f;
+		pDraw->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(Size.x, Band), Edge, Edge, Clear, Clear);
+		pDraw->AddRectFilledMultiColor(ImVec2(0, Size.y - Band), Size, Clear, Clear, Edge, Edge);
+	}
 }
 
 void CXcMenu::OnRender()
@@ -238,9 +379,11 @@ void CXcMenu::RenderFrame()
 	const float Open = m_OpenAnimation * m_OpenAnimation * (3.0f - 2.0f * m_OpenAnimation);
 	ImGui::GetStyle().Alpha = Open;
 
-	// darken the game a little behind the menu
 	ImDrawList *pBackground = ImGui::GetBackgroundDrawList();
-	pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, (IsOnline() ? 0.35f : 0.15f) * Open));
+	if(AnimatedBackground())
+		RenderAnimatedBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
+	else // darken the game or the map a little behind the menu
+		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, (IsOnline() ? 0.35f : 0.15f) * Open));
 
 	const float Margin = S(24.0f);
 	const float Slide = (1.0f - Open) * S(14.0f);
