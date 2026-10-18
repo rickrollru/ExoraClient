@@ -354,6 +354,12 @@ void CXcMenu::RenderSettingsChat()
 		ToggleRow(Tr("New messages slide in"), "xc_chat_anim", &g_Config.m_XcChatAnim);
 		EndCard();
 	}
+	if(BeginCard("##chat_style", Tr("Chat in the HUD style"), Tr("Plates in the theme colors, marks for mentions, team chat and whispers, a framed input"), &g_Config.m_XcChatStyle))
+	{
+		ConfigSlider(Tr("Plate opacity"), "xc_chat_opacity", &g_Config.m_XcChatOpacity, 0, 100, "%d%%");
+		Description(Tr("Accent: you were mentioned. Mint: team chat. Pink: whisper. Gray: server"));
+		EndCard();
+	}
 	EndCardGrid();
 }
 

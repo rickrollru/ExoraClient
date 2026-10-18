@@ -662,6 +662,24 @@ ColorRGBA CXcHud::ScoreboardHoverColor() const
 	return ColorRGBA(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.55f);
 }
 
+ColorRGBA CXcHud::ChatLineColor() const
+{
+	const STheme &t = Theme();
+	return ColorRGBA(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f);
+}
+
+ColorRGBA CXcHud::ChatMarkColor(int Kind) const
+{
+	const STheme &t = Theme();
+	switch(Kind)
+	{
+	case 2: return ColorRGBA(0.24f, 0.84f, 0.64f, 1.0f); // team: mint
+	case 3: return ColorRGBA(1.0f, 0.36f, 0.54f, 1.0f); // whisper: pink
+	case 4: return ColorRGBA(0.55f, 0.57f, 0.61f, 1.0f); // server: muted
+	default: return ColorRGBA(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 1.0f);
+	}
+}
+
 ColorRGBA CXcHud::WheelSelectColor() const
 {
 	const STheme &t = Theme();
