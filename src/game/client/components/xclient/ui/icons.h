@@ -32,6 +32,10 @@
 #define XC_ICON_MAP "\xef\x89\xb9" // U+F279
 #define XC_ICON_ARROW_RIGHT "\xef\x81\xa1" // U+F061
 #define XC_ICON_ARROW_LEFT "\xef\x81\xa0" // U+F060
+#define XC_ICON_CLOCK "\xef\x80\x97" // U+F017
+#define XC_ICON_GAUGE "\xef\x98\xa5" // U+F625
+#define XC_ICON_CROSSHAIR "\xef\x81\x9b" // U+F05B
+#define XC_ICON_ARROWS "\xef\x81\x87" // U+F047
 #define XC_ICON_IMAGE "\xef\x80\xbe" // U+F03E
 #define XC_ICON_TRASH "\xef\x87\xb8" // U+F1F8
 #define XC_ICON_PLUS "\xef\x81\xa7" // U+F067

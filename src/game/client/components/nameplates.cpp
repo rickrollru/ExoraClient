@@ -76,6 +76,8 @@ public:
 	bool NewLine() const { return m_NewLine; }
 	bool Visible() const { return m_Visible; }
 	bool ShiftOnInvis() const { return m_ShiftOnInvis; }
+	// XClient: text parts get a dark plate behind them (xc_hud_plates), this is its alpha, 0 for none
+	virtual float XcPlateAlpha() const { return 0.0f; }
 	CNamePlatePart() = delete;
 	virtual ~CNamePlatePart() = default;
 };
@@ -136,6 +138,7 @@ public:
 	{
 		This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
 	}
+	float XcPlateAlpha() const override { return m_TextContainerIndex.Valid() ? m_Color.a : 0.0f; } // XClient
 	void Render(CGameClient &This, vec2 Pos) const override
 	{
 		if(!m_TextContainerIndex.Valid())
@@ -711,6 +714,22 @@ private:
 				Pos.x += Part.Size().x + Part.Padding().x;
 		}
 	}
+	// XClient: dark rounded plate behind a line that has text
+	void XcRenderPlate(CGameClient &This, vec2 Pos, vec2 Size, const PartsVector::iterator &Start, const PartsVector::iterator &End)
+	{
+		if(!g_Config.m_XcHudPlates || Size.x <= 0.0f)
+			return;
+		float Alpha = 0.0f;
+		for(auto PartIt = Start; PartIt != End; ++PartIt)
+			if((*PartIt)->Visible())
+				Alpha = std::max(Alpha, (*PartIt)->XcPlateAlpha());
+		if(Alpha <= 0.0f)
+			return;
+		const float PadX = 4.0f;
+		const float Height = Size.y - 2.0f;
+		This.Graphics()->DrawRect(Pos.x - Size.x / 2.0f - PadX, Pos.y - Size.y + 1.0f, Size.x + PadX * 2.0f, Height,
+			ColorRGBA(0.067f, 0.075f, 0.094f, 0.62f * Alpha), IGraphics::CORNER_ALL, std::min(Height * 0.4f, 8.0f));
+	}
 	template<typename PartType, typename... ArgsType>
 	void AddPart(CGameClient &This, ArgsType &&...Args)
 	{
@@ -784,6 +803,7 @@ public:
 			{
 				if(!Empty)
 				{
+					XcRenderPlate(This, Position, LineSize, Start, std::next(PartIt));
 					RenderLine(This, Position, LineSize, Start, std::next(PartIt));
 					Position.y -= LineSize.y;
 				}
@@ -797,6 +817,7 @@ public:
 				LineSize.y = std::max(LineSize.y, Part.Size().y + Part.Padding().y);
 			}
 		}
+		XcRenderPlate(This, Position, LineSize, Start, m_vpParts.end());
 		RenderLine(This, Position, LineSize, Start, m_vpParts.end());
 		This.Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 	}

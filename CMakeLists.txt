@@ -2950,6 +2950,8 @@ if(CLIENT)
     components/voting.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
+    components/xclient/hud/xc_hud.cpp
+    components/xclient/hud/xc_hud.h
     components/xclient/ui/backgrounds.cpp
     components/xclient/ui/backgrounds.h
     components/xclient/ui/feedback.cpp

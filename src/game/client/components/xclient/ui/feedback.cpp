@@ -63,11 +63,12 @@ namespace XcUi
 		return !s_Toasts.empty();
 	}
 
-	void RenderToasts(ImDrawList *pDraw, const ImVec2 &DisplaySize, float Time, float Alpha)
+	void RenderToasts(ImDrawList *pDraw, const ImVec2 &DisplaySize, float Time, float Alpha, ImFont *pTextFont, ImFont *pIconFont)
 	{
 		const STheme &t = Theme();
-		ImFont *pFont = Fonts().m_pLabel ? Fonts().m_pLabel : ImGui::GetFont();
-		ImFont *pIconFont = Fonts().m_pSmall ? Fonts().m_pSmall : ImGui::GetFont();
+		ImFont *pFont = pTextFont ? pTextFont : (Fonts().m_pLabel ? Fonts().m_pLabel : ImGui::GetFont());
+		if(!pIconFont)
+			pIconFont = Fonts().m_pSmall ? Fonts().m_pSmall : ImGui::GetFont();
 		const float Height = S(42.0f);
 		const float Gap = S(8.0f);
 		const float Bottom = DisplaySize.y - S(36.0f);

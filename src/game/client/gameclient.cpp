@@ -166,6 +166,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Mod, // TClient
 					      &m_CustomCommunities, // TClient
 					      &m_Hud,
+					      &m_XcHud, // XClient: new HUD over the classic one
 					      &m_Spectator,
 					      &m_Emoticon,
 					      &m_BindChat, // TClient
@@ -193,6 +194,7 @@ void CGameClient::OnConsoleInit()
 	m_vpInput.insert(m_vpInput.end(), {&m_KeyBinder, // this will take over all input when we want to bind a key
 						  &m_Binds.m_SpecialBinds,
 						  &m_GameConsole,
+						  &m_XcHud, // XClient: the HUD editor takes all input while open
 						  &m_Chat, // chat has higher prio, due to that you can quit it by pressing esc
 						  &m_Scoreboard,
 						  &m_Motd, // for pressing esc to remove it

@@ -122,7 +122,7 @@ void CXcMenu::ToggleRow(const char *pLabel, const char *pName, int *pValue)
 void CXcMenu::RenderSettings()
 {
 	const char *apIcons[NUM_SETTINGS] = {XC_ICON_PALETTE, XC_ICON_IMAGE, XC_ICON_USER, XC_ICON_KEYBOARD, XC_ICON_VOLUME, XC_ICON_COMMENTS, XC_ICON_DESKTOP, XC_ICON_LAYERS};
-	const char *apLabels[NUM_SETTINGS] = {Tr("Interface"), Tr("Background"), Tr("Player"), Tr("Controls"), Tr("Sound"), Tr("Chat"), Tr("Graphics"), Tr("HUD editor")};
+	const char *apLabels[NUM_SETTINGS] = {Tr("Interface"), Tr("Background"), Tr("Player"), Tr("Controls"), Tr("Sound"), Tr("Chat"), Tr("Graphics"), Tr("HUD")};
 
 	const float NavWidth = S(210.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
@@ -384,5 +384,36 @@ void CXcMenu::RenderSettingsGraphics()
 
 void CXcMenu::RenderSettingsHud()
 {
-	RenderPlaceholder(XC_ICON_LAYERS, Tr("HUD editor"), Tr("Drag and resize HUD elements, coming soon."), false);
+	BeginCardGrid("##hud", 2);
+	if(BeginCard("##hud_main", Tr("New HUD"), Tr("Watermark, timer, speed and weapon in the style of the menu"), &g_Config.m_XcHud))
+	{
+		if(Button(Tr("Open the HUD editor"), true, -1.0f))
+			GameClient()->m_XcHud.SetEditing(true);
+		Description(Tr("Drag the elements in the game, the mouse wheel changes their size"));
+		ToggleRow(Tr("Watermark"), "xc_hud_watermark", &g_Config.m_XcHudWatermark);
+		ToggleRow(Tr("Timer"), "xc_hud_timer", &g_Config.m_XcHudTimer);
+		ToggleRow(Tr("Speed"), "xc_hud_speed", &g_Config.m_XcHudSpeed);
+		ToggleRow(Tr("Weapon"), "xc_hud_weapon", &g_Config.m_XcHudWeapon);
+		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
+		EndCard();
+	}
+	if(BeginCard("##hud_sizes", Tr("Sizes"), Tr("Size of every element in percent")))
+	{
+		ConfigSlider(Tr("Watermark"), "xc_hud_watermark_scale", &g_Config.m_XcHudWatermarkScale, 50, 200, "%d%%");
+		ConfigSlider(Tr("Timer"), "xc_hud_timer_scale", &g_Config.m_XcHudTimerScale, 50, 200, "%d%%");
+		ConfigSlider(Tr("Speed"), "xc_hud_speed_scale", &g_Config.m_XcHudSpeedScale, 50, 200, "%d%%");
+		ConfigSlider(Tr("Weapon"), "xc_hud_weapon_scale", &g_Config.m_XcHudWeaponScale, 50, 200, "%d%%");
+		EndCard();
+	}
+	if(BeginCard("##hud_plates", Tr("Name plates"), Tr("Names above the tees on dark rounded plates"), &g_Config.m_XcHudPlates))
+	{
+		Description(Tr("The text stays readable on bright maps"));
+		EndCard();
+	}
+	if(BeginCard("##hud_wheels", Tr("Wheels"), Tr("Emote wheel and spectator menu in the colors of the menu"), &g_Config.m_XcHudWheels))
+	{
+		Description(Tr("The chosen emote lights up in the accent color"));
+		EndCard();
+	}
+	EndCardGrid();
 }

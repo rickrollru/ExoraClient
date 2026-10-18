@@ -95,6 +95,12 @@ bool CImGuiBackend::Init(IGraphics *pGraphics, IInput *pInput, IStorage *pStorag
 	return true;
 }
 
+void CImGuiBackend::MakeCurrent()
+{
+	if(m_pContext)
+		ImGui::SetCurrentContext(m_pContext);
+}
+
 void CImGuiBackend::Shutdown()
 {
 	if(!m_pContext)

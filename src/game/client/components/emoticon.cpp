@@ -221,11 +221,18 @@ void CEmoticon::OnRender()
 
 	Ui()->MapScreen();
 
-	Graphics()->TextureClear();
-	Graphics()->QuadsBegin();
-	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.3f * aAnimationPhase[0]);
-	Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, s_OuterCircleRadius * aAnimationPhase[0], 64);
-	Graphics()->QuadsEnd();
+	if(g_Config.m_XcHudWheels) // XClient: wheel in the style of the new menu, the chosen sector glows
+	{
+		GameClient()->m_XcHud.RenderWheelBackground(ScreenCenter, s_InnerCircleRadius * aAnimationPhase[0], s_OuterCircleRadius * aAnimationPhase[0], NUM_EMOTICONS, m_SelectedEmote, aAnimationPhase[0]);
+	}
+	else
+	{
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.3f * aAnimationPhase[0]);
+		Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, s_OuterCircleRadius * aAnimationPhase[0], 64);
+		Graphics()->QuadsEnd();
+	}
 
 	Graphics()->WrapClamp();
 	for(int Emote = 0; Emote < NUM_EMOTICONS; Emote++)
@@ -248,11 +255,18 @@ void CEmoticon::OnRender()
 
 	if(GameClient()->m_GameInfo.m_AllowEyeWheel && g_Config.m_ClEyeWheel && GameClient()->m_aLocalIds[g_Config.m_ClDummy] >= 0)
 	{
-		Graphics()->TextureClear();
-		Graphics()->QuadsBegin();
-		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.3f * aAnimationPhase[2]);
-		Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, s_InnerCircleRadius * aAnimationPhase[2], 64);
-		Graphics()->QuadsEnd();
+		if(g_Config.m_XcHudWheels) // XClient
+		{
+			GameClient()->m_XcHud.RenderWheelBackground(ScreenCenter, 30.0f * aAnimationPhase[2], s_InnerCircleRadius * aAnimationPhase[2], NUM_EMOTES, m_SelectedEyeEmote, aAnimationPhase[2]);
+		}
+		else
+		{
+			Graphics()->TextureClear();
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.3f * aAnimationPhase[2]);
+			Graphics()->DrawCircle(ScreenCenter.x, ScreenCenter.y, s_InnerCircleRadius * aAnimationPhase[2], 64);
+			Graphics()->QuadsEnd();
+		}
 
 		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_RenderInfo;
 

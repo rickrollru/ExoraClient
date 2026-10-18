@@ -2002,15 +2002,29 @@ void CHud::OnRender()
 	if(g_Config.m_ClShowhud)
 #endif
 	{
+		// XClient: the watermark of the new HUD sits in the top left corner, the ammo and player state move below it
+		const float XcShift = GameClient()->m_XcHud.ClassicTopLeftShift(m_Height);
+		const auto XcShiftBegin = [&]() {
+			if(XcShift > 0.0f)
+				Graphics()->MapScreen(CScreenRect(0.0f, -XcShift, m_Width, m_Height));
+		};
+		const auto XcShiftEnd = [&]() {
+			if(XcShift > 0.0f)
+				Graphics()->MapScreenToSize(m_Width, m_Height);
+		};
 		if(GameClient()->m_Snap.m_pLocalCharacter && !GameClient()->m_Snap.m_SpecInfo.m_Active && !(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER))
 		{
 			if(g_Config.m_ClShowhudHealthAmmo)
 			{
+				XcShiftBegin();
 				RenderAmmoHealthAndArmor(GameClient()->m_Snap.m_pLocalCharacter);
+				XcShiftEnd();
 			}
 			if(GameClient()->m_Snap.m_aCharacters[GameClient()->m_Snap.m_LocalClientId].m_HasExtendedData && g_Config.m_ClShowhudDDRace && GameClient()->m_GameInfo.m_HudDDRace)
 			{
+				XcShiftBegin();
 				RenderPlayerState(GameClient()->m_Snap.m_LocalClientId);
+				XcShiftEnd();
 			}
 			RenderSpectatorCount();
 			RenderMovementInformation();
@@ -2021,7 +2035,9 @@ void CHud::OnRender()
 			int SpectatorId = GameClient()->m_Snap.m_SpecInfo.m_SpectatorId;
 			if(SpectatorId != SPEC_FREEVIEW && g_Config.m_ClShowhudHealthAmmo)
 			{
+				XcShiftBegin();
 				RenderAmmoHealthAndArmor(&GameClient()->m_Snap.m_aCharacters[SpectatorId].m_Cur);
+				XcShiftEnd();
 			}
 			if(SpectatorId != SPEC_FREEVIEW &&
 				GameClient()->m_Snap.m_aCharacters[SpectatorId].m_HasExtendedData &&
@@ -2029,13 +2045,15 @@ void CHud::OnRender()
 				(!GameClient()->m_MultiViewActivated || GameClient()->m_MultiViewShowHud) &&
 				GameClient()->m_GameInfo.m_HudDDRace)
 			{
+				XcShiftBegin();
 				RenderPlayerState(SpectatorId);
+				XcShiftEnd();
 			}
 			RenderMovementInformation();
 			RenderSpectatorHud();
 		}
 
-		if(g_Config.m_ClShowhudTimer)
+		if(g_Config.m_ClShowhudTimer && !GameClient()->m_XcHud.HidesClassicTimer()) // XClient: the new HUD has its own timer
 			RenderGameTimer();
 		RenderPauseNotification();
 		RenderSuddenDeath();

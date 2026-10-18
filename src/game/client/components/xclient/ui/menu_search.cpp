@@ -57,7 +57,9 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##performance", "Performance", "Low, medium or high in one click", "производительность пресет низкое среднее высокое fps лаги performance preset low medium high"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##screen", "Screen", "Window mode and frame rate", "экран окно fps vsync полноэкранный fullscreen window"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##effects", "Effects", "Quality of the render module (OpenGL 3.3)", "эффекты качество bloom свечение quality render"},
-		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, nullptr, "HUD editor", "Drag and resize HUD elements", "худ hud редактор editor ватермарка watermark"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_main", "New HUD", "Watermark, timer, speed and weapon in the style of the menu", "худ hud редактор editor ватермарка watermark таймер timer скорость speed оружие weapon"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_plates", "Name plates", "Names above the tees on dark rounded plates", "ники ники-плашки плашки nameplates names"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_wheels", "Wheels", "Emote wheel and spectator menu in the colors of the menu", "колесо эмоции эмоций спектатор наблюдение wheel emote spectator"},
 	};
 	// clang-format on
 
@@ -182,7 +184,7 @@ void CXcMenu::RenderSearch()
 
 	static const char *const s_apPageIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_GEAR};
 	static const char *const s_apPageNames[NUM_PAGES] = {"Home", "Servers", "Visuals", "Configs", "Demos", "Settings"};
-	static const char *const s_apSectionNames[NUM_SETTINGS] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD editor"};
+	static const char *const s_apSectionNames[NUM_SETTINGS] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD"};
 	float y = Min.y + InputHeight + S(8.0f);
 	if(NumShown == 0)
 	{

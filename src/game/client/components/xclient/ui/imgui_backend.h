@@ -31,6 +31,8 @@ public:
 	bool Init(IGraphics *pGraphics, IInput *pInput, IStorage *pStorage);
 	void Shutdown();
 	bool IsReady() const { return m_pContext != nullptr; }
+	// several backends can exist (menu, HUD), each with its own ImGui context
+	void MakeCurrent();
 
 	// Rebuilds the font atlas: Family 0 Manrope, 1 Onest, 2 Unbounded; Scale is the UI scale.
 	void LoadFonts(int Family, float Scale);
