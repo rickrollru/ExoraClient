@@ -388,6 +388,10 @@ public:
 	 */
 	virtual bool ViewFile(const char *pFilename) = 0;
 
+	// XClient: while capturing, files dropped on the window go to the new menu (custom backgrounds)
+	virtual void XcSetDropCapture(bool Capture) = 0;
+	virtual bool XcTakeDropFile(char *pBuf, int BufSize) = 0;
+
 #if defined(CONF_FAMILY_WINDOWS)
 	virtual void ShellRegister() = 0;
 	virtual void ShellUnregister() = 0;

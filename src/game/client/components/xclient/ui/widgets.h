@@ -45,7 +45,7 @@ namespace XcUi
 	bool IconButton(const char *pIcon, const char *pTooltip, bool Selected = false);
 	// colored circles to pick one of the given colors
 	bool ColorSwatches(const char *pId, int *pCurrent, const ImVec4 *pColors, int NumColors);
-	bool InputText(const char *pLabel, char *pBuffer, int BufferSize, const char *pHint = nullptr);
+	bool InputText(const char *pLabel, char *pBuffer, int BufferSize, const char *pHint = nullptr, float Width = 0.0f); // Width 0: all the space left
 	// a labeled row: name on the left, the next widget on the right
 	void RowLabel(const char *pLabel, float ControlWidth);
 

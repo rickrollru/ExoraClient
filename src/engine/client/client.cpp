@@ -3447,7 +3447,9 @@ void CClient::Run()
 		char aFile[IO_MAX_PATH_LENGTH];
 		if(Input()->GetDropFile(aFile, sizeof(aFile)))
 		{
-			if(str_startswith(aFile, CONNECTLINK_NO_SLASH))
+			if(m_XcDropCapture && !str_startswith(aFile, CONNECTLINK_NO_SLASH)) // XClient
+				str_copy(m_aXcDropFile, aFile);
+			else if(str_startswith(aFile, CONNECTLINK_NO_SLASH))
 				HandleConnectLink(aFile);
 			else if(str_endswith(aFile, ".demo"))
 				HandleDemoPath(aFile);
@@ -5608,6 +5610,15 @@ bool CClient::ViewLink(const char *pLink)
 		return false;
 	}
 	return ViewLinkImpl(pLink);
+}
+
+bool CClient::XcTakeDropFile(char *pBuf, int BufSize) // XClient
+{
+	if(m_aXcDropFile[0] == '\0')
+		return false;
+	str_copy(pBuf, m_aXcDropFile, BufSize);
+	m_aXcDropFile[0] = '\0';
+	return true;
 }
 
 bool CClient::ViewFile(const char *pFilename)

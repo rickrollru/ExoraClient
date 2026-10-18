@@ -150,9 +150,9 @@ void CFxRenderer::Draw(const std::vector<SFxShape> &vShapes, bool AllowBloom)
 	Graphics()->XcDrawShapes(m_vAlpha.data(), (int)m_vAlpha.size(), m_vAdditive.data(), (int)m_vAdditive.size(), Settings);
 }
 
-void CFxRenderer::BlurBackground(float Amount)
+void CFxRenderer::BlurBackground(float Amount, bool Force)
 {
-	if(!ModuleActive() || !g_Config.m_XcMenuBlur || Amount <= 0.0f)
+	if(!ModuleActive() || (!g_Config.m_XcMenuBlur && !Force) || Amount <= 0.0f)
 		return;
 	XcRender::SBlurSettings Settings;
 	Settings.m_Passes = g_Config.m_XcFxQuality >= 2 ? 4 : (g_Config.m_XcFxQuality == 1 ? 3 : 2);
