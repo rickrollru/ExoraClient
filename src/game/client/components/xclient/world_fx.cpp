@@ -77,26 +77,33 @@ void CWorldFx::HammerHit(vec2 Pos)
 	CXcParticles::SParticle Ring;
 	Ring.m_Type = CXcParticles::EType::RING;
 	Ring.m_Pos = Pos;
-	Ring.m_LifeSpan = 0.32f;
-	Ring.m_StartSize = 8.0f;
-	Ring.m_EndSize = 46.0f;
+	Ring.m_LifeSpan = 0.36f;
+	Ring.m_StartSize = 10.0f;
+	Ring.m_EndSize = 64.0f;
 	Ring.m_Squash = 1.0f;
-	Ring.m_Thickness = 6.0f;
+	Ring.m_Thickness = 9.0f;
 	Ring.m_Color = Color;
+	m_Particles.Add(Ring);
+	// a second, quicker and whiter ring inside makes the hit snap
+	Ring.m_LifeSpan = 0.2f;
+	Ring.m_StartSize = 4.0f;
+	Ring.m_EndSize = 34.0f;
+	Ring.m_Thickness = 6.0f;
+	Ring.m_Color = ColorRGBA(mix(Color.r, 1.0f, 0.6f), mix(Color.g, 1.0f, 0.6f), mix(Color.b, 1.0f, 0.6f), Color.a);
 	m_Particles.Add(Ring);
 	if(Style == HAMMER_RING)
 		return;
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 14; i++)
 	{
 		const float Angle = random_float(0.0f, 2.0f * pi);
 		CXcParticles::SParticle Particle;
 		Particle.m_Type = Style == HAMMER_STARS ? CXcParticles::EType::STAR : CXcParticles::EType::SPARK;
 		Particle.m_Pos = Pos;
-		Particle.m_Vel = direction(Angle) * random_float(150.0f, 330.0f);
+		Particle.m_Vel = direction(Angle) * random_float(200.0f, 430.0f);
 		Particle.m_Gravity = Style == HAMMER_STARS ? 60.0f : 300.0f;
 		Particle.m_Friction = 0.12f;
 		Particle.m_LifeSpan = random_float(0.3f, 0.55f);
-		Particle.m_StartSize = Style == HAMMER_STARS ? random_float(10.0f, 15.0f) : random_float(6.0f, 9.0f);
+		Particle.m_StartSize = Style == HAMMER_STARS ? random_float(13.0f, 19.0f) : random_float(9.0f, 13.0f);
 		Particle.m_EndSize = 0.0f;
 		Particle.m_Rot = Angle;
 		Particle.m_RotSpeed = random_float(-6.0f, 6.0f);
