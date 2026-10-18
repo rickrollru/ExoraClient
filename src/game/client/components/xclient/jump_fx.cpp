@@ -1,5 +1,7 @@
 #include "jump_fx.h"
 
+#include "xc_helpers.h"
+
 #include <base/math.h>
 
 #include <engine/client.h>
@@ -11,15 +13,11 @@
 
 #include <cmath>
 
+using namespace XcHelpers;
+
 static constexpr size_t MAX_FX = 1024;
-static constexpr int RING_SEGMENTS = 40;
 // rings lie flat on the ground, seen from the side
 static constexpr float RING_SQUASH = 0.32f;
-
-static ColorRGBA AccentColor()
-{
-	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_XcJumpFxColor));
-}
 
 void CJumpFx::OnReset()
 {
@@ -31,17 +29,6 @@ void CJumpFx::OnReset()
 void CJumpFx::OnMapLoad()
 {
 	OnReset();
-}
-
-bool CJumpFx::ShouldShow(int ClientId) const
-{
-	const int Self = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
-	const int Dummy = Client()->DummyConnected() ? GameClient()->m_aLocalIds[!g_Config.m_ClDummy] : -1;
-	if(ClientId == Self)
-		return g_Config.m_XcJumpFxSelf;
-	if(ClientId == Dummy)
-		return g_Config.m_XcJumpFxDummy;
-	return g_Config.m_XcJumpFxOthers;
 }
 
 void CJumpFx::OnRender()
@@ -61,7 +48,7 @@ void CJumpFx::UpdatePlayers(float Dt)
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
 		SPlayerState &State = m_aPlayers[ClientId];
-		if(!AnyEnabled || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active || !ShouldShow(ClientId))
+		if(!AnyEnabled || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active || !ShowFor(GameClient(), ClientId, g_Config.m_XcJumpFxSelf, g_Config.m_XcJumpFxDummy, g_Config.m_XcJumpFxOthers) || PlayerAlpha(GameClient(), ClientId) <= 0.0f)
 		{
 			State.m_Valid = false;
 			continue;
@@ -71,8 +58,7 @@ void CJumpFx::UpdatePlayers(float Dt)
 		const CNetObj_Character &Char = Data.m_RenderCur;
 		const vec2 Pos = Data.m_RenderPos;
 		const vec2 Feet = Pos + vec2(0.0f, 14.0f);
-		// netobj velocity is in 1/256 units per tick
-		const vec2 Vel = vec2(Char.m_VelX, Char.m_VelY) / 256.0f * (float)Client()->GameTickSpeed();
+		const vec2 Vel = CharacterVelocity(GameClient(), ClientId);
 		const bool InAir = !Collision()->CheckPoint(Pos.x, Pos.y + 16.0f);
 
 		// first frame for this player, or teleported / respawned
@@ -141,7 +127,7 @@ void CJumpFx::Add(const SFx &Fx)
 void CJumpFx::EmitJump(vec2 Feet, bool AirJump)
 {
 	const float Scale = g_Config.m_XcJumpFxSize / 100.0f;
-	const ColorRGBA Color = AccentColor();
+	const ColorRGBA Color = HslConfigColor(g_Config.m_XcJumpFxColor);
 
 	switch(g_Config.m_XcJumpFx)
 	{
@@ -250,34 +236,8 @@ void CJumpFx::DrawRing(const SFx &Fx) const
 	// ease out: fast at the start, slows down at the end
 	const float Ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
 	const float Radius = mix(Fx.m_StartSize, Fx.m_EndSize, Ease);
-	const float Alpha = Fx.m_Color.a * (1.0f - t);
 	const float Thickness = mix(6.0f, 2.0f, t) * g_Config.m_XcJumpFxSize / 100.0f;
-	const float Glow = Thickness * 3.0f;
-
-	const ColorRGBA Core = Fx.m_Color.WithAlpha(Alpha);
-	const ColorRGBA Clear = Fx.m_Color.WithAlpha(0.0f);
-	const ColorRGBA Soft = Fx.m_Color.WithAlpha(Alpha * 0.35f);
-
-	IGraphics::CFreeformItem aCore[RING_SEGMENTS];
-	IGraphics::CFreeformItem aGlowOut[RING_SEGMENTS];
-	IGraphics::CFreeformItem aGlowIn[RING_SEGMENTS];
-	for(int i = 0; i < RING_SEGMENTS; i++)
-	{
-		const vec2 Dir1 = direction(2.0f * pi * i / RING_SEGMENTS);
-		const vec2 Dir2 = direction(2.0f * pi * (i + 1) / RING_SEGMENTS);
-		const auto Point = [&](vec2 Dir, float R) { return Fx.m_Pos + vec2(Dir.x * R, Dir.y * R * RING_SQUASH); };
-		const float Inner = std::max(Radius - Thickness * 0.5f, 0.0f);
-		const float Outer = Radius + Thickness * 0.5f;
-		aCore[i] = IGraphics::CFreeformItem(Point(Dir1, Inner), Point(Dir2, Inner), Point(Dir1, Outer), Point(Dir2, Outer));
-		aGlowOut[i] = IGraphics::CFreeformItem(Point(Dir1, Outer), Point(Dir2, Outer), Point(Dir1, Outer + Glow), Point(Dir2, Outer + Glow));
-		aGlowIn[i] = IGraphics::CFreeformItem(Point(Dir1, Inner), Point(Dir2, Inner), Point(Dir1, std::max(Inner - Glow, 0.0f)), Point(Dir2, std::max(Inner - Glow, 0.0f)));
-	}
-
-	Graphics()->SetColor(Core);
-	Graphics()->QuadsDrawFreeform(aCore, RING_SEGMENTS);
-	Graphics()->SetColor4(Soft, Soft, Clear, Clear);
-	Graphics()->QuadsDrawFreeform(aGlowOut, RING_SEGMENTS);
-	Graphics()->QuadsDrawFreeform(aGlowIn, RING_SEGMENTS);
+	DrawGlowRing(Graphics(), Fx.m_Pos, Radius, RING_SQUASH, Thickness, Thickness * 3.0f, Fx.m_Color.WithMultipliedAlpha(1.0f - t));
 }
 
 void CJumpFx::Draw() const

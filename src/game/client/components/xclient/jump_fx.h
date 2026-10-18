@@ -65,7 +65,6 @@ private:
 	SPlayerState m_aPlayers[MAX_CLIENTS];
 	std::vector<SFx> m_vFx;
 
-	bool ShouldShow(int ClientId) const;
 	void UpdatePlayers(float Dt);
 	void EmitJump(vec2 Feet, bool AirJump);
 	void EmitLanding(vec2 Feet, float FallSpeed);
