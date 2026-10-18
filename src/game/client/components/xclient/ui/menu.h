@@ -15,6 +15,7 @@
 
 class CServerInfo;
 class IHttpRequest;
+class CFsFileInfo;
 
 struct ImVec2;
 
@@ -201,6 +202,43 @@ private:
 	void RenderServerDetails(const CServerInfo *pInfo, float Height);
 	void RenderVisuals();
 	void RenderConfigs();
+
+	// demos page (menu_demos.cpp)
+	struct SDemoEntry
+	{
+		std::string m_File; // file or folder name
+		std::string m_Name; // shown, without .demo
+		bool m_IsDir = false;
+		int m_StorageType = 0;
+		int64_t m_Date = 0;
+		bool m_InfoLoaded = false;
+		bool m_Valid = false;
+		char m_aMap[64] = {};
+		int m_Length = 0; // seconds
+		int m_Markers = 0;
+		int64_t m_Size = 0;
+		char m_aTimestamp[20] = {};
+	};
+	std::vector<SDemoEntry> m_vDemos;
+	std::vector<int> m_vDemoView; // indices into m_vDemos after search and sort
+	bool m_DemosDirty = true;
+	bool m_DemosViewDirty = true;
+	std::string m_DemoFolder;
+	std::string m_SelectedDemo;
+	char m_aDemoSearch[64] = {};
+	int m_DemoSort = 0;
+	char m_aDemoRename[128] = {};
+	std::string m_DemoRenameFor;
+	std::string m_DemoDeleteArmed;
+	float m_DemoDeleteArmedUntil = 0.0f;
+	static int DemoListCallback(const CFsFileInfo *pInfo, int IsDir, int StorageType, void *pUser);
+	void RefreshDemos();
+	void DemoPath(const SDemoEntry &Entry, char *pBuf, int BufSize) const;
+	void LoadDemoInfo(SDemoEntry &Entry);
+	void UpdateDemoView();
+	bool RenderDemoCard(int Index, float Width, float Height);
+	void RenderDemoDetails(SDemoEntry *pEntry, float Height);
+	void PlayDemo(const SDemoEntry &Entry);
 	void RenderDemos();
 	void RefreshConfigList();
 	void ConfigPath(const char *pName, char *pBuf, int BufSize) const;
