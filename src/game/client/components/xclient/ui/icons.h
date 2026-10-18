@@ -50,5 +50,6 @@
 #define XC_ICON_CODE "\xef\x84\xa1" // U+F121
 #define XC_ICON_HAT "\xef\x9b\xa8" // U+F6E8
 #define XC_ICON_FOLDER_OPEN "\xef\x81\xbc" // U+F07C
+#define XC_ICON_BRUSH "\xef\x95\x9d" // U+F55D
 
 #endif
