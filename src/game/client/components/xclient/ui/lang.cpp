@@ -155,6 +155,15 @@ namespace XcUi
 			{"Offline", "Не в игре"},
 			{"Quick actions", "Быстрые действия"},
 			{"Open the server list", "Открыть список серверов"},
+			// home
+			{"Friends online", "Друзья онлайн"},
+			{"Add friends in the scoreboard or the classic menu", "Добавляй друзей в таблице игроков или в классическом меню"},
+			{"None of your friends is online", "Никого из друзей нет онлайн"},
+			{"DDNet news", "Новости DDNet"},
+			{"No news loaded", "Новости не загрузились"},
+			{"Based on TClient and DDNet", "Основан на TClient и DDNet"},
+			{"Update available", "Доступно обновление"},
+			{"Points, rank and finished maps are coming soon", "Очки, ранг и пройденные карты — скоро"},
 			// configs
 			{"Your XClient settings, saved locally. Share a config with a short code.", "Твои настройки XClient, сохранённые локально. Делись конфигом коротким кодом."},
 			{"New config", "Новый конфиг"},

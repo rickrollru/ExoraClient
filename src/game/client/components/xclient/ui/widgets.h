@@ -26,6 +26,8 @@ namespace XcUi
 	// --- text
 	void Header(const char *pText);
 	void Title(const char *pText);
+	// width left for a widget: inside a card up to the card's inner edge, else the window region
+	float AvailWidth();
 	void Description(const char *pText, float WrapWidth = 0.0f);
 	void ParamLabel(const char *pText);
 

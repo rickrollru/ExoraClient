@@ -62,8 +62,7 @@ namespace XcUi
 	static float Gap() { return S(12.0f); }
 	static float CardPadding() { return S(16.0f); }
 
-	// width left for a widget: inside a card up to the card's inner edge, else the window region
-	static float AvailWidth()
+	float AvailWidth()
 	{
 		if(!s_vGrids.empty() && s_vGrids.back().m_InCard)
 		{
