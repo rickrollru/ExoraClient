@@ -71,6 +71,9 @@ void CXcMenu::PlayUiSoundCallback(void *pUser, int Sound)
 
 void CXcMenu::OnShutdown()
 {
+	if(m_pStatsTask)
+		m_pStatsTask->Abort();
+	m_pStatsTask = nullptr;
 	SetSoundPlayer(nullptr, nullptr);
 	for(int &Sample : m_aUiSounds)
 	{
@@ -689,8 +692,9 @@ void CXcMenu::RenderHome()
 		ParamLabel(Tr("Skin"));
 		ImGui::SameLine();
 		ImGui::TextColored(t.m_Text, "%s", g_Config.m_ClPlayerSkin);
-		Description(Tr("Points, rank and finished maps are coming soon"));
 		ImGui::EndGroup();
+		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+		RenderPlayerStats();
 
 		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 		if(IsOnline())
