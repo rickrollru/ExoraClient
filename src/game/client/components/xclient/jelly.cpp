@@ -21,6 +21,42 @@ void CXcJelly::OnReset()
 {
 	for(SState &State : m_aStates)
 		State = SState();
+	for(SPlate &Plate : m_aPlates)
+		Plate = SPlate();
+}
+
+vec2 CXcJelly::FlyingNamePlate(int ClientId, vec2 Target)
+{
+	if(!g_Config.m_XcFlyingNames || ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return Target;
+	SPlate &Plate = m_aPlates[ClientId];
+	const float Now = Client()->GlobalTime();
+	const float Dt = std::clamp(Now - Plate.m_LastTime, 0.0f, 0.1f);
+	Plate.m_LastTime = Now;
+	// too far behind (teleport, spawn, a frame without the plate): jump to the tee
+	if(!Plate.m_Valid || distance(Plate.m_Pos, Target) > 300.0f || Dt <= 0.0f)
+	{
+		Plate.m_Valid = true;
+		Plate.m_Pos = Target;
+		Plate.m_Vel = vec2(0.0f, 0.0f);
+		return Target;
+	}
+	// softer spring for a longer lag
+	const float Lag = g_Config.m_XcFlyingNamesLag / 100.0f;
+	const float Stiffness = 140.0f / (Lag * Lag);
+	const float Damping = 13.0f / Lag;
+	constexpr float STEP = 1.0f / 240.0f;
+	for(float Left = Dt; Left > 0.0f; Left -= STEP)
+	{
+		const float h = std::min(Left, STEP);
+		Plate.m_Vel += ((Target - Plate.m_Pos) * Stiffness - Plate.m_Vel * Damping) * h;
+		Plate.m_Pos += Plate.m_Vel * h;
+	}
+	// never lose the tee
+	const vec2 Offset = Plate.m_Pos - Target;
+	if(length(Offset) > 90.0f)
+		Plate.m_Pos = Target + normalize(Offset) * 90.0f;
+	return Plate.m_Pos;
 }
 
 void CXcJelly::OnMapLoad()

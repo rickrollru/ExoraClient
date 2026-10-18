@@ -36,6 +36,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_glow", "Neon glow", "Soft light and a crisp outline around the tee", "свечение неон обводка контур подсветка glow neon outline"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_trail", "Trail", "A glowing ribbon behind the tee", "шлейф хвост след trail ribbon"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_name_gradient", "Gradient name", "The name above the tee in a smooth gradient that can flow", "градиент ник имя радуга gradient name nickname rainbow"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_flying_names", "Flying names", "Names follow the tees on a soft spring, like kites", "летающие ники пружина змей flying names nameplates kite"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_jelly", "Jelly tee", "Squashes when landing, stretches when jumping and wobbles back", "желе желейный сплющивание пружина jelly squash stretch"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_accessory", "Accessory", "Something on the head that sways with the tee", "аксессуар шапка нимб корона конус china hat halo crown"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_jump", "Jumps", "Effect under the feet on every jump", "прыжки прыжок кольца искры звёзды пыль jump circles rings"},
