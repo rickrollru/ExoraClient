@@ -31,6 +31,7 @@
 #define XC_ICON_ROTATE "\xef\x8b\xb1" // U+F2F1
 #define XC_ICON_MAP "\xef\x89\xb9" // U+F279
 #define XC_ICON_ARROW_RIGHT "\xef\x81\xa1" // U+F061
+#define XC_ICON_ARROW_UP "\xef\x81\xa2" // U+F062
 #define XC_ICON_ARROW_LEFT "\xef\x81\xa0" // U+F060
 #define XC_ICON_CLOCK "\xef\x80\x97" // U+F017
 #define XC_ICON_GAUGE "\xef\x98\xa5" // U+F625

@@ -385,6 +385,7 @@ namespace XcUi
 			{"Shake strength", "Сила тряски"},
 			{"Only the picture moves, aim and movement stay the same", "Двигается только картинка, прицел и управление не меняются"},
 			{"Events", "События"},
+			{"Keystrokes", "Клавиши"},
 			{"Cubes", "Кубики"},
 			{"Orbs", "Огоньки"},
 			{"Both", "Всё вместе"},
