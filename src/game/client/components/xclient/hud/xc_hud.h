@@ -19,6 +19,7 @@ public:
 		ELEMENT_SPEED,
 		ELEMENT_WEAPON,
 		ELEMENT_MUSIC,
+		ELEMENT_KEYS,
 		NUM_ELEMENTS,
 	};
 
@@ -79,6 +80,8 @@ private:
 	void RenderWeapon(ImDrawList *pDraw, float Alpha);
 	void RenderMusic(ImDrawList *pDraw, float Alpha);
 	void RenderBanner(ImDrawList *pDraw);
+	void RenderKeys(ImDrawList *pDraw, float Alpha);
+	float m_aKeyPress[5] = {};
 	char m_aBannerTitle[128] = {};
 	char m_aBannerSubtitle[128] = {};
 	int m_BannerKind = 0;

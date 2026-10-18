@@ -399,6 +399,7 @@ void CXcMenu::RenderSettingsHud()
 		ToggleRow(Tr("Speed"), "xc_hud_speed", &g_Config.m_XcHudSpeed);
 		ToggleRow(Tr("Weapon"), "xc_hud_weapon", &g_Config.m_XcHudWeapon);
 		ToggleRow(Tr("Music"), "xc_hud_music", &g_Config.m_XcHudMusic);
+		ToggleRow(Tr("Keystrokes"), "xc_hud_keys", &g_Config.m_XcHudKeys);
 		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
 		EndCard();
 	}
@@ -409,6 +410,7 @@ void CXcMenu::RenderSettingsHud()
 		ConfigSlider(Tr("Speed"), "xc_hud_speed_scale", &g_Config.m_XcHudSpeedScale, 50, 200, "%d%%");
 		ConfigSlider(Tr("Weapon"), "xc_hud_weapon_scale", &g_Config.m_XcHudWeaponScale, 50, 200, "%d%%");
 		ConfigSlider(Tr("Music"), "xc_hud_music_scale", &g_Config.m_XcHudMusicScale, 50, 200, "%d%%");
+		ConfigSlider(Tr("Keystrokes"), "xc_hud_keys_scale", &g_Config.m_XcHudKeysScale, 50, 200, "%d%%");
 		EndCard();
 	}
 	if(BeginCard("##music_player", Tr("Music player"), Tr("What plays in the browser or a music app: YouTube, SoundCloud, Yandex Music, Spotify..."), &g_Config.m_XcMusic))

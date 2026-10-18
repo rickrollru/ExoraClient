@@ -80,7 +80,8 @@ CXcHud::SElementConfig CXcHud::Element(int Index) const
 	case ELEMENT_TIMER: return {"Timer", &g_Config.m_XcHudTimer, &g_Config.m_XcHudTimerX, &g_Config.m_XcHudTimerY, &g_Config.m_XcHudTimerScale, 500, 38};
 	case ELEMENT_SPEED: return {"Speed", &g_Config.m_XcHudSpeed, &g_Config.m_XcHudSpeedX, &g_Config.m_XcHudSpeedY, &g_Config.m_XcHudSpeedScale, 455, 905};
 	case ELEMENT_WEAPON: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
-	default: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
+	case ELEMENT_MUSIC: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
+	default: return {"Keystrokes", &g_Config.m_XcHudKeys, &g_Config.m_XcHudKeysX, &g_Config.m_XcHudKeysY, &g_Config.m_XcHudKeysScale, 120, 640};
 	}
 }
 
@@ -361,6 +362,53 @@ void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
 	pDraw->AddText(pLabel, TextSize, ImVec2(TextX, Min.y + (Dots ? 9.0f : 17.0f) * U), Col(t.m_Text, Alpha), pName);
 	for(int i = 0; i < Dots; i++)
 		pDraw->AddCircleFilled(ImVec2(TextX + 3.0f * U + i * 8.0f * U, Max.y - 14.0f * U), 2.6f * U, Col(t.m_Accent, Alpha), 12);
+}
+
+void CXcHud::RenderKeys(ImDrawList *pDraw, float Alpha)
+{
+	const STheme &t = Theme();
+	const float U = Unit(ELEMENT_KEYS);
+	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
+	const CNetObj_PlayerInput &Input = GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy];
+	// left, jump, right on top; fire and hook below
+	const bool aDown[5] = {Input.m_Direction < 0, Input.m_Jump != 0, Input.m_Direction > 0, (Input.m_Fire & 1) != 0, Input.m_Hook != 0};
+	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+	for(int i = 0; i < 5; i++)
+		m_aKeyPress[i] = aDown[i] ? std::min(m_aKeyPress[i] + Dt * 22.0f, 1.0f) : std::max(m_aKeyPress[i] - Dt * 7.0f, 0.0f);
+
+	const float Key = 38.0f * U;
+	const float Gap = 6.0f * U;
+	const float Pad = 8.0f * U;
+	const float Width = Key * 3.0f + Gap * 2.0f + Pad * 2.0f;
+	const float Height = Key * 2.0f - 6.0f * U + Gap + Pad * 2.0f;
+	const ImVec2 Min = PlaceRect(ELEMENT_KEYS, ImVec2(Width, Height));
+	RenderPlate(pDraw, Min, ImVec2(Min.x + Width, Min.y + Height), U, Alpha);
+	const float Small = Key - 6.0f * U;
+	const float WideKey = (Width - Pad * 2.0f - Gap) * 0.5f;
+	const ImVec2 aMin[5] = {
+		ImVec2(Min.x + Pad, Min.y + Pad),
+		ImVec2(Min.x + Pad + Key + Gap, Min.y + Pad),
+		ImVec2(Min.x + Pad + (Key + Gap) * 2.0f, Min.y + Pad),
+		ImVec2(Min.x + Pad, Min.y + Pad + Key + Gap),
+		ImVec2(Min.x + Pad + WideKey + Gap, Min.y + Pad + Key + Gap),
+	};
+	const ImVec2 aSize[5] = {ImVec2(Key, Key), ImVec2(Key, Key), ImVec2(Key, Key), ImVec2(WideKey, Small), ImVec2(WideKey, Small)};
+	const char *apLabels[5] = {XC_ICON_ARROW_LEFT, XC_ICON_ARROW_UP, XC_ICON_ARROW_RIGHT, Tr("Fire"), Tr("Hook")};
+	for(int i = 0; i < 5; i++)
+	{
+		const float Press = m_aKeyPress[i];
+		// a pressed key sinks a little and fills with the accent color
+		const float Sink = Press * 2.0f * U;
+		const ImVec2 KeyMin(aMin[i].x, aMin[i].y + Sink);
+		const ImVec2 KeyMax(aMin[i].x + aSize[i].x, aMin[i].y + aSize[i].y + Sink * 0.5f);
+		if(Press > 0.0f)
+			pDraw->AddRectFilled(ImVec2(KeyMin.x - 3.0f * U, KeyMin.y - 3.0f * U), ImVec2(KeyMax.x + 3.0f * U, KeyMax.y + 3.0f * U), Col(t.m_Accent, 0.22f * Press * Alpha), 10.0f * U);
+		pDraw->AddRectFilled(KeyMin, KeyMax, Col(Mix(t.m_Track, t.m_Accent, Press), Alpha), 8.0f * U);
+		pDraw->AddRect(KeyMin, KeyMax, Col(Mix(t.m_Border, t.m_Accent, Press), Alpha), 8.0f * U, 0, 1.0f);
+		const float TextSize = (i < 3 ? 15.0f : 12.5f) * U;
+		const ImVec2 TextDim = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apLabels[i]);
+		pDraw->AddText(pLabel, TextSize, ImVec2((KeyMin.x + KeyMax.x - TextDim.x) * 0.5f, (KeyMin.y + KeyMax.y - TextDim.y) * 0.5f), Col(Mix(t.m_TextSecondary, t.m_OnAccent, Press), Alpha), apLabels[i]);
+	}
 }
 
 void CXcHud::ShowBanner(const char *pTitle, const char *pSubtitle, int Kind)
@@ -773,6 +821,8 @@ void CXcHud::OnRender()
 			RenderWeapon(pDraw, a);
 		if(g_Config.m_XcHudMusic)
 			RenderMusic(pDraw, a);
+		if(g_Config.m_XcHudKeys)
+			RenderKeys(pDraw, a);
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
