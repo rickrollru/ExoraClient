@@ -52,7 +52,7 @@ private:
 	ColorRGBA FreezeColor(int ClientId, float Alpha = 1.0f) const;
 };
 
-// Over the whole world, under the HUD: color filter and vignette.
+// Over the whole world, under the HUD: color filter, vignette, screen flashes and camera shake.
 class CScreenFx : public CComponent
 {
 public:
@@ -67,6 +67,20 @@ public:
 
 	int Sizeof() const override { return sizeof(*this); }
 	void OnRender() override;
+	void OnReset() override;
+
+	// colored light from the screen edges that fades out; Strength 0..1
+	void Flash(ColorRGBA Color, float Strength);
+	// Strength 0..1, added up and capped
+	void Shake(float Strength);
+	// offset for the camera, called by CCamera (visual only)
+	vec2 ShakeOffset() const;
+
+private:
+	ColorRGBA m_FlashColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+	float m_Flash = 0.0f;
+	float m_Shake = 0.0f;
+	void RenderFlash(float Width, float Height);
 };
 
 #endif

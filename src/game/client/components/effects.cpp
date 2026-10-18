@@ -329,6 +329,9 @@ void CEffects::Confetti(vec2 Pos, float Alpha)
 
 void CEffects::Explosion(vec2 Pos, float Alpha)
 {
+	// XClient: a grenade close to your tee shakes the camera
+	if(distance(Pos, GameClient()->m_LocalCharacterPos) < 260.0f)
+		GameClient()->m_ScreenFx.Shake(0.55f);
 	// add to flow
 	for(int y = -8; y <= 8; y++)
 		for(int x = -8; x <= 8; x++)

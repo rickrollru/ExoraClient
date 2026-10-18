@@ -209,14 +209,72 @@ bool CWorldFx::RenderCrosshair(vec2 Pos, float Alpha, float Scale)
 	return true;
 }
 
+void CScreenFx::OnReset()
+{
+	m_Flash = 0.0f;
+	m_Shake = 0.0f;
+}
+
+void CScreenFx::Flash(ColorRGBA Color, float Strength)
+{
+	if(!g_Config.m_XcScreenFlash)
+		return;
+	m_FlashColor = Color;
+	m_Flash = std::max(m_Flash, Strength * g_Config.m_XcScreenFlashStrength / 100.0f);
+}
+
+void CScreenFx::Shake(float Strength)
+{
+	if(!g_Config.m_XcCameraShake)
+		return;
+	m_Shake = std::min(m_Shake + Strength, 1.0f);
+}
+
+vec2 CScreenFx::ShakeOffset() const
+{
+	if(m_Shake <= 0.0f)
+		return vec2(0.0f, 0.0f);
+	// smooth noise from a few sines, the amount falls off with the square for a soft end
+	const float t = Client()->GlobalTime() * 38.0f;
+	const float Amount = m_Shake * m_Shake * 14.0f * g_Config.m_XcCameraShakeStrength / 100.0f;
+	return vec2(std::sin(t) + 0.5f * std::sin(t * 2.3f + 1.0f), std::cos(t * 1.1f + 2.0f) + 0.5f * std::sin(t * 1.9f)) * Amount;
+}
+
+void CScreenFx::RenderFlash(float Width, float Height)
+{
+	// light from the edges, thinner toward the middle, plus a faint tint everywhere
+	const float a = std::min(m_Flash, 1.0f);
+	const ColorRGBA Edge = m_FlashColor.WithAlpha(0.55f * a);
+	const ColorRGBA Clear = m_FlashColor.WithAlpha(0.0f);
+	Graphics()->QuadsBegin();
+	Graphics()->SetColor(m_FlashColor.WithAlpha(0.10f * a));
+	const IGraphics::CQuadItem Full(0.0f, 0.0f, Width, Height);
+	Graphics()->QuadsDrawTL(&Full, 1);
+	const vec2 Center(Width * 0.5f, Height * 0.5f);
+	const vec2 Inner = vec2(Width, Height) * 0.42f;
+	const vec2 Outer = vec2(Width, Height) * 0.75f;
+	const int Segments = 64;
+	for(int i = 0; i < Segments; i++)
+	{
+		const vec2 A = direction(2.0f * pi * i / Segments);
+		const vec2 B = direction(2.0f * pi * (i + 1) / Segments);
+		Graphics()->SetColor4(Clear, Clear, Edge, Edge);
+		const IGraphics::CFreeformItem Item(Center + A * Inner, Center + B * Inner, Center + A * Outer, Center + B * Outer);
+		Graphics()->QuadsDrawFreeform(&Item, 1);
+	}
+	Graphics()->QuadsEnd();
+}
+
 void CScreenFx::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 	GameClient()->m_XcEventFx.RenderDummyArrow();
+	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+	m_Shake = std::max(m_Shake - Dt * 2.2f, 0.0f);
 	const int Tint = g_Config.m_XcWorldTint;
 	const float Vignette = g_Config.m_XcVignette / 100.0f;
-	if(Tint == TINT_OFF && Vignette <= 0.0f)
+	if(Tint == TINT_OFF && Vignette <= 0.0f && m_Flash <= 0.0f)
 		return;
 	const float Width = (float)Graphics()->ScreenWidth();
 	const float Height = (float)Graphics()->ScreenHeight();
@@ -246,6 +304,12 @@ void CScreenFx::OnRender()
 		const IGraphics::CQuadItem Item(0.0f, 0.0f, Width, Height);
 		Graphics()->QuadsDrawTL(&Item, 1);
 		Graphics()->QuadsEnd();
+	}
+
+	if(m_Flash > 0.0f)
+	{
+		RenderFlash(Width, Height);
+		m_Flash = std::max(m_Flash - Dt * 2.5f, 0.0f);
 	}
 
 	if(Vignette > 0.0f)
