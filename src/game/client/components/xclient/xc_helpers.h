@@ -33,6 +33,18 @@ namespace XcHelpers
 	float SmoothFactor(float Speed, float Dt);
 
 	ColorRGBA HslConfigColor(unsigned PackedHsl);
+
+	// Color modes shared by all effects (the *_color_mode settings)
+	enum
+	{
+		COLOR_ACCENT = 0, // accent color of the menu
+		COLOR_CUSTOM, // the effect's own color setting
+		COLOR_RAINBOW, // hue running over time
+		COLOR_SKIN, // the player's body color
+		NUM_COLOR_MODES,
+	};
+	// HueOffset shifts the rainbow (e.g. along a trail), ClientId is used by COLOR_SKIN (-1: own tee)
+	ColorRGBA EffectColor(const CGameClient *pGameClient, int Mode, unsigned CustomColor, int ClientId, float HueOffset = 0.0f, float Alpha = 1.0f);
 	ColorRGBA RainbowColor(float Hue, float Alpha);
 
 	vec2 Rotate(vec2 Point, vec2 Center, float Angle);

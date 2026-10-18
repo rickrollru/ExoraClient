@@ -812,8 +812,3 @@ void CXcMenu::RenderHome()
 		OpenClassicMenu();
 	}
 }
-
-void CXcMenu::RenderVisuals()
-{
-	RenderPlaceholder(XC_ICON_WAND, Tr("Visuals"), Tr("Visual effects are being redesigned."), false);
-}

@@ -553,6 +553,11 @@ void CPlayers::RenderHook(
 	float d = distance(Pos, HookPos);
 	vec2 Dir = normalize(Pos - HookPos);
 
+	// XClient: custom hook line under the hook head
+	const int XcHookStyle = GameClient()->m_HookFx.Style(ClientId);
+	if(XcHookStyle != CHookFx::STYLE_DEFAULT)
+		GameClient()->m_HookFx.RenderLine(Pos, HookPos, Alpha);
+
 	Graphics()->TextureSet(GameClient()->m_GameSkin.m_SpriteHookHead);
 	Graphics()->QuadsSetRotation(angle(Dir) + pi);
 	// render head
@@ -564,6 +569,8 @@ void CPlayers::RenderHook(
 	bool DontOthers = !g_Config.m_TcRainbowOthers && !Local;
 	if(g_Config.m_TcRainbowHook && !DontOthers)
 		Graphics()->SetColor(GameClient()->m_Rainbow.m_RainbowColor.WithAlpha(Alpha));
+	if(XcHookStyle != CHookFx::STYLE_DEFAULT) // XClient
+		Graphics()->SetColor(GameClient()->m_HookFx.SpriteColor(Alpha));
 
 	Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, HookPos.x, HookPos.y);
 
@@ -571,7 +578,8 @@ void CPlayers::RenderHook(
 	++QuadOffset;
 	static IGraphics::SRenderSpriteInfo s_aHookChainRenderInfo[1024];
 	int HookChainCount = 0;
-	for(float f = 24; f < d && HookChainCount < 1024; f += 24, ++HookChainCount)
+	const bool XcHideChain = XcHookStyle == CHookFx::STYLE_LINE || XcHookStyle == CHookFx::STYLE_GLOW; // XClient
+	for(float f = 24; f < d && HookChainCount < 1024 && !XcHideChain; f += 24, ++HookChainCount)
 	{
 		vec2 p = HookPos + Dir * f;
 		s_aHookChainRenderInfo[HookChainCount].m_Pos[0] = p.x;
@@ -1263,13 +1271,19 @@ void CPlayers::OnRender()
 		{
 			RenderPlayer(ScreenRect, &GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId, 0.0f, true);
 		}
+		const bool XcGlow = GameClient()->m_TeeGlow.Begin(ClientId); // XClient
 		RenderPlayer(ScreenRect, &GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId);
+		if(XcGlow)
+			GameClient()->m_TeeGlow.End(ClientId); // XClient
 	}
 	if(RenderLastId != -1 && IsPlayerInfoAvailable(RenderLastId))
 	{
 		const CGameClient::CClientData *pClientData = &GameClient()->m_aClients[RenderLastId];
 		RenderHookCollLine(ScreenRect, &pClientData->m_RenderPrev, &pClientData->m_RenderCur, RenderLastId);
+		const bool XcGlow = GameClient()->m_TeeGlow.Begin(RenderLastId); // XClient
 		RenderPlayer(ScreenRect, &pClientData->m_RenderPrev, &pClientData->m_RenderCur, &aRenderInfo[RenderLastId], RenderLastId);
+		if(XcGlow)
+			GameClient()->m_TeeGlow.End(RenderLastId); // XClient
 	}
 }
 

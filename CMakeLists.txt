@@ -2948,10 +2948,18 @@ if(CLIENT)
     components/touch_controls.h
     components/voting.cpp
     components/voting.h
+    components/xclient/accessory.cpp
+    components/xclient/accessory.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
+    components/xclient/hook_fx.cpp
+    components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
     components/xclient/hud/xc_hud.h
+    components/xclient/jump_fx.cpp
+    components/xclient/jump_fx.h
+    components/xclient/tee_glow.cpp
+    components/xclient/tee_glow.h
     components/xclient/ui/backgrounds.cpp
     components/xclient/ui/backgrounds.h
     components/xclient/ui/feedback.cpp
@@ -2971,14 +2979,20 @@ if(CLIENT)
     components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp
+    components/xclient/ui/menu_visuals.cpp
     components/xclient/ui/player_stats.cpp
     components/xclient/ui/player_stats.h
     components/xclient/ui/theme.cpp
     components/xclient/ui/theme.h
     components/xclient/ui/widgets.cpp
     components/xclient/ui/widgets.h
+    components/xclient/ui/widgets_fx.cpp
+    components/xclient/weather.cpp
+    components/xclient/weather.h
     components/xclient/xc_helpers.cpp
     components/xclient/xc_helpers.h
+    components/xclient/xc_particles.cpp
+    components/xclient/xc_particles.h
     gameclient.cpp
     gameclient.h
     laser_data.cpp
