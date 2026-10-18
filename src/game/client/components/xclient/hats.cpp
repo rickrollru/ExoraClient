@@ -56,11 +56,13 @@ CXcHats::SPlacement CXcHats::DefaultPlacement(const char *pName)
 		SPlacement m_Placement;
 	};
 	static const SBuiltin s_aBuiltin[] = {
+		{"bat_wings.png", {0, -14, 132, 0, 1}},
 		{"cat_ears.png", {0, -28, 70, 0}},
 		{"party_hat.png", {4, -44, 42, 12}},
 		{"santa_hat.png", {2, -34, 72, 0}},
 		{"sunglasses.png", {6, -2, 54, 0}},
 		{"top_hat.png", {0, -40, 62, 0}},
+		{"wings.png", {0, -12, 140, 0, 1}},
 		{"wizard_hat.png", {2, -46, 70, 0}},
 	};
 	for(const SBuiltin &Builtin : s_aBuiltin)
@@ -74,7 +76,7 @@ CXcHats::SPlacement CXcHats::DefaultPlacement(const char *pName)
 void CXcHats::StoreCurrentPlacement()
 {
 	if(g_Config.m_XcHatFile[0])
-		m_Placements[g_Config.m_XcHatFile] = {g_Config.m_XcHatX, g_Config.m_XcHatY, g_Config.m_XcHatSize, g_Config.m_XcHatRotation};
+		m_Placements[g_Config.m_XcHatFile] = {g_Config.m_XcHatX, g_Config.m_XcHatY, g_Config.m_XcHatSize, g_Config.m_XcHatRotation, g_Config.m_XcHatBehind};
 }
 
 void CXcHats::SelectHat(const char *pName)
@@ -89,6 +91,7 @@ void CXcHats::SelectHat(const char *pName)
 	g_Config.m_XcHatY = Placement.m_Y;
 	g_Config.m_XcHatSize = Placement.m_Size;
 	g_Config.m_XcHatRotation = Placement.m_Rotation;
+	g_Config.m_XcHatBehind = Placement.m_Behind;
 	SavePlacements();
 }
 
@@ -99,6 +102,7 @@ void CXcHats::ResetPlacement()
 	g_Config.m_XcHatY = Placement.m_Y;
 	g_Config.m_XcHatSize = Placement.m_Size;
 	g_Config.m_XcHatRotation = Placement.m_Rotation;
+	g_Config.m_XcHatBehind = Placement.m_Behind;
 }
 
 void CXcHats::LoadPlacements()
@@ -123,6 +127,12 @@ void CXcHats::LoadPlacements()
 		if(std::sscanf(Line.c_str(), "%d %d %d %d %n", &Placement.m_X, &Placement.m_Y, &Placement.m_Size, &Placement.m_Rotation, &NameOffset) == 4 && NameOffset > 0)
 		{
 			std::string Name = Line.substr(NameOffset);
+			// newer files mark the layer as "b0" / "b1" before the name
+			if(Name.size() > 3 && Name[0] == 'b' && (Name[1] == '0' || Name[1] == '1') && Name[2] == ' ')
+			{
+				Placement.m_Behind = Name[1] - '0';
+				Name = Name.substr(3);
+			}
 			while(!Name.empty() && (Name.back() == '\r' || Name.back() == ' '))
 				Name.pop_back();
 			if(!Name.empty())
@@ -145,7 +155,7 @@ void CXcHats::SavePlacements()
 	for(const auto &[Name, Placement] : m_Placements)
 	{
 		char aLine[256];
-		str_format(aLine, sizeof(aLine), "%d %d %d %d %s\n", Placement.m_X, Placement.m_Y, Placement.m_Size, Placement.m_Rotation, Name.c_str());
+		str_format(aLine, sizeof(aLine), "%d %d %d %d b%d %s\n", Placement.m_X, Placement.m_Y, Placement.m_Size, Placement.m_Rotation, Placement.m_Behind, Name.c_str());
 		io_write(File, aLine, str_length(aLine));
 	}
 	io_close(File);
@@ -239,9 +249,21 @@ void CXcHats::RenderOnTee(vec2 Pos, float TeeSize, bool LookingLeft, float Tilt,
 	m_Images.RenderQuad(Center, vec2(Size.x * (2.0f - Squash), Size.y * Squash), Rotation, Alpha * g_Config.m_XcHatAlpha / 100.0f, Flip);
 }
 
+void CXcHatsBehind::OnRender()
+{
+	if(g_Config.m_XcHatBehind)
+		GameClient()->m_XcHats.RenderAll();
+}
+
 void CXcHats::OnRender()
 {
 	Update();
+	if(!g_Config.m_XcHatBehind)
+		RenderAll();
+}
+
+void CXcHats::RenderAll()
+{
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 	if(!g_Config.m_XcHat || !m_Images.HasFrames())
