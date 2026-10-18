@@ -97,6 +97,15 @@ void CXcMenu::RenderVisualsMovement()
 void CXcMenu::RenderVisualsWeapons()
 {
 	BeginCardGrid("##vis_weapons", 2);
+	if(BeginCard("##fx_projectiles", Tr("Bullets and lasers"), Tr("Light around shots, comet tails and glowing lasers")))
+	{
+		ToggleRow(Tr("Glow around bullets and grenades"), "xc_projectile_glow", &g_Config.m_XcProjectileGlow);
+		ToggleRow(Tr("Comet tail"), "xc_projectile_trail", &g_Config.m_XcProjectileTrail);
+		ToggleRow(Tr("Laser glow"), "xc_laser_glow", &g_Config.m_XcLaserGlow);
+		ConfigSlider(Tr("Laser glow strength"), "xc_laser_glow_strength", &g_Config.m_XcLaserGlowStrength, 10, 250, "%d%%");
+		Description(Tr("The color is set in the Pickups card under World"));
+		EndCard();
+	}
 	const char *apHooks[] = {Tr("Chain"), Tr("Line"), Tr("Glow")};
 	if(StyleCard("##fx_hook", Tr("Hook"), Tr("Colored chain, clean line or a glowing beam"), "xc_hook_style", &g_Config.m_XcHookStyle, apHooks, 3))
 	{
@@ -114,6 +123,22 @@ void CXcMenu::RenderVisualsWeapons()
 void CXcMenu::RenderVisualsWorld()
 {
 	BeginCardGrid("##vis_world", 2);
+	if(BeginCard("##fx_items", Tr("Pickups"), Tr("Hearts, armor, weapons and ninja softly glow"), &g_Config.m_XcItemsGlow))
+	{
+		ParamLabel(Tr("Color"));
+		const char *apModes[] = {Tr("By type"), Tr("Accent"), Tr("Own"), Tr("Rainbow")};
+		ConfigSegmented("##items_color_mode", "xc_items_color_mode", &g_Config.m_XcItemsColorMode, apModes, 4);
+		if(g_Config.m_XcItemsColorMode == 2)
+		{
+			int Mode = 1; // the picker's own color part
+			EffectColorPicker("##items_color", &Mode, &g_Config.m_XcItemsColor);
+		}
+		ConfigSlider(Tr("Size"), "xc_items_glow_size", &g_Config.m_XcItemsGlowSize, 25, 250, "%d%%");
+		ConfigSlider(Tr("Brightness"), "xc_items_glow_strength", &g_Config.m_XcItemsGlowStrength, 10, 250, "%d%%");
+		ToggleRow(Tr("Sparkles"), "xc_items_sparkles", &g_Config.m_XcItemsSparkles);
+		Description(Tr("Bullets, grenades and lasers use the same colors"));
+		EndCard();
+	}
 	const char *apWeather[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash")};
 	if(StyleCard("##fx_weather", Tr("Weather"), Tr("Falling particles over the map and the menu"), "xc_weather", &g_Config.m_XcWeather, apWeather, 4))
 	{

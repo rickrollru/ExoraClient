@@ -90,6 +90,7 @@
 #include "components/xclient/accessory.h"
 #include "components/xclient/fx_renderer.h"
 #include "components/xclient/hook_fx.h"
+#include "components/xclient/item_fx.h"
 #include "components/xclient/hud/xc_hud.h"
 #include "components/xclient/jump_fx.h"
 #include "components/xclient/tee_glow.h"
@@ -262,6 +263,7 @@ public:
 	CJumpFx m_JumpFx;
 	CTeeGlow m_TeeGlow;
 	CTrailFx m_TrailFx;
+	CItemFx m_ItemFx;
 	CWeather m_Weather;
 
 private:
