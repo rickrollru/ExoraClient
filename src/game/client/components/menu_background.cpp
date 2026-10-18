@@ -372,6 +372,13 @@ void CMenuBackground::ChangePosition(int PositionNumber)
 	m_MoveTime = 0.0f;
 }
 
+void CMenuBackground::XcRescanThemes() // XClient
+{
+	for(auto &Theme : m_vThemes)
+		Graphics()->UnloadTexture(&Theme.m_IconTexture);
+	m_vThemes.clear();
+}
+
 std::vector<CTheme> &CMenuBackground::GetThemes()
 {
 	if(m_vThemes.empty()) // not loaded yet

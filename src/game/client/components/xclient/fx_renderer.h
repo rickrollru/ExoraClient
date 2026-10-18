@@ -96,7 +96,7 @@ public:
 	void Draw(const std::vector<SFxShape> &vShapes, bool AllowBloom);
 
 	// Blurs everything drawn so far, used under the in-game menu. Amount 0..1 fades it in.
-	void BlurBackground(float Amount);
+	void BlurBackground(float Amount, bool Force = false); // Force: ignore xc_menu_blur
 	// Call every frame while the in-game menu is open, fades the blur in smoothly.
 	void RenderMenuBlur();
 

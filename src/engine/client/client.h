@@ -549,6 +549,12 @@ public:
 	bool ViewLink(const char *pLink) override;
 	bool ViewFile(const char *pFilename) override;
 
+	// XClient
+	bool m_XcDropCapture = false;
+	char m_aXcDropFile[IO_MAX_PATH_LENGTH] = "";
+	void XcSetDropCapture(bool Capture) override { m_XcDropCapture = Capture; }
+	bool XcTakeDropFile(char *pBuf, int BufSize) override;
+
 #if defined(CONF_FAMILY_WINDOWS)
 	void ShellRegister() override;
 	void ShellUnregister() override;

@@ -1015,10 +1015,13 @@ add_library(md5 EXCLUDE_FROM_ALL OBJECT ${DEP_MD5_SRC})
 # XClient: Dear ImGui for the new menu
 set_src(DEP_IMGUI_SRC GLOB src/engine/external/imgui imconfig.h imgui.cpp imgui.h imgui_draw.cpp imgui_internal.h imgui_tables.cpp imgui_widgets.cpp imstb_rectpack.h imstb_textedit.h imstb_truetype.h)
 add_library(imgui EXCLUDE_FROM_ALL OBJECT ${DEP_IMGUI_SRC})
+# XClient: stb_image for custom menu backgrounds (jpg, gif)
+set_src(DEP_STB_SRC GLOB src/engine/external/stb stb_image.cpp stb_image.h stb_image_xc.h)
+add_library(stb EXCLUDE_FROM_ALL OBJECT ${DEP_STB_SRC})
 
-list(APPEND TARGETS_DEP json md5 imgui)
+list(APPEND TARGETS_DEP json md5 imgui stb)
 set(DEP_JSON $<TARGET_OBJECTS:json>)
-set(DEP_IMGUI $<TARGET_OBJECTS:imgui>)
+set(DEP_IMGUI $<TARGET_OBJECTS:imgui> $<TARGET_OBJECTS:stb>)
 set(DEP_MD5)
 if(NOT CRYPTO_FOUND)
   set(DEP_MD5 $<TARGET_OBJECTS:md5>)
@@ -2941,14 +2944,17 @@ if(CLIENT)
     components/voting.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
+    components/xclient/ui/backgrounds.cpp
+    components/xclient/ui/backgrounds.h
     components/xclient/ui/icons.h
     components/xclient/ui/imgui_backend.cpp
     components/xclient/ui/imgui_backend.h
     components/xclient/ui/lang.cpp
     components/xclient/ui/lang.h
     components/xclient/ui/menu.cpp
-    components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu.h
+    components/xclient/ui/menu_bg.cpp
+    components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp
     components/xclient/ui/theme.cpp
