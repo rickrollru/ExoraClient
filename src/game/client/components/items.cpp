@@ -335,6 +335,14 @@ void CItems::RenderLaser(const CLaserData *pCurrent, bool IsPredicted)
 		TicksHead *= (((pCurrent->m_Subtype >> 1) % 3) * 4.0f) + 1;
 		TicksHead *= (pCurrent->m_Subtype & 1) ? -1 : 1;
 	}
+	// XClient: own glowing beam for rifle and shotgun lasers
+	if(g_Config.m_XcReplaceLaser && (Type == LASERTYPE_RIFLE || Type == LASERTYPE_SHOTGUN))
+	{
+		const int TuneZone = (Client()->State() == IClient::STATE_ONLINE && GameClient()->m_GameWorld.m_WorldConfig.m_UseTuneZones) ? Collision()->IsTune(Collision()->GetMapIndex(pCurrent->m_From)) : 0;
+		const float Fade = 1.0f - std::clamp(Ticks * 1000.0f / Client()->GameTickSpeed() / GameClient()->GetTuning(TuneZone)->m_LaserBounceDelay, 0.0f, 1.0f);
+		GameClient()->m_ItemFx.LaserBeam(pCurrent->m_From, pCurrent->m_To, OuterColor, InnerColor, Fade, Alpha);
+		return;
+	}
 	RenderLaser(pCurrent->m_From, pCurrent->m_To, OuterColor, InnerColor, Ticks, TicksHead, Type);
 	GameClient()->m_ItemFx.Laser(pCurrent->m_From, pCurrent->m_To, OuterColor, Alpha); // XClient
 }

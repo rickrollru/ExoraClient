@@ -21,6 +21,7 @@ public:
 		DUST, // smoke sprite
 		CONFETTI, // flat rectangle that flips while falling
 		SHARD, // triangle splinter
+		FLASH, // bright soft disc that grows and fades quickly
 	};
 
 	struct SParticle

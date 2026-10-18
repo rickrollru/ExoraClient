@@ -76,6 +76,15 @@ void CXcParticles::Render(CFxRenderer &Renderer) const
 						  .Rotate(Particle.m_Rot));
 			break;
 		}
+		case EType::FLASH:
+		{
+			const float Ease = 1.0f - (1.0f - t) * (1.0f - t);
+			const float Radius = mix(Particle.m_StartSize, Particle.m_EndSize, Ease);
+			Renderer.AddWorld(FxShape::Circle(Particle.m_Pos, Radius * 0.45f, Particle.m_Color.WithMultipliedAlpha((1.0f - t) * (1.0f - t)))
+						  .Glow(Radius * 0.55f, 0.8f)
+						  .Additive());
+			break;
+		}
 		case EType::SHARD:
 		{
 			const ColorRGBA Color = Particle.m_Color.WithMultipliedAlpha(1.0f - t * t);

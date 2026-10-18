@@ -31,6 +31,8 @@ public:
 	void Pickup(vec2 Pos, int Type, int Subtype);
 	void Projectile(vec2 Pos, vec2 Vel, int Weapon, float Alpha);
 	void Laser(vec2 From, vec2 To, ColorRGBA LaserColor, float Alpha);
+	// replaces the stock rifle/shotgun beam; Fade 1 = fresh, 0 = gone
+	void LaserBeam(vec2 From, vec2 To, ColorRGBA OuterColor, ColorRGBA InnerColor, float Fade, float Alpha);
 
 private:
 	std::vector<SFxShape> m_vShapes;

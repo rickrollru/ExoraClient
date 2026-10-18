@@ -55,6 +55,9 @@ void main()
 {
 	// room for the glow, the soft edge and anti aliasing
 	float Margin = a_Edge.z + a_Edge.x + 2.0 * u_Pixel;
+	// rings: half the line lies outside the radius
+	if(int(a_Shape.y + 0.5) == 1)
+		Margin += 0.5 * a_Shape.z;
 	vec2 Extent = a_PosSize.zw + vec2(Margin);
 	vec2 Local = a_Corner * Extent;
 	float s = sin(a_Shape.x);
@@ -830,7 +833,8 @@ void CXcRenderer::DrawShapes(const XcRender::SCommand_DrawShapes *pCommand)
 	for(int i = 0; i < pCommand->m_NumAdditive; i++)
 	{
 		const XcRender::SShapeGpu &Shape = pCommand->m_pAdditive[i];
-		const float Extent = (std::max(Shape.m_HalfW, Shape.m_HalfH) + Shape.m_GlowRadius + Shape.m_Softness) * 1.42f;
+		const float RingLine = (int)(Shape.m_Shape + 0.5f) == XcRender::SHAPE_RING ? 0.5f * Shape.m_Param0 : 0.0f;
+		const float Extent = (std::max(Shape.m_HalfW, Shape.m_HalfH) + RingLine + Shape.m_GlowRadius + Shape.m_Softness) * 1.42f;
 		MinX = std::min(MinX, Shape.m_X - Extent);
 		MinY = std::min(MinY, Shape.m_Y - Extent);
 		MaxX = std::max(MaxX, Shape.m_X + Extent);
