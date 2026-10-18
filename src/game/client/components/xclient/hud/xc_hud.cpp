@@ -30,12 +30,19 @@ static constexpr float SNAP_DISTANCE = 10.0f;
 void CXcHud::OnConsoleInit()
 {
 	Console()->Register("xc_hud_edit", "", CFGFLAG_CLIENT, ConEditHud, this, "Open or close the HUD editor");
+	Console()->Register("xc_focus", "", CFGFLAG_CLIENT, ConFocus, this, "Turn the focus mode on or off");
 }
 
 void CXcHud::ConEditHud(IConsole::IResult *pResult, void *pUserData)
 {
 	CXcHud *pSelf = static_cast<CXcHud *>(pUserData);
 	pSelf->SetEditing(!pSelf->m_Editing);
+}
+
+void CXcHud::ConFocus(IConsole::IResult *pResult, void *pUserData)
+{
+	g_Config.m_XcFocusMode ^= 1;
+	Toast(g_Config.m_XcFocusMode ? Tr("Focus mode on") : Tr("Focus mode off"), TOAST_INFO);
 }
 
 void CXcHud::OnInit()
@@ -811,17 +818,19 @@ void CXcHud::OnRender()
 		const float a = m_Editing ? 1.0f : Alpha;
 		if(m_Editing)
 			pDraw->AddRectFilled(ImVec2(0, 0), ImGui::GetIO().DisplaySize, Col(ImVec4(0, 0, 0, 1), 0.25f));
-		if(g_Config.m_XcHudWatermark)
+		// focus mode keeps only the timer and the speed (the editor shows everything)
+		const bool Focus = g_Config.m_XcFocusMode && !m_Editing;
+		if(g_Config.m_XcHudWatermark && !Focus)
 			RenderWatermark(pDraw, a);
 		if(g_Config.m_XcHudTimer)
 			RenderTimer(pDraw, a);
 		if(g_Config.m_XcHudSpeed)
 			RenderSpeed(pDraw, a);
-		if(g_Config.m_XcHudWeapon)
+		if(g_Config.m_XcHudWeapon && !Focus)
 			RenderWeapon(pDraw, a);
-		if(g_Config.m_XcHudMusic)
+		if(g_Config.m_XcHudMusic && !Focus)
 			RenderMusic(pDraw, a);
-		if(g_Config.m_XcHudKeys)
+		if(g_Config.m_XcHudKeys && !Focus)
 			RenderKeys(pDraw, a);
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());

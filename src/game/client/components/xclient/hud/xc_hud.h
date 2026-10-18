@@ -67,6 +67,7 @@ private:
 	float m_aaRects[NUM_ELEMENTS][4] = {}; // last drawn rect of every element (x0, y0, x1, y1)
 
 	static void ConEditHud(IConsole::IResult *pResult, void *pUserData);
+	static void ConFocus(IConsole::IResult *pResult, void *pUserData);
 
 	SElementConfig Element(int Index) const;
 	bool Visible() const;
