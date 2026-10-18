@@ -201,6 +201,10 @@ MACRO_CONFIG_INT(XcEventSoundFinish, xc_event_sound_finish, 1, 0, 1, CFGFLAG_CLI
 MACRO_CONFIG_INT(XcEventSoundDeath, xc_event_sound_death, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you die")
 MACRO_CONFIG_INT(XcEventSoundTeleport, xc_event_sound_teleport, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you are teleported")
 
+// Links on the home page (empty = coming soon)
+MACRO_CONFIG_STR(XcLinkGithub, xc_link_github, 256, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "GitHub page of the client")
+MACRO_CONFIG_STR(XcLinkDiscord, xc_link_discord, 256, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord server of the client")
+
 // Own hats: a picture or gif from xclient/hats on top of the tee (only you see it)
 MACRO_CONFIG_INT(XcHat, xc_hat, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show your own hat picture on the tee")
 MACRO_CONFIG_STR(XcHatFile, xc_hat_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hat picture or gif in xclient/hats")

@@ -795,6 +795,67 @@ void CXcMenu::RenderHome()
 
 	RenderMusicCard();
 
+	// links of the project; empty links are placeholders for now
+	if(BeginCard("##links", Tr("Community"), Tr("GitHub and Discord of the client, the developer on Discord: rickroll.ru")))
+	{
+		struct SLink
+		{
+			const char *m_pIcon;
+			const char *m_pLabel;
+			const char *m_pUrl;
+			const char *m_pCopy; // copied to the clipboard instead of opened
+		};
+		const SLink aLinks[] = {
+			{XC_ICON_CODE, "GitHub", g_Config.m_XcLinkGithub, nullptr},
+			{XC_ICON_COMMENTS, "Discord", g_Config.m_XcLinkDiscord, nullptr},
+			{XC_ICON_USER, "rickroll.ru", "", "rickroll.ru"},
+		};
+		// three tiles in a row: a big icon and the name, they lift a little under the mouse
+		const float Gap = S(10.0f);
+		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
+		const float TileHeight = S(92.0f);
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		for(int i = 0; i < 3; i++)
+		{
+			const SLink &Link = aLinks[i];
+			if(i > 0)
+				ImGui::SameLine(0.0f, Gap);
+			ImGui::PushID(i);
+			const ImVec2 Pos = ImGui::GetCursorScreenPos();
+			const bool Clicked = ImGui::InvisibleButton("##link", ImVec2(TileWidth, TileHeight));
+			const float Hover = Animate(ImGui::GetID("##hover"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
+			const float Lift = Hover * S(3.0f);
+			const ImVec2 Min(Pos.x, Pos.y - Lift);
+			const ImVec2 Max(Pos.x + TileWidth, Pos.y + TileHeight - Lift);
+			pDraw->AddRectFilled(Min, Max, Col(Mix(t.m_Track, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 1.0f), 0.12f * Hover)), S(12.0f));
+			pDraw->AddRect(Min, Max, Col(Mix(t.m_Border, t.m_Accent, Hover)), S(12.0f), 0, 1.0f + Hover);
+			ImFont *pIcon = Fonts().m_pHeader;
+			const float IconSize = S(26.0f);
+			const ImVec2 IconDim = pIcon->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, Link.m_pIcon);
+			pDraw->AddText(pIcon, IconSize, ImVec2((Min.x + Max.x - IconDim.x) * 0.5f, Min.y + S(18.0f)), Col(Mix(t.m_TextSecondary, t.m_Accent, Hover)), Link.m_pIcon);
+			ImFont *pLabelFont = Fonts().m_pLabel;
+			char aLabel[96];
+			str_copy(aLabel, Link.m_pLabel);
+			const ImVec2 LabelDim = pLabelFont->CalcTextSizeA(pLabelFont->FontSize, FLT_MAX, 0.0f, aLabel);
+			pDraw->AddText(pLabelFont, pLabelFont->FontSize, ImVec2((Min.x + Max.x - LabelDim.x) * 0.5f, Max.y - LabelDim.y - S(16.0f)), Col(t.m_Text), aLabel);
+			if(Clicked)
+			{
+				PlayUiSound(SOUND_CLICK);
+				if(Link.m_pCopy)
+				{
+					Input()->SetClipboardText(Link.m_pCopy);
+					Toast(Tr("Discord name copied"));
+				}
+				else if(Link.m_pUrl[0])
+					Client()->ViewLink(Link.m_pUrl);
+				else
+					Toast(Tr("Coming soon"), TOAST_INFO);
+			}
+			ImGui::PopID();
+		}
+		EndCard();
+	}
+
 	// versions and the way back to the classic menu
 	if(BeginCard("##client", XC_CLIENT_NAME, Tr("Based on TClient and DDNet")))
 	{
