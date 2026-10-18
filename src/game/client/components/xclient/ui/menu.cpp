@@ -439,8 +439,3 @@ void CXcMenu::RenderVisuals()
 {
 	RenderPlaceholder(XC_ICON_WAND, Tr("Visuals"), Tr("Visual effects are being redesigned."), false);
 }
-
-void CXcMenu::RenderConfigs()
-{
-	RenderPlaceholder(XC_ICON_FOLDER, Tr("Configs"), Tr("Local configs with import and export codes are coming."), false);
-}
