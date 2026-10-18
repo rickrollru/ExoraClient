@@ -170,6 +170,7 @@ MACRO_CONFIG_INT(XcHatX, xc_hat_x, 0, -96, 96, CFGFLAG_CLIENT | CFGFLAG_SAVE, "H
 MACRO_CONFIG_INT(XcHatY, xc_hat_y, -34, -128, 96, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Vertical hat offset from the tee center (tee size is 64)")
 MACRO_CONFIG_INT(XcHatSize, xc_hat_size, 64, 8, 256, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hat width (tee size is 64)")
 MACRO_CONFIG_INT(XcHatRotation, xc_hat_rotation, 0, -180, 180, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hat rotation in degrees")
+MACRO_CONFIG_INT(XcHatBehind, xc_hat_behind, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the hat behind the tee (wings, capes)")
 MACRO_CONFIG_INT(XcHatFlip, xc_hat_flip, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mirror the hat when the tee looks to the left")
 MACRO_CONFIG_INT(XcHatSway, xc_hat_sway, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the hat tilts and bounces with movement in percent (0 = rigid)")
 MACRO_CONFIG_INT(XcHatAlpha, xc_hat_alpha, 100, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hat opacity in percent")

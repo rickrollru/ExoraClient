@@ -413,6 +413,7 @@ namespace XcUi
 			{"Rotation", "Поворот"},
 			{"Mirror when looking left", "Отражать, когда смотрит влево"},
 			{"Reset position", "Сбросить положение"},
+			{"Behind the tee (wings, capes)", "За ти (крылья, плащи)"},
 			{"Only you see the hat, other players see your normal skin", "Шапку видишь только ты, другие игроки видят обычный скин"},
 			{"My hats", "Мои шапки"},
 			{"Pictures and gifs with a transparent background work best. Drag a file onto the game window, paste its path or open the folder", "Лучше всего — картинки и гифки с прозрачным фоном. Перетащи файл в окно игры, вставь путь или открой папку"},
