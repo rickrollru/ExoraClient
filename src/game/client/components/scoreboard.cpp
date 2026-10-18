@@ -934,6 +934,10 @@ void CScoreboard::OnRender()
 		return;
 	}
 
+	// XClient: the new scoreboard is drawn by the HUD instead
+	if(GameClient()->m_XcHud.DrawsScoreboard())
+		return;
+
 	if(!GameClient()->m_Menus.IsActive() && !GameClient()->m_Chat.IsActive())
 	{
 		Ui()->StartCheck();

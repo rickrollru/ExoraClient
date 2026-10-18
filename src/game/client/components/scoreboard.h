@@ -112,6 +112,7 @@ public:
 	bool OnInput(const IInput::CEvent &Event) override;
 
 	bool IsActive() const;
+	bool XcMouseUnlocked() const { return m_MouseUnlocked; } // XClient
 };
 
 #endif

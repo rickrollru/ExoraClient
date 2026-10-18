@@ -88,7 +88,8 @@ CXcHud::SElementConfig CXcHud::Element(int Index) const
 	case ELEMENT_SPEED: return {"Speed", &g_Config.m_XcHudSpeed, &g_Config.m_XcHudSpeedX, &g_Config.m_XcHudSpeedY, &g_Config.m_XcHudSpeedScale, 455, 905};
 	case ELEMENT_WEAPON: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
 	case ELEMENT_MUSIC: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
-	default: return {"Keystrokes", &g_Config.m_XcHudKeys, &g_Config.m_XcHudKeysX, &g_Config.m_XcHudKeysY, &g_Config.m_XcHudKeysScale, 120, 640};
+	case ELEMENT_KEYS: return {"Keystrokes", &g_Config.m_XcHudKeys, &g_Config.m_XcHudKeysX, &g_Config.m_XcHudKeysY, &g_Config.m_XcHudKeysScale, 120, 640};
+	default: return {"Top of the server", &g_Config.m_XcHudMinitop, &g_Config.m_XcHudMinitopX, &g_Config.m_XcHudMinitopY, &g_Config.m_XcHudMinitopScale, 920, 830};
 	}
 }
 
@@ -480,7 +481,7 @@ void CXcHud::RenderBanner(ImDrawList *pDraw)
 }
 
 // cuts the text with "…" so it fits into MaxWidth
-static void FitText(ImFont *pFont, float Size, const char *pText, float MaxWidth, char *pBuf, int BufSize)
+void XcFitText(ImFont *pFont, float Size, const char *pText, float MaxWidth, char *pBuf, int BufSize)
 {
 	str_copy(pBuf, pText, BufSize);
 	if(pFont->CalcTextSizeA(Size, FLT_MAX, 0.0f, pBuf).x <= MaxWidth)
@@ -585,7 +586,7 @@ void CXcHud::RenderMusic(ImDrawList *pDraw, float Alpha)
 	pDraw->AddText(pLabel, TitleSize, ImVec2(TextX - Shift, TitleY), Col(t.m_Text, Alpha), pTitle);
 	pDraw->PopClipRect();
 	char aArtist[256];
-	FitText(pSmall, ArtistSize, pArtist, Room, aArtist, sizeof(aArtist));
+	XcFitText(pSmall, ArtistSize, pArtist, Room, aArtist, sizeof(aArtist));
 	pDraw->AddText(pSmall, ArtistSize, ImVec2(TextX, TitleY + TitleSize + 4.0f * U), Col(t.m_TextSecondary, Alpha), aArtist);
 
 	// progress line under the text
@@ -815,7 +816,13 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 
 void CXcHud::OnRender()
 {
-	if(!m_Backend.IsReady() || !Visible())
+	if(!m_Backend.IsReady())
+		return;
+	const bool Online = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
+	// the own scoreboard shows even with the HUD turned off, like the classic one
+	const bool Scoreboard = Online && (m_ScoreboardOpen > 0.0f || (GameClient()->m_Scoreboard.IsActive() && DrawsScoreboard()));
+	const bool HudVisible = Visible();
+	if(!HudVisible && !Scoreboard)
 		return;
 	const float Scale = std::round(Graphics()->ScreenHeight() / 1080.0f * FONT_OVERSAMPLE * 20.0f) / 20.0f;
 	if(m_Backend.FontFamily() != g_Config.m_XcUiFont || m_Backend.FontScale() != Scale)
@@ -831,7 +838,7 @@ void CXcHud::OnRender()
 	ImDrawList *pDraw = ImGui::GetBackgroundDrawList();
 	// the HUD steps back while the menu is open
 	const float Alpha = GameClient()->m_XcMenu.IsActive() ? 0.0f : 1.0f;
-	if(Alpha > 0.0f || m_Editing)
+	if(HudVisible && (Alpha > 0.0f || m_Editing))
 	{
 		const float a = m_Editing ? 1.0f : Alpha;
 		if(m_Editing)
@@ -850,6 +857,9 @@ void CXcHud::OnRender()
 			RenderMusic(pDraw, a);
 		if(g_Config.m_XcHudKeys && !Focus)
 			RenderKeys(pDraw, a);
+		// the top list steps aside while the full scoreboard is open
+		if(g_Config.m_XcHudMinitop && !Focus && (m_Editing || m_ScoreboardOpen < 1.0f))
+			RenderMiniTop(pDraw, a * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen));
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
@@ -857,6 +867,8 @@ void CXcHud::OnRender()
 		else if(g_Config.m_XcHudToasts && HasToasts())
 			RenderToasts(ImGui::GetForegroundDrawList(), ImGui::GetIO().DisplaySize, Client()->GlobalTime(), a, m_Backend.Fonts().m_pLabel, m_Backend.Fonts().m_pSmall);
 	}
+	if(Online)
+		RenderScoreboard(ImGui::GetForegroundDrawList(), Dt);
 	m_Backend.Render();
 
 	if(m_Editing)
