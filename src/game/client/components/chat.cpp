@@ -1424,6 +1424,15 @@ void CChat::OnRender()
 			break;
 
 		float Blend = Now > Line.m_Time + 14 * time_freq() && !m_PrevShowChat ? 1.0f - (Now - Line.m_Time - 14 * time_freq()) / (2.0f * time_freq()) : 1.0f;
+		// XClient: a new line slides in from the left and fades in (xc_chat_anim)
+		float XcSlide = 0.0f;
+		if(g_Config.m_XcChatAnim)
+		{
+			const float Appear = std::clamp((Now - Line.m_Time) / (float)time_freq() / 0.28f, 0.0f, 1.0f);
+			const float Ease = 1.0f - std::pow(1.0f - Appear, 3.0f);
+			XcSlide = -(1.0f - Ease) * 24.0f;
+			Blend *= Ease;
+		}
 
 		// Draw backgrounds for messages in one batch
 		if(!g_Config.m_ClChatOld)
@@ -1432,7 +1441,7 @@ void CChat::OnRender()
 			if(Line.m_QuadContainerIndex != -1)
 			{
 				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
-				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, 0, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
+				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, XcSlide, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset)); // XClient: slide
 			}
 		}
 
@@ -1451,13 +1460,13 @@ void CChat::OnRender()
 				const CAnimState *pIdleState = CAnimState::GetIdle();
 				vec2 OffsetToMid;
 				CRenderTools::GetRenderTeeOffsetToRenderedTee(pIdleState, &TeeRenderInfo, OffsetToMid);
-				vec2 TeeRenderPos(x + (RealMsgPaddingX + TeeSize) / 2.0f, y + OffsetTeeY + FullHeightMinusTee / 2.0f + OffsetToMid.y);
+				vec2 TeeRenderPos(x + XcSlide + (RealMsgPaddingX + TeeSize) / 2.0f, y + OffsetTeeY + FullHeightMinusTee / 2.0f + OffsetToMid.y);
 				RenderTools()->RenderTee(pIdleState, &TeeRenderInfo, EMOTE_NORMAL, vec2(1, 0.1f), TeeRenderPos, Blend);
 			}
 
 			const ColorRGBA TextColor = TextRender()->DefaultTextColor().WithMultipliedAlpha(Blend);
 			const ColorRGBA TextOutlineColor = TextRender()->DefaultTextOutlineColor().WithMultipliedAlpha(Blend);
-			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
+			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, XcSlide, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset); // XClient: slide
 		}
 	}
 }

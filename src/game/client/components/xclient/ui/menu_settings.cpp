@@ -350,6 +350,7 @@ void CXcMenu::RenderSettingsChat()
 		ToggleRow(Tr("Only friends"), "cl_show_chat_friends", &g_Config.m_ClShowChatFriends);
 		ToggleRow(Tr("Team colors"), "cl_chat_teamcolors", &g_Config.m_ClChatTeamColors);
 		ToggleRow(Tr("System messages"), "cl_show_chat_system", &g_Config.m_ClShowChatSystem);
+		ToggleRow(Tr("New messages slide in"), "xc_chat_anim", &g_Config.m_XcChatAnim);
 		EndCard();
 	}
 	EndCardGrid();
