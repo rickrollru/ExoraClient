@@ -40,6 +40,8 @@ public:
 
 	// Input. MousePos is in window coordinates.
 	bool OnInput(const IInput::CEvent &Event);
+	// Call on every mouse move, so clicks right after a move land on the new position.
+	void OnMouseMove(vec2 MousePos);
 	void NewFrame(float Dt, vec2 MousePos);
 	void Render();
 
