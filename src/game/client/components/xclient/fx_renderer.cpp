@@ -41,6 +41,13 @@ SFxShape &SFxShape::Gradient(ColorRGBA Bottom)
 	return *this;
 }
 
+SFxShape &SFxShape::RadialGradient(ColorRGBA Center, float Power)
+{
+	SetColor(m_Gpu.m_aColor2, Center);
+	m_Gpu.m_Param1 = Power;
+	return *this;
+}
+
 SFxShape &SFxShape::Outline(float Width, ColorRGBA Color)
 {
 	m_Gpu.m_OutlineWidth = Width;
