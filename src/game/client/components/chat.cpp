@@ -1326,6 +1326,16 @@ void CChat::OnRender()
 		// TClient
 		InputCursor.m_LineWidth = std::max(Width - 190.0f, 190.0f);
 
+		// XClient: the input sits on a plate with an accent frame, the mode is written in the accent color
+		if(g_Config.m_XcChatStyle)
+		{
+			const float PlateHeight = ScaledFontSize * 1.45f;
+			const float PlateWidth = std::min(InputCursor.m_LineWidth + 6.0f, (float)g_Config.m_ClChatWidth + 40.0f);
+			Graphics()->DrawRect(x - 3.0f, y - 2.0f, PlateWidth + 2.0f, PlateHeight + 2.0f, GameClient()->m_XcHud.ChatMarkColor(1).WithAlpha(0.6f), IGraphics::CORNER_ALL, 4.0f);
+			Graphics()->DrawRect(x - 2.5f, y - 1.5f, PlateWidth + 1.0f, PlateHeight + 1.0f, GameClient()->m_XcHud.ChatLineColor().WithAlpha(0.9f), IGraphics::CORNER_ALL, 3.6f);
+			TextRender()->TextColor(GameClient()->m_XcHud.ChatMarkColor(m_Mode == MODE_TEAM ? 2 : 1));
+		}
+
 		if(m_Mode == MODE_ALL)
 			TextRender()->TextEx(&InputCursor, Localize("All"));
 		else if(m_Mode == MODE_TEAM)
@@ -1334,6 +1344,7 @@ void CChat::OnRender()
 			TextRender()->TextEx(&InputCursor, Localize("Chat"));
 
 		TextRender()->TextEx(&InputCursor, ": ");
+		TextRender()->TextColor(TextRender()->DefaultTextColor()); // XClient
 
 		const float MessageMaxWidth = InputCursor.m_LineWidth - (InputCursor.m_X - InputCursor.m_StartX);
 		const CUIRect ClippingRect = {InputCursor.m_X, InputCursor.m_Y, MessageMaxWidth, 2.25f * InputCursor.m_FontSize};
@@ -1440,8 +1451,17 @@ void CChat::OnRender()
 			Graphics()->TextureClear();
 			if(Line.m_QuadContainerIndex != -1)
 			{
-				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
+				// XClient: plates in the colors of the HUD (xc_chat_style)
+				const ColorRGBA Background = g_Config.m_XcChatStyle ? GameClient()->m_XcHud.ChatLineColor() : color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true));
+				Graphics()->SetColor(Background.WithMultipliedAlpha(Blend));
 				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, XcSlide, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset)); // XClient: slide
+				// XClient: a thin colored edge marks mentions, team chat, whispers and server messages
+				if(g_Config.m_XcChatStyle)
+				{
+					const int Kind = Line.m_Highlighted ? 1 : (Line.m_Whisper ? 3 : (Line.m_Team ? 2 : (Line.m_ClientId < 0 ? 4 : 0)));
+					if(Kind)
+						Graphics()->DrawRect(x + XcSlide, y + 1.0f, 1.6f, Line.m_aYOffset[OffsetType] - 2.0f, GameClient()->m_XcHud.ChatMarkColor(Kind).WithMultipliedAlpha(Blend), IGraphics::CORNER_ALL, 0.8f);
+				}
 			}
 		}
 

@@ -48,6 +48,9 @@ public:
 	ColorRGBA ScoreboardPanelColor() const;
 	ColorRGBA ScoreboardHighlightColor() const;
 	ColorRGBA ScoreboardHoverColor() const;
+	// the chat in the colors of the HUD (xc_chat_style); Kind 1 = mention or input, 2 = team, 3 = whisper, 4 = server
+	ColorRGBA ChatLineColor() const;
+	ColorRGBA ChatMarkColor(int Kind) const;
 
 	// the own scoreboard replaces the classic one (xc_scoreboard)
 	bool DrawsScoreboard() const;
