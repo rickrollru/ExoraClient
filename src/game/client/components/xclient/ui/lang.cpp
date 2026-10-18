@@ -164,6 +164,9 @@ namespace XcUi
 			{"Based on TClient and DDNet", "Основан на TClient и DDNet"},
 			{"Update available", "Доступно обновление"},
 			{"Points, rank and finished maps are coming soon", "Очки, ранг и пройденные карты — скоро"},
+			{"Interface sounds", "Звуки интерфейса"},
+			{"Clicks, switches and notifications", "Клики, переключатели и уведомления"},
+			{"Volume", "Громкость"},
 			// background
 			{"Background", "Фон"},
 			{"Own", "Своё"},

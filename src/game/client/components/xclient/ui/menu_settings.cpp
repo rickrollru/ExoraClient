@@ -204,6 +204,12 @@ void CXcMenu::RenderSettingsInterface()
 		EndCard();
 	}
 
+	if(BeginCard("##ui_sounds", Tr("Interface sounds"), Tr("Clicks, switches and notifications"), &g_Config.m_XcUiSounds))
+	{
+		ConfigSlider(Tr("Volume"), "xc_ui_sound_volume", &g_Config.m_XcUiSoundVolume, 0, 100, "%d%%");
+		EndCard();
+	}
+
 	if(BeginCard("##classic", Tr("Classic menu"), Tr("The old DDNet menu, for settings that are not here yet")))
 	{
 		if(Button(Tr("Open"), false, -1.0f))
