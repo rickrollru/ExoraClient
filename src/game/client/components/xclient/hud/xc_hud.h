@@ -18,6 +18,7 @@ public:
 		ELEMENT_TIMER,
 		ELEMENT_SPEED,
 		ELEMENT_WEAPON,
+		ELEMENT_MUSIC,
 		NUM_ELEMENTS,
 	};
 
@@ -73,6 +74,8 @@ private:
 	void RenderTimer(ImDrawList *pDraw, float Alpha);
 	void RenderSpeed(ImDrawList *pDraw, float Alpha);
 	void RenderWeapon(ImDrawList *pDraw, float Alpha);
+	void RenderMusic(ImDrawList *pDraw, float Alpha);
+	float m_MusicAlpha = 0.0f;
 	void RenderEditor(ImDrawList *pDraw);
 
 	// helpers

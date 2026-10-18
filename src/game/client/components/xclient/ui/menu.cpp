@@ -790,6 +790,8 @@ void CXcMenu::RenderHome()
 		EndCard();
 	}
 
+	RenderMusicCard();
+
 	// versions and the way back to the classic menu
 	if(BeginCard("##client", XC_CLIENT_NAME, Tr("Based on TClient and DDNet")))
 	{

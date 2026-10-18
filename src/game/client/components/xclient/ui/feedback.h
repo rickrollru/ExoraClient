@@ -28,6 +28,7 @@ namespace XcUi
 		TOAST_SUCCESS = 0,
 		TOAST_INFO,
 		TOAST_ERROR,
+		TOAST_MUSIC,
 	};
 	// shows a short message at the bottom of the screen for a few seconds
 	void Toast(const char *pText, int Kind = TOAST_SUCCESS);

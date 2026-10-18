@@ -41,6 +41,10 @@
 #define XC_ICON_PLUS "\xef\x81\xa7" // U+F067
 #define XC_ICON_FILM "\xef\x80\x88" // U+F008
 #define XC_ICON_CHECK "\xef\x80\x8c" // U+F00C
+#define XC_ICON_MUSIC "\xef\x80\x81" // U+F001
+#define XC_ICON_PAUSE "\xef\x81\x8c" // U+F04C
+#define XC_ICON_FORWARD "\xef\x81\x91" // U+F051
+#define XC_ICON_BACKWARD "\xef\x81\x88" // U+F048
 #define XC_ICON_HAT "\xef\x9b\xa8" // U+F6E8
 #define XC_ICON_FOLDER_OPEN "\xef\x81\xbc" // U+F07C
 
