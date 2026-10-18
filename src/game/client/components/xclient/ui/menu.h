@@ -102,6 +102,10 @@ private:
 	void RenderFrame();
 	void RenderTopBar(float Width);
 	void RenderHome();
+	// the tee is drawn by DDNet in the middle of the ImGui frame through a draw callback
+	float m_aTeePreview[4] = {}; // x0, y0, x1, y1 in pixels
+	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
+	void DrawTeePreview();
 	void RenderServers();
 	void UpdateServerList();
 	bool RenderServerCard(const CServerInfo *pInfo, float Width, float Height);

@@ -10,11 +10,15 @@
 #include <engine/client.h>
 #include <engine/external/imgui/imgui.h>
 #include <engine/external/imgui/imgui_internal.h>
+#include <engine/friends.h>
 #include <engine/graphics.h>
+#include <engine/serverbrowser.h>
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
+#include <game/client/animstate.h>
 #include <game/client/gameclient.h>
+#include <game/version.h>
 
 #include <cmath>
 
@@ -389,18 +393,78 @@ void CXcMenu::RenderPlaceholder(const char *pIcon, const char *pTitle, const cha
 	}
 }
 
+void CXcMenu::TeePreviewCallback(const ImDrawList *pList, const ImDrawCmd *pCmd)
+{
+	(void)pList;
+	static_cast<CXcMenu *>(pCmd->UserCallbackData)->DrawTeePreview();
+}
+
+void CXcMenu::DrawTeePreview()
+{
+	const vec2 Min(m_aTeePreview[0], m_aTeePreview[1]);
+	const vec2 Max(m_aTeePreview[2], m_aTeePreview[3]);
+	const vec2 Center = (Min + Max) * 0.5f;
+	CTeeRenderInfo Info;
+	Info.Apply(GameClient()->m_Skins.Find(g_Config.m_ClPlayerSkin));
+	Info.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
+	Info.m_Size = (Max.y - Min.y) * 0.62f;
+	// the eyes follow the cursor
+	const ImVec2 Mouse = ImGui::GetIO().MousePos;
+	vec2 Dir = vec2(Mouse.x, Mouse.y) - Center;
+	Dir = length(Dir) > 1.0f ? normalize(Dir) : vec2(1.0f, 0.0f);
+	const float Bob = std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
+	Graphics()->WrapClamp();
+}
+
 void CXcMenu::RenderHome()
 {
 	const STheme &t = Theme();
-	char aWelcome[128];
-	str_format(aWelcome, sizeof(aWelcome), "%s, %s", Tr("Welcome back"), Client()->PlayerName());
-	Header(aWelcome);
-	Description(IsOnline() ? Tr("Connected") : Tr("Offline"));
-	ImGui::Dummy(ImVec2(0.0f, S(12.0f)));
+	if(!m_ServersRequested)
+	{
+		// the server list also tells which friends are online
+		m_ServersRequested = true;
+		ServerBrowser()->Refresh(IServerBrowser::TYPE_INTERNET);
+	}
 
 	BeginCardGrid("##home", 2);
-	if(BeginCard("##actions", Tr("Quick actions"), nullptr))
+
+	// profile with the tee
+	if(BeginCard("##hero", Client()->PlayerName(), g_Config.m_PlayerClan[0] ? g_Config.m_PlayerClan : Tr("Profile")))
 	{
+		const float PreviewSize = S(150.0f);
+		const ImVec2 Pos = ImGui::GetCursorScreenPos();
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		const ImVec2 Center(Pos.x + PreviewSize * 0.5f, Pos.y + PreviewSize * 0.5f);
+		pDraw->AddCircleFilled(Center, PreviewSize * 0.46f, Col(t.m_Accent, 0.10f), 64);
+		pDraw->AddCircle(Center, PreviewSize * 0.46f, Col(t.m_Accent, 0.35f), 64, S(1.5f));
+		m_aTeePreview[0] = Pos.x;
+		m_aTeePreview[1] = Pos.y;
+		m_aTeePreview[2] = Pos.x + PreviewSize;
+		m_aTeePreview[3] = Pos.y + PreviewSize;
+		pDraw->AddCallback(TeePreviewCallback, this);
+		pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+		ImGui::Dummy(ImVec2(PreviewSize, PreviewSize));
+
+		ImGui::SameLine(0.0f, S(16.0f));
+		ImGui::BeginGroup();
+		ImGui::Dummy(ImVec2(0.0f, S(14.0f)));
+		ImGui::PushFont(Fonts().m_pHeader);
+		ImGui::TextColored(t.m_Text, "%s", Client()->PlayerName());
+		ImGui::PopFont();
+		char aStatus[160];
+		if(IsOnline())
+			str_format(aStatus, sizeof(aStatus), "%s: %s", Tr("Connected"), Client()->ServerInfo().m_aMap);
+		else
+			str_copy(aStatus, Tr("Offline"));
+		Description(aStatus);
+		ParamLabel(Tr("Skin"));
+		ImGui::SameLine();
+		ImGui::TextColored(t.m_Text, "%s", g_Config.m_ClPlayerSkin);
+		Description(Tr("Points, rank and finished maps are coming soon"));
+		ImGui::EndGroup();
+
+		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 		if(IsOnline())
 		{
 			if(Button(Tr("Disconnect"), false, -1.0f))
@@ -410,24 +474,99 @@ void CXcMenu::RenderHome()
 		{
 			m_Page = PAGE_SERVERS;
 		}
+		EndCard();
+	}
+
+	// friends that are on a server right now
+	if(BeginCard("##friends", Tr("Friends online"), nullptr))
+	{
+		int Shown = 0;
+		IServerBrowser *pBrowser = ServerBrowser();
+		for(int i = 0; i < pBrowser->NumServers() && Shown < 12; i++)
+		{
+			const CServerInfo *pInfo = pBrowser->Get(i);
+			if(!pInfo || pInfo->m_FriendNum <= 0)
+				continue;
+			for(const CServerInfo::CClient &Player : pInfo->m_vClients)
+			{
+				if(Player.m_FriendState == IFriends::FRIEND_NO || Shown >= 12)
+					continue;
+				ImGui::PushFont(Fonts().m_pLabel);
+				ImGui::TextColored(t.m_Accent, "%s", Player.m_aName);
+				ImGui::PopFont();
+				ImGui::SameLine();
+				ImGui::PushFont(Fonts().m_pSmall);
+				ImGui::TextColored(t.m_TextMuted, "%s", pInfo->m_aName);
+				ImGui::PopFont();
+				Shown++;
+			}
+		}
+		if(Shown == 0)
+			Description(GameClient()->Friends()->NumFriends() == 0 ? Tr("Add friends in the scoreboard or the classic menu") : Tr("None of your friends is online"));
+		EndCard();
+	}
+
+	// DDNet news: lines between | are headlines
+	if(BeginCard("##news", Tr("DDNet news"), nullptr))
+	{
+		const char *pNews = Client()->News();
+		if(!pNews[0])
+			Description(Tr("No news loaded"));
+		ImGui::BeginChild("##news_text", ImVec2(0.0f, S(220.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		char aLine[256];
+		const char *pStr = pNews;
+		while((pStr = str_next_token(pStr, "\n", aLine, sizeof(aLine))))
+		{
+			const int Length = str_length(aLine);
+			if(Length > 1 && aLine[0] == '|' && aLine[Length - 1] == '|')
+			{
+				aLine[Length - 1] = '\0';
+				ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+				ImGui::PushFont(Fonts().m_pLabel);
+				ImGui::TextColored(t.m_Text, "%s", aLine + 1);
+				ImGui::PopFont();
+			}
+			else
+			{
+				ImGui::PushFont(Fonts().m_pSmall);
+				ImGui::PushTextWrapPos(0.0f);
+				ImGui::TextColored(t.m_TextSecondary, "%s", aLine);
+				ImGui::PopTextWrapPos();
+				ImGui::PopFont();
+			}
+		}
+		ImGui::EndChild();
+		EndCard();
+	}
+
+	// versions and the way back to the classic menu
+	if(BeginCard("##client", XC_CLIENT_NAME, Tr("Based on TClient and DDNet")))
+	{
+		char aBuf[128];
+		const auto VersionRow = [&](const char *pName, const char *pVersion) {
+			const float StartX = ImGui::GetCursorPosX();
+			const float Width = AvailWidth();
+			ImGui::AlignTextToFramePadding();
+			ParamLabel(pName);
+			ImGui::SameLine();
+			ImGui::SetCursorPosX(StartX + Width - ImGui::CalcTextSize(pVersion).x);
+			ImGui::AlignTextToFramePadding();
+			ImGui::TextColored(t.m_Text, "%s", pVersion);
+		};
+		VersionRow("DDNet", GAME_RELEASE_VERSION);
+		VersionRow("TClient", TCLIENT_VERSION);
+		const char *pLatest = Client()->LatestVersion();
+		if(pLatest[0] && str_comp(pLatest, "0") != 0 && str_comp(pLatest, GAME_RELEASE_VERSION) != 0)
+		{
+			str_format(aBuf, sizeof(aBuf), "%s: DDNet %s", Tr("Update available"), pLatest);
+			Description(aBuf);
+		}
 		if(Button(Tr("Classic menu"), false, -1.0f))
 			m_WantClassic = true;
 		EndCard();
 	}
-	if(BeginCard("##profile", Tr("Profile"), Tr("Name and clan of you and your dummy")))
-	{
-		ParamLabel(Tr("Name"));
-		ImGui::PushFont(Fonts().m_pTitle);
-		ImGui::TextColored(t.m_Text, "%s", Client()->PlayerName());
-		ImGui::PopFont();
-		if(g_Config.m_PlayerClan[0])
-		{
-			ParamLabel(Tr("Clan"));
-			ImGui::TextColored(t.m_TextSecondary, "%s", g_Config.m_PlayerClan);
-		}
-		EndCard();
-	}
 	EndCardGrid();
+
 	if(m_WantClassic)
 	{
 		m_WantClassic = false;
