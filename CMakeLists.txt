@@ -2993,6 +2993,8 @@ if(CLIENT)
     components/xclient/ui/widgets_fx.cpp
     components/xclient/weather.cpp
     components/xclient/weather.h
+    components/xclient/world_fx.cpp
+    components/xclient/world_fx.h
     components/xclient/xc_helpers.cpp
     components/xclient/xc_helpers.h
     components/xclient/xc_particles.cpp

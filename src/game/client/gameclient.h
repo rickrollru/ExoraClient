@@ -97,6 +97,7 @@
 #include "components/xclient/trail_fx.h"
 #include "components/xclient/ui/menu.h"
 #include "components/xclient/weather.h"
+#include "components/xclient/world_fx.h"
 
 #include <memory>
 #include <vector>
@@ -264,6 +265,8 @@ public:
 	CTeeGlow m_TeeGlow;
 	CTrailFx m_TrailFx;
 	CItemFx m_ItemFx;
+	CWorldFx m_WorldFx;
+	CScreenFx m_ScreenFx;
 	CWeather m_Weather;
 
 private:

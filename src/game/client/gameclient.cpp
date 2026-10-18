@@ -152,6 +152,7 @@ void CGameClient::OnConsoleInit()
 					      &m_TClient, // TClient (Must be before chat and players)
 					      &m_Players,
 					      &m_JumpFx, // XClient
+					      &m_WorldFx, // XClient: freeze and hammer effects
 					      &m_Accessory, // XClient
 					      &m_HookFx, // XClient
 					      &m_FxRenderer, // XClient: draws the queued world effects
@@ -172,6 +173,7 @@ void CGameClient::OnConsoleInit()
 					      &m_PlayerIndicator, // TClient
 					      &m_Mod, // TClient
 					      &m_CustomCommunities, // TClient
+					      &m_ScreenFx, // XClient: color filter and vignette under the HUD
 					      &m_Hud,
 					      &m_XcHud, // XClient: new HUD over the classic one
 					      &m_Spectator,

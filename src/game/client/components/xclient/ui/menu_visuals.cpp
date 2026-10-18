@@ -74,6 +74,13 @@ void CXcMenu::RenderVisualsTee()
 		TargetChips("##accessory_targets", &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryDummy, &g_Config.m_XcAccessoryOthers);
 		EndCard();
 	}
+	if(BeginCard("##fx_freeze", Tr("Freeze"), Tr("An icy aura around frozen tees and shards when the ice breaks"), &g_Config.m_XcFreezeFx))
+	{
+		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);
+		ToggleRow(Tr("Shards on freeze and unfreeze"), "xc_freeze_burst", &g_Config.m_XcFreezeBurst);
+		TargetChips("##freeze_targets", &g_Config.m_XcFreezeSelf, &g_Config.m_XcFreezeDummy, &g_Config.m_XcFreezeOthers);
+		EndCard();
+	}
 	EndCardGrid();
 }
 
@@ -117,6 +124,22 @@ void CXcMenu::RenderVisualsWeapons()
 		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
 		EndCard();
 	}
+	const char *apHammer[] = {Tr("Ring"), Tr("Sparks"), Tr("Stars")};
+	if(StyleCard("##fx_hammer", Tr("Hammer hit"), Tr("A flash where the hammer lands"), "xc_hammer_fx", &g_Config.m_XcHammerFx, apHammer, 3))
+	{
+		EffectColorPicker("##hammer_color", &g_Config.m_XcHammerColorMode, &g_Config.m_XcHammerColor);
+		EndCard();
+	}
+	const char *apCrosshairs[] = {Tr("Dot"), Tr("Cross"), Tr("Circle"), Tr("Circle + dot")};
+	if(StyleCard("##fx_crosshair", Tr("Crosshair"), Tr("Your own aim instead of the weapon cursor"), "xc_crosshair", &g_Config.m_XcCrosshair, apCrosshairs, 4))
+	{
+		EffectColorPicker("##crosshair_color", &g_Config.m_XcCrosshairColorMode, &g_Config.m_XcCrosshairColor);
+		ConfigSlider(Tr("Size"), "xc_crosshair_size", &g_Config.m_XcCrosshairSize, 30, 300, "%d%%");
+		ConfigSlider(Tr("Gap"), "xc_crosshair_gap", &g_Config.m_XcCrosshairGap, 0, 300, "%d%%");
+		ToggleRow(Tr("Glow"), "xc_crosshair_glow", &g_Config.m_XcCrosshairGlow);
+		ToggleRow(Tr("Dark outline"), "xc_crosshair_outline", &g_Config.m_XcCrosshairOutline);
+		EndCard();
+	}
 	EndCardGrid();
 }
 
@@ -148,6 +171,17 @@ void CXcMenu::RenderVisualsWorld()
 		ConfigSlider(Tr("Opacity"), "xc_weather_alpha", &g_Config.m_XcWeatherAlpha, 5, 100, "%d%%");
 		ToggleRow(Tr("In game"), "xc_weather_ingame", &g_Config.m_XcWeatherInGame);
 		ToggleRow(Tr("In the main menu"), "xc_weather_menu", &g_Config.m_XcWeatherInMenu);
+		EndCard();
+	}
+	const char *apTints[] = {Tr("Warm"), Tr("Cool"), Tr("Accent"), Tr("Night")};
+	if(StyleCard("##fx_tint", Tr("World color"), Tr("A soft color filter over the map"), "xc_world_tint", &g_Config.m_XcWorldTint, apTints, 4))
+	{
+		ConfigSlider(Tr("Strength"), "xc_world_tint_strength", &g_Config.m_XcWorldTintStrength, 5, 100, "%d%%");
+		EndCard();
+	}
+	if(BeginCard("##fx_vignette", Tr("Vignette"), Tr("Darker screen edges to focus on the center")))
+	{
+		ConfigSlider(Tr("Strength"), "xc_vignette", &g_Config.m_XcVignette, 0, 100, "%d%%");
 		EndCard();
 	}
 	EndCardGrid();
