@@ -14,6 +14,8 @@ namespace XcRender
 		CMDGROUP_XCLIENT = 30000,
 		CMD_XC_DRAW_SHAPES = CMDGROUP_XCLIENT,
 		CMD_XC_BLUR_SCREEN,
+		CMD_XC_CAPTURE_BEGIN,
+		CMD_XC_CAPTURE_END,
 		CMD_XC_LAST,
 	};
 
@@ -34,6 +36,25 @@ namespace XcRender
 		SShapeGpu *m_pAdditive;
 		int m_NumAdditive;
 		SDrawSettings m_Settings;
+	};
+
+	// Everything drawn between CAPTURE_BEGIN and CAPTURE_END goes into an offscreen texture,
+	// END draws it back with a glow and an outline around its silhouette.
+	struct SCommand_CaptureBegin : public CCommandBuffer::SCommand
+	{
+		SCommand_CaptureBegin() :
+			SCommand(CMD_XC_CAPTURE_BEGIN) {}
+
+		float m_ScreenLeft, m_ScreenTop, m_ScreenRight, m_ScreenBottom;
+		float m_aWorldRect[4]; // x0, y0, x1, y1: only this part of the screen is touched
+	};
+
+	struct SCommand_CaptureEnd : public CCommandBuffer::SCommand
+	{
+		SCommand_CaptureEnd() :
+			SCommand(CMD_XC_CAPTURE_END) {}
+
+		SGlowSettings m_Settings;
 	};
 
 	struct SCommand_BlurScreen : public CCommandBuffer::SCommand

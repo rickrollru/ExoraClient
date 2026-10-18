@@ -930,6 +930,8 @@ public:
 	bool XcRenderAvailable() const override;
 	void XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int NumAlpha, const XcRender::SShapeGpu *pAdditive, int NumAdditive, const XcRender::SDrawSettings &Settings) override;
 	void XcBlurScreen(const XcRender::SBlurSettings &Settings) override;
+	void XcCaptureBegin(const float *pWorldRect) override;
+	void XcCaptureEnd(const XcRender::SGlowSettings &Settings) override;
 
 	void LinesBegin() override;
 	void LinesEnd() override;

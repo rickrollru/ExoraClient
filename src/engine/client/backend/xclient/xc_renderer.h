@@ -38,6 +38,7 @@ private:
 	enum
 	{
 		MAX_LEVELS = 7,
+		MAX_GLOW_LEVELS = 5,
 	};
 
 	bool m_Initialized = false;
@@ -47,6 +48,7 @@ private:
 	unsigned m_DownProgram = 0;
 	unsigned m_UpProgram = 0;
 	unsigned m_CompositeProgram = 0;
+	unsigned m_GlowProgram = 0;
 
 	unsigned m_ShapeVao = 0;
 	unsigned m_QuadVbo = 0;
@@ -73,10 +75,29 @@ private:
 	int m_LocCompTex = -1;
 	int m_LocCompStrength = -1;
 	int m_LocCompTint = -1;
+	int m_LocGlowCapture = -1;
+	int m_LocGlowBlur = -1;
+	int m_LocGlowColor = -1;
+	int m_LocGlowRimColor = -1;
+	int m_LocGlowStrength = -1;
+	int m_LocGlowRimWidth = -1;
+	int m_LocGlowTexel = -1;
+
+	// sprite capture for the neon outline
+	STarget m_Capture;
+	bool m_Capturing = false;
+	int m_CaptureSavedDraw = 0;
+	int m_CaptureSavedRead = 0;
+	int m_aCaptureRegion[4] = {};
 
 	bool Init();
 	void DrawShapes(const XcRender::SCommand_DrawShapes *pCommand);
 	void BlurScreen(const XcRender::SCommand_BlurScreen *pCommand);
+	void CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand);
+	void CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand);
+	static float BlurSpread(int Levels);
+	// world rectangle (x0, y0, x1, y1) to a pixel region (x, y, w, h, rows from the bottom) plus a margin
+	static bool WorldToRegion(const float *pScreen, const float *pWorld, int Width, int Height, float Margin, int *pRegion);
 
 	void EnsureTargets(int Width, int Height);
 	void DestroyTargets();

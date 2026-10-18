@@ -307,6 +307,53 @@ void main()
 }
 )";
 
+// neon outline: the captured sprites with a soft glow and a crisp rim around their silhouette
+static const char *const s_pGlowFragment = R"(#version 330 core
+in vec2 v_Uv;
+uniform sampler2D u_Capture;
+uniform sampler2D u_Blur;
+uniform vec4 u_Color;
+uniform vec4 u_RimColor;
+uniform float u_Strength;
+uniform float u_RimWidth;
+uniform vec2 u_Texel;
+out vec4 FragColor;
+
+// DDNet blends with glBlendFunc(SRC_ALPHA, ONE_MINUS_SRC_ALPHA) for all channels, so on a
+// transparent target the stored alpha is a*a and the color is premultiplied by a
+float Coverage(vec2 Uv)
+{
+	return sqrt(clamp(texture(u_Capture, Uv).a, 0.0, 1.0));
+}
+
+void main()
+{
+	vec4 c = texture(u_Capture, v_Uv);
+	float a = sqrt(clamp(c.a, 0.0, 1.0));
+
+	float Rim = 0.0;
+	if(u_RimWidth > 0.0)
+	{
+		float Dilated = 0.0;
+		for(int i = 0; i < 12; i++)
+		{
+			float Angle = 6.2831853 * float(i) / 12.0;
+			Dilated = max(Dilated, Coverage(v_Uv + vec2(cos(Angle), sin(Angle)) * u_RimWidth * u_Texel));
+		}
+		Rim = clamp(Dilated - a, 0.0, 1.0);
+	}
+	float Glow = clamp(texture(u_Blur, v_Uv).a * u_Strength, 0.0, 1.0);
+
+	// light only outside the silhouette, the sprites themselves stay untouched.
+	// Part of the light also covers the background, so the color stays visible on bright maps.
+	float GlowA = Glow * u_Color.a;
+	float RimA = Rim * u_RimColor.a;
+	vec3 Light = u_Color.rgb * GlowA + u_RimColor.rgb * RimA;
+	float Cover = clamp(GlowA * 0.55 + RimA * 0.9, 0.0, 1.0) * (1.0 - a);
+	FragColor = vec4(c.rgb + Light * (1.0 - a), a + Cover);
+}
+)";
+
 // ---------------------------------------------------------------------------------------------
 // GL helpers
 
@@ -452,8 +499,16 @@ bool CXcRenderer::Init()
 	m_DownProgram = LinkProgram(s_pFullscreenVertex, s_pDownFragment, "kawase_down");
 	m_UpProgram = LinkProgram(s_pFullscreenVertex, s_pUpFragment, "kawase_up");
 	m_CompositeProgram = LinkProgram(s_pFullscreenVertex, s_pCompositeFragment, "composite");
-	if(!m_ShapeProgram || !m_DownProgram || !m_UpProgram || !m_CompositeProgram)
+	m_GlowProgram = LinkProgram(s_pFullscreenVertex, s_pGlowFragment, "glow");
+	if(!m_ShapeProgram || !m_DownProgram || !m_UpProgram || !m_CompositeProgram || !m_GlowProgram)
 		return false;
+	m_LocGlowCapture = glGetUniformLocation(m_GlowProgram, "u_Capture");
+	m_LocGlowBlur = glGetUniformLocation(m_GlowProgram, "u_Blur");
+	m_LocGlowColor = glGetUniformLocation(m_GlowProgram, "u_Color");
+	m_LocGlowRimColor = glGetUniformLocation(m_GlowProgram, "u_RimColor");
+	m_LocGlowStrength = glGetUniformLocation(m_GlowProgram, "u_Strength");
+	m_LocGlowRimWidth = glGetUniformLocation(m_GlowProgram, "u_RimWidth");
+	m_LocGlowTexel = glGetUniformLocation(m_GlowProgram, "u_Texel");
 
 	m_LocScreen = glGetUniformLocation(m_ShapeProgram, "u_Screen");
 	m_LocPixel = glGetUniformLocation(m_ShapeProgram, "u_Pixel");
@@ -521,6 +576,7 @@ void CXcRenderer::Shutdown()
 	glDeleteProgram(m_DownProgram);
 	glDeleteProgram(m_UpProgram);
 	glDeleteProgram(m_CompositeProgram);
+	glDeleteProgram(m_GlowProgram);
 	glDeleteBuffers(1, &m_QuadVbo);
 	glDeleteBuffers(1, &m_InstanceVbo);
 	glDeleteVertexArrays(1, &m_ShapeVao);
@@ -531,6 +587,13 @@ void CXcRenderer::Shutdown()
 
 void CXcRenderer::OnPreSwap()
 {
+	if(m_Capturing)
+	{
+		// a capture was never ended, never leave DDNet drawing into our texture
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CaptureSavedDraw);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_CaptureSavedRead);
+		m_Capturing = false;
+	}
 	if(m_Initialized || m_Failed)
 		return;
 	// first frame: the context is current on this thread now
@@ -561,6 +624,8 @@ bool CXcRenderer::RunCommand(const CCommandBuffer::SCommand *pCommand)
 	{
 	case XcRender::CMD_XC_DRAW_SHAPES: DrawShapes(static_cast<const XcRender::SCommand_DrawShapes *>(pCommand)); break;
 	case XcRender::CMD_XC_BLUR_SCREEN: BlurScreen(static_cast<const XcRender::SCommand_BlurScreen *>(pCommand)); break;
+	case XcRender::CMD_XC_CAPTURE_BEGIN: CaptureBegin(static_cast<const XcRender::SCommand_CaptureBegin *>(pCommand)); break;
+	case XcRender::CMD_XC_CAPTURE_END: CaptureEnd(static_cast<const XcRender::SCommand_CaptureEnd *>(pCommand)); break;
 	}
 	return true;
 }
@@ -586,6 +651,8 @@ void CXcRenderer::EnsureTargets(int Width, int Height)
 	DestroyTargets();
 	m_ViewportW = Width;
 	m_ViewportH = Height;
+	m_Capture.m_Width = Width;
+	m_Capture.m_Height = Height;
 	for(int i = 0; i < MAX_LEVELS; i++)
 	{
 		// bloom starts at half resolution, the blur chain at full resolution
@@ -594,6 +661,8 @@ void CXcRenderer::EnsureTargets(int Width, int Height)
 		Bloom.m_Height = std::max(Height >> (i + 1), 1);
 		CreateTarget(Bloom.m_Width, Bloom.m_Height, GL_RGBA16F, GL_HALF_FLOAT, Bloom.m_Fbo, Bloom.m_Texture);
 
+		if(i == 0)
+			CreateTarget(Width, Height, GL_RGBA8, GL_UNSIGNED_BYTE, m_Capture.m_Fbo, m_Capture.m_Texture);
 		STarget &Blur = m_aBlur[i];
 		Blur.m_Width = std::max(Width >> i, 1);
 		Blur.m_Height = std::max(Height >> i, 1);
@@ -614,6 +683,11 @@ void CXcRenderer::DestroyTargets()
 			pTargets[i] = STarget();
 		}
 	}
+	if(m_Capture.m_Fbo)
+		glDeleteFramebuffers(1, &m_Capture.m_Fbo);
+	if(m_Capture.m_Texture)
+		glDeleteTextures(1, &m_Capture.m_Texture);
+	m_Capture = STarget();
 	m_ViewportW = 0;
 	m_ViewportH = 0;
 }
@@ -686,6 +760,32 @@ void CXcRenderer::BlurChain(STarget *pTargets, int NumLevels, float Offset, int 
 	glEnable(GL_BLEND);
 }
 
+float CXcRenderer::BlurSpread(int Levels)
+{
+	// how far the blur reaches in full resolution pixels (dual Kawase, starting at half resolution)
+	return 2.5f * (float)(1 << (Levels + 1));
+}
+
+bool CXcRenderer::WorldToRegion(const float *pScreen, const float *pWorld, int Width, int Height, float Margin, int *pRegion)
+{
+	const float ScreenW = pScreen[2] - pScreen[0];
+	const float ScreenH = pScreen[3] - pScreen[1];
+	if(ScreenW == 0.0f || ScreenH == 0.0f)
+		return false;
+	const int Left = std::max((int)((pWorld[0] - pScreen[0]) / ScreenW * Width - Margin), 0);
+	const int Right = std::min((int)((pWorld[2] - pScreen[0]) / ScreenW * Width + Margin), Width);
+	// OpenGL counts rows from the bottom
+	const int Bottom = std::max((int)(Height - (pWorld[3] - pScreen[1]) / ScreenH * Height - Margin), 0);
+	const int Top = std::min((int)(Height - (pWorld[1] - pScreen[1]) / ScreenH * Height + Margin), Height);
+	if(Right <= Left || Top <= Bottom)
+		return false;
+	pRegion[0] = Left;
+	pRegion[1] = Bottom;
+	pRegion[2] = Right - Left;
+	pRegion[3] = Top - Bottom;
+	return true;
+}
+
 void CXcRenderer::DrawShapes(const XcRender::SCommand_DrawShapes *pCommand)
 {
 	if(pCommand->m_NumAlpha <= 0 && pCommand->m_NumAdditive <= 0)
@@ -736,17 +836,11 @@ void CXcRenderer::DrawShapes(const XcRender::SCommand_DrawShapes *pCommand)
 		MaxX = std::max(MaxX, Shape.m_X + Extent);
 		MaxY = std::max(MaxY, Shape.m_Y + Extent);
 	}
-	const float ScreenH = pCommand->m_ScreenBottom - pCommand->m_ScreenTop;
-	// how far the blur reaches in full resolution pixels (dual Kawase, starting at half resolution)
-	const float Spread = 2.5f * (float)(1 << (Levels + 1));
-	const int Left = std::max((int)((MinX - pCommand->m_ScreenLeft) / ScreenW * Width - Spread), 0);
-	const int Right = std::min((int)((MaxX - pCommand->m_ScreenLeft) / ScreenW * Width + Spread), Width);
-	// OpenGL counts rows from the bottom
-	const int Bottom = std::max((int)(Height - (MaxY - pCommand->m_ScreenTop) / ScreenH * Height - Spread), 0);
-	const int Top = std::min((int)(Height - (MinY - pCommand->m_ScreenTop) / ScreenH * Height + Spread), Height);
-	if(Right <= Left || Top <= Bottom)
+	const float aScreen[4] = {pCommand->m_ScreenLeft, pCommand->m_ScreenTop, pCommand->m_ScreenRight, pCommand->m_ScreenBottom};
+	const float aWorld[4] = {MinX, MinY, MaxX, MaxY};
+	int aRegion[4];
+	if(!WorldToRegion(aScreen, aWorld, Width, Height, BlurSpread(Levels), aRegion))
 		return;
-	const int aRegion[4] = {Left, Bottom, Right - Left, Top - Bottom};
 
 	glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
 	glViewport(0, 0, m_aBloom[0].m_Width, m_aBloom[0].m_Height);
@@ -806,6 +900,117 @@ void CXcRenderer::BlurScreen(const XcRender::SCommand_BlurScreen *pCommand)
 	const ColorRGBA &Tint = pCommand->m_Settings.m_Tint;
 	glUniform4f(m_LocCompTint, Tint.r, Tint.g, Tint.b, Tint.a);
 	DrawFullscreen(m_CompositeProgram, m_aBlur[0].m_Texture);
+}
+
+void CXcRenderer::CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand)
+{
+	if(m_Capturing)
+		return;
+	GLint aViewport[4];
+	glGetIntegerv(GL_VIEWPORT, aViewport);
+	const int Width = aViewport[2];
+	const int Height = aViewport[3];
+	if(Width <= 0 || Height <= 0)
+		return;
+	const float aScreen[4] = {pCommand->m_ScreenLeft, pCommand->m_ScreenTop, pCommand->m_ScreenRight, pCommand->m_ScreenBottom};
+	// room for the widest glow
+	if(!WorldToRegion(aScreen, pCommand->m_aWorldRect, Width, Height, BlurSpread(MAX_GLOW_LEVELS) + 8.0f, m_aCaptureRegion))
+		return;
+
+	// targets may be created here, keep DDNet's bindings intact while doing so
+	{
+		CGlStateGuard Guard;
+		EnsureTargets(Width, Height);
+	}
+
+	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &m_CaptureSavedDraw);
+	glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &m_CaptureSavedRead);
+	GLint aScissorBox[4];
+	glGetIntegerv(GL_SCISSOR_BOX, aScissorBox);
+	const GLboolean Scissor = glIsEnabled(GL_SCISSOR_TEST);
+	GLfloat aClearColor[4];
+	glGetFloatv(GL_COLOR_CLEAR_VALUE, aClearColor);
+
+	// from now on DDNet draws into our texture
+	glBindFramebuffer(GL_FRAMEBUFFER, m_Capture.m_Fbo);
+	glEnable(GL_SCISSOR_TEST);
+	glScissor(m_aCaptureRegion[0], m_aCaptureRegion[1], m_aCaptureRegion[2], m_aCaptureRegion[3]);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glClearColor(aClearColor[0], aClearColor[1], aClearColor[2], aClearColor[3]);
+	glScissor(aScissorBox[0], aScissorBox[1], aScissorBox[2], aScissorBox[3]);
+	if(!Scissor)
+		glDisable(GL_SCISSOR_TEST);
+	m_Capturing = true;
+}
+
+void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
+{
+	if(!m_Capturing)
+		return;
+	m_Capturing = false;
+
+	GLint ActiveTexture, Unit1Texture, Unit1Sampler;
+	glGetIntegerv(GL_ACTIVE_TEXTURE, &ActiveTexture);
+	glActiveTexture(GL_TEXTURE1);
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &Unit1Texture);
+	glGetIntegerv(GL_SAMPLER_BINDING, &Unit1Sampler);
+	glActiveTexture(ActiveTexture);
+
+	{
+		CGlStateGuard Guard;
+		const GLint *pViewport = Guard.Viewport();
+		const int Width = pViewport[2];
+		const int Height = pViewport[3];
+		const XcRender::SGlowSettings &Settings = pCommand->m_Settings;
+
+		// glow: silhouette down to half resolution, then blurred as wide as asked
+		const int Levels = std::clamp((int)std::round(std::log2(std::max(Settings.m_Radius, 5.0f) / 2.5f)) - 1, 1, (int)MAX_GLOW_LEVELS);
+		glActiveTexture(GL_TEXTURE0);
+		glBindSampler(0, m_Sampler);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
+		glViewport(0, 0, m_aBloom[0].m_Width, m_aBloom[0].m_Height);
+		glEnable(GL_SCISSOR_TEST);
+		ScissorScaled(m_aCaptureRegion, Width, m_aBloom[0]);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glDisable(GL_BLEND);
+		glUseProgram(m_DownProgram);
+		glUniform1i(m_LocDownTex, 0);
+		glUniform2f(m_LocDownHalfPixel, 0.5f / Width, 0.5f / Height);
+		DrawFullscreen(m_DownProgram, m_Capture.m_Texture);
+		BlurChain(m_aBloom, Levels + 1, 1.5f, Width, m_aCaptureRegion);
+
+		// back to DDNet's framebuffer: glow and outline, then the sprites on top
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CaptureSavedDraw);
+		glViewport(pViewport[0], pViewport[1], pViewport[2], pViewport[3]);
+		glEnable(GL_SCISSOR_TEST);
+		glScissor(pViewport[0] + m_aCaptureRegion[0], pViewport[1] + m_aCaptureRegion[1], m_aCaptureRegion[2], m_aCaptureRegion[3]);
+		glEnable(GL_BLEND);
+		glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		glUseProgram(m_GlowProgram);
+		glUniform1i(m_LocGlowCapture, 0);
+		glUniform1i(m_LocGlowBlur, 1);
+		glUniform4f(m_LocGlowColor, Settings.m_Color.r, Settings.m_Color.g, Settings.m_Color.b, Settings.m_Color.a);
+		glUniform4f(m_LocGlowRimColor, Settings.m_RimColor.r, Settings.m_RimColor.g, Settings.m_RimColor.b, Settings.m_RimColor.a);
+		glUniform1f(m_LocGlowStrength, Settings.m_Strength);
+		glUniform1f(m_LocGlowRimWidth, Settings.m_RimWidth);
+		glUniform2f(m_LocGlowTexel, 1.0f / Width, 1.0f / Height);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, m_aBloom[0].m_Texture);
+		glBindSampler(1, m_Sampler);
+		glActiveTexture(GL_TEXTURE0);
+		DrawFullscreen(m_GlowProgram, m_Capture.m_Texture);
+	}
+
+	// the guard restored our capture framebuffer, hand DDNet its own back
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CaptureSavedDraw);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, m_CaptureSavedRead);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, Unit1Texture);
+	glBindSampler(1, Unit1Sampler);
+	glActiveTexture(ActiveTexture);
 }
 
 #endif

@@ -3061,3 +3061,24 @@ void CGraphics_Threaded::XcBlurScreen(const XcRender::SBlurSettings &Settings)
 	AddCmd(Cmd);
 	m_pCommandBuffer->AddRenderCalls(1);
 }
+
+void CGraphics_Threaded::XcCaptureBegin(const float *pWorldRect)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcCaptureBegin while drawing");
+	XcRender::SCommand_CaptureBegin Cmd;
+	Cmd.m_ScreenLeft = m_State.m_ScreenTL.x;
+	Cmd.m_ScreenTop = m_State.m_ScreenTL.y;
+	Cmd.m_ScreenRight = m_State.m_ScreenBR.x;
+	Cmd.m_ScreenBottom = m_State.m_ScreenBR.y;
+	mem_copy(Cmd.m_aWorldRect, pWorldRect, sizeof(Cmd.m_aWorldRect));
+	AddCmd(Cmd);
+}
+
+void CGraphics_Threaded::XcCaptureEnd(const XcRender::SGlowSettings &Settings)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcCaptureEnd while drawing");
+	XcRender::SCommand_CaptureEnd Cmd;
+	Cmd.m_Settings = Settings;
+	AddCmd(Cmd);
+	m_pCommandBuffer->AddRenderCalls(1);
+}
