@@ -675,6 +675,47 @@ void CXcMenu::DrawTeePreview(const float *pRect, bool Still)
 	Graphics()->WrapClamp();
 }
 
+bool CXcMenu::HomeTile(const char *pId, const char *pIconGlyph, const char *pLabel, const char *pNote, float Width, float Height, float Glow)
+{
+	const STheme &t = Theme();
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	const bool Disabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+	const ImVec2 Pos = ImGui::GetCursorScreenPos();
+	const bool Clicked = ImGui::InvisibleButton(pId, ImVec2(Width, Height));
+	const float Hover = Animate(ImGui::GetID(pId) + 1, ImGui::IsItemHovered() && !Disabled ? 1.0f : 0.0f, 16.0f);
+	const float Fade = Disabled ? 0.45f : 1.0f;
+	const float Lift = Hover * S(3.0f);
+	const ImVec4 Accent(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 1.0f);
+	const ImVec4 Green(0.24f, 0.84f, 0.64f, 1.0f); // mint, "running"
+	const ImVec2 Min(Pos.x, Pos.y - Lift);
+	const ImVec2 Max(Pos.x + Width, Pos.y + Height - Lift);
+	ImVec4 Fill = Mix(t.m_Track, Accent, 0.12f * Hover);
+	Fill = Mix(Fill, Green, 0.14f * Glow);
+	pDraw->AddRectFilled(Min, Max, Col(Fill, Fade), S(12.0f));
+	pDraw->AddRect(Min, Max, Col(Mix(Mix(t.m_Border, t.m_Accent, Hover), Green, Glow), Fade), S(12.0f), 0, 1.0f + std::max(Hover, Glow));
+	const ImVec4 IconColor = Mix(Mix(t.m_TextSecondary, t.m_Accent, Hover), Green, Glow);
+	ImFont *pIcon = Fonts().m_pHeader;
+	const float IconSize = S(26.0f);
+	const float ContentHeight = IconSize + S(10.0f) + Fonts().m_pLabel->FontSize + (pNote ? S(4.0f) + Fonts().m_pSmall->FontSize : 0.0f);
+	float y = (Min.y + Max.y - ContentHeight) * 0.5f;
+	const ImVec2 IconDim = pIcon->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, pIconGlyph);
+	pDraw->AddText(pIcon, IconSize, ImVec2((Min.x + Max.x - IconDim.x) * 0.5f, y), Col(IconColor, Fade), pIconGlyph);
+	y += IconSize + S(10.0f);
+	ImFont *pLabelFont = Fonts().m_pLabel;
+	const ImVec2 LabelDim = pLabelFont->CalcTextSizeA(pLabelFont->FontSize, FLT_MAX, 0.0f, pLabel);
+	pDraw->AddText(pLabelFont, pLabelFont->FontSize, ImVec2((Min.x + Max.x - LabelDim.x) * 0.5f, y), Col(t.m_Text, Fade), pLabel);
+	if(pNote)
+	{
+		y += pLabelFont->FontSize + S(4.0f);
+		ImFont *pSmall = Fonts().m_pSmall;
+		const ImVec2 NoteDim = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pNote);
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2((Min.x + Max.x - NoteDim.x) * 0.5f, y), Col(Mix(t.m_TextMuted, Green, Glow), Fade), pNote);
+	}
+	if(Clicked)
+		PlayUiSound(SOUND_CLICK);
+	return Clicked;
+}
+
 void CXcMenu::RenderHome()
 {
 	const STheme &t = Theme();
@@ -793,6 +834,42 @@ void CXcMenu::RenderHome()
 		EndCard();
 	}
 
+	// map editor and the local server
+	if(BeginCard("##tools", Tr("Tools"), Tr("Make your own maps and play them on a server right on your computer")))
+	{
+		const bool Running = GameClient()->m_LocalServer.IsServerRunning();
+		const bool OnLocal = Running && IsOnline() && (str_startswith(Client()->ConnectAddressString(), "localhost") || str_startswith(Client()->ConnectAddressString(), "127.0.0.1"));
+		const float Gap = S(10.0f);
+		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
+		const float TileHeight = S(104.0f);
+		const float RunGlow = Animate(ImGui::GetID("##server_glow"), Running ? 1.0f : 0.0f, 8.0f);
+		if(HomeTile("##editor", XC_ICON_MAP, Tr("Map editor"), GameClient()->Editor()->HasUnsavedData() ? Tr("Unsaved changes") : Tr("Open"), TileWidth, TileHeight))
+		{
+			g_Config.m_ClEditor = 1;
+			Input()->MouseModeRelative();
+		}
+		ImGui::SameLine(0.0f, Gap);
+		if(HomeTile("##server", XC_ICON_SERVER, Tr("Local server"), Running ? Tr("Running, click to stop") : Tr("Start"), TileWidth, TileHeight, RunGlow))
+		{
+			if(Running)
+			{
+				GameClient()->m_LocalServer.KillServer();
+				Toast(Tr("Local server stopped"), TOAST_INFO);
+			}
+			else if(GameClient()->m_LocalServer.RunServer({}))
+				Toast(Tr("Local server started"));
+			else
+				Toast(Tr("Could not start the server"), TOAST_ERROR);
+		}
+		ImGui::SameLine(0.0f, Gap);
+		ImGui::BeginDisabled(!Running || OnLocal);
+		if(HomeTile("##join", XC_ICON_PLAY, Tr("Join"), OnLocal ? Tr("You are here") : (Running ? Tr("Your local server") : Tr("Start the server first")), TileWidth, TileHeight))
+			Client()->Connect("localhost:8303");
+		ImGui::EndDisabled();
+		Description(Tr("The server uses the settings from autoexec_server.cfg, you are admin on it automatically"));
+		EndCard();
+	}
+
 	RenderMusicCard();
 
 	// links of the project; empty links are placeholders for now
@@ -810,37 +887,17 @@ void CXcMenu::RenderHome()
 			{XC_ICON_COMMENTS, "Discord", g_Config.m_XcLinkDiscord, nullptr},
 			{XC_ICON_USER, "rickroll.ru", "", "rickroll.ru"},
 		};
-		// three tiles in a row: a big icon and the name, they lift a little under the mouse
 		const float Gap = S(10.0f);
 		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
-		const float TileHeight = S(92.0f);
-		ImDrawList *pDraw = ImGui::GetWindowDrawList();
 		for(int i = 0; i < 3; i++)
 		{
 			const SLink &Link = aLinks[i];
 			if(i > 0)
 				ImGui::SameLine(0.0f, Gap);
-			ImGui::PushID(i);
-			const ImVec2 Pos = ImGui::GetCursorScreenPos();
-			const bool Clicked = ImGui::InvisibleButton("##link", ImVec2(TileWidth, TileHeight));
-			const float Hover = Animate(ImGui::GetID("##hover"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
-			const float Lift = Hover * S(3.0f);
-			const ImVec2 Min(Pos.x, Pos.y - Lift);
-			const ImVec2 Max(Pos.x + TileWidth, Pos.y + TileHeight - Lift);
-			pDraw->AddRectFilled(Min, Max, Col(Mix(t.m_Track, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 1.0f), 0.12f * Hover)), S(12.0f));
-			pDraw->AddRect(Min, Max, Col(Mix(t.m_Border, t.m_Accent, Hover)), S(12.0f), 0, 1.0f + Hover);
-			ImFont *pIcon = Fonts().m_pHeader;
-			const float IconSize = S(26.0f);
-			const ImVec2 IconDim = pIcon->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, Link.m_pIcon);
-			pDraw->AddText(pIcon, IconSize, ImVec2((Min.x + Max.x - IconDim.x) * 0.5f, Min.y + S(18.0f)), Col(Mix(t.m_TextSecondary, t.m_Accent, Hover)), Link.m_pIcon);
-			ImFont *pLabelFont = Fonts().m_pLabel;
-			char aLabel[96];
-			str_copy(aLabel, Link.m_pLabel);
-			const ImVec2 LabelDim = pLabelFont->CalcTextSizeA(pLabelFont->FontSize, FLT_MAX, 0.0f, aLabel);
-			pDraw->AddText(pLabelFont, pLabelFont->FontSize, ImVec2((Min.x + Max.x - LabelDim.x) * 0.5f, Max.y - LabelDim.y - S(16.0f)), Col(t.m_Text), aLabel);
-			if(Clicked)
+			char aId[16];
+			str_format(aId, sizeof(aId), "##link%d", i);
+			if(HomeTile(aId, Link.m_pIcon, Link.m_pLabel, nullptr, TileWidth, S(92.0f)))
 			{
-				PlayUiSound(SOUND_CLICK);
 				if(Link.m_pCopy)
 				{
 					Input()->SetClipboardText(Link.m_pCopy);
@@ -851,7 +908,6 @@ void CXcMenu::RenderHome()
 				else
 					Toast(Tr("Coming soon"), TOAST_INFO);
 			}
-			ImGui::PopID();
 		}
 		EndCard();
 	}
