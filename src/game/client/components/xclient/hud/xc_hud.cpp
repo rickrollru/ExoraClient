@@ -79,7 +79,8 @@ CXcHud::SElementConfig CXcHud::Element(int Index) const
 	case ELEMENT_WATERMARK: return {"Watermark", &g_Config.m_XcHudWatermark, &g_Config.m_XcHudWatermarkX, &g_Config.m_XcHudWatermarkY, &g_Config.m_XcHudWatermarkScale, 110, 32};
 	case ELEMENT_TIMER: return {"Timer", &g_Config.m_XcHudTimer, &g_Config.m_XcHudTimerX, &g_Config.m_XcHudTimerY, &g_Config.m_XcHudTimerScale, 500, 38};
 	case ELEMENT_SPEED: return {"Speed", &g_Config.m_XcHudSpeed, &g_Config.m_XcHudSpeedX, &g_Config.m_XcHudSpeedY, &g_Config.m_XcHudSpeedScale, 455, 905};
-	default: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
+	case ELEMENT_WEAPON: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
+	default: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
 	}
 }
 
@@ -362,6 +363,126 @@ void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
 		pDraw->AddCircleFilled(ImVec2(TextX + 3.0f * U + i * 8.0f * U, Max.y - 14.0f * U), 2.6f * U, Col(t.m_Accent, Alpha), 12);
 }
 
+// cuts the text with "…" so it fits into MaxWidth
+static void FitText(ImFont *pFont, float Size, const char *pText, float MaxWidth, char *pBuf, int BufSize)
+{
+	str_copy(pBuf, pText, BufSize);
+	if(pFont->CalcTextSizeA(Size, FLT_MAX, 0.0f, pBuf).x <= MaxWidth)
+		return;
+	int Length = str_length(pBuf);
+	while(Length > 0)
+	{
+		// step back one whole UTF-8 character
+		Length = str_utf8_rewind(pBuf, Length);
+		char aTry[256];
+		str_format(aTry, sizeof(aTry), "%.*s…", Length, pBuf);
+		if(pFont->CalcTextSizeA(Size, FLT_MAX, 0.0f, aTry).x <= MaxWidth)
+		{
+			str_copy(pBuf, aTry, BufSize);
+			return;
+		}
+	}
+	pBuf[0] = '\0';
+}
+
+void CXcHud::RenderMusic(ImDrawList *pDraw, float Alpha)
+{
+	const STheme &t = Theme();
+	const CXcMusic &Music = GameClient()->m_XcMusic;
+	const bool HasTrack = Music.HasTrack();
+	// shows while something plays, fades out a few seconds after a pause; always shown in the editor
+	const bool Wanted = m_Editing || (HasTrack && (!g_Config.m_XcHudMusicAutohide || Music.PausedFor() < 6.0f));
+	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+	m_MusicAlpha = Wanted ? std::min(m_MusicAlpha + Dt * 4.0f, 1.0f) : std::max(m_MusicAlpha - Dt * 2.0f, 0.0f);
+	if(m_MusicAlpha <= 0.0f)
+	{
+		m_aaRects[ELEMENT_MUSIC][0] = m_aaRects[ELEMENT_MUSIC][2] = -1.0f;
+		return;
+	}
+	Alpha *= m_Editing ? 1.0f : m_MusicAlpha;
+	const SXcMediaState &State = Music.State();
+	const float U = Unit(ELEMENT_MUSIC);
+	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
+	ImFont *pSmall = m_Backend.Fonts().m_pSmall;
+	const float Width = 300.0f * U;
+	const float Height = 66.0f * U;
+	// slides up a little while fading in
+	const ImVec2 Placed = PlaceRect(ELEMENT_MUSIC, ImVec2(Width, Height));
+	const ImVec2 Min(Placed.x, Placed.y + (1.0f - m_MusicAlpha) * 10.0f * U * (m_Editing ? 0.0f : 1.0f));
+	const ImVec2 Max(Min.x + Width, Min.y + Height);
+	RenderPlate(pDraw, Min, Max, U, Alpha);
+
+	// cover, or an accent square with a note
+	const float Pad = 10.0f * U;
+	const float ArtSize = Height - Pad * 2.0f;
+	const ImVec2 ArtMin(Min.x + Pad, Min.y + Pad);
+	const ImVec2 ArtMax(ArtMin.x + ArtSize, ArtMin.y + ArtSize);
+	const float ArtRounding = 9.0f * U;
+	const IGraphics::CTextureHandle Art = Music.Art();
+	if(HasTrack && Art.IsValid() && !Art.IsNullTexture())
+		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ArtMin, ArtMax, ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), Alpha), ArtRounding);
+	else
+	{
+		const ImVec4 Dark = Mix(t.m_Accent, ImVec4(0, 0, 0, 1), 0.45f);
+		pDraw->AddRectFilledMultiColor(ArtMin, ArtMax, Col(t.m_Accent, Alpha), Col(t.m_Accent, Alpha), Col(Dark, Alpha), Col(Dark, Alpha));
+		pDraw->AddRect(ArtMin, ArtMax, Col(t.m_Panel, Alpha), ArtRounding, 0, 3.0f * U); // rounds the gradient corners off
+		const float IconSize = 18.0f * U;
+		const ImVec2 IconDim = pLabel->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, XC_ICON_MUSIC);
+		pDraw->AddText(pLabel, IconSize, ImVec2((ArtMin.x + ArtMax.x - IconDim.x) * 0.5f, (ArtMin.y + ArtMax.y - IconDim.y) * 0.5f), Col(t.m_OnAccent, Alpha), XC_ICON_MUSIC);
+	}
+
+	// equalizer bars on the right while playing, a pause sign otherwise
+	const float BarsWidth = 22.0f * U;
+	const float BarsRight = Max.x - 14.0f * U;
+	const float TextX = ArtMax.x + 12.0f * U;
+	const float TextRight = BarsRight - BarsWidth - 10.0f * U;
+	const float Time = Client()->GlobalTime();
+	const bool Playing = HasTrack && State.m_Playing;
+	const float MidY = Min.y + Height * 0.5f - 4.0f * U;
+	for(int i = 0; i < 4; i++)
+	{
+		const float Wave = Playing ? 0.5f + 0.5f * std::sin(Time * (6.0f + i * 1.7f) + i * 1.3f) * std::sin(Time * (2.3f + i * 0.9f)) : 0.0f;
+		const float BarHeight = (4.0f + 14.0f * std::abs(Wave)) * U;
+		const float x = BarsRight - BarsWidth + i * 6.0f * U;
+		pDraw->AddRectFilled(ImVec2(x, MidY + 9.0f * U - BarHeight), ImVec2(x + 3.5f * U, MidY + 9.0f * U), Col(Playing ? t.m_Accent : t.m_TextMuted, Alpha), 2.0f * U);
+	}
+
+	// title scrolls when it is too long, the artist is cut
+	const char *pTitle = HasTrack ? State.m_Title.c_str() : Tr("Nothing playing");
+	const char *pArtist = HasTrack ? (State.m_Artist.empty() ? Music.AppName() : State.m_Artist.c_str()) : (Music.Supported() ? Tr("Play music in the browser") : Tr("Not supported on this system"));
+	const float TitleSize = 14.5f * U;
+	const float ArtistSize = 12.0f * U;
+	const float Room = TextRight - TextX;
+	const float TitleWidth = pLabel->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pTitle).x;
+	float Shift = 0.0f;
+	if(TitleWidth > Room)
+	{
+		// there and back with a rest at both ends
+		const float Travel = TitleWidth - Room;
+		const float Period = 3.0f + Travel / (30.0f * U);
+		const float Phase = std::fmod(Time, Period * 2.0f) / Period;
+		const float Move = Phase < 1.0f ? Phase : 2.0f - Phase;
+		Shift = Travel * std::clamp((Move - 0.15f) / 0.7f, 0.0f, 1.0f);
+	}
+	const float TitleY = Min.y + 13.0f * U;
+	pDraw->PushClipRect(ImVec2(TextX, Min.y), ImVec2(TextRight, Max.y), true);
+	pDraw->AddText(pLabel, TitleSize, ImVec2(TextX - Shift, TitleY), Col(t.m_Text, Alpha), pTitle);
+	pDraw->PopClipRect();
+	char aArtist[256];
+	FitText(pSmall, ArtistSize, pArtist, Room, aArtist, sizeof(aArtist));
+	pDraw->AddText(pSmall, ArtistSize, ImVec2(TextX, TitleY + TitleSize + 4.0f * U), Col(t.m_TextSecondary, Alpha), aArtist);
+
+	// progress line under the text
+	const double Position = Music.Position();
+	if(HasTrack && Position >= 0.0)
+	{
+		const float LineY = Max.y - 11.0f * U;
+		const float Fill = (float)(Position / State.m_Duration);
+		pDraw->AddRectFilled(ImVec2(TextX, LineY), ImVec2(BarsRight, LineY + 3.0f * U), Col(t.m_Track, Alpha), 2.0f * U);
+		pDraw->AddRectFilled(ImVec2(TextX, LineY), ImVec2(TextX + (BarsRight - TextX) * Fill, LineY + 3.0f * U), Col(t.m_Accent, Alpha), 2.0f * U);
+	}
+}
+
 void CXcHud::RenderWheelBackground(vec2 Center, float InnerRadius, float OuterRadius, int NumItems, int Selected, float Alpha) const
 {
 	const STheme &t = Theme();
@@ -589,6 +710,8 @@ void CXcHud::OnRender()
 			RenderSpeed(pDraw, a);
 		if(g_Config.m_XcHudWeapon)
 			RenderWeapon(pDraw, a);
+		if(g_Config.m_XcHudMusic)
+			RenderMusic(pDraw, a);
 		if(m_Editing)
 			RenderEditor(ImGui::GetForegroundDrawList());
 		else if(g_Config.m_XcHudToasts && HasToasts())

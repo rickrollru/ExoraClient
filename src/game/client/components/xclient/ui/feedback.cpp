@@ -55,7 +55,9 @@ namespace XcUi
 			while(s_Toasts.size() > MAX_TOASTS)
 				s_Toasts.pop_front();
 		}
-		PlayUiSound(Kind == TOAST_ERROR ? SOUND_ERROR : SOUND_NOTIFY);
+		// a new song needs no sound of its own
+		if(Kind != TOAST_MUSIC)
+			PlayUiSound(Kind == TOAST_ERROR ? SOUND_ERROR : SOUND_NOTIFY);
 	}
 
 	bool HasToasts()
@@ -99,7 +101,7 @@ namespace XcUi
 			if(a <= 0.0f)
 				continue;
 
-			const char *pIcon = Toast.m_Kind == TOAST_ERROR ? XC_ICON_XMARK : (Toast.m_Kind == TOAST_INFO ? XC_ICON_BOLT : XC_ICON_CHECK);
+			const char *pIcon = Toast.m_Kind == TOAST_ERROR ? XC_ICON_XMARK : (Toast.m_Kind == TOAST_INFO ? XC_ICON_BOLT : (Toast.m_Kind == TOAST_MUSIC ? XC_ICON_MUSIC : XC_ICON_CHECK));
 			const ImVec4 IconColor = Toast.m_Kind == TOAST_ERROR ? ImVec4(1.0f, 0.36f, 0.36f, 1.0f) : t.m_Accent;
 			const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, Toast.m_Text.c_str());
 			const float Width = TextSize.x + Height + S(22.0f);

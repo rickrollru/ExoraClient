@@ -48,6 +48,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_vignette", "Vignette", "Darker screen edges to focus on the center", "виньетка затемнение края vignette"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##hat_editor", "Own hat", "Any picture or gif on your tee. Drag it on the tee, pull the corner to resize, the circle to turn it", "шапка шляпа косметика редактор кепка уши очки hat cosmetics editor gif png"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##hat_gallery", "My hats", "Pictures and gifs with a transparent background work best. Drag a file onto the game window, paste its path or open the folder", "мои шапки галерея добавить hats gallery add"},
+		{CXcMenu::PAGE_HOME, -1, "##music", "Music", "What plays in the browser or a music app", "музыка плеер трек песня ютуб саундклауд яндекс спотифай music player youtube soundcloud yandex spotify"},
 		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
 		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##theme", "Theme", "Look of the menu: dark or light, and the accent color", "тема тёмная светлая dark light акцент accent цвет color"},
@@ -73,6 +74,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##screen", "Screen", "Window mode and frame rate", "экран окно fps vsync полноэкранный fullscreen window"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##effects", "Effects", "Quality of the render module (OpenGL 3.3)", "эффекты качество bloom свечение quality render"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_main", "New HUD", "Watermark, timer, speed and weapon in the style of the menu", "худ hud редактор editor ватермарка watermark таймер timer скорость speed оружие weapon"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##music_player", "Music player", "What plays in the browser or a music app: YouTube, SoundCloud, Yandex Music, Spotify...", "музыка плеер трек music player spotify youtube"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_plates", "Name plates", "Names above the tees on dark rounded plates", "ники ники-плашки плашки nameplates names"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_wheels", "Wheels", "Emote wheel and spectator menu in the colors of the menu", "колесо эмоции эмоций спектатор наблюдение wheel emote spectator"},
 	};
