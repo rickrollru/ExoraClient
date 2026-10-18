@@ -45,6 +45,7 @@ public:
 		SETTINGS_CHAT,
 		SETTINGS_GRAPHICS,
 		SETTINGS_HUD,
+		SETTINGS_TCLIENT,
 		NUM_SETTINGS,
 	};
 
@@ -304,6 +305,11 @@ private:
 	bool ConfigSegmented(const char *pId, const char *pName, int *pValue, const char *const *ppItems, int NumItems, const int *pValues = nullptr);
 	void ConfigText(const char *pLabel, const char *pName, const char *pValue, int MaxLength);
 	void ToggleRow(const char *pLabel, const char *pName, int *pValue);
+	void ConfigColorRow(const char *pLabel, unsigned *pValue, bool Alpha);
+	// Settings > TClient (menu_tclient.cpp)
+	void RenderSettingsTClient();
+	char m_aTcSearch[64] = {};
+	bool m_TcOnlyChanged = false;
 };
 
 #endif

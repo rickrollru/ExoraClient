@@ -124,8 +124,8 @@ void CXcMenu::ToggleRow(const char *pLabel, const char *pName, int *pValue)
 
 void CXcMenu::RenderSettings()
 {
-	const char *apIcons[NUM_SETTINGS] = {XC_ICON_PALETTE, XC_ICON_IMAGE, XC_ICON_USER, XC_ICON_KEYBOARD, XC_ICON_VOLUME, XC_ICON_COMMENTS, XC_ICON_DESKTOP, XC_ICON_LAYERS};
-	const char *apLabels[NUM_SETTINGS] = {Tr("Interface"), Tr("Background"), Tr("Player"), Tr("Controls"), Tr("Sound"), Tr("Chat"), Tr("Graphics"), Tr("HUD")};
+	const char *apIcons[NUM_SETTINGS] = {XC_ICON_PALETTE, XC_ICON_IMAGE, XC_ICON_USER, XC_ICON_KEYBOARD, XC_ICON_VOLUME, XC_ICON_COMMENTS, XC_ICON_DESKTOP, XC_ICON_LAYERS, XC_ICON_SLIDERS};
+	const char *apLabels[NUM_SETTINGS] = {Tr("Interface"), Tr("Background"), Tr("Player"), Tr("Controls"), Tr("Sound"), Tr("Chat"), Tr("Graphics"), Tr("HUD"), "TClient"};
 
 	const float NavWidth = S(210.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
@@ -149,6 +149,7 @@ void CXcMenu::RenderSettings()
 	case SETTINGS_SOUND: RenderSettingsSound(); break;
 	case SETTINGS_CHAT: RenderSettingsChat(); break;
 	case SETTINGS_GRAPHICS: RenderSettingsGraphics(); break;
+	case SETTINGS_TCLIENT: RenderSettingsTClient(); break;
 	default: RenderSettingsHud(); break;
 	}
 	// opened from the search: glide to the found card
