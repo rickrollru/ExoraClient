@@ -29,3 +29,14 @@ MACRO_CONFIG_COL(XcJumpFxColor, xc_jump_fx_color, 10223527, CFGFLAG_CLIENT | CFG
 MACRO_CONFIG_INT(XcJumpFxSelf, xc_jump_fx_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for yourself")
 MACRO_CONFIG_INT(XcJumpFxDummy, xc_jump_fx_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for your dummy")
 MACRO_CONFIG_INT(XcJumpFxOthers, xc_jump_fx_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for other players")
+
+// Accessory on the tee
+MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
+MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")
+MACRO_CONFIG_INT(XcAccessoryAlpha, xc_accessory_alpha, 85, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the accessory in percent")
+MACRO_CONFIG_COL(XcAccessoryColor, xc_accessory_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the accessory (crown gems for the crown)") // #4F8CFF
+MACRO_CONFIG_INT(XcAccessoryRainbow, xc_accessory_rainbow, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Animated rainbow color for the accessory")
+MACRO_CONFIG_INT(XcAccessoryPhysics, xc_accessory_physics, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the accessory tilts and bounces with movement in percent (0 = rigid)")
+MACRO_CONFIG_INT(XcAccessorySelf, xc_accessory_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on yourself")
+MACRO_CONFIG_INT(XcAccessoryDummy, xc_accessory_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on your dummy")
+MACRO_CONFIG_INT(XcAccessoryOthers, xc_accessory_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on other players")
