@@ -57,6 +57,9 @@ public:
 
 private:
 	CImGuiBackend m_Backend;
+	int m_aUiSounds[6] = {-1, -1, -1, -1, -1, -1}; // XcUi::NUM_SOUNDS
+	float m_aUiSoundTime[6] = {};
+	static void PlayUiSoundCallback(void *pUser, int Sound);
 	bool m_Active = false;
 	float m_OpenAnimation = 0.0f;
 	int m_Page = PAGE_HOME;
@@ -87,8 +90,6 @@ private:
 	char m_aRenameBuffer[32] = {};
 	std::string m_RenameFor; // config the rename field was filled for
 	float m_DeleteArmedUntil = 0.0f;
-	std::string m_ConfigStatus;
-	float m_ConfigStatusTime = -10.0f;
 
 	// menu background (menu_bg.cpp)
 	enum
@@ -107,12 +108,9 @@ private:
 	std::string m_BgPendingRemove; // "f:<file>" or "m:<map>"
 	std::string m_BgDeleteArmed; // "f:<file>" or "m:<map>" waiting for the second click
 	float m_BgDeleteArmedUntil = 0.0f;
-	std::string m_BgStatus;
-	float m_BgStatusTime = -10.0f;
 	int EffectiveBackground() const;
 	void HandleBackgroundFile(const char *pPath);
 	void RemoveBackground(const std::string &Key);
-	void SetBgStatus(const char *pText);
 	bool BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin = 0.0f, float UMax = 1.0f);
 	void RenderSettingsBackground();
 
@@ -151,7 +149,6 @@ private:
 	static std::string EncodeConfig(const std::string &Text);
 	static bool DecodeConfig(const char *pCode, std::string &Text);
 	static std::string FilterConfig(const std::string &Text);
-	void SetConfigStatus(const char *pText);
 	void RenderPlaceholder(const char *pIcon, const char *pTitle, const char *pText, bool ClassicButton);
 	void BeginSmoothScroll(const char *pId, ImVec2 Size);
 	void EndSmoothScroll();
