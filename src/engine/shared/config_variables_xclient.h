@@ -81,7 +81,7 @@ MACRO_CONFIG_INT(XcJumpFxDummy, xc_jump_fx_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_INT(XcJumpFxOthers, xc_jump_fx_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for other players")
 
 // Trail behind the tee
-MACRO_CONFIG_INT(XcTrail, xc_trail, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots)")
+MACRO_CONFIG_INT(XcTrail, xc_trail, 1, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots)")
 MACRO_CONFIG_INT(XcTrailLength, xc_trail_length, 450, 100, 2000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long the trail stays, in milliseconds")
 MACRO_CONFIG_INT(XcTrailWidth, xc_trail_width, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail width in percent")
 MACRO_CONFIG_INT(XcTrailGlow, xc_trail_glow, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail glow in percent")
@@ -184,7 +184,7 @@ MACRO_CONFIG_INT(XcAccessoryDummy, xc_accessory_dummy, 1, 0, 1, CFGFLAG_CLIENT |
 MACRO_CONFIG_INT(XcAccessoryOthers, xc_accessory_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on other players")
 
 // Hook
-MACRO_CONFIG_INT(XcHookStyle, xc_hook_style, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook look (0 = default, 1 = colored chain, 2 = solid line, 3 = glowing line)")
+MACRO_CONFIG_INT(XcHookStyle, xc_hook_style, 3, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook look (0 = default, 1 = colored chain, 2 = solid line, 3 = glowing line)")
 MACRO_CONFIG_COL(XcHookColor, xc_hook_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook color") // #4F8CFF
 MACRO_CONFIG_INT(XcHookColorMode, xc_hook_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_INT(XcHookWidth, xc_hook_width, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the hook line in percent")
