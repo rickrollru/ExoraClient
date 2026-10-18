@@ -87,12 +87,7 @@
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
-#include "components/xclient/accessory.h"
 #include "components/xclient/fx_renderer.h"
-#include "components/xclient/hook_fx.h"
-#include "components/xclient/jump_fx.h"
-#include "components/xclient/tee_glow.h"
-#include "components/xclient/weather.h"
 
 #include <memory>
 #include <vector>
@@ -251,12 +246,7 @@ public:
 	CMovingTiles m_MovingTilesForeground = CMovingTiles{true};
 
 	// XClient Components
-	CAccessory m_Accessory;
 	CFxRenderer m_FxRenderer;
-	CHookFx m_HookFx;
-	CJumpFx m_JumpFx;
-	CTeeGlow m_TeeGlow;
-	CWeather m_Weather;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
