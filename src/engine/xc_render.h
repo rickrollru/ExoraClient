@@ -53,6 +53,16 @@ namespace XcRender
 		ColorRGBA m_Tint = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f); // mixed over the blurred image
 	};
 
+	// Neon outline around captured sprites (tees), see IGraphics::XcCaptureBegin.
+	struct SGlowSettings
+	{
+		ColorRGBA m_Color = ColorRGBA(0.31f, 0.55f, 1.0f, 1.0f); // soft glow
+		ColorRGBA m_RimColor = ColorRGBA(0.6f, 0.8f, 1.0f, 1.0f); // crisp outline
+		float m_Radius = 24.0f; // glow reach in pixels
+		float m_Strength = 1.6f;
+		float m_RimWidth = 2.0f; // outline width in pixels, 0 = no outline
+	};
+
 	// Set by the render thread once the module has initialized successfully.
 	bool IsAvailable();
 

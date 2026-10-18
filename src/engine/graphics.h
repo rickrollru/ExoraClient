@@ -188,6 +188,7 @@ namespace XcRender
 	struct SShapeGpu;
 	struct SDrawSettings;
 	struct SBlurSettings;
+	struct SGlowSettings;
 } // namespace XcRender
 
 class CScreenRect
@@ -348,6 +349,10 @@ public:
 	virtual bool XcRenderAvailable() const = 0;
 	virtual void XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int NumAlpha, const XcRender::SShapeGpu *pAdditive, int NumAdditive, const XcRender::SDrawSettings &Settings) = 0;
 	virtual void XcBlurScreen(const XcRender::SBlurSettings &Settings) = 0;
+	// Everything drawn between these two calls gets a neon glow and outline around its silhouette.
+	// WorldRect (x0, y0, x1, y1, current screen mapping) limits the work to that area.
+	virtual void XcCaptureBegin(const float *pWorldRect) = 0;
+	virtual void XcCaptureEnd(const XcRender::SGlowSettings &Settings) = 0;
 
 	// TODO: These should perhaps not be virtuals
 	virtual void BlendNone() = 0;
