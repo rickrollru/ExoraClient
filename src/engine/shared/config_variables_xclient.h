@@ -60,6 +60,7 @@ MACRO_CONFIG_INT(XcHudKeys, xc_hud_keys, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE,
 MACRO_CONFIG_INT(XcHudKeysX, xc_hud_keys_x, 120, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: keystrokes position x")
 MACRO_CONFIG_INT(XcHudKeysY, xc_hud_keys_y, 640, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: keystrokes position y")
 MACRO_CONFIG_INT(XcHudKeysScale, xc_hud_keys_scale, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: keystrokes size")
+MACRO_CONFIG_INT(XcFocusMode, xc_focus_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode: only the timer and the speed, no chat (xc_focus toggles it)")
 MACRO_CONFIG_INT(XcHudToasts, xc_hud_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: show notifications in game")
 MACRO_CONFIG_INT(XcHudPlates, xc_hud_plates, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dark rounded plates behind name plates")
 MACRO_CONFIG_INT(XcHudWheels, xc_hud_wheels, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "New look for the emote wheel and the spectator menu")

@@ -43,6 +43,7 @@ static const SBindEntry s_aBinds[] = {
 	{"Music: play / pause", "xc_music_play_pause"},
 	{"Music: next track", "xc_music_next"},
 	{"Music: previous track", "xc_music_prev"},
+	{"Focus mode", "xc_focus"},
 };
 
 // --------------------------------------------------------------------------------------------
@@ -400,6 +401,7 @@ void CXcMenu::RenderSettingsHud()
 		ToggleRow(Tr("Weapon"), "xc_hud_weapon", &g_Config.m_XcHudWeapon);
 		ToggleRow(Tr("Music"), "xc_hud_music", &g_Config.m_XcHudMusic);
 		ToggleRow(Tr("Keystrokes"), "xc_hud_keys", &g_Config.m_XcHudKeys);
+		ToggleRow(Tr("Focus mode (timer and speed only, no chat)"), "xc_focus_mode", &g_Config.m_XcFocusMode);
 		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
 		EndCard();
 	}

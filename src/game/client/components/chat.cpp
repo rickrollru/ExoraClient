@@ -1300,6 +1300,10 @@ void CChat::OnRender()
 		--m_PendingChatCounter;
 	}
 
+	// XClient: focus mode hides the chat, but not while typing
+	if(g_Config.m_XcFocusMode && !IsActive())
+		return;
+
 	const float Height = 300.0f;
 	const float Width = Height * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(Width, Height);
