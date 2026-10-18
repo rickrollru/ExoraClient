@@ -93,6 +93,7 @@
 #include "components/xclient/hud/xc_hud.h"
 #include "components/xclient/jump_fx.h"
 #include "components/xclient/tee_glow.h"
+#include "components/xclient/trail_fx.h"
 #include "components/xclient/ui/menu.h"
 #include "components/xclient/weather.h"
 
@@ -260,6 +261,7 @@ public:
 	CHookFx m_HookFx;
 	CJumpFx m_JumpFx;
 	CTeeGlow m_TeeGlow;
+	CTrailFx m_TrailFx;
 	CWeather m_Weather;
 
 private:

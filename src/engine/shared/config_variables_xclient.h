@@ -75,6 +75,17 @@ MACRO_CONFIG_INT(XcJumpFxSelf, xc_jump_fx_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLA
 MACRO_CONFIG_INT(XcJumpFxDummy, xc_jump_fx_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for your dummy")
 MACRO_CONFIG_INT(XcJumpFxOthers, xc_jump_fx_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for other players")
 
+// Trail behind the tee
+MACRO_CONFIG_INT(XcTrail, xc_trail, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots)")
+MACRO_CONFIG_INT(XcTrailLength, xc_trail_length, 450, 100, 2000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long the trail stays, in milliseconds")
+MACRO_CONFIG_INT(XcTrailWidth, xc_trail_width, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail width in percent")
+MACRO_CONFIG_INT(XcTrailGlow, xc_trail_glow, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail glow in percent")
+MACRO_CONFIG_INT(XcTrailColorMode, xc_trail_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcTrailColor, xc_trail_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail color") // #4F8CFF
+MACRO_CONFIG_INT(XcTrailSelf, xc_trail_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind yourself")
+MACRO_CONFIG_INT(XcTrailDummy, xc_trail_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind your dummy")
+MACRO_CONFIG_INT(XcTrailOthers, xc_trail_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail behind other players")
+
 // Accessory on the tee
 MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
 MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")

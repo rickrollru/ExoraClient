@@ -302,6 +302,8 @@ namespace XcUi
 			{"Others", "Другие"},
 			{"Rainbow", "Радуга"},
 			{"Trail", "Шлейф"},
+			{"Ribbon", "Лента"},
+			{"Comet", "Комета"},
 			{"A glowing ribbon behind the tee", "Светящаяся лента за ти"},
 			// background
 			{"Background", "Фон"},
