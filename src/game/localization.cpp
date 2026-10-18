@@ -247,14 +247,17 @@ bool CLocalizationDatabase::Load(const char *pFilename, IStorage *pStorage, ICon
 		pReplacement += 3;
 		AddString(aOrigin, pReplacement, aContext);
 	}
-	std::sort(m_vStrings.begin(), m_vStrings.end());
+	// XClient fix: AddString used to binary search the vector while it was being appended to
+	// (unsorted), so duplicates slipped through and debug builds aborted. Sort stably and keep
+	// the first entry of each string: the earlier loaded file still has priority.
+	std::stable_sort(m_vStrings.begin(), m_vStrings.end());
+	m_vStrings.erase(std::unique(m_vStrings.begin(), m_vStrings.end()), m_vStrings.end());
 	return true;
 }
 
 void CLocalizationDatabase::AddString(const char *pOrgStr, const char *pNewStr, const char *pContext)
 {
-	if(!FindString(str_quickhash(pOrgStr), str_quickhash(pContext)))
-		m_vStrings.emplace_back(str_quickhash(pOrgStr), str_quickhash(pContext), m_StringsHeap.StoreString(*pNewStr ? pNewStr : pOrgStr));
+	m_vStrings.emplace_back(str_quickhash(pOrgStr), str_quickhash(pContext), m_StringsHeap.StoreString(*pNewStr ? pNewStr : pOrgStr));
 }
 
 const char *CLocalizationDatabase::FindString(unsigned Hash, unsigned ContextHash) const

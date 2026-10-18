@@ -1,0 +1,164 @@
+#include "lang.h"
+
+#include <base/str.h>
+
+#include <engine/shared/config.h>
+
+#include <string_view>
+#include <unordered_map>
+
+namespace XcUi
+{
+	bool IsRussian()
+	{
+		return str_find_nocase(g_Config.m_ClLanguagefile, "russian") != nullptr;
+	}
+
+	const char *Tr(const char *pEnglish)
+	{
+		static const std::unordered_map<std::string_view, const char *> s_Russian = {
+			// navigation
+			{"Home", "Главная"},
+			{"Servers", "Серверы"},
+			{"Visuals", "Визуалы"},
+			{"Configs", "Конфиги"},
+			{"Settings", "Настройки"},
+			{"Search", "Поиск"},
+			{"Language", "Язык"},
+			{"Theme", "Тема"},
+			{"Profile", "Профиль"},
+			{"Classic menu", "Классическое меню"},
+			{"Close", "Закрыть"},
+			{"Quit", "Выход"},
+			{"Disconnect", "Отключиться"},
+			{"Play", "Играть"},
+			{"Coming soon", "Скоро"},
+			// settings sections
+			{"Interface", "Интерфейс"},
+			{"Player", "Игрок"},
+			{"Controls", "Управление"},
+			{"Sound", "Звук"},
+			{"Chat", "Чат"},
+			{"Graphics", "Графика"},
+			{"HUD editor", "Редактор HUD"},
+			// interface
+			{"Look of the menu: dark or light, and the accent color", "Вид меню: тёмная или светлая тема и цвет акцента"},
+			{"Dark", "Тёмная"},
+			{"Light", "Светлая"},
+			{"Accent", "Акцент"},
+			{"Font", "Шрифт"},
+			{"Main font of the menu", "Основной шрифт меню"},
+			{"Scale", "Масштаб"},
+			{"Size of the menu for your screen", "Размер меню под твой экран"},
+			{"Auto", "Авто"},
+			{"Animations", "Анимации"},
+			{"How smooth the menu moves", "Насколько плавно двигается меню"},
+			{"Off", "Выкл"},
+			{"Fast", "Быстро"},
+			{"Normal", "Обычно"},
+			{"Smooth", "Плавно"},
+			{"Menu background", "Фон меню"},
+			{"What is behind the menu", "Что видно позади меню"},
+			{"Blur", "Блюр"},
+			{"Animated", "Анимация"},
+			{"Map", "Карта"},
+			{"Blur the game behind the menu", "Размывать игру под меню"},
+			{"Game language", "Язык игры"},
+			{"Language of the menu and the game", "Язык меню и игры"},
+			{"Use the new menu", "Использовать новое меню"},
+			{"The old DDNet menu, for settings that are not here yet", "Старое меню DDNet для настроек, которых тут ещё нет"},
+			{"Open", "Открыть"},
+			// player
+			{"Name and clan of you and your dummy", "Ник и клан у тебя и у дамми"},
+			{"Name", "Ник"},
+			{"Clan", "Клан"},
+			{"Dummy name", "Ник дамми"},
+			{"Dummy clan", "Клан дамми"},
+			{"Skin", "Скин"},
+			{"Skin name and custom colors", "Название скина и свои цвета"},
+			{"Skin name", "Название скина"},
+			{"Custom colors", "Свои цвета"},
+			// controls
+			{"Mouse", "Мышь"},
+			{"Sensitivity in game and in menus", "Чувствительность в игре и в меню"},
+			{"In game", "В игре"},
+			{"In menus", "В меню"},
+			{"Max mouse distance", "Макс. дистанция мыши"},
+			{"Camera", "Камера"},
+			{"Dynamic camera follows the mouse", "Динамическая камера следует за мышью"},
+			{"Max distance", "Макс. дистанция"},
+			{"Follow factor", "Следование"},
+			{"Deadzone", "Мёртвая зона"},
+			{"Key binds", "Клавиши"},
+			{"Click a key and press a new one, Esc cancels", "Нажми на клавишу и затем новую, Esc — отмена"},
+			{"Move left", "Влево"},
+			{"Move right", "Вправо"},
+			{"Jump", "Прыжок"},
+			{"Hook", "Хук"},
+			{"Fire", "Огонь"},
+			{"Kill", "Убить себя"},
+			{"Next weapon", "След. оружие"},
+			{"Previous weapon", "Пред. оружие"},
+			{"Chat all", "Чат"},
+			{"Team chat", "Командный чат"},
+			{"Scoreboard", "Таблица"},
+			{"Toggle dummy", "Переключить дамми"},
+			{"Emoticons", "Эмоции"},
+			{"Spectator mode", "Наблюдение"},
+			// sound
+			{"Sound and volume", "Звук и громкость"},
+			{"Master volume", "Общая громкость"},
+			{"Game", "Игра"},
+			{"Ambient", "Окружение"},
+			{"Music", "Музыка"},
+			{"Mute when not active", "Без звука в фоне"},
+			// chat
+			{"Show chat", "Показывать чат"},
+			{"Font size", "Размер шрифта"},
+			{"Width", "Ширина"},
+			{"Old chat style", "Старый вид чата"},
+			{"Only friends", "Только друзья"},
+			{"Team colors", "Цвета команд"},
+			{"System messages", "Системные сообщения"},
+			{"How the chat looks", "Как выглядит чат"},
+			// graphics
+			{"Screen", "Экран"},
+			{"Window mode and frame rate", "Режим окна и частота кадров"},
+			{"Window mode", "Режим окна"},
+			{"Window", "Окно"},
+			{"Fullscreen", "Полный"},
+			{"Borderless", "Без рамки"},
+			{"V-Sync", "V-Sync"},
+			{"FPS limit", "Лимит FPS"},
+			{"unlimited", "без лимита"},
+			{"Show FPS", "Показывать FPS"},
+			{"Effects", "Эффекты"},
+			{"Quality of the render module (OpenGL 3.3)", "Качество рендер-модуля (OpenGL 3.3)"},
+			{"Quality", "Качество"},
+			{"Low", "Низкое"},
+			{"Medium", "Среднее"},
+			{"High", "Высокое"},
+			{"Bloom", "Свечение"},
+			{"Render module", "Рендер-модуль"},
+			{"Not available: needs OpenGL 3.3", "Недоступен: нужен OpenGL 3.3"},
+			{"Some changes apply after a restart", "Часть изменений — после перезапуска"},
+			// placeholders
+			{"This page is being built", "Эта страница в разработке"},
+			{"Use the classic menu for now", "Пока пользуйся классическим меню"},
+			{"Server browser", "Браузер серверов"},
+			{"Server cards with filters are coming. The classic browser works meanwhile.", "Скоро тут будут карточки серверов с фильтрами. Пока работает классический браузер."},
+			{"Visual effects are being redesigned.", "Визуальные эффекты сейчас переделываются."},
+			{"Local configs with import and export codes are coming.", "Скоро: локальные конфиги с импортом и экспортом кодом."},
+			{"Drag and resize HUD elements, coming soon.", "Перетаскивание и размер элементов HUD — скоро."},
+			{"Welcome back", "С возвращением"},
+			{"Connected", "Подключён"},
+			{"Offline", "Не в игре"},
+			{"Quick actions", "Быстрые действия"},
+			{"Open the server list", "Открыть список серверов"},
+		};
+		if(!IsRussian())
+			return pEnglish;
+		const auto It = s_Russian.find(pEnglish);
+		return It != s_Russian.end() ? It->second : pEnglish;
+	}
+} // namespace XcUi
