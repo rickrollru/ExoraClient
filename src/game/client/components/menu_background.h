@@ -112,6 +112,7 @@ public:
 	void ChangePosition(int PositionNumber);
 
 	std::vector<CTheme> &GetThemes();
+	void XcRescanThemes(); // XClient: the theme list is read again on the next GetThemes
 };
 
 std::array<vec2, CMenuBackground::NUM_POS> GenerateMenuBackgroundPositions();

@@ -31,5 +31,11 @@
 #define XC_ICON_ROTATE "\xef\x8b\xb1" // U+F2F1
 #define XC_ICON_MAP "\xef\x89\xb9" // U+F279
 #define XC_ICON_ARROW_RIGHT "\xef\x81\xa1" // U+F061
+#define XC_ICON_IMAGE "\xef\x80\xbe" // U+F03E
+#define XC_ICON_TRASH "\xef\x87\xb8" // U+F1F8
+#define XC_ICON_PLUS "\xef\x81\xa7" // U+F067
+#define XC_ICON_FILM "\xef\x80\x88" // U+F008
+#define XC_ICON_CHECK "\xef\x80\x8c" // U+F00C
+#define XC_ICON_FOLDER_OPEN "\xef\x81\xbc" // U+F07C
 
 #endif

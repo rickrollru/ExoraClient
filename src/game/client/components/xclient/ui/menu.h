@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_UI_MENU_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_UI_MENU_H
 
+#include "backgrounds.h"
 #include "imgui_backend.h"
 
 #include <engine/console.h>
@@ -32,6 +33,7 @@ public:
 	enum
 	{
 		SETTINGS_INTERFACE = 0,
+		SETTINGS_BACKGROUND,
 		SETTINGS_PLAYER,
 		SETTINGS_CONTROLS,
 		SETTINGS_SOUND,
@@ -87,6 +89,32 @@ private:
 	float m_DeleteArmedUntil = 0.0f;
 	std::string m_ConfigStatus;
 	float m_ConfigStatusTime = -10.0f;
+
+	// menu background (menu_bg.cpp)
+	enum
+	{
+		BG_ANIMATED = 0,
+		BG_BLUR_GAME,
+		BG_MAP, // the menu map offline, the game without blur online
+		BG_CUSTOM,
+	};
+	CXcBackgrounds m_Backgrounds;
+	bool m_BackgroundsScanned = false;
+	char m_aBgPath[512] = {};
+	// textures must not be unloaded while the ImGui frame that draws them is being built,
+	// so adding and deleting happen at the start of the next frame
+	std::string m_BgPendingAdd;
+	std::string m_BgPendingRemove; // "f:<file>" or "m:<map>"
+	std::string m_BgDeleteArmed; // "f:<file>" or "m:<map>" waiting for the second click
+	float m_BgDeleteArmedUntil = 0.0f;
+	std::string m_BgStatus;
+	float m_BgStatusTime = -10.0f;
+	int EffectiveBackground() const;
+	void HandleBackgroundFile(const char *pPath);
+	void RemoveBackground(const std::string &Key);
+	void SetBgStatus(const char *pText);
+	bool BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin = 0.0f, float UMax = 1.0f);
+	void RenderSettingsBackground();
 
 	// last applied style values, the style and fonts are rebuilt when they change
 	int m_AppliedTheme = -1;

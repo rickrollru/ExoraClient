@@ -40,12 +40,15 @@ void CXcMenu::ConToggleMenu(IConsole::IResult *pResult, void *pUserData)
 void CXcMenu::OnInit()
 {
 	m_Backend.Init(Graphics(), Input(), Storage());
+	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
 	m_Active = g_Config.m_XcNewMenu && !IsOnline();
 	m_OpenAnimation = m_Active ? 1.0f : 0.0f;
 }
 
 void CXcMenu::OnShutdown()
 {
+	Client()->XcSetDropCapture(false);
+	m_Backgrounds.Shutdown();
 	m_Backend.Shutdown();
 }
 
@@ -171,33 +174,40 @@ void CXcMenu::UpdateStyle()
 
 bool CXcMenu::AnimatedBackground() const
 {
-	// in the main menu there is no game to blur, so the blur mode shows the animated background too
-	return g_Config.m_XcMenuBackground == 1 || (g_Config.m_XcMenuBackground == 0 && !IsOnline());
+	return EffectiveBackground() == BG_ANIMATED;
 }
 
 void CXcMenu::RenderBackground()
 {
-	if(!IsOnline())
+	const float Width = (float)Graphics()->ScreenWidth();
+	const float Height = (float)Graphics()->ScreenHeight();
+	switch(EffectiveBackground())
 	{
-		if(g_Config.m_XcMenuBackground == 2 && GameClient()->m_MenuBackground.Render())
-			return;
-		if(AnimatedBackground())
-			return; // drawn by ImGui in RenderFrame
-		// the map background is not loaded: plain theme color
-		const float Width = (float)Graphics()->ScreenWidth();
-		const float Height = (float)Graphics()->ScreenHeight();
-		const ImVec4 &Bg = Theme().m_Background;
-		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Width, Height));
-		Graphics()->TextureClear();
-		Graphics()->QuadsBegin();
-		Graphics()->SetColor(Bg.x, Bg.y, Bg.z, 1.0f);
-		const IGraphics::CQuadItem Item(0.0f, 0.0f, Width, Height);
-		Graphics()->QuadsDrawTL(&Item, 1);
-		Graphics()->QuadsEnd();
-		return;
-	}
-	if(g_Config.m_XcMenuBlur && g_Config.m_XcMenuBackground != 2)
+	case BG_CUSTOM:
+		m_Backgrounds.Render(Width, Height, IsOnline() ? m_OpenAnimation : 1.0f);
+		if(g_Config.m_XcMenuBgBlur)
+			GameClient()->m_FxRenderer.BlurBackground(IsOnline() ? m_OpenAnimation : 1.0f, true);
+		break;
+	case BG_BLUR_GAME:
 		GameClient()->m_FxRenderer.BlurBackground(m_OpenAnimation);
+		break;
+	case BG_MAP:
+		if(!IsOnline() && !GameClient()->m_MenuBackground.Render())
+		{
+			// the map is not loaded: plain theme color
+			const ImVec4 &Bg = Theme().m_Background;
+			Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Width, Height));
+			Graphics()->TextureClear();
+			Graphics()->QuadsBegin();
+			Graphics()->SetColor(Bg.x, Bg.y, Bg.z, 1.0f);
+			const IGraphics::CQuadItem Item(0.0f, 0.0f, Width, Height);
+			Graphics()->QuadsDrawTL(&Item, 1);
+			Graphics()->QuadsEnd();
+		}
+		break;
+	default: // animated, drawn by ImGui in RenderFrame
+		break;
+	}
 }
 
 // a filled circle whose color fades from the center to fully transparent at the edge
@@ -340,6 +350,7 @@ void CXcMenu::OnRender()
 	if(!m_Backend.IsReady() || !g_Config.m_XcNewMenu)
 	{
 		m_OpenAnimation = 0.0f;
+		Client()->XcSetDropCapture(false);
 		return;
 	}
 	// the classic menu was closed in the main menu: there must always be a menu
@@ -348,6 +359,15 @@ void CXcMenu::OnRender()
 
 	// fade and slide in about 180 ms
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+
+	// own background: loaded only while it is chosen, so it does not hold video memory otherwise
+	m_Backgrounds.Update(g_Config.m_XcMenuBackground == 3 ? g_Config.m_XcMenuBgFile : "", Dt, g_Config.m_XcMenuBgGifSpeed / 100.0f);
+	// files dropped on the window while the background settings are open become backgrounds
+	const bool CaptureDrops = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_BACKGROUND;
+	Client()->XcSetDropCapture(CaptureDrops);
+	char aDropped[IO_MAX_PATH_LENGTH];
+	if(CaptureDrops && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
+		HandleBackgroundFile(aDropped);
 	const float Target = m_Active ? 1.0f : 0.0f;
 	const float Speed = AnimationSpeed() > 0.0f ? 6.0f * AnimationSpeed() : 1000.0f;
 	m_OpenAnimation = m_OpenAnimation < Target ? std::min(m_OpenAnimation + Dt * Speed, Target) : std::max(m_OpenAnimation - Dt * Speed, Target);
@@ -380,8 +400,11 @@ void CXcMenu::RenderFrame()
 	ImGui::GetStyle().Alpha = Open;
 
 	ImDrawList *pBackground = ImGui::GetBackgroundDrawList();
-	if(AnimatedBackground())
+	const int Background = EffectiveBackground();
+	if(Background == BG_ANIMATED)
 		RenderAnimatedBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
+	else if(Background == BG_CUSTOM)
+		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(ImVec4(0, 0, 0, 1), g_Config.m_XcMenuBgDim / 100.0f * (IsOnline() ? Open : 1.0f)));
 	else // darken the game or the map a little behind the menu
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, (IsOnline() ? 0.35f : 0.15f) * Open));
 
