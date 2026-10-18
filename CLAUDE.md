@@ -130,6 +130,13 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   Настройки: `xc_weather` (0 выкл, 1 снег, 2 листья, 3 сакура, 4 пепел), `xc_weather_density`,
   `xc_weather_size`, `xc_weather_speed`, `xc_weather_alpha`, `xc_weather_ingame`, `xc_weather_menu`.
   Проверено: собирается на Linux. На Windows ещё не запускали.
+- 18.10.2026: Прыжки и бег (`xclient/jump_fx.cpp`): кольца / искры / звёзды при прыжке и двойном прыжке,
+  кольцо при приземлении (сила зависит от высоты падения), пыль при беге. Выбор «Мои / Дамми / Другие».
+  Настройки: `xc_jump_fx` (0 выкл, 1 кольца, 2 искры, 3 звёзды), `xc_jump_fx_air`, `xc_land_fx`, `xc_run_dust`,
+  `xc_jump_fx_size`, `xc_jump_fx_color`, `xc_jump_fx_self`, `xc_jump_fx_dummy`, `xc_jump_fx_others`.
+  Проверено на локальном сервере (Linux, программный OpenGL).
+- Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
+  жмём клавиши через xdotool и снимаем скрины (`import`).
 
 ## Соглашения по коду
 - Наш код лежит в `src/game/client/components/xclient/`, помечаем вставки в чужие файлы комментарием `// XClient`.
