@@ -8,15 +8,54 @@
 #include <engine/client.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/sound.h>
 
 #include <generated/protocol.h>
 
+#include <game/client/components/sounds.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/gameclient.h>
 
 #include <cmath>
 
 using namespace XcHelpers;
+
+void CXcEventFx::OnInit()
+{
+	static const char *const s_apNames[NUM_EVENT_SOUNDS] = {"finish", "record", "freeze", "unfreeze", "death", "teleport"};
+	for(int i = 0; i < NUM_EVENT_SOUNDS; i++)
+	{
+		char aPath[128];
+		str_format(aPath, sizeof(aPath), "xclient/sounds/%s.opus", s_apNames[i]);
+		m_aSounds[i] = Sound()->IsSoundEnabled() ? Sound()->LoadOpus(aPath) : -1;
+	}
+}
+
+void CXcEventFx::OnShutdown()
+{
+	for(int &Sample : m_aSounds)
+	{
+		if(Sample >= 0)
+			Sound()->UnloadSample(Sample);
+		Sample = -1;
+	}
+}
+
+void CXcEventFx::PlayEventSound(int Sound)
+{
+	if(!g_Config.m_XcEventSounds || Sound < 0 || Sound >= NUM_EVENT_SOUNDS || m_aSounds[Sound] < 0)
+		return;
+	const int *apEnabled[NUM_EVENT_SOUNDS] = {&g_Config.m_XcEventSoundFinish, &g_Config.m_XcEventSoundFinish, &g_Config.m_XcEventSoundFreeze,
+		&g_Config.m_XcEventSoundFreeze, &g_Config.m_XcEventSoundDeath, &g_Config.m_XcEventSoundTeleport};
+	if(!*apEnabled[Sound])
+		return;
+	this->Sound()->Play(CSounds::CHN_GUI, m_aSounds[Sound], 0, g_Config.m_XcEventSoundVolume / 100.0f);
+}
+
+bool CXcEventFx::IsOwn(int ClientId) const
+{
+	return ClientId >= 0 && (ClientId == GameClient()->m_aLocalIds[0] || (Client()->DummyConnected() && ClientId == GameClient()->m_aLocalIds[1]));
+}
 
 void CXcEventFx::OnReset()
 {
@@ -48,9 +87,11 @@ void CXcEventFx::OnMessage(int MsgType, void *pRawMsg)
 		GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
 		Finish(GameClient()->m_aClients[ClientId].m_RenderPos, ClientId);
 
-	// the banner only for the own tees
-	const bool Own = ClientId == GameClient()->m_aLocalIds[0] || (Client()->DummyConnected() && ClientId == GameClient()->m_aLocalIds[1]);
-	if(!Own || !g_Config.m_XcFinishBanner)
+	// the banner and the sound only for the own tees
+	if(!IsOwn(ClientId))
+		return;
+	PlayEventSound(pMsg->m_RecordPersonal || pMsg->m_RecordServer ? EVENT_SOUND_RECORD : EVENT_SOUND_FINISH);
+	if(!g_Config.m_XcFinishBanner)
 		return;
 	char aTime[32];
 	const int Millis = pMsg->m_Time;
@@ -163,6 +204,8 @@ void CXcEventFx::Fireworks(vec2 Pos, int ClientId)
 
 void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 {
+	if(IsOwn(ClientId))
+		PlayEventSound(EVENT_SOUND_DEATH);
 	const int Style = g_Config.m_XcDeathFx;
 	if(Style == DEATH_OFF || ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return;
@@ -343,9 +386,18 @@ void CXcEventFx::OnRender()
 			continue;
 		}
 		const vec2 Pos = GameClient()->m_aClients[ClientId].m_RenderPos;
-		if(m_aLastValid[i] && g_Config.m_XcTeleportFx && m_aSinceDeath[i] > 0.6f && distance(Pos, m_aLastPos[i]) > 260.0f &&
-			ShowFor(GameClient(), ClientId, 1, 1, 0))
-			TeleportFlash(m_aLastPos[i], Pos, ClientId);
+		if(m_aLastValid[i] && m_aSinceDeath[i] > 0.6f && distance(Pos, m_aLastPos[i]) > 260.0f)
+		{
+			if(g_Config.m_XcTeleportFx)
+				TeleportFlash(m_aLastPos[i], Pos, ClientId);
+			PlayEventSound(EVENT_SOUND_TELEPORT);
+		}
+		// freeze sounds for the tee you control (the dummy would double them)
+		const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
+		const bool Frozen = Data.m_FreezeEnd != 0 || Data.m_RegularPredicted.m_FreezeEnd != 0;
+		if(m_aLastValid[i] && Frozen != m_aWasFrozen[i] && i == g_Config.m_ClDummy && m_aSinceDeath[i] > 0.3f)
+			PlayEventSound(Frozen ? EVENT_SOUND_FREEZE : EVENT_SOUND_UNFREEZE);
+		m_aWasFrozen[i] = Frozen;
 		m_aLastPos[i] = Pos;
 		m_aLastValid[i] = true;
 	}

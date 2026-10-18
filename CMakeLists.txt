@@ -2197,11 +2197,17 @@ set(EXPECTED_DATA
   xclient/hats/top_hat.png
   xclient/hats/wizard_hat.png
   xclient/sounds/click.opus
+  xclient/sounds/death.opus
   xclient/sounds/error.opus
+  xclient/sounds/finish.opus
+  xclient/sounds/freeze.opus
   xclient/sounds/notify.opus
+  xclient/sounds/record.opus
   xclient/sounds/tab.opus
+  xclient/sounds/teleport.opus
   xclient/sounds/toggle_off.opus
   xclient/sounds/toggle_on.opus
+  xclient/sounds/unfreeze.opus
   # tidy-alphabetical-end
 )
 

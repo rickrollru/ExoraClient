@@ -226,6 +226,44 @@ void CXcMenu::RenderVisualsEvents()
 		EffectColorPicker("##teleport_color", &g_Config.m_XcTeleportColorMode, &g_Config.m_XcTeleportColor);
 		EndCard();
 	}
+	if(BeginCard("##fx_event_sounds", Tr("Event sounds"), Tr("Short sounds when you freeze, finish, set a record or teleport"), &g_Config.m_XcEventSounds))
+	{
+		ConfigSlider(Tr("Volume"), "xc_event_sound_volume", &g_Config.m_XcEventSoundVolume, 0, 100, "%d%%");
+		ToggleRow(Tr("Freeze and unfreeze"), "xc_event_sound_freeze", &g_Config.m_XcEventSoundFreeze);
+		ToggleRow(Tr("Finish and records"), "xc_event_sound_finish", &g_Config.m_XcEventSoundFinish);
+		ToggleRow(Tr("Teleports"), "xc_event_sound_teleport", &g_Config.m_XcEventSoundTeleport);
+		ToggleRow(Tr("Death"), "xc_event_sound_death", &g_Config.m_XcEventSoundDeath);
+		// listen without playing
+		const char *apNames[] = {Tr("Finish"), Tr("Record"), Tr("Freeze"), Tr("Unfreeze"), Tr("Death"), Tr("Teleport")};
+		ParamLabel(Tr("Listen"));
+		const float Gap = S(6.0f);
+		const float Width = (AvailWidth() - Gap * 2.0f) / 3.0f;
+		for(int i = 0; i < CXcEventFx::NUM_EVENT_SOUNDS; i++)
+		{
+			if(i % 3)
+				ImGui::SameLine(0.0f, Gap);
+			ImGui::PushID(i);
+			if(Button(apNames[i], false, Width))
+			{
+				// the preview plays even when this sound is switched off
+				const int Old = g_Config.m_XcEventSounds;
+				int *apEnabled[] = {&g_Config.m_XcEventSoundFinish, &g_Config.m_XcEventSoundFreeze, &g_Config.m_XcEventSoundDeath, &g_Config.m_XcEventSoundTeleport};
+				int aOld[4];
+				for(int k = 0; k < 4; k++)
+				{
+					aOld[k] = *apEnabled[k];
+					*apEnabled[k] = 1;
+				}
+				g_Config.m_XcEventSounds = 1;
+				GameClient()->m_XcEventFx.PlayEventSound(i);
+				g_Config.m_XcEventSounds = Old;
+				for(int k = 0; k < 4; k++)
+					*apEnabled[k] = aOld[k];
+			}
+			ImGui::PopID();
+		}
+		EndCard();
+	}
 	if(BeginCard("##fx_dummy_arrow", Tr("Dummy arrow"), Tr("A glowing arrow at the screen edge shows where the dummy is"), &g_Config.m_XcDummyArrow))
 	{
 		EffectColorPicker("##arrow_color", &g_Config.m_XcDummyArrowColorMode, &g_Config.m_XcDummyArrowColor);

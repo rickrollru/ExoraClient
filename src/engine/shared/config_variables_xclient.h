@@ -149,6 +149,14 @@ MACRO_CONFIG_INT(XcDummyArrowSize, xc_dummy_arrow_size, 100, 50, 250, CFGFLAG_CL
 MACRO_CONFIG_INT(XcDummyArrowColorMode, xc_dummy_arrow_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcDummyArrowColor, xc_dummy_arrow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color")
 
+// Event sounds (only for your own tee and dummy)
+MACRO_CONFIG_INT(XcEventSounds, xc_event_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "XClient sounds on game events of your own tees")
+MACRO_CONFIG_INT(XcEventSoundVolume, xc_event_sound_volume, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Volume of the event sounds in percent")
+MACRO_CONFIG_INT(XcEventSoundFreeze, xc_event_sound_freeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you freeze and unfreeze")
+MACRO_CONFIG_INT(XcEventSoundFinish, xc_event_sound_finish, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound at the finish and for a new record")
+MACRO_CONFIG_INT(XcEventSoundDeath, xc_event_sound_death, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you die")
+MACRO_CONFIG_INT(XcEventSoundTeleport, xc_event_sound_teleport, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you are teleported")
+
 // Own hats: a picture or gif from xclient/hats on top of the tee (only you see it)
 MACRO_CONFIG_INT(XcHat, xc_hat, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show your own hat picture on the tee")
 MACRO_CONFIG_STR(XcHatFile, xc_hat_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hat picture or gif in xclient/hats")
