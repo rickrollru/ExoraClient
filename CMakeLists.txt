@@ -2966,6 +2966,8 @@ if(CLIENT)
     components/xclient/accessory.h
     components/xclient/event_fx.cpp
     components/xclient/event_fx.h
+    components/xclient/floaters.cpp
+    components/xclient/floaters.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
     components/xclient/hats.cpp

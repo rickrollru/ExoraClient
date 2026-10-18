@@ -162,6 +162,7 @@ void CGameClient::OnConsoleInit()
 					      &m_TeeGlow, // XClient
 					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
+					      &m_XcFloaters, // XClient: floating cubes and orbs, over the map
 					      &m_MovingTilesForeground, // TClient
 					      &m_Outlines, // TClient
 					      &m_Mumble, // TClient
