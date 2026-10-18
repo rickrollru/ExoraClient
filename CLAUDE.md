@@ -170,6 +170,11 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
     (Kawase) и чёткую обводку по силуэту и возвращает ти поверх. Работа ограничена рамкой вокруг ти.
     Настройки: `xc_glow`, `xc_glow_color`, `xc_glow_rainbow`, `xc_glow_size`, `xc_glow_strength`, `xc_glow_outline`,
     `xc_glow_pulse`, `xc_glow_self/dummy/others`.
+- 18.10.2026: По решению Макса все визуалы УБРАНЫ (погода, прыжки, аксессуар, стили хука, неоновый контур,
+  частицы) — он позже объяснит, какими их хочет видеть. Код остался в истории git (коммит 066923f76 и раньше).
+  Оставлен только рендер-модуль: `backend/xclient/xc_renderer.cpp` (SDF-фигуры, bloom, блюр, захват для контура),
+  шлюз `components/xclient/fx_renderer.cpp` + `xc_helpers.cpp`, блюр под игровым меню (`xc_menu_blur`).
+  Дальше: новое меню и настройки на ImGui (шаг 4–6 MVP).
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`).
 
