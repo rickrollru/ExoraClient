@@ -7,7 +7,8 @@
 
 #if defined(CONF_FAMILY_WINDOWS)
 
-#if defined(_MSC_VER) && __has_include(<winrt/Windows.Media.Control.h>)
+// set by CMake when a test program with the same calls builds and links
+#if defined(CONF_XC_MEDIA_WINRT)
 #define XC_MEDIA_WINRT 1
 #endif
 
@@ -158,7 +159,7 @@ void XcMediaPlatform::Command(CXcMediaSession::ECommand Command)
 
 #else
 
-// built without the Windows SDK C++/WinRT headers (for example with MinGW)
+// built without C++/WinRT (MinGW, an old Windows SDK): no music player
 bool XcMediaPlatform::Supported() { return false; }
 void XcMediaPlatform::ThreadInit() {}
 void XcMediaPlatform::ThreadShutdown() {}
