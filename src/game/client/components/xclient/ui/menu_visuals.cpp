@@ -64,6 +64,22 @@ void CXcMenu::RenderVisualsTee()
 		EndCard();
 	}
 
+	const char *apGradients[] = {Tr("Accent"), Tr("Rainbow"), Tr("Skin"), Tr("Two colors")};
+	if(StyleCard("##fx_name_gradient", Tr("Gradient name"), Tr("The name above the tee in a smooth gradient that can flow"), "xc_name_gradient", &g_Config.m_XcNameGradient, apGradients, 4))
+	{
+		if(g_Config.m_XcNameGradient == 4)
+		{
+			// the own part of the picker for each of the two colors
+			int OwnMode = 1;
+			ParamLabel(Tr("First color"));
+			EffectColorPicker("##gradient_color1", &OwnMode, &g_Config.m_XcNameGradientColor1);
+			ParamLabel(Tr("Second color"));
+			EffectColorPicker("##gradient_color2", &OwnMode, &g_Config.m_XcNameGradientColor2);
+		}
+		ToggleRow(Tr("Flowing"), "xc_name_gradient_flow", &g_Config.m_XcNameGradientFlow);
+		TargetChips("##gradient_targets", &g_Config.m_XcNameGradientSelf, &g_Config.m_XcNameGradientDummy, &g_Config.m_XcNameGradientOthers);
+		EndCard();
+	}
 	if(BeginCard("##fx_jelly", Tr("Jelly tee"), Tr("Squashes when landing, stretches when jumping and wobbles back"), &g_Config.m_XcJelly))
 	{
 		ConfigSlider(Tr("Softness"), "xc_jelly_strength", &g_Config.m_XcJellyStrength, 10, 300, "%d%%");
