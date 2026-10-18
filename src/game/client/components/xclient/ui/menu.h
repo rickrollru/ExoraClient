@@ -7,6 +7,11 @@
 
 #include <game/client/component.h>
 
+#include <string>
+#include <vector>
+
+class CServerInfo;
+
 struct ImVec2;
 
 // The new XClient menu (Dear ImGui). Replaces the classic menu on Esc and in the main menu,
@@ -58,6 +63,13 @@ private:
 	float m_ScrollTarget = 0.0f;
 	bool m_WantClassic = false;
 
+	// servers page
+	char m_aServerSearch[64] = {};
+	int m_ServerFilter = 0;
+	std::string m_SelectedServer; // address
+	std::vector<const CServerInfo *> m_vServers;
+	bool m_ServersRequested = false;
+
 	// last applied style values, the style and fonts are rebuilt when they change
 	int m_AppliedTheme = -1;
 	int m_AppliedAccent = -1;
@@ -73,6 +85,9 @@ private:
 	void RenderTopBar(float Width);
 	void RenderHome();
 	void RenderServers();
+	void UpdateServerList();
+	bool RenderServerCard(const CServerInfo *pInfo, float Width, float Height);
+	void RenderServerDetails(const CServerInfo *pInfo, float Height);
 	void RenderVisuals();
 	void RenderConfigs();
 	void RenderPlaceholder(const char *pIcon, const char *pTitle, const char *pText, bool ClassicButton);
