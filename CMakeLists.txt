@@ -2999,6 +2999,7 @@ if(CLIENT)
     components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp
+    components/xclient/ui/menu_tclient.cpp
     components/xclient/ui/menu_visuals.cpp
     components/xclient/ui/player_stats.cpp
     components/xclient/ui/player_stats.h
