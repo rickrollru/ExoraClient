@@ -198,9 +198,8 @@ void CXcMenu::RenderSettingsInterface()
 	{
 		const char *apModes[] = {Tr("Blur"), Tr("Animated"), Tr("Map")};
 		ConfigSegmented("##bg_mode", "xc_menu_background", &g_Config.m_XcMenuBackground, apModes, 3);
-		if(g_Config.m_XcMenuBackground != 0)
-			Description(Tr("Coming soon"));
-		ToggleRow(Tr("Blur the game behind the menu"), "xc_menu_blur", &g_Config.m_XcMenuBlur);
+		if(g_Config.m_XcMenuBackground != 2)
+			ToggleRow(Tr("Blur the game behind the menu"), "xc_menu_blur", &g_Config.m_XcMenuBlur);
 		EndCard();
 	}
 
