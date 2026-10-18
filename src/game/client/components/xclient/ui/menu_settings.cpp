@@ -433,6 +433,7 @@ void CXcMenu::RenderSettingsHud()
 	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list in the colors of the menu, your row in the accent color"), &g_Config.m_XcHudScoreboard))
 	{
 		Description(Tr("Press Tab in game to see it"));
+		ToggleRow(Tr("Vote panel in the same style"), "xc_hud_votes", &g_Config.m_XcHudVotes);
 		EndCard();
 	}
 	if(BeginCard("##hud_wheels", Tr("Wheels"), Tr("Emote wheel and spectator menu in the colors of the menu"), &g_Config.m_XcHudWheels))

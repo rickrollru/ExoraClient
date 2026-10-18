@@ -354,7 +354,8 @@ void CVoting::Render()
 	}
 
 	CUIRect View = {0.0f, 60.0f, 120.0f, 38.0f};
-	View.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, 3.0f);
+	// XClient: menu colors (xc_hud_votes)
+	View.Draw(g_Config.m_XcHudVotes ? GameClient()->m_XcHud.ScoreboardPanelColor() : ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, g_Config.m_XcHudVotes ? 6.0f : 3.0f);
 	View.Margin(3.0f, &View);
 
 	SLabelProperties Props;
@@ -409,7 +410,7 @@ void CVoting::Render()
 
 void CVoting::RenderBars(CUIRect Bars) const
 {
-	Bars.Draw(ColorRGBA(0.8f, 0.8f, 0.8f, 0.5f), IGraphics::CORNER_ALL, Bars.h / 2.0f);
+	Bars.Draw(g_Config.m_XcHudVotes ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.12f) : ColorRGBA(0.8f, 0.8f, 0.8f, 0.5f), IGraphics::CORNER_ALL, Bars.h / 2.0f); // XClient
 
 	CUIRect Splitter;
 	Bars.VMargin((Bars.w - 2.0f) / 2.0f, &Splitter);
@@ -421,14 +422,14 @@ void CVoting::RenderBars(CUIRect Bars) const
 		{
 			CUIRect YesArea;
 			Bars.VSplitLeft(Bars.w * m_Yes / m_Total, &YesArea, nullptr);
-			YesArea.Draw(ColorRGBA(0.2f, 0.9f, 0.2f, 0.85f), IGraphics::CORNER_ALL, YesArea.h / 2.0f);
+			YesArea.Draw(g_Config.m_XcHudVotes ? ColorRGBA(0.24f, 0.84f, 0.64f, 0.95f) : ColorRGBA(0.2f, 0.9f, 0.2f, 0.85f), IGraphics::CORNER_ALL, YesArea.h / 2.0f); // XClient: mint
 		}
 
 		if(m_No)
 		{
 			CUIRect NoArea;
 			Bars.VSplitRight(Bars.w * m_No / m_Total, nullptr, &NoArea);
-			NoArea.Draw(ColorRGBA(0.9f, 0.2f, 0.2f, 0.85f), IGraphics::CORNER_ALL, NoArea.h / 2.0f);
+			NoArea.Draw(g_Config.m_XcHudVotes ? ColorRGBA(1.0f, 0.3f, 0.3f, 0.95f) : ColorRGBA(0.9f, 0.2f, 0.2f, 0.85f), IGraphics::CORNER_ALL, NoArea.h / 2.0f); // XClient: red
 		}
 	}
 }
