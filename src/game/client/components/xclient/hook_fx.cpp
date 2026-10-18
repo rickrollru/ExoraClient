@@ -1,5 +1,6 @@
 #include "hook_fx.h"
 
+#include "fx_renderer.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -62,6 +63,40 @@ void CHookFx::RenderLine(vec2 PlayerPos, vec2 HookPos, float Alpha) const
 
 	const ColorRGBA Main = Color(Alpha);
 	const ColorRGBA Clear = Main.WithAlpha(0.0f);
+	const ColorRGBA Bright(mix(Main.r, 1.0f, 0.6f), mix(Main.g, 1.0f, 0.6f), mix(Main.b, 1.0f, 0.6f), Alpha);
+	// energy pulses running from the hook to the player
+	const float PulseSpacing = 48.0f;
+	const float PulseOffset = std::fmod(Client()->GlobalTime() * 260.0f, PulseSpacing);
+	const auto PulseFade = [&](float f) { return std::min(std::min(f, Length - f) / 24.0f, 1.0f); };
+
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	if(Fx.ModuleActive())
+	{
+		// render module: smooth capsules, the glow also feeds the bloom
+		m_vLineShapes.clear();
+		if(Style == STYLE_CHAIN)
+		{
+			m_vLineShapes.push_back(FxShape::Line(PlayerPos, HookPos, Width, Main).GlowOnly(Width * 2.5f, 1.0f).Additive());
+		}
+		else if(Style == STYLE_GLOW)
+		{
+			CFxRenderer::AppendGlowing(m_vLineShapes, FxShape::Line(PlayerPos, HookPos, Width, Main), Width * 3.0f, 0.35f);
+			// thin lighter center keeps the line looking hot without washing out the color
+			m_vLineShapes.push_back(FxShape::Line(PlayerPos, HookPos, Width * 0.3f, ColorRGBA(mix(Main.r, 1.0f, 0.35f), mix(Main.g, 1.0f, 0.35f), mix(Main.b, 1.0f, 0.35f), Alpha)));
+			for(float f = PulseOffset; f < Length; f += PulseSpacing)
+			{
+				const float Fade = PulseFade(f);
+				if(Fade > 0.0f)
+					m_vLineShapes.push_back(FxShape::Circle(HookPos - Dir * f, Width * 0.55f, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha * 0.7f * Fade)).Glow(Width * 1.5f, 0.4f).Additive());
+			}
+		}
+		else
+		{
+			m_vLineShapes.push_back(FxShape::Line(PlayerPos, HookPos, Width, Main));
+		}
+		Fx.Draw(m_vLineShapes, Style == STYLE_GLOW);
+		return;
+	}
 
 	// band between two distances from the center line, with a color at each edge
 	const auto Band = [&](float Inner, float Outer, ColorRGBA InnerColor, ColorRGBA OuterColor) {
@@ -87,14 +122,11 @@ void CHookFx::RenderLine(vec2 PlayerPos, vec2 HookPos, float Alpha) const
 	{
 		const float GlowSize = Width * 2.5f;
 		Band(Width * 0.5f, Width * 0.5f + GlowSize, Main.WithMultipliedAlpha(0.45f), Clear);
-		Band(0.0f, Width * 0.5f, ColorRGBA(mix(Main.r, 1.0f, 0.6f), mix(Main.g, 1.0f, 0.6f), mix(Main.b, 1.0f, 0.6f), Alpha), Main);
+		Band(0.0f, Width * 0.5f, Bright, Main);
 
-		// energy pulses running from the hook to the player
-		const float Spacing = 48.0f;
-		const float Offset = std::fmod(Client()->GlobalTime() * 260.0f, Spacing);
-		for(float f = Offset; f < Length; f += Spacing)
+		for(float f = PulseOffset; f < Length; f += PulseSpacing)
 		{
-			const float Fade = std::min(std::min(f, Length - f) / 24.0f, 1.0f);
+			const float Fade = PulseFade(f);
 			if(Fade <= 0.0f)
 				continue;
 			DrawSoftCircle(Graphics(), HookPos - Dir * f, Width * 0.55f, Width * 0.9f, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha * 0.85f * Fade));
