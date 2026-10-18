@@ -153,6 +153,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Players,
 					      &m_JumpFx, // XClient
 					      &m_WorldFx, // XClient: freeze and hammer effects
+					      &m_XcEventFx, // XClient: finish, death, spawn and teleport effects, dummy arrow
 					      &m_Accessory, // XClient
 					      &m_HookFx, // XClient
 					      &m_FxRenderer, // XClient: draws the queued world effects
