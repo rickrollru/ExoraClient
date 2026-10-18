@@ -280,12 +280,14 @@ namespace
 		int m_MenuBlur;
 		int m_BgBlur;
 		int m_Bloom;
+		int m_TeeGlow; // the neon outline draws every tee a second time
+		int m_Sparkles;
 	};
 	// low turns off everything heavy, medium keeps the look with cheaper bloom, high is everything
 	const SPerformance gs_aPerformance[] = {
-		{0, 0, 0, 0, 0},
-		{1, 1, 1, 0, 80},
-		{1, 2, 1, 0, 100},
+		{0, 0, 0, 0, 0, 0, 0},
+		{1, 1, 1, 0, 80, 1, 1},
+		{1, 2, 1, 0, 100, 1, 1},
 	};
 } // namespace
 
@@ -294,7 +296,8 @@ int CXcMenu::CurrentPerformancePreset() const
 	for(int i = 0; i < 3; i++)
 	{
 		const SPerformance &p = gs_aPerformance[i];
-		if(g_Config.m_GfxHighDetail == p.m_HighDetail && g_Config.m_XcFxQuality == p.m_FxQuality && g_Config.m_XcMenuBlur == p.m_MenuBlur && g_Config.m_XcMenuBgBlur == p.m_BgBlur && g_Config.m_XcBloom == p.m_Bloom)
+		if(g_Config.m_GfxHighDetail == p.m_HighDetail && g_Config.m_XcFxQuality == p.m_FxQuality && g_Config.m_XcMenuBlur == p.m_MenuBlur && g_Config.m_XcMenuBgBlur == p.m_BgBlur && g_Config.m_XcBloom == p.m_Bloom &&
+			g_Config.m_XcGlow == p.m_TeeGlow && g_Config.m_XcItemsSparkles == p.m_Sparkles)
 			return i;
 	}
 	return -1;
@@ -313,10 +316,14 @@ void CXcMenu::RenderPerformance()
 		SetConfigInt("xc_menu_blur", p.m_MenuBlur);
 		SetConfigInt("xc_menu_bg_blur", p.m_BgBlur);
 		SetConfigInt("xc_bloom", p.m_Bloom);
+		SetConfigInt("xc_glow", p.m_TeeGlow);
+		SetConfigInt("xc_items_sparkles", p.m_Sparkles);
 	}
 	Description(Selected == 3 ? Tr("Your own mix, change anything below") : (Selected == 0 ? Tr("For weak computers: no blur, no bloom, simple map") : (Selected == 1 ? Tr("Balanced: blur and light bloom") : Tr("Everything on"))));
 	// each effect by hand
 	ToggleRow(Tr("Detailed map"), "gfx_high_detail", &g_Config.m_GfxHighDetail);
 	ToggleRow(Tr("Blur the game behind the menu"), "xc_menu_blur", &g_Config.m_XcMenuBlur);
 	ToggleRow(Tr("Blur own background"), "xc_menu_bg_blur", &g_Config.m_XcMenuBgBlur);
+	ToggleRow(Tr("Neon glow"), "xc_glow", &g_Config.m_XcGlow);
+	ToggleRow(Tr("Sparkles"), "xc_items_sparkles", &g_Config.m_XcItemsSparkles);
 }
