@@ -2190,10 +2190,16 @@ set(EXPECTED_DATA
   xclient/fonts/Unbounded-Bold.ttf
   xclient/fonts/Unbounded-Regular.ttf
   xclient/fonts/Unbounded-SemiBold.ttf
+  xclient/sounds/click.opus
+  xclient/sounds/error.opus
+  xclient/sounds/notify.opus
+  xclient/sounds/tab.opus
+  xclient/sounds/toggle_off.opus
+  xclient/sounds/toggle_on.opus
   # tidy-alphabetical-end
 )
 
-set_glob(DATA GLOB_RECURSE "cfg;chai;frag;json;map;otf;png;rules;ttc;ttf;txt;vert;wv" data ${EXPECTED_DATA})
+set_glob(DATA GLOB_RECURSE "cfg;chai;frag;json;map;opus;otf;png;rules;ttc;ttf;txt;vert;wv" data ${EXPECTED_DATA})
 
 ########################################################################
 # COPY DATA AND SHARED LIBS
@@ -2946,6 +2952,8 @@ if(CLIENT)
     components/xclient/fx_renderer.h
     components/xclient/ui/backgrounds.cpp
     components/xclient/ui/backgrounds.h
+    components/xclient/ui/feedback.cpp
+    components/xclient/ui/feedback.h
     components/xclient/ui/icons.h
     components/xclient/ui/imgui_backend.cpp
     components/xclient/ui/imgui_backend.h

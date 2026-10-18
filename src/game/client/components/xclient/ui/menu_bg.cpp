@@ -1,4 +1,5 @@
 // Menu background settings: animated / blurred game / map / own pictures and gifs.
+#include "feedback.h"
 #include "icons.h"
 #include "lang.h"
 #include "menu.h"
@@ -30,12 +31,6 @@ int CXcMenu::EffectiveBackground() const
 	}
 }
 
-void CXcMenu::SetBgStatus(const char *pText)
-{
-	m_BgStatus = pText;
-	m_BgStatusTime = (float)ImGui::GetTime();
-}
-
 void CXcMenu::HandleBackgroundFile(const char *pPath)
 {
 	// "Copy as path" in the Windows explorer puts quotes around the path
@@ -57,7 +52,7 @@ void CXcMenu::HandleBackgroundFile(const char *pPath)
 	case CXcBackgrounds::ADD_IMAGE:
 		SetConfigString("xc_menu_bg_file", aAdded);
 		SetConfigInt("xc_menu_background", 3);
-		SetBgStatus(Tr("Background added"));
+		Toast(Tr("Background added"));
 		m_aBgPath[0] = '\0';
 		break;
 	case CXcBackgrounds::ADD_MAP:
@@ -65,14 +60,14 @@ void CXcMenu::HandleBackgroundFile(const char *pPath)
 		SetConfigString("cl_menu_map", aAdded);
 		SetConfigInt("xc_menu_background", 2);
 		GameClient()->m_MenuBackground.LoadMenuBackground();
-		SetBgStatus(Tr("Map added"));
+		Toast(Tr("Map added"));
 		m_aBgPath[0] = '\0';
 		break;
 	case CXcBackgrounds::ADD_UNSUPPORTED:
-		SetBgStatus(Tr("Only png, jpg, gif, bmp and map files"));
+		Toast(Tr("Only png, jpg, gif, bmp and map files"), TOAST_ERROR);
 		break;
 	default:
-		SetBgStatus(Tr("Could not read this file"));
+		Toast(Tr("Could not read this file"), TOAST_ERROR);
 		break;
 	}
 }
@@ -84,7 +79,7 @@ void CXcMenu::RemoveBackground(const std::string &Key)
 	{
 		if(!m_Backgrounds.Remove(Name.c_str()))
 		{
-			SetBgStatus(Tr("Could not delete the file"));
+			Toast(Tr("Could not delete the file"), TOAST_ERROR);
 			return;
 		}
 		if(str_comp(g_Config.m_XcMenuBgFile, Name.c_str()) == 0)
@@ -96,7 +91,7 @@ void CXcMenu::RemoveBackground(const std::string &Key)
 		str_format(aPath, sizeof(aPath), "themes/%s.map", Name.c_str());
 		if(!Storage()->RemoveFile(aPath, IStorage::TYPE_SAVE))
 		{
-			SetBgStatus(Tr("Could not delete the file"));
+			Toast(Tr("Could not delete the file"), TOAST_ERROR);
 			return;
 		}
 		if(str_comp(g_Config.m_ClMenuMap, Name.c_str()) == 0)
@@ -106,7 +101,7 @@ void CXcMenu::RemoveBackground(const std::string &Key)
 		}
 		GameClient()->m_MenuBackground.XcRescanThemes();
 	}
-	SetBgStatus(Tr("Deleted"));
+	Toast(Tr("Deleted"));
 }
 
 // One picture in a gallery: image cropped to 16:9 with rounded corners, name below.
@@ -238,7 +233,6 @@ private:
 
 void CXcMenu::RenderSettingsBackground()
 {
-	const STheme &t = Theme();
 	if(!m_BackgroundsScanned)
 	{
 		m_Backgrounds.Refresh();
@@ -348,10 +342,6 @@ void CXcMenu::RenderSettingsBackground()
 			// files copied there by hand show up when the page is opened again
 			m_BackgroundsScanned = false;
 		}
-		const float StatusAlpha = std::clamp(3.0f - (float)(ImGui::GetTime() - m_BgStatusTime), 0.0f, 1.0f);
-		ImGui::PushFont(m_Backend.Fonts().m_pSmall);
-		ImGui::TextColored(ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, StatusAlpha), "%s", StatusAlpha > 0.0f ? m_BgStatus.c_str() : " ");
-		ImGui::PopFont();
 		EndCard();
 	}
 

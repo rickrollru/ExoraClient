@@ -1,5 +1,6 @@
 #include "menu.h"
 
+#include "feedback.h"
 #include "icons.h"
 #include "lang.h"
 #include "theme.h"
@@ -41,12 +42,42 @@ void CXcMenu::OnInit()
 {
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
+
+	// interface sounds, generated for XClient (data/xclient/sounds)
+	static const char *const s_apSounds[XcUi::NUM_SOUNDS] = {"click", "tab", "toggle_on", "toggle_off", "notify", "error"};
+	for(int i = 0; i < XcUi::NUM_SOUNDS; i++)
+	{
+		char aPath[IO_MAX_PATH_LENGTH];
+		str_format(aPath, sizeof(aPath), "xclient/sounds/%s.opus", s_apSounds[i]);
+		m_aUiSounds[i] = Sound()->IsSoundEnabled() ? Sound()->LoadOpus(aPath) : -1;
+	}
+	SetSoundPlayer(PlayUiSoundCallback, this);
 	m_Active = g_Config.m_XcNewMenu && !IsOnline();
 	m_OpenAnimation = m_Active ? 1.0f : 0.0f;
 }
 
+void CXcMenu::PlayUiSoundCallback(void *pUser, int Sound)
+{
+	CXcMenu *pSelf = static_cast<CXcMenu *>(pUser);
+	if(!g_Config.m_XcUiSounds || Sound < 0 || Sound >= XcUi::NUM_SOUNDS || pSelf->m_aUiSounds[Sound] < 0)
+		return;
+	// one widget can report a change several frames in a row, play each sound at most every 40 ms
+	const float Now = pSelf->Client()->GlobalTime();
+	if(Now - pSelf->m_aUiSoundTime[Sound] < 0.04f)
+		return;
+	pSelf->m_aUiSoundTime[Sound] = Now;
+	pSelf->Sound()->Play(CSounds::CHN_GUI, pSelf->m_aUiSounds[Sound], 0, g_Config.m_XcUiSoundVolume / 100.0f);
+}
+
 void CXcMenu::OnShutdown()
 {
+	SetSoundPlayer(nullptr, nullptr);
+	for(int &Sample : m_aUiSounds)
+	{
+		if(Sample >= 0)
+			Sound()->UnloadSample(Sample);
+		Sample = -1;
+	}
 	Client()->XcSetDropCapture(false);
 	m_Backgrounds.Shutdown();
 	m_Backend.Shutdown();
@@ -439,6 +470,8 @@ void CXcMenu::RenderFrame()
 
 	ImGui::PopFont();
 	ImGui::End();
+
+	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, (float)ImGui::GetTime(), Open);
 }
 
 void CXcMenu::RenderTopBar(float Width)

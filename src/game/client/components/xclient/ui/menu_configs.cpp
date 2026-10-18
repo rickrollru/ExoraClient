@@ -1,3 +1,4 @@
+#include "feedback.h"
 #include "icons.h"
 #include "lang.h"
 #include "menu.h"
@@ -170,12 +171,6 @@ void CXcMenu::RefreshConfigList()
 	m_ConfigsDirty = false;
 }
 
-void CXcMenu::SetConfigStatus(const char *pText)
-{
-	m_ConfigStatus = pText;
-	m_ConfigStatusTime = (float)ImGui::GetTime();
-}
-
 static void SanitizeName(char *pName)
 {
 	str_sanitize_filename(pName);
@@ -201,12 +196,7 @@ void CXcMenu::RenderConfigs()
 	ImGui::BeginChild("##config_list", ImVec2(ListWidth, Area.y), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
 	Header(Tr("Configs"));
 	Description(Tr("Your XClient settings, saved locally. Share a config with a short code."));
-	// short confirmation that fades out, its line is always reserved so nothing jumps
-	const float StatusAlpha = std::clamp(3.0f - (float)(ImGui::GetTime() - m_ConfigStatusTime), 0.0f, 1.0f);
-	ImGui::PushFont(Fonts().m_pLabel);
-	ImGui::TextColored(ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, StatusAlpha), "%s", StatusAlpha > 0.0f ? m_ConfigStatus.c_str() : " ");
-	ImGui::PopFont();
-	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+	ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
 
 	BeginCardGrid("##config_actions", 2);
 	if(BeginCard("##new", Tr("New config"), Tr("Saves your current settings")))
@@ -222,7 +212,7 @@ void CXcMenu::RenderConfigs()
 				m_SelectedConfig = aName;
 				m_SelectedCode.clear();
 				m_aNewConfigName[0] = '\0';
-				SetConfigStatus(Tr("Saved"));
+				Toast(Tr("Saved"));
 			}
 		}
 		EndCard();
@@ -241,11 +231,11 @@ void CXcMenu::RenderConfigs()
 				m_SelectedConfig = aName;
 				m_SelectedCode.clear();
 				m_aImportCode[0] = '\0';
-				SetConfigStatus(Tr("Imported"));
+				Toast(Tr("Imported"));
 			}
 			else
 			{
-				SetConfigStatus(Tr("This code is not a valid config"));
+				Toast(Tr("This code is not a valid config"), TOAST_ERROR);
 			}
 		}
 		EndCard();
@@ -343,14 +333,14 @@ void CXcMenu::RenderConfigs()
 					Console()->ExecuteLine(Line.c_str(), IConsole::CLIENT_ID_UNSPECIFIED, false);
 					Start = End == std::string::npos ? Safe.size() : End + 1;
 				}
-				SetConfigStatus(Tr("Loaded"));
+				Toast(Tr("Loaded"));
 			}
 		}
 		if(Button(Tr("Overwrite with current"), false, -1.0f))
 		{
 			WriteConfig(Selected->m_Name.c_str(), CurrentConfigText());
 			m_SelectedCode.clear();
-			SetConfigStatus(Tr("Saved"));
+			Toast(Tr("Saved"));
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
@@ -367,7 +357,7 @@ void CXcMenu::RenderConfigs()
 			{
 				m_SelectedConfig = aNewName;
 				m_ConfigsDirty = true;
-				SetConfigStatus(Tr("Renamed"));
+				Toast(Tr("Renamed"));
 			}
 		}
 
@@ -381,7 +371,7 @@ void CXcMenu::RenderConfigs()
 				m_SelectedConfig.clear();
 				m_ConfigsDirty = true;
 				m_DeleteArmedUntil = 0.0f;
-				SetConfigStatus(Tr("Deleted"));
+				Toast(Tr("Deleted"));
 			}
 			else
 			{
@@ -405,7 +395,7 @@ void CXcMenu::RenderConfigs()
 		if(Button(Tr("Copy code"), false, -1.0f))
 		{
 			Input()->SetClipboardText(m_SelectedCode.c_str());
-			SetConfigStatus(Tr("Code copied"));
+			Toast(Tr("Code copied"));
 		}
 	}
 	ImGui::EndChild();

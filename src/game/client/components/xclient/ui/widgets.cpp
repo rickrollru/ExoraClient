@@ -1,5 +1,6 @@
 #include "widgets.h"
 
+#include "feedback.h"
 #include "theme.h"
 
 #include <engine/external/imgui/imgui_internal.h>
@@ -130,6 +131,7 @@ namespace XcUi
 		if(Pressed)
 		{
 			*pValue = !*pValue;
+			PlayUiSound(*pValue ? SOUND_TOGGLE_ON : SOUND_TOGGLE_OFF);
 			ImGui::MarkItemEdited(Id);
 		}
 
@@ -276,6 +278,7 @@ namespace XcUi
 			if(ImGui::ButtonBehavior(Segment, SegmentId, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
+				PlayUiSound(SOUND_TAB);
 				Changed = true;
 			}
 			// text color fades with the highlight passing under it
@@ -308,6 +311,8 @@ namespace XcUi
 			return false;
 		bool Hovered, Held;
 		const bool Pressed = ImGui::ButtonBehavior(Rect, Id, &Hovered, &Held);
+		if(Pressed)
+			PlayUiSound(SOUND_CLICK);
 		const float Hover = Animate(Id, Hovered ? 1.0f : 0.0f, 18.0f);
 		ImDrawList *pDraw = pWindow->DrawList;
 		pDraw->AddRectFilled(Rect.Min, Rect.Max, Col(t.m_Track, 1.0f + Hover * 0.6f), S(6.0f));
@@ -343,6 +348,8 @@ namespace XcUi
 			return false;
 		bool Hovered, Held;
 		const bool Pressed = ImGui::ButtonBehavior(Rect, Id, &Hovered, &Held);
+		if(Pressed)
+			PlayUiSound(SOUND_CLICK);
 		const float Hover = Animate(Id, Hovered ? 1.0f : 0.0f, 18.0f);
 		const float Press = Animate(Id + 1, Held ? 1.0f : 0.0f, 25.0f);
 		// pressing shrinks the button slightly
@@ -380,6 +387,8 @@ namespace XcUi
 			return false;
 		bool Hovered, Held;
 		const bool Pressed = ImGui::ButtonBehavior(Rect, Id, &Hovered, &Held);
+		if(Pressed)
+			PlayUiSound(SOUND_CLICK);
 		const float Hover = Animate(Id, (Hovered || Selected) ? 1.0f : 0.0f, 18.0f);
 		ImDrawList *pDraw = pWindow->DrawList;
 		pDraw->AddRectFilled(Rect.Min, Rect.Max, Col(Selected ? ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f) : t.m_Track, Selected ? 1.0f : Hover * 1.4f), S(10.0f));
@@ -414,6 +423,7 @@ namespace XcUi
 			if(ImGui::ButtonBehavior(Hit, Id + 10 + i, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
+				PlayUiSound(SOUND_CLICK);
 				Changed = true;
 			}
 			const float Selected = Animate(Id + 10 + i, *pCurrent == i ? 1.0f : 0.0f, 16.0f);
@@ -510,6 +520,7 @@ namespace XcUi
 			if(ImGui::ButtonBehavior(Tab, Id + 10 + i, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
+				PlayUiSound(SOUND_TAB);
 				Changed = true;
 			}
 			const float Under = std::clamp(1.0f - std::abs(HighlightX - Tab.Min.x) / std::max(aWidths[i], 1.0f), 0.0f, 1.0f);
@@ -554,6 +565,7 @@ namespace XcUi
 			if(ImGui::ButtonBehavior(Item, Id + 10 + i, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
+				PlayUiSound(SOUND_TAB);
 				Changed = true;
 			}
 			const float Hover = Animate(Id + 10 + i, (Hovered || *pCurrent == i) ? 1.0f : 0.0f, 18.0f);
