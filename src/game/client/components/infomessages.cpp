@@ -476,14 +476,24 @@ void CInfoMessages::OnRender()
 
 		CreateTextContainersIfNotCreated(InfoMsg);
 
+		// XClient: a new message slides in from the right edge and slides out before it goes away (xc_chat_anim)
+		float XcX = StartX;
+		if(g_Config.m_XcChatAnim)
+		{
+			const float Age = (Client()->GameTick(g_Config.m_ClDummy) - InfoMsg.m_Tick + Client()->IntraGameTick(g_Config.m_ClDummy)) / (float)Client()->GameTickSpeed();
+			const float In = std::clamp(Age / 0.3f, 0.0f, 1.0f);
+			const float Out = std::clamp((Age - 9.6f) / 0.4f, 0.0f, 1.0f);
+			XcX += (std::pow(1.0f - In, 3.0f) + Out * Out) * 600.0f;
+		}
+
 		if(InfoMsg.m_Type == EType::TYPE_KILL && g_Config.m_ClShowKillMessages)
 		{
-			RenderKillMsg(InfoMsg, StartX, y);
+			RenderKillMsg(InfoMsg, XcX, y);
 			y += ROW_HEIGHT;
 		}
 		else if(InfoMsg.m_Type == EType::TYPE_FINISH && g_Config.m_ClShowFinishMessages)
 		{
-			RenderFinishMsg(InfoMsg, StartX, y);
+			RenderFinishMsg(InfoMsg, XcX, y);
 			y += ROW_HEIGHT;
 		}
 	}
