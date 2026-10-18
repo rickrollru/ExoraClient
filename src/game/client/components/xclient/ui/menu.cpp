@@ -409,15 +409,22 @@ void CXcMenu::OnRender()
 	// and while the cosmetics editor is open they become hats
 	const bool CaptureBackgrounds = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_BACKGROUND;
 	const bool CaptureHats = m_Active && m_Page == PAGE_VISUALS && m_VisualsSection == VISUALS_COSMETICS;
-	Client()->XcSetDropCapture(CaptureBackgrounds || CaptureHats);
+	// and on the textures page they become texture sets
+	const bool CaptureAssets = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_TEXTURES;
+	Client()->XcSetDropCapture(CaptureBackgrounds || CaptureHats || CaptureAssets);
 	char aDropped[IO_MAX_PATH_LENGTH];
-	if((CaptureBackgrounds || CaptureHats) && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
+	if((CaptureBackgrounds || CaptureHats || CaptureAssets) && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
 	{
 		if(CaptureHats)
 			HandleHatFile(aDropped);
+		else if(CaptureAssets)
+			HandleAssetFile(aDropped);
 		else
 			HandleBackgroundFile(aDropped);
 	}
+	// texture previews only take video memory while the page is open
+	if(!CaptureAssets)
+		UnloadAssetPreviews();
 	const float Target = m_Active ? 1.0f : 0.0f;
 	const float Speed = AnimationSpeed() > 0.0f ? 6.0f * AnimationSpeed() : 1000.0f;
 	m_OpenAnimation = m_OpenAnimation < Target ? std::min(m_OpenAnimation + Dt * Speed, Target) : std::max(m_OpenAnimation - Dt * Speed, Target);
