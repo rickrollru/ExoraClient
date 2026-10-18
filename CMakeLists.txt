@@ -2920,12 +2920,16 @@ if(CLIENT)
     components/voting.h
     components/xclient/accessory.cpp
     components/xclient/accessory.h
+    components/xclient/hook_fx.cpp
+    components/xclient/hook_fx.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
     components/xclient/weather.cpp
     components/xclient/weather.h
     components/xclient/xc_helpers.cpp
     components/xclient/xc_helpers.h
+    components/xclient/xc_particles.cpp
+    components/xclient/xc_particles.h
     gameclient.cpp
     gameclient.h
     laser_data.cpp

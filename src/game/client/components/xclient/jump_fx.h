@@ -1,14 +1,14 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_JUMP_FX_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_JUMP_FX_H
 
+#include "xc_particles.h"
+
 #include <base/color.h>
 #include <base/vmath.h>
 
 #include <engine/shared/protocol.h>
 
 #include <game/client/component.h>
-
-#include <vector>
 
 // Visual effects for jumps, double jumps, landings and running.
 // Only reads the rendered character state, never touches input or physics.
@@ -29,29 +29,6 @@ public:
 	void OnMapLoad() override;
 
 private:
-	enum
-	{
-		FX_RING = 0,
-		FX_SPARK,
-		FX_STAR,
-		FX_DUST,
-	};
-
-	struct SFx
-	{
-		int m_Type;
-		vec2 m_Pos;
-		vec2 m_Vel;
-		float m_Gravity;
-		float m_Life;
-		float m_LifeSpan;
-		float m_StartSize;
-		float m_EndSize;
-		float m_Rot;
-		float m_RotSpeed;
-		ColorRGBA m_Color;
-	};
-
 	struct SPlayerState
 	{
 		bool m_Valid = false;
@@ -63,16 +40,12 @@ private:
 	};
 
 	SPlayerState m_aPlayers[MAX_CLIENTS];
-	std::vector<SFx> m_vFx;
+	CXcParticles m_Particles;
 
 	void UpdatePlayers(float Dt);
 	void EmitJump(vec2 Feet, bool AirJump);
 	void EmitLanding(vec2 Feet, float FallSpeed);
 	void EmitDust(vec2 Feet, float Direction);
-	void Add(const SFx &Fx);
-	void Simulate(float Dt);
-	void Draw() const;
-	void DrawRing(const SFx &Fx) const;
 };
 
 #endif
