@@ -87,6 +87,7 @@
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
+#include "components/xclient/weather.h"
 
 #include <memory>
 #include <vector>
@@ -243,6 +244,9 @@ public:
 	CCustomCommunities m_CustomCommunities;
 	CMovingTiles m_MovingTilesBackground = CMovingTiles{false};
 	CMovingTiles m_MovingTilesForeground = CMovingTiles{true};
+
+	// XClient Components
+	CWeather m_Weather;
 
 private:
 	std::vector<class CComponent *> m_vpAll;
