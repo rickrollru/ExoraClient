@@ -26,6 +26,7 @@ public:
 		PAGE_SERVERS,
 		PAGE_VISUALS,
 		PAGE_CONFIGS,
+		PAGE_DEMOS,
 		PAGE_SETTINGS,
 		NUM_PAGES,
 	};
@@ -132,15 +133,30 @@ private:
 	void RenderTopBar(float Width);
 	void RenderHome();
 	// the tee is drawn by DDNet in the middle of the ImGui frame through a draw callback
-	float m_aTeePreview[4] = {}; // x0, y0, x1, y1 in pixels
+	struct STeeDraw
+	{
+		CXcMenu *m_pMenu;
+		float m_aRect[4]; // x0, y0, x1, y1 in pixels
+	};
 	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
-	void DrawTeePreview();
+	void DrawTeePreview(const float *pRect);
+	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max);
+
+	// search (menu_search.cpp)
+	bool m_SearchOpen = false;
+	bool m_SearchFocus = false;
+	char m_aSearch[64] = {};
+	int m_SearchSelected = 0;
+	bool m_ScrollToHighlight = false;
+	void OpenSearch();
+	void RenderSearch();
 	void RenderServers();
 	void UpdateServerList();
 	bool RenderServerCard(const CServerInfo *pInfo, float Width, float Height);
 	void RenderServerDetails(const CServerInfo *pInfo, float Height);
 	void RenderVisuals();
 	void RenderConfigs();
+	void RenderDemos();
 	void RefreshConfigList();
 	void ConfigPath(const char *pName, char *pBuf, int BufSize) const;
 	std::string CurrentConfigText() const;

@@ -1,0 +1,247 @@
+// Search over all pages and settings cards (top bar button or Ctrl+F).
+#include "feedback.h"
+#include "icons.h"
+#include "lang.h"
+#include "menu.h"
+#include "theme.h"
+#include "widgets.h"
+
+#include <base/str.h>
+
+#include <engine/external/imgui/imgui.h>
+#include <engine/external/imgui/imgui_internal.h>
+
+#include <algorithm>
+#include <vector>
+
+using namespace XcUi;
+
+namespace
+{
+	struct SSearchEntry
+	{
+		int m_Page;
+		int m_Section; // settings section, -1 for a page
+		const char *m_pCard; // card id to highlight, nullptr for a page or section
+		const char *m_pTitle; // English, translated when shown
+		const char *m_pDescription;
+		const char *m_pKeywords; // extra words in both languages
+	};
+
+	// clang-format off
+	const SSearchEntry gs_aSearchEntries[] = {
+		{CXcMenu::PAGE_HOME, -1, nullptr, "Home", "Profile, friends online and DDNet news", "главная профиль друзья новости play играть"},
+		{CXcMenu::PAGE_SERVERS, -1, nullptr, "Servers", "Server cards with filters", "серверы сервер браузер join войти избранное favorites lan ddrace"},
+		{CXcMenu::PAGE_VISUALS, -1, nullptr, "Visuals", "Visual effects", "визуалы эффекты effects"},
+		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
+		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##theme", "Theme", "Look of the menu: dark or light, and the accent color", "тема тёмная светлая dark light акцент accent цвет color"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##presets", "Theme presets", "Save theme, accent, font and background together", "пресеты темы сохранённые saved presets стиль style"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##font", "Font", "Main font of the menu", "шрифт font manrope onest unbounded"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##scale", "Scale", "Size of the menu for your screen", "масштаб размер scale size 1080p 2k 4k"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##animations", "Animations", "How smooth the menu moves", "анимации плавность animations smooth"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##language", "Game language", "Language of the menu and the game", "язык language русский english"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##ui_sounds", "Interface sounds", "Clicks, switches and notifications", "звуки звук клик sounds click"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##classic", "Classic menu", "The old DDNet menu, for settings that are not here yet", "классическое старое меню classic old"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_kind", "Menu background", "What is behind the menu", "фон меню background блюр blur анимация animated"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_look", "Look", "Darkening, blur and gif speed", "затемнение блюр гифка скорость dim blur gif speed"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_own", "My backgrounds", "Pictures and gifs", "свой фон картинка гифка фото обои picture image gif wallpaper"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_maps", "Maps", "Animated DDNet maps behind the main menu", "карты карта темы map maps themes"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_PLAYER, "##profile", "Profile", "Name and clan of you and your dummy", "ник имя клан дамми name nick clan dummy"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_PLAYER, "##skin", "Skin", "Skin name and custom colors", "скин цвет skin color colour"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##mouse", "Mouse", "Sensitivity in game and in menus", "мышь чувствительность сенса mouse sensitivity sens"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##camera", "Camera", "Dynamic camera follows the mouse", "камера динамическая dyncam camera"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##binds", "Key binds", "Click a key and press a new one, Esc cancels", "бинды клавиши кнопки управление binds keys jump hook прыжок хук"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_SOUND, "##volume", "Sound", "Sound and volume", "звук громкость музыка sound volume music"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CHAT, "##chat_look", "Chat", "How the chat looks", "чат сообщения chat messages"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##performance", "Performance", "Low, medium or high in one click", "производительность пресет низкое среднее высокое fps лаги performance preset low medium high"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##screen", "Screen", "Window mode and frame rate", "экран окно fps vsync полноэкранный fullscreen window"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##effects", "Effects", "Quality of the render module (OpenGL 3.3)", "эффекты качество bloom свечение quality render"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, nullptr, "HUD editor", "Drag and resize HUD elements", "худ hud редактор editor ватермарка watermark"},
+	};
+	// clang-format on
+
+	bool Contains(const char *pHaystack, const char *pNeedle)
+	{
+		return pHaystack && str_utf8_find_nocase(pHaystack, pNeedle) != nullptr;
+	}
+
+	// every word of the query must be found somewhere, titles count most
+	int Score(const SSearchEntry &Entry, const char *pQuery)
+	{
+		int Total = 0;
+		char aWord[64];
+		const char *pRest = pQuery;
+		while((pRest = str_next_token(pRest, " ", aWord, sizeof(aWord))))
+		{
+			if(!aWord[0])
+				continue;
+			int Best = 0;
+			if(Contains(Tr(Entry.m_pTitle), aWord) || Contains(Entry.m_pTitle, aWord))
+				Best = 4;
+			else if(Contains(Entry.m_pKeywords, aWord))
+				Best = 2;
+			else if(Contains(Tr(Entry.m_pDescription), aWord) || Contains(Entry.m_pDescription, aWord))
+				Best = 1;
+			if(Best == 0)
+				return 0;
+			Total += Best;
+		}
+		return Total;
+	}
+} // namespace
+
+void CXcMenu::OpenSearch()
+{
+	m_SearchOpen = true;
+	m_SearchFocus = true;
+	m_aSearch[0] = '\0';
+	m_SearchSelected = 0;
+}
+
+void CXcMenu::RenderSearch()
+{
+	const float Open = Animate(ImGui::GetID("##search_open"), m_SearchOpen ? 1.0f : 0.0f, 18.0f);
+	if(Open <= 0.001f)
+		return;
+	const STheme &t = Theme();
+	const ImGuiIO &Io = ImGui::GetIO();
+
+	// results: everything matching, best first; an empty query shows all pages and sections
+	std::vector<std::pair<int, const SSearchEntry *>> vResults;
+	for(const SSearchEntry &Entry : gs_aSearchEntries)
+	{
+		const int s = m_aSearch[0] ? Score(Entry, m_aSearch) : (Entry.m_pCard ? 0 : 1);
+		if(s > 0)
+			vResults.emplace_back(s, &Entry);
+	}
+	std::stable_sort(vResults.begin(), vResults.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
+	const int MaxShown = 8;
+	const int NumShown = std::min((int)vResults.size(), MaxShown);
+	m_SearchSelected = std::clamp(m_SearchSelected, 0, std::max(NumShown - 1, 0));
+
+	// dim everything behind
+	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+	ImGui::SetNextWindowSize(Io.DisplaySize);
+	ImGui::SetNextWindowBgAlpha(0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * Open);
+	ImGui::Begin("##search_overlay", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav);
+	ImGui::PopStyleVar(2);
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	pDraw->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(ImVec4(0, 0, 0, 1), 0.45f * Open));
+	if(!m_SearchOpen)
+	{
+		ImGui::PopStyleVar();
+		ImGui::End();
+		return;
+	}
+
+	const float Width = std::min(S(640.0f), Io.DisplaySize.x - S(40.0f));
+	const float RowHeight = S(52.0f);
+	const float InputHeight = S(52.0f);
+	const float Height = InputHeight + S(8.0f) + std::max(NumShown, 1) * RowHeight + S(12.0f);
+	const ImVec2 Min((Io.DisplaySize.x - Width) * 0.5f, S(110.0f) - (1.0f - Open) * S(12.0f));
+	const ImVec2 Max(Min.x + Width, Min.y + Height);
+	// a click outside the box closes the search
+	if(ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsMouseHoveringRect(Min, Max))
+		m_SearchOpen = false;
+
+	for(int s = 4; s >= 1; s--)
+		pDraw->AddRectFilled(ImVec2(Min.x - s * 3.0f, Min.y - s * 2.0f + S(6.0f)), ImVec2(Max.x + s * 3.0f, Max.y + s * 3.0f + S(6.0f)), Col(ImVec4(0, 0, 0, 1), 0.07f), S(16.0f) + s * 3.0f);
+	PanelRect(pDraw, Min, Max, S(16.0f), ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f));
+
+	// input with a search icon
+	ImFont *pIcons = Fonts().m_pLabel;
+	const ImVec2 IconSize = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, XC_ICON_SEARCH);
+	pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(Min.x + S(20.0f), Min.y + (InputHeight - IconSize.y) * 0.5f), Col(t.m_TextMuted), XC_ICON_SEARCH);
+	ImGui::SetCursorScreenPos(ImVec2(Min.x + S(44.0f), Min.y + (InputHeight - S(34.0f)) * 0.5f));
+	if(m_SearchFocus)
+	{
+		ImGui::SetKeyboardFocusHere();
+		m_SearchFocus = false;
+	}
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+	ImGui::PushFont(Fonts().m_pTitle);
+	if(ImGui::InputTextWithHint("##search", Tr("Search settings and pages"), m_aSearch, sizeof(m_aSearch)))
+		m_SearchSelected = 0;
+	ImGui::PopFont();
+	ImGui::PopStyleColor(2);
+	pDraw->AddLine(ImVec2(Min.x, Min.y + InputHeight), ImVec2(Max.x, Min.y + InputHeight), Col(t.m_Border));
+
+	// keyboard: arrows move, Enter opens
+	if(ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+		m_SearchSelected = std::min(m_SearchSelected + 1, NumShown - 1);
+	if(ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+		m_SearchSelected = std::max(m_SearchSelected - 1, 0);
+	int Chosen = -1;
+	if(NumShown > 0 && (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)))
+		Chosen = m_SearchSelected;
+
+	static const char *const s_apPageIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_GEAR};
+	static const char *const s_apPageNames[NUM_PAGES] = {"Home", "Servers", "Visuals", "Configs", "Demos", "Settings"};
+	static const char *const s_apSectionNames[NUM_SETTINGS] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD editor"};
+	float y = Min.y + InputHeight + S(8.0f);
+	if(NumShown == 0)
+	{
+		ImGui::SetCursorScreenPos(ImVec2(Min.x + S(20.0f), y + S(14.0f)));
+		Description(Tr("Nothing found"));
+	}
+	for(int i = 0; i < NumShown; i++)
+	{
+		const SSearchEntry &Entry = *vResults[i].second;
+		const ImVec2 RowMin(Min.x + S(8.0f), y);
+		const ImVec2 RowMax(Max.x - S(8.0f), y + RowHeight);
+		const bool Hovered = ImGui::IsMouseHoveringRect(RowMin, RowMax);
+		if(Hovered && (Io.MouseDelta.x != 0.0f || Io.MouseDelta.y != 0.0f))
+			m_SearchSelected = i;
+		if(Hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			Chosen = i;
+		const float Select = Animate(ImGui::GetID(Entry.m_pTitle) + i, m_SearchSelected == i ? 1.0f : 0.0f, 22.0f);
+		if(Select > 0.0f)
+			pDraw->AddRectFilled(RowMin, RowMax, Col(t.m_Accent, 0.14f * Select), S(10.0f));
+
+		// icon, title, breadcrumb
+		const char *pIcon = s_apPageIcons[Entry.m_Page];
+		const ImVec2 IconCenter(RowMin.x + S(26.0f), y + RowHeight * 0.5f);
+		pDraw->AddCircleFilled(IconCenter, S(15.0f), Col(t.m_Track), 24);
+		const ImVec2 Size = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, pIcon);
+		pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(IconCenter.x - Size.x * 0.5f, IconCenter.y - Size.y * 0.5f), Col(Mix(t.m_TextSecondary, t.m_Accent, Select)), pIcon);
+		ImFont *pTitle = Fonts().m_pLabel;
+		ImFont *pSmall = Fonts().m_pSmall;
+		pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(8.0f)), Col(t.m_Text), Tr(Entry.m_pTitle));
+		char aPath[128];
+		if(Entry.m_Section >= 0)
+			str_format(aPath, sizeof(aPath), "%s  >  %s", Tr(s_apPageNames[Entry.m_Page]), Tr(s_apSectionNames[Entry.m_Section]));
+		else
+			str_copy(aPath, Tr(Entry.m_pDescription));
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(28.0f)), Col(t.m_TextMuted), aPath);
+		if(m_SearchSelected == i)
+		{
+			const ImVec2 ArrowSize = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, XC_ICON_ARROW_RIGHT);
+			pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(RowMax.x - S(16.0f) - ArrowSize.x, y + (RowHeight - ArrowSize.y) * 0.5f), Col(t.m_Accent, Select), XC_ICON_ARROW_RIGHT);
+		}
+		y += RowHeight;
+	}
+
+	if(Chosen >= 0)
+	{
+		const SSearchEntry &Entry = *vResults[Chosen].second;
+		PlayUiSound(SOUND_TAB);
+		m_Page = Entry.m_Page;
+		if(Entry.m_Section >= 0)
+			m_SettingsSection = Entry.m_Section;
+		m_ScrollTarget = 0.0f;
+		if(Entry.m_pCard)
+		{
+			HighlightCard(Entry.m_pCard);
+			m_ScrollToHighlight = true;
+		}
+		m_SearchOpen = false;
+	}
+
+	ImGui::PopStyleVar();
+	ImGui::End();
+}
