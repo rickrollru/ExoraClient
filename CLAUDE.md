@@ -140,6 +140,10 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   Настройки: `xc_accessory` (0 выкл, 1 конус, 2 нимб, 3 корона), `xc_accessory_size`, `xc_accessory_alpha`,
   `xc_accessory_color`, `xc_accessory_rainbow`, `xc_accessory_physics` (0 = жёстко), `xc_accessory_self/dummy/others`.
   Общие функции (светящееся кольцо, мягкий круг, «мои/дамми/другие») — `xclient/xc_helpers.cpp`.
+- 18.10.2026: Хук (`xclient/hook_fx.cpp` + вставка в `CPlayers::RenderHook`): стили — обычный / цветная цепь
+  (с цветной аурой) / сплошная линия / светящаяся линия с бегущими импульсами; эффект зацепа кольцо/искры/звёзды.
+  Настройки: `xc_hook_style`, `xc_hook_color`, `xc_hook_rainbow`, `xc_hook_width`, `xc_hook_hit_fx`,
+  `xc_hook_self/dummy/others`. Общая система частиц для всех эффектов — `xclient/xc_particles.cpp`.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`).
 
