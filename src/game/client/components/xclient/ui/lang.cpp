@@ -195,7 +195,7 @@ namespace XcUi
 			{"Could not save", "Не получилось сохранить"},
 			{"Custom", "Свои"},
 			{"Your own mix, change anything below", "Свой набор, меняй что угодно ниже"},
-			{"For weak computers: no blur, no bloom, simple map", "Для слабых ПК: без блюра, без свечения, простая карта"},
+			{"For weak computers: no blur, no bloom, simple map", "Для слабых ПК: без блюра, свечения и контура, простая карта"},
 			{"Balanced: blur and light bloom", "Баланс: блюр и лёгкое свечение"},
 			{"Everything on", "Всё включено"},
 			{"Detailed map", "Детализация карты"},
