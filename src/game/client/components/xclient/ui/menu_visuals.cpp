@@ -187,10 +187,58 @@ void CXcMenu::RenderVisualsWorld()
 	EndCardGrid();
 }
 
+void CXcMenu::RenderVisualsEvents()
+{
+	BeginCardGrid("##vis_events", 2);
+	const char *apFinish[] = {Tr("Confetti"), Tr("Fireworks")};
+	if(StyleCard("##fx_finish", Tr("Finish"), Tr("Confetti or fireworks when you finish the map"), "xc_finish_fx", &g_Config.m_XcFinishFx, apFinish, 2))
+	{
+		EffectColorPicker("##finish_color", &g_Config.m_XcFinishColorMode, &g_Config.m_XcFinishColor);
+		ConfigSlider(Tr("Amount"), "xc_finish_amount", &g_Config.m_XcFinishAmount, 25, 300, "%d%%");
+		ToggleRow(Tr("Banner with the time and records"), "xc_finish_banner", &g_Config.m_XcFinishBanner);
+		TargetChips("##finish_targets", &g_Config.m_XcFinishSelf, &g_Config.m_XcFinishDummy, &g_Config.m_XcFinishOthers);
+		const int Local = GameClient()->m_Snap.m_LocalClientId;
+		if(IsOnline() && Local >= 0 && GameClient()->m_Snap.m_aCharacters[Local].m_Active)
+		{
+			if(Button(Tr("Show"), true, -1.0f))
+			{
+				// closes the menu so the effect is seen right on the tee
+				SetActive(false);
+				GameClient()->m_XcEventFx.Finish(GameClient()->m_aClients[Local].m_RenderPos, Local);
+				if(g_Config.m_XcFinishBanner)
+					GameClient()->m_XcHud.ShowBanner(Tr("New personal record!"), "00:42.137  (-0.52)", 1);
+			}
+		}
+		else
+			Description(Tr("Join a server to try it"));
+		EndCard();
+	}
+	const char *apDeath[] = {Tr("Shards"), Tr("Sparks"), Tr("Ash")};
+	if(StyleCard("##fx_death", Tr("Death and spawn"), Tr("A tee bursts into pieces, rings close in where it appears again"), "xc_death_fx", &g_Config.m_XcDeathFx, apDeath, 3))
+	{
+		EffectColorPicker("##death_color", &g_Config.m_XcDeathColorMode, &g_Config.m_XcDeathColor);
+		ToggleRow(Tr("Rings on spawn"), "xc_spawn_fx", &g_Config.m_XcSpawnFx);
+		TargetChips("##death_targets", &g_Config.m_XcDeathSelf, &g_Config.m_XcDeathDummy, &g_Config.m_XcDeathOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_teleport", Tr("Teleports"), Tr("A flash where your tee or dummy leaves and arrives"), &g_Config.m_XcTeleportFx))
+	{
+		EffectColorPicker("##teleport_color", &g_Config.m_XcTeleportColorMode, &g_Config.m_XcTeleportColor);
+		EndCard();
+	}
+	if(BeginCard("##fx_dummy_arrow", Tr("Dummy arrow"), Tr("A glowing arrow at the screen edge shows where the dummy is"), &g_Config.m_XcDummyArrow))
+	{
+		EffectColorPicker("##arrow_color", &g_Config.m_XcDummyArrowColorMode, &g_Config.m_XcDummyArrowColor);
+		ConfigSlider(Tr("Size"), "xc_dummy_arrow_size", &g_Config.m_XcDummyArrowSize, 50, 250, "%d%%");
+		EndCard();
+	}
+	EndCardGrid();
+}
+
 void CXcMenu::RenderVisuals()
 {
-	const char *apIcons[NUM_VISUALS] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_HAT};
-	const char *apLabels[NUM_VISUALS] = {Tr("Tee"), Tr("Movement"), Tr("Hook and weapons"), Tr("World"), Tr("Cosmetics")};
+	const char *apIcons[NUM_VISUALS] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_HAT};
+	const char *apLabels[NUM_VISUALS] = {Tr("Tee"), Tr("Movement"), Tr("Hook and weapons"), Tr("World"), Tr("Events"), Tr("Cosmetics")};
 	const float NavWidth = S(210.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
 	if(SideNav("##visual_sections", &m_VisualsSection, apIcons, apLabels, NUM_VISUALS, NavWidth))
@@ -205,6 +253,7 @@ void CXcMenu::RenderVisuals()
 	case VISUALS_TEE: RenderVisualsTee(); break;
 	case VISUALS_MOVEMENT: RenderVisualsMovement(); break;
 	case VISUALS_WEAPONS: RenderVisualsWeapons(); break;
+	case VISUALS_EVENTS: RenderVisualsEvents(); break;
 	case VISUALS_COSMETICS: RenderVisualsCosmetics(); break;
 	default: RenderVisualsWorld(); break;
 	}

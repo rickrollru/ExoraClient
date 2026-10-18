@@ -43,6 +43,9 @@ public:
 	ColorRGBA WheelPanelColor() const;
 	ColorRGBA WheelSelectColor() const;
 
+	// big banner at the top: finish time, new records (Kind 0 = finish, 1 = personal record, 2 = server record)
+	void ShowBanner(const char *pTitle, const char *pSubtitle, int Kind);
+
 private:
 	struct SElementConfig
 	{
@@ -75,6 +78,11 @@ private:
 	void RenderSpeed(ImDrawList *pDraw, float Alpha);
 	void RenderWeapon(ImDrawList *pDraw, float Alpha);
 	void RenderMusic(ImDrawList *pDraw, float Alpha);
+	void RenderBanner(ImDrawList *pDraw);
+	char m_aBannerTitle[128] = {};
+	char m_aBannerSubtitle[128] = {};
+	int m_BannerKind = 0;
+	float m_BannerStart = -100.0f;
 	float m_MusicAlpha = 0.0f;
 	void RenderEditor(ImDrawList *pDraw);
 

@@ -193,6 +193,7 @@ void CEffects::BulletTrail(vec2 Pos, float Alpha, float TimePassed)
 
 void CEffects::PlayerSpawn(vec2 Pos, float Alpha, float Volume)
 {
+	GameClient()->m_XcEventFx.PlayerSpawn(Pos); // XClient
 	for(int i = 0; i < 32; i++)
 	{
 		CParticle p;
@@ -217,6 +218,7 @@ void CEffects::PlayerSpawn(vec2 Pos, float Alpha, float Volume)
 
 void CEffects::PlayerDeath(vec2 Pos, int ClientId, float Alpha)
 {
+	GameClient()->m_XcEventFx.PlayerDeath(Pos, ClientId); // XClient
 	ColorRGBA BloodColor(1.0f, 1.0f, 1.0f);
 
 	if(ClientId >= 0)

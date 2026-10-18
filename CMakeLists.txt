@@ -2956,6 +2956,8 @@ if(CLIENT)
     components/voting.h
     components/xclient/accessory.cpp
     components/xclient/accessory.h
+    components/xclient/event_fx.cpp
+    components/xclient/event_fx.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
     components/xclient/hats.cpp
