@@ -35,6 +35,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, -1, nullptr, "Visuals", "Visual effects", "визуалы эффекты effects"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_glow", "Neon glow", "Soft light and a crisp outline around the tee", "свечение неон обводка контур подсветка glow neon outline"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_trail", "Trail", "A glowing ribbon behind the tee", "шлейф хвост след trail ribbon"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_jelly", "Jelly tee", "Squashes when landing, stretches when jumping and wobbles back", "желе желейный сплющивание пружина jelly squash stretch"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_accessory", "Accessory", "Something on the head that sways with the tee", "аксессуар шапка нимб корона конус china hat halo crown"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_jump", "Jumps", "Effect under the feet on every jump", "прыжки прыжок кольца искры звёзды пыль jump circles rings"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_hook", "Hook", "Colored chain, clean line or a glowing beam", "хук крюк цепь hook chain"},

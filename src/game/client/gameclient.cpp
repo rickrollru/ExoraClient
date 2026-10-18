@@ -150,6 +150,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Translate, // TClient
 					      &m_Ghost,
 					      &m_TClient, // TClient (Must be before chat and players)
+					      &m_XcJelly, // XClient: squash and stretch of the tees (drawn by CPlayers)
 					      &m_XcHatsBehind, // XClient: wings and capes behind the tees
 					      &m_Players,
 					      &m_JumpFx, // XClient

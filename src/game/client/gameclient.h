@@ -94,6 +94,7 @@
 #include "components/xclient/hats.h"
 #include "components/xclient/hook_fx.h"
 #include "components/xclient/item_fx.h"
+#include "components/xclient/jelly.h"
 #include "components/xclient/hud/xc_hud.h"
 #include "components/xclient/jump_fx.h"
 #include "components/xclient/music/music.h"
@@ -264,6 +265,7 @@ public:
 	CXcHats m_XcHats;
 	CXcHatsBehind m_XcHatsBehind;
 	CXcFloaters m_XcFloaters;
+	CXcJelly m_XcJelly;
 	CXcEventFx m_XcEventFx;
 	CFxRenderer m_FxRenderer;
 	CXcMenu m_XcMenu;
