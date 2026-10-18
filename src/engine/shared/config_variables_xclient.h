@@ -149,6 +149,17 @@ MACRO_CONFIG_INT(XcDummyArrowSize, xc_dummy_arrow_size, 100, 50, 250, CFGFLAG_CL
 MACRO_CONFIG_INT(XcDummyArrowColorMode, xc_dummy_arrow_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcDummyArrowColor, xc_dummy_arrow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color")
 
+// Floating glowing cubes and orbs
+MACRO_CONFIG_INT(XcFloaters, xc_floaters, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Floating lights in the world (0 = off, 1 = cubes, 2 = orbs, 3 = both)")
+MACRO_CONFIG_INT(XcFloatersCount, xc_floaters_count, 30, 5, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many floating lights")
+MACRO_CONFIG_INT(XcFloatersSize, xc_floaters_size, 100, 30, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the floating lights in percent")
+MACRO_CONFIG_INT(XcFloatersSpeed, xc_floaters_speed, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of the floating lights in percent")
+MACRO_CONFIG_INT(XcFloatersAlpha, xc_floaters_alpha, 80, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the floating lights in percent")
+MACRO_CONFIG_INT(XcFloatersGlow, xc_floaters_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Soft light around the floating lights")
+MACRO_CONFIG_INT(XcFloatersPush, xc_floaters_push, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Your tee pushes the floating lights away")
+MACRO_CONFIG_INT(XcFloatersColorMode, xc_floaters_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Floating lights color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcFloatersColor, xc_floaters_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Floating lights color")
+
 // Juice: screen flashes and camera shake (visual only)
 MACRO_CONFIG_INT(XcScreenFlash, xc_screen_flash, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Colored light from the screen edges on freeze, death and finish")
 MACRO_CONFIG_INT(XcScreenFlashStrength, xc_screen_flash_strength, 45, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the screen flashes in percent")

@@ -162,6 +162,18 @@ void CXcMenu::RenderVisualsWorld()
 		Description(Tr("Bullets, grenades and lasers use the same colors"));
 		EndCard();
 	}
+	const char *apFloaters[] = {Tr("Cubes"), Tr("Orbs"), Tr("Both")};
+	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes and orbs drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
+	{
+		EffectColorPicker("##floaters_color", &g_Config.m_XcFloatersColorMode, &g_Config.m_XcFloatersColor);
+		ConfigSlider(Tr("Amount"), "xc_floaters_count", &g_Config.m_XcFloatersCount, 5, 150);
+		ConfigSlider(Tr("Size"), "xc_floaters_size", &g_Config.m_XcFloatersSize, 30, 300, "%d%%");
+		ConfigSlider(Tr("Speed"), "xc_floaters_speed", &g_Config.m_XcFloatersSpeed, 0, 300, "%d%%");
+		ConfigSlider(Tr("Opacity"), "xc_floaters_alpha", &g_Config.m_XcFloatersAlpha, 10, 100, "%d%%");
+		ToggleRow(Tr("Glow"), "xc_floaters_glow", &g_Config.m_XcFloatersGlow);
+		ToggleRow(Tr("Your tee pushes them"), "xc_floaters_push", &g_Config.m_XcFloatersPush);
+		EndCard();
+	}
 	const char *apWeather[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash")};
 	if(StyleCard("##fx_weather", Tr("Weather"), Tr("Falling particles over the map and the menu"), "xc_weather", &g_Config.m_XcWeather, apWeather, 4))
 	{
