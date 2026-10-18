@@ -261,6 +261,7 @@ public:
 	// XClient Components
 	CAccessory m_Accessory;
 	CXcHats m_XcHats;
+	CXcHatsBehind m_XcHatsBehind;
 	CXcEventFx m_XcEventFx;
 	CFxRenderer m_FxRenderer;
 	CXcMenu m_XcMenu;

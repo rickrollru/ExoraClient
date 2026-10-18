@@ -150,6 +150,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Translate, // TClient
 					      &m_Ghost,
 					      &m_TClient, // TClient (Must be before chat and players)
+					      &m_XcHatsBehind, // XClient: wings and capes behind the tees
 					      &m_Players,
 					      &m_JumpFx, // XClient
 					      &m_WorldFx, // XClient: freeze and hammer effects

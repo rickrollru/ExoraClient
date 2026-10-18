@@ -663,9 +663,12 @@ void CXcMenu::DrawTeePreview(const float *pRect, bool Still)
 	vec2 Dir = vec2(Mouse.x, Mouse.y) - Center;
 	Dir = length(Dir) > 1.0f && !Still ? normalize(Dir) : vec2(1.0f, 0.0f);
 	const float Bob = Still ? 0.0f : std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
-	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
 	// the tiny avatar in the top bar stays without the hat, it would stick out of the bar
-	if(g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f)
+	const bool Hat = g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
+	if(Hat && g_Config.m_XcHatBehind)
+		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
+	if(Hat && !g_Config.m_XcHatBehind)
 	{
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
 	}

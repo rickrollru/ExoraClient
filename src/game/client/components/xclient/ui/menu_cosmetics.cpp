@@ -270,6 +270,7 @@ void CXcMenu::RenderVisualsCosmetics()
 		if(Images.Entries().size() && str_endswith_nocase(g_Config.m_XcHatFile, ".gif"))
 			ConfigSlider(Tr("Gif speed"), "xc_hat_gif_speed", &g_Config.m_XcHatGifSpeed, 25, 300, "%d%%");
 		ToggleRow(Tr("Mirror when looking left"), "xc_hat_flip", &g_Config.m_XcHatFlip);
+		ToggleRow(Tr("Behind the tee (wings, capes)"), "xc_hat_behind", &g_Config.m_XcHatBehind);
 		TargetChips("##hat_targets", &g_Config.m_XcHatSelf, &g_Config.m_XcHatDummy, &g_Config.m_XcHatOthers);
 		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 		if(Button(Tr("Reset position"), false, AvailWidth()))

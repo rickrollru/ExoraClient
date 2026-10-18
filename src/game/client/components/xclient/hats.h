@@ -54,6 +54,7 @@ private:
 	struct SPlacement
 	{
 		int m_X, m_Y, m_Size, m_Rotation;
+		int m_Behind = 0;
 	};
 	std::map<std::string, SPlacement> m_Placements;
 	static SPlacement DefaultPlacement(const char *pName);
@@ -63,7 +64,18 @@ private:
 	float m_LastUpdate = -1.0f;
 
 	void UpdateState(int ClientId, vec2 Pos, float Dt);
+	friend class CXcHatsBehind;
+	// draws the hats of all players; called once a frame, behind or in front of the tees (xc_hat_behind)
+	void RenderAll();
 	bool LooksLeft(int ClientId) const;
+};
+
+// The pass behind the tees (wings, capes), registered before the players.
+class CXcHatsBehind : public CComponent
+{
+public:
+	int Sizeof() const override { return sizeof(*this); }
+	void OnRender() override;
 };
 
 #endif

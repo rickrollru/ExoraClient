@@ -2190,11 +2190,13 @@ set(EXPECTED_DATA
   xclient/fonts/Unbounded-Bold.ttf
   xclient/fonts/Unbounded-Regular.ttf
   xclient/fonts/Unbounded-SemiBold.ttf
+  xclient/hats/bat_wings.png
   xclient/hats/cat_ears.png
   xclient/hats/party_hat.png
   xclient/hats/santa_hat.png
   xclient/hats/sunglasses.png
   xclient/hats/top_hat.png
+  xclient/hats/wings.png
   xclient/hats/wizard_hat.png
   xclient/sounds/click.opus
   xclient/sounds/death.opus
