@@ -89,6 +89,7 @@
 #include "components/voting.h"
 #include "components/xclient/accessory.h"
 #include "components/xclient/event_fx.h"
+#include "components/xclient/floaters.h"
 #include "components/xclient/fx_renderer.h"
 #include "components/xclient/hats.h"
 #include "components/xclient/hook_fx.h"
@@ -262,6 +263,7 @@ public:
 	CAccessory m_Accessory;
 	CXcHats m_XcHats;
 	CXcHatsBehind m_XcHatsBehind;
+	CXcFloaters m_XcFloaters;
 	CXcEventFx m_XcEventFx;
 	CFxRenderer m_FxRenderer;
 	CXcMenu m_XcMenu;
