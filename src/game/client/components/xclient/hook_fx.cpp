@@ -188,5 +188,5 @@ void CHookFx::OnRender()
 	}
 
 	m_Particles.Update(Dt);
-	m_Particles.Render(GameClient());
+	m_Particles.Render(GameClient()->m_FxRenderer);
 }

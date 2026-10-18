@@ -31,6 +31,8 @@
 #include "backend/null/backend_null.h"
 #endif
 
+#include "backend/xclient/xc_renderer.h" // XClient
+
 #if !defined(CONF_BACKEND_OPENGL_ES)
 #include "backend/opengl/backend_opengl3.h"
 #endif
@@ -199,6 +201,12 @@ void CCommandProcessor_SDL_GL::RunBuffer(CCommandBuffer *pBuffer)
 
 	for(const CCommandBuffer::SCommand *pCommand = pBuffer->Head(); pCommand; pCommand = pCommand->m_pNext)
 	{
+		// XClient: render module commands and frame hooks, skipped without the module
+		if(m_pXcRenderer && pCommand->m_Cmd == CCommandProcessorFragment_GLBase::CMD_SHUTDOWN)
+			m_pXcRenderer->Shutdown();
+		if(m_pXcRenderer ? m_pXcRenderer->RunCommand(pCommand) : XcRender::IsXcCommand(pCommand->m_Cmd))
+			continue;
+
 		auto Res = m_pGLBackend->RunCommand(pCommand);
 		if(Res == ERunCommandReturnTypes::RUN_COMMAND_COMMAND_HANDLED)
 		{
@@ -267,6 +275,7 @@ CCommandProcessor_SDL_GL::CCommandProcessor_SDL_GL(EBackendType BackendType, int
 		else if((GLMajor == 3 && GLMinor == 3) || GLMajor >= 4)
 		{
 			m_pGLBackend = new CCommandProcessorFragment_OpenGL3_3();
+			m_pXcRenderer = new CXcRenderer(); // XClient
 		}
 #endif
 	}
@@ -281,6 +290,7 @@ CCommandProcessor_SDL_GL::CCommandProcessor_SDL_GL(EBackendType BackendType, int
 
 CCommandProcessor_SDL_GL::~CCommandProcessor_SDL_GL()
 {
+	delete m_pXcRenderer; // XClient
 	delete m_pGLBackend;
 }
 

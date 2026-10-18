@@ -6,7 +6,7 @@
 
 #include <vector>
 
-class CGameClient;
+class CFxRenderer;
 
 // Small world-space particle system shared by all XClient effects.
 // Separate from the game's own particles so our effects never steal their slots.
@@ -43,7 +43,8 @@ public:
 
 	void Add(const SParticle &Particle);
 	void Update(float Dt);
-	void Render(const CGameClient *pGameClient) const;
+	// Queues the particles as world shapes, drawn after all world effects.
+	void Render(CFxRenderer &Renderer) const;
 	void Clear() { m_vParticles.clear(); }
 	bool Empty() const { return m_vParticles.empty(); }
 

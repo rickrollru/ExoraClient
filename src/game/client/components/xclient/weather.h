@@ -1,6 +1,8 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_WEATHER_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_WEATHER_H
 
+#include "fx_renderer.h"
+
 #include <base/color.h>
 #include <base/vmath.h>
 
@@ -58,7 +60,15 @@ private:
 
 	void Spawn(SParticle &Particle, bool Anywhere) const;
 	void Step(vec2 Shift);
-	void Draw() const;
+	std::vector<SFxShape> m_vShapes;
+
+	float ParticleAlpha(const SParticle &Particle) const;
+	vec2 ParticleSize(const SParticle &Particle) const;
+	void Draw();
+	// render module: smooth SDF shapes
+	void DrawShapes();
+	// fallback: textured sprites through IGraphics
+	void DrawSprites() const;
 };
 
 #endif

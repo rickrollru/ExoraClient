@@ -88,6 +88,7 @@
 #include "components/touch_controls.h"
 #include "components/voting.h"
 #include "components/xclient/accessory.h"
+#include "components/xclient/fx_renderer.h"
 #include "components/xclient/hook_fx.h"
 #include "components/xclient/jump_fx.h"
 #include "components/xclient/weather.h"
@@ -250,6 +251,7 @@ public:
 
 	// XClient Components
 	CAccessory m_Accessory;
+	CFxRenderer m_FxRenderer;
 	CHookFx m_HookFx;
 	CJumpFx m_JumpFx;
 	CWeather m_Weather;

@@ -1,5 +1,7 @@
 #include "weather.h"
 
+#include "fx_renderer.h"
+
 #include <base/math.h>
 
 #include <engine/client.h>
@@ -209,14 +211,79 @@ void CWeather::Step(vec2 Shift)
 	}
 }
 
-void CWeather::Draw() const
+void CWeather::Draw()
 {
 	if(m_vParticles.empty())
 		return;
 
 	Graphics()->MapScreenToSize(m_Width, m_Height);
-	const float Alpha = g_Config.m_XcWeatherAlpha / 100.0f;
+	if(GameClient()->m_FxRenderer.ModuleActive())
+		DrawShapes();
+	else
+		DrawSprites();
+}
 
+float CWeather::ParticleAlpha(const SParticle &Particle) const
+{
+	float Alpha = Particle.m_Color.a * g_Config.m_XcWeatherAlpha / 100.0f;
+	if(Particle.m_Flicker > 0.0f)
+		Alpha *= 0.6f + 0.4f * std::sin(m_Time * Particle.m_Flicker + Particle.m_SwayPhase * 3.0f);
+	return Alpha;
+}
+
+vec2 CWeather::ParticleSize(const SParticle &Particle) const
+{
+	float Height = Particle.m_Size * Particle.m_Stretch;
+	// flat particles (leaves, petals) flip around while falling
+	if(Particle.m_Stretch < 1.0f)
+		Height *= 0.35f + 0.65f * std::abs(std::sin(Particle.m_SwayPhase * 1.3f));
+	return vec2(Particle.m_Size, Height);
+}
+
+void CWeather::DrawShapes()
+{
+	m_vShapes.clear();
+	for(const SParticle &Particle : m_vParticles)
+	{
+		const ColorRGBA Color = Particle.m_Color.WithAlpha(ParticleAlpha(Particle));
+		const vec2 Half = ParticleSize(Particle) * 0.5f;
+		switch(m_Type)
+		{
+		case WEATHER_SNOW:
+			if(Particle.m_Sprite)
+			{
+				// near flakes: six pointed star with a soft round core
+				m_vShapes.push_back(FxShape::Star(Particle.m_Pos, Half.x, 6, 0.5f, Color).Rotate(Particle.m_Rot).Soft(Half.x * 0.1f));
+				m_vShapes.push_back(FxShape::Circle(Particle.m_Pos, Half.x * 0.3f, Color).Soft(Half.x * 0.3f));
+			}
+			else
+			{
+				// far flakes: small discs with a soft edge
+				m_vShapes.push_back(FxShape::Circle(Particle.m_Pos, Half.x * 0.6f, Color).Soft(Half.x * 0.5f));
+			}
+			break;
+		case WEATHER_LEAVES:
+		case WEATHER_SAKURA:
+		{
+			// darker towards one side, like light on a curved leaf or petal
+			const float Shade = m_Type == WEATHER_LEAVES ? 0.7f : 1.12f;
+			const ColorRGBA Other(std::min(Color.r * Shade, 1.0f), std::min(Color.g * Shade, 1.0f), std::min(Color.b * Shade, 1.0f), Color.a);
+			m_vShapes.push_back(FxShape::Ellipse(Particle.m_Pos, Half, Color).Gradient(Other).Rotate(Particle.m_Rot));
+			break;
+		}
+		default:
+			if(Particle.m_Flicker > 0.0f)
+				CFxRenderer::AppendGlowing(m_vShapes, FxShape::Circle(Particle.m_Pos, Half.x * 0.6f, Color), Half.x * 1.5f, 0.6f);
+			else
+				m_vShapes.push_back(FxShape::Blob(Particle.m_Pos, Half.x * 1.2f, Color));
+			break;
+		}
+	}
+	GameClient()->m_FxRenderer.Draw(m_vShapes, true);
+}
+
+void CWeather::DrawSprites() const
+{
 	const IGraphics::CTextureHandle aTextures[] = {
 		GameClient()->m_ParticlesSkin.m_SpriteParticleBall,
 		GameClient()->m_ExtrasSkin.m_SpriteParticleSnowflake,
@@ -235,19 +302,10 @@ void CWeather::Draw() const
 			if(Particle.m_Sprite != SpritePass)
 				continue;
 
-			float ParticleAlpha = Particle.m_Color.a * Alpha;
-			if(Particle.m_Flicker > 0.0f)
-				ParticleAlpha *= 0.6f + 0.4f * std::sin(m_Time * Particle.m_Flicker + Particle.m_SwayPhase * 3.0f);
-
-			float Width = Particle.m_Size;
-			float Height = Particle.m_Size * Particle.m_Stretch;
-			// flat particles (leaves, petals) flip around while falling
-			if(Particle.m_Stretch < 1.0f)
-				Height *= 0.35f + 0.65f * std::abs(std::sin(Particle.m_SwayPhase * 1.3f));
-
-			Graphics()->SetColor(Particle.m_Color.WithAlpha(ParticleAlpha));
+			const vec2 Size = ParticleSize(Particle);
+			Graphics()->SetColor(Particle.m_Color.WithAlpha(ParticleAlpha(Particle)));
 			Graphics()->QuadsSetRotation(Particle.m_Rot);
-			IGraphics::CQuadItem QuadItem(Particle.m_Pos.x, Particle.m_Pos.y, Width, Height);
+			IGraphics::CQuadItem QuadItem(Particle.m_Pos.x, Particle.m_Pos.y, Size.x, Size.y);
 			Graphics()->QuadsDraw(&QuadItem, 1);
 		}
 		Graphics()->QuadsEnd();
