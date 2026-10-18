@@ -385,6 +385,7 @@ namespace XcUi
 			{"Shake strength", "Сила тряски"},
 			{"Only the picture moves, aim and movement stay the same", "Двигается только картинка, прицел и управление не меняются"},
 			{"Events", "События"},
+			{"New messages slide in", "Новые сообщения плавно выезжают"},
 			{"Focus mode", "Режим фокуса"},
 			{"Focus mode on", "Режим фокуса включён"},
 			{"Focus mode off", "Режим фокуса выключен"},
