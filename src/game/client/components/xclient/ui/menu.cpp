@@ -85,6 +85,7 @@ bool CXcMenu::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 		return false;
 	Ui()->ConvertMouseMove(&x, &y, CursorType);
 	Ui()->OnCursorMove(x, y);
+	m_Backend.OnMouseMove(Ui()->UpdatedMousePos());
 	return true;
 }
 
