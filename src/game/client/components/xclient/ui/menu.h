@@ -3,15 +3,18 @@
 
 #include "backgrounds.h"
 #include "imgui_backend.h"
+#include "player_stats.h"
 
 #include <engine/console.h>
 
 #include <game/client/component.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 class CServerInfo;
+class IHttpRequest;
 
 struct ImVec2;
 
@@ -167,6 +170,22 @@ private:
 	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
 	void DrawTeePreview(const float *pRect);
 	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max);
+
+	// player stats from ddnet.org (menu_home.cpp)
+	enum
+	{
+		STATS_LOADING = 0,
+		STATS_LOADED,
+		STATS_UNKNOWN, // no such player on ddnet.org
+		STATS_FAILED,
+	};
+	std::shared_ptr<IHttpRequest> m_pStatsTask;
+	char m_aStatsName[64] = {};
+	int m_StatsState = STATS_LOADING;
+	float m_StatsTime = 0.0f;
+	SPlayerStats m_Stats;
+	void UpdatePlayerStats();
+	void RenderPlayerStats();
 
 	// search (menu_search.cpp)
 	bool m_SearchOpen = false;

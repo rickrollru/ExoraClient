@@ -2963,10 +2963,13 @@ if(CLIENT)
     components/xclient/ui/menu.h
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
+    components/xclient/ui/menu_home.cpp
     components/xclient/ui/menu_presets.cpp
     components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp
+    components/xclient/ui/player_stats.cpp
+    components/xclient/ui/player_stats.h
     components/xclient/ui/theme.cpp
     components/xclient/ui/theme.h
     components/xclient/ui/widgets.cpp
