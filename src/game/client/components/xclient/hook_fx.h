@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_HOOK_FX_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_HOOK_FX_H
 
+#include "fx_renderer.h"
 #include "xc_particles.h"
 
 #include <base/color.h>
@@ -53,6 +54,7 @@ private:
 	};
 	SState m_aStates[MAX_CLIENTS];
 	CXcParticles m_Particles;
+	mutable std::vector<SFxShape> m_vLineShapes;
 
 	void EmitHit(vec2 Pos, vec2 AwayDir);
 };
