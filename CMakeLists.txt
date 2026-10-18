@@ -2918,10 +2918,14 @@ if(CLIENT)
     components/touch_controls.h
     components/voting.cpp
     components/voting.h
+    components/xclient/accessory.cpp
+    components/xclient/accessory.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
     components/xclient/weather.cpp
     components/xclient/weather.h
+    components/xclient/xc_helpers.cpp
+    components/xclient/xc_helpers.h
     gameclient.cpp
     gameclient.h
     laser_data.cpp

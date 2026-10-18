@@ -135,6 +135,11 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   Настройки: `xc_jump_fx` (0 выкл, 1 кольца, 2 искры, 3 звёзды), `xc_jump_fx_air`, `xc_land_fx`, `xc_run_dust`,
   `xc_jump_fx_size`, `xc_jump_fx_color`, `xc_jump_fx_self`, `xc_jump_fx_dummy`, `xc_jump_fx_others`.
   Проверено на локальном сервере (Linux, программный OpenGL).
+- 18.10.2026: Аксессуар на ти (`xclient/accessory.cpp`): конус (China Hat) с подсветкой полей, нимб, корона
+  с камнями. Наклоняется при беге и пружинит при прыжке/приземлении (пружина с фикс. шагом, не зависит от FPS).
+  Настройки: `xc_accessory` (0 выкл, 1 конус, 2 нимб, 3 корона), `xc_accessory_size`, `xc_accessory_alpha`,
+  `xc_accessory_color`, `xc_accessory_rainbow`, `xc_accessory_physics` (0 = жёстко), `xc_accessory_self/dummy/others`.
+  Общие функции (светящееся кольцо, мягкий круг, «мои/дамми/другие») — `xclient/xc_helpers.cpp`.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`).
 
