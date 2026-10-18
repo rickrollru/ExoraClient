@@ -42,6 +42,8 @@ namespace XcUi
 	};
 
 	const STheme &Theme();
+	// colors of a theme without making it the current one (previews)
+	STheme MakeTheme(int Theme, int Accent);
 	void SetTheme(int Theme, int Accent);
 	ImVec4 AccentColor(int Accent, bool Dark);
 
