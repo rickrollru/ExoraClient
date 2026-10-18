@@ -149,6 +149,12 @@ MACRO_CONFIG_INT(XcDummyArrowSize, xc_dummy_arrow_size, 100, 50, 250, CFGFLAG_CL
 MACRO_CONFIG_INT(XcDummyArrowColorMode, xc_dummy_arrow_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcDummyArrowColor, xc_dummy_arrow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color")
 
+// Juice: screen flashes and camera shake (visual only)
+MACRO_CONFIG_INT(XcScreenFlash, xc_screen_flash, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Colored light from the screen edges on freeze, death and finish")
+MACRO_CONFIG_INT(XcScreenFlashStrength, xc_screen_flash_strength, 45, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the screen flashes in percent")
+MACRO_CONFIG_INT(XcCameraShake, xc_camera_shake, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shake the camera on death, freeze and near explosions")
+MACRO_CONFIG_INT(XcCameraShakeStrength, xc_camera_shake_strength, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the camera shake in percent")
+
 // Event sounds (only for your own tee and dummy)
 MACRO_CONFIG_INT(XcEventSounds, xc_event_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "XClient sounds on game events of your own tees")
 MACRO_CONFIG_INT(XcEventSoundVolume, xc_event_sound_volume, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Volume of the event sounds in percent")
