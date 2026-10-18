@@ -1017,6 +1017,8 @@ void CMenus::Render()
 
 	if(ClientState == IClient::STATE_ONLINE || ClientState == IClient::STATE_DEMOPLAYBACK)
 	{
+		if(IsActive())
+			GameClient()->m_FxRenderer.RenderMenuBlur(); // XClient
 		ms_ColorTabbarInactive = ms_ColorTabbarInactiveIngame;
 		ms_ColorTabbarActive = ms_ColorTabbarActiveIngame;
 		ms_ColorTabbarHover = ms_ColorTabbarHoverIngame;

@@ -38,7 +38,7 @@ void CJumpFx::OnRender()
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	UpdatePlayers(Dt);
 	m_Particles.Update(Dt);
-	m_Particles.Render(GameClient());
+	m_Particles.Render(GameClient()->m_FxRenderer);
 }
 
 void CJumpFx::UpdatePlayers(float Dt)

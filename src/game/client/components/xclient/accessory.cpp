@@ -1,5 +1,6 @@
 #include "accessory.h"
 
+#include "fx_renderer.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -91,8 +92,6 @@ void CAccessory::OnRender()
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	m_Time += Dt;
 
-	Graphics()->TextureClear();
-	Graphics()->QuadsBegin();
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
 		SState &State = m_aStates[ClientId];
@@ -128,7 +127,6 @@ void CAccessory::OnRender()
 		case ACCESSORY_CROWN: RenderCrown(Head, Scale, State.m_Tilt, Squash, Alpha); break;
 		}
 	}
-	Graphics()->QuadsEnd();
 }
 
 ColorRGBA CAccessory::BaseColor(float Offset, float Alpha) const
@@ -145,43 +143,31 @@ static ColorRGBA Shade(ColorRGBA Color, float Factor)
 
 void CAccessory::RenderCone(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
-	constexpr int SEGMENTS = 32;
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
 	constexpr float BRIM_SQUASH = 0.3f;
 	const float Radius = 30.0f * Scale;
-	const vec2 Base = Head + vec2(0.0f, 4.0f * Scale);
-	const vec2 Apex = Base + vec2(0.0f, -24.0f * Scale * Squash);
-	const auto Transform = [&](vec2 Point) { return Rotate(Point, Head, Tilt); };
-	const vec2 ApexT = Transform(Apex);
+	const float Height = 24.0f * Scale * Squash;
+	const vec2 Base = Rotate(Head + vec2(0.0f, 4.0f * Scale), Head, Tilt);
+	const vec2 Body = Rotate(Head + vec2(0.0f, 4.0f * Scale - Height * 0.5f), Head, Tilt);
+	const vec2 Brim = vec2(Radius, Radius * BRIM_SQUASH);
 
-	// cone surface: triangles from the apex to the brim, lit from the front
-	for(int i = 0; i < SEGMENTS; i++)
-	{
-		const float a1 = 2.0f * pi * i / SEGMENTS;
-		const float a2 = 2.0f * pi * (i + 1) / SEGMENTS;
-		const vec2 p1 = Transform(Base + vec2(std::cos(a1) * Radius, std::sin(a1) * Radius * BRIM_SQUASH));
-		const vec2 p2 = Transform(Base + vec2(std::cos(a2) * Radius, std::sin(a2) * Radius * BRIM_SQUASH));
-		const float Light1 = 0.7f + 0.3f * std::sin(a1);
-		const float Light2 = 0.7f + 0.3f * std::sin(a2);
-		const ColorRGBA Top = Shade(BaseColor(0.0f, Alpha), 1.25f);
-		Graphics()->SetColor4(Top, Top,
-			Shade(BaseColor(i / (float)SEGMENTS, Alpha * 0.75f), Light1),
-			Shade(BaseColor((i + 1) / (float)SEGMENTS, Alpha * 0.75f), Light2));
-		const IGraphics::CFreeformItem Item(ApexT, ApexT, p1, p2);
-		Graphics()->QuadsDrawFreeform(&Item, 1);
-	}
-
-	// glowing brim
-	DrawGlowRing(Graphics(), Transform(Base), Radius, BRIM_SQUASH, 2.0f * Scale, 4.0f * Scale, Shade(BaseColor(0.5f, Alpha), 1.2f), Tilt);
+	// underside of the brim, then the cone, then the glowing rim on top
+	Fx.AddWorld(FxShape::Ellipse(Base, Brim, Shade(BaseColor(0.5f, Alpha * 0.8f), 0.7f)).Rotate(Tilt));
+	Fx.AddWorld(FxShape::Triangle(Body, vec2(Radius * 0.96f, Height * 0.5f), Shade(BaseColor(0.0f, Alpha * 0.9f), 1.3f))
+			    .Gradient(Shade(BaseColor(0.3f, Alpha * 0.8f), 0.85f))
+			    .Rotate(Tilt));
+	Fx.AddWorldGlowing(FxShape::Ring(Base, Brim, 2.0f * Scale, Shade(BaseColor(0.5f, Alpha), 1.2f)).Rotate(Tilt), 5.0f * Scale, 0.5f);
 }
 
 void CAccessory::RenderHalo(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
-	const vec2 Center = Head + vec2(0.0f, -14.0f * Scale * Squash);
-	DrawGlowRing(Graphics(), Rotate(Center, Head, Tilt), 15.0f * Scale, 0.32f * Squash, 3.0f * Scale, 6.0f * Scale, BaseColor(0.0f, Alpha), Tilt);
+	const vec2 Center = Rotate(Head + vec2(0.0f, -14.0f * Scale * Squash), Head, Tilt);
+	GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Ring(Center, vec2(15.0f, 15.0f * 0.32f * Squash) * Scale, 3.0f * Scale, BaseColor(0.0f, Alpha)).Rotate(Tilt), 7.0f * Scale, 0.5f);
 }
 
 void CAccessory::RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
 	// the crown is drawn a bit bigger than the other accessories to match their visual weight
 	Scale *= 1.3f;
 	const ColorRGBA GoldTop(1.0f, 0.88f, 0.42f, Alpha);
@@ -190,54 +176,35 @@ void CAccessory::RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, f
 	const float HalfWidth = 13.0f * Scale;
 	const float Bottom = 5.0f * Scale;
 	const float BandTop = Bottom - 7.0f * Scale * Squash;
-	const float Border = 1.5f * Scale;
-
+	const float Border = 1.2f * Scale;
 	const auto P = [&](float x, float y) { return Rotate(Head + vec2(x, y), Head, Tilt); };
 
 	struct SSpike
 	{
-		float m_Left, m_Right, m_Tip, m_Height;
+		float m_Left, m_Right, m_Height;
 	};
 	const SSpike aSpikes[] = {
-		{-HalfWidth, -HalfWidth / 3.0f, -HalfWidth + 2.0f * Scale, 9.0f * Scale},
-		{-HalfWidth / 3.0f, HalfWidth / 3.0f, 0.0f, 13.0f * Scale},
-		{HalfWidth / 3.0f, HalfWidth, HalfWidth - 2.0f * Scale, 9.0f * Scale},
+		{-HalfWidth, -HalfWidth / 3.0f, 9.0f * Scale},
+		{-HalfWidth / 3.0f, HalfWidth / 3.0f, 13.0f * Scale},
+		{HalfWidth / 3.0f, HalfWidth, 9.0f * Scale},
 	};
-
-	// dark outline first, then the gold on top of it
-	for(int Pass = 0; Pass < 2; Pass++)
-	{
-		const float Grow = Pass == 0 ? Border : 0.0f;
-		if(Pass == 0)
-			Graphics()->SetColor(Outline);
-		else
-			Graphics()->SetColor4(GoldTop, GoldTop, GoldBottom, GoldBottom);
-		const IGraphics::CFreeformItem Band(
-			P(-HalfWidth - Grow, BandTop - Grow), P(HalfWidth + Grow, BandTop - Grow),
-			P(-HalfWidth - Grow, Bottom + Grow), P(HalfWidth + Grow, Bottom + Grow));
-		Graphics()->QuadsDrawFreeform(&Band, 1);
-
-		if(Pass == 1)
-			Graphics()->SetColor4(GoldTop, GoldTop, GoldBottom, GoldBottom);
-		for(const SSpike &Spike : aSpikes)
-		{
-			const float TipY = BandTop - Spike.m_Height * Squash - Grow * 1.5f;
-			const IGraphics::CFreeformItem Item(
-				P(Spike.m_Tip, TipY), P(Spike.m_Tip, TipY),
-				P(Spike.m_Left - Grow, BandTop + 0.5f * Scale), P(Spike.m_Right + Grow, BandTop + 0.5f * Scale));
-			Graphics()->QuadsDrawFreeform(&Item, 1);
-		}
-	}
-
-	// gems on the spike tips and in the middle of the band
 	const ColorRGBA Gem = Shade(BaseColor(0.0f, Alpha), 1.1f);
-	const ColorRGBA Shine(1.0f, 1.0f, 1.0f, Alpha * 0.8f);
 	for(const SSpike &Spike : aSpikes)
 	{
-		const vec2 Tip = P(Spike.m_Tip, BandTop - Spike.m_Height * Squash);
-		DrawSoftCircle(Graphics(), Tip, 2.0f * Scale, 1.0f * Scale, Gem);
+		const float Height = Spike.m_Height * Squash + 1.0f * Scale; // reaches into the band
+		const float CenterX = (Spike.m_Left + Spike.m_Right) * 0.5f;
+		const float CenterY = BandTop + 1.0f * Scale - Height * 0.5f;
+		Fx.AddWorld(FxShape::Triangle(P(CenterX, CenterY), vec2((Spike.m_Right - Spike.m_Left) * 0.5f, Height * 0.5f), GoldTop)
+				    .Gradient(GoldBottom)
+				    .Outline(Border, Outline)
+				    .Rotate(Tilt));
+		Fx.AddWorldGlowing(FxShape::Circle(P(CenterX, BandTop - Spike.m_Height * Squash), 2.0f * Scale, Gem), 3.0f * Scale, 0.5f);
 	}
+	Fx.AddWorld(FxShape::RoundRect(P(0.0f, (BandTop + Bottom) * 0.5f), vec2(HalfWidth, (Bottom - BandTop) * 0.5f), 1.5f * Scale, GoldTop)
+			    .Gradient(GoldBottom)
+			    .Outline(Border, Outline)
+			    .Rotate(Tilt));
 	const vec2 Center = P(0.0f, (BandTop + Bottom) * 0.5f);
-	DrawSoftCircle(Graphics(), Center, 2.5f * Scale, 1.0f * Scale, Gem);
-	DrawSoftCircle(Graphics(), Center + vec2(-0.8f, -0.8f) * Scale, 0.8f * Scale, 0.5f * Scale, Shine);
+	Fx.AddWorldGlowing(FxShape::Circle(Center, 2.4f * Scale, Gem), 3.5f * Scale, 0.5f);
+	Fx.AddWorld(FxShape::Circle(Center + vec2(-0.8f, -0.8f) * Scale, 0.7f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha * 0.8f)).Additive());
 }

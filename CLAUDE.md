@@ -144,6 +144,20 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   (с цветной аурой) / сплошная линия / светящаяся линия с бегущими импульсами; эффект зацепа кольцо/искры/звёзды.
   Настройки: `xc_hook_style`, `xc_hook_color`, `xc_hook_rainbow`, `xc_hook_width`, `xc_hook_hit_fx`,
   `xc_hook_self/dummy/others`. Общая система частиц для всех эффектов — `xclient/xc_particles.cpp`.
+- 18.10.2026: Рендер-модуль (OpenGL 3.3), шаг 1. Рендер-поток: `src/engine/client/backend/xclient/xc_renderer.cpp`
+  (свои команды `CMD_XC_*` в командном буфере, обрабатываются в `CCommandProcessor_SDL_GL::RunBuffer`; инициализация
+  на первом `CMD_SWAP`; GL-состояние сохраняется/восстанавливается `CGlStateGuard`). Без GL 3.3 (Vulkan/GL1/GLES)
+  команды пропускаются, `XcRender::IsAvailable()` = false, эффекты рисуются запасным путём через IGraphics.
+  - SDF-шейдер с instancing (эллипс, кольцо, скруглённый прямоугольник, звезда, треугольник, линия, мягкая капля),
+    сглаживание через fwidth, обводка, градиент, свечение (затухание до нуля на радиусе), режим «только свечение».
+    Обычное alpha и additive — два draw call. Bloom: additive-фигуры в буфер 1/2 → dual Kawase → сложение;
+    работа ограничена scissor-рамкой вокруг светящихся фигур. Блюр под игровым меню (Esc) тем же Kawase.
+  - Шлюз в игре: `components/xclient/fx_renderer.cpp` (`SFxShape`, `FxShape::*`, `AddWorld`, `AddWorldGlowing`,
+    `Draw`, запасная отрисовка). Мировые эффекты копятся и рисуются одним проходом (`m_FxRenderer` после `m_HookFx`).
+  - Переведены: погода, прыжки, аксессуар, частицы зацепа хука. Линия хука пока через IGraphics (рисуется между ти).
+  - Настройки: `xc_render`, `xc_bloom`, `xc_bloom_threshold`, `xc_fx_quality` (0 без bloom, 1 — 3 уровня, 2 — 5),
+    `xc_menu_blur`. По умолчанию бэкенд теперь OpenGL 3.3 на 64-бит десктопе (было: Vulkan на Windows, GL1 на Linux).
+  - FPS (программный llvmpipe, 1920x1080): без модуля 19–21, с модулем 17–19; на GPU разница должна быть незаметной.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`).
 

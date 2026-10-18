@@ -763,17 +763,13 @@ MACRO_CONFIG_INT(ClDemoShowPause, cl_demo_show_pause, 1, 0, 1, CFGFLAG_SAVE | CF
 MACRO_CONFIG_INT(ClDemoKeyboardShortcuts, cl_demo_keyboard_shortcuts, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Enable keyboard shortcuts in demo player")
 
 // graphic library
-#if !defined(CONF_ARCH_IA32) && !defined(CONF_PLATFORM_MACOS)
-MACRO_CONFIG_INT(GfxGLMajor, gfx_gl_major, 1, 1, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library major version")
-#elif !defined(CONF_ARCH_IA32)
+// XClient: OpenGL 3.3 by default on 64 bit desktops (needed by the XClient render module)
+#if !defined(CONF_ARCH_IA32) && !defined(CONF_PLATFORM_ANDROID) && !defined(CONF_PLATFORM_IOS) && !defined(CONF_PLATFORM_EMSCRIPTEN)
 MACRO_CONFIG_INT(GfxGLMajor, gfx_gl_major, 3, 1, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library major version")
+MACRO_CONFIG_INT(GfxGLMinor, gfx_gl_minor, 3, 0, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library minor version")
 #else
 MACRO_CONFIG_INT(GfxGLMajor, gfx_gl_major, 1, 1, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library major version")
-#endif
-#if !defined(CONF_PLATFORM_MACOS)
 MACRO_CONFIG_INT(GfxGLMinor, gfx_gl_minor, 1, 0, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library minor version")
-#else
-MACRO_CONFIG_INT(GfxGLMinor, gfx_gl_minor, 3, 0, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library minor version")
 #endif
 MACRO_CONFIG_INT(GfxGLPatch, gfx_gl_patch, 0, 0, 10, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Graphic library patch version")
 
@@ -789,9 +785,7 @@ MACRO_CONFIG_STR(GfxGpuName, gfx_gpu_name, 256, "auto", CFGFLAG_SAVE | CFGFLAG_C
 MACRO_CONFIG_STR(GfxBackend, gfx_backend, 256, "GLES", CFGFLAG_SAVE | CFGFLAG_CLIENT, "The backend to use (e.g. GLES or Vulkan)")
 #elif defined(CONF_PLATFORM_EMSCRIPTEN) || defined(CONF_PLATFORM_IOS)
 MACRO_CONFIG_STR(GfxBackend, gfx_backend, 256, "GLES", CFGFLAG_SAVE | CFGFLAG_CLIENT, "The backend to use (e.g. GLES)")
-#elif !defined(CONF_ARCH_IA32) && !defined(CONF_PLATFORM_MACOS)
-MACRO_CONFIG_STR(GfxBackend, gfx_backend, 256, "Vulkan", CFGFLAG_SAVE | CFGFLAG_CLIENT, "The backend to use (e.g. OpenGL or Vulkan)")
-#else
+#else // XClient: OpenGL instead of Vulkan, the XClient render module needs OpenGL 3.3
 MACRO_CONFIG_STR(GfxBackend, gfx_backend, 256, "OpenGL", CFGFLAG_SAVE | CFGFLAG_CLIENT, "The backend to use (e.g. OpenGL or Vulkan)")
 #endif
 MACRO_CONFIG_INT(GfxRenderThreadCount, gfx_render_thread_count, 3, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Number of threads the backend can use for rendering. (note: the value can be ignored by the backend)")

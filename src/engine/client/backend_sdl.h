@@ -178,10 +178,13 @@ public:
 	bool RunCommand(const CCommandBuffer::SCommand *pBaseCommand);
 };
 
+class CXcRenderer; // XClient
+
 // command processor implementation, uses the fragments to combine into one processor
 class CCommandProcessor_SDL_GL : public CGraphicsBackend_Threaded::ICommandProcessor
 {
 	CCommandProcessorFragment_GLBase *m_pGLBackend;
+	CXcRenderer *m_pXcRenderer = nullptr; // XClient: render module, only with OpenGL 3.3
 	CCommandProcessorFragment_SDL m_SDL;
 	CCommandProcessorFragment_General m_General;
 

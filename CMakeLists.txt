@@ -2438,6 +2438,7 @@ set_src(ENGINE_INTERFACE GLOB src/engine
   updater.h
   uuid.h
   warning.h
+  xc_render.h
   # tidy-alphabetical-end
 )
 set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
@@ -2710,6 +2711,9 @@ if(CLIENT)
     backend/opengles/opengles_sl_program.cpp
     backend/vulkan/backend_vulkan.cpp
     backend/vulkan/backend_vulkan.h
+    backend/xclient/xc_commands.h
+    backend/xclient/xc_renderer.cpp
+    backend/xclient/xc_renderer.h
     backend_egl.cpp
     backend_egl.h
     backend_sdl.cpp
@@ -2920,6 +2924,8 @@ if(CLIENT)
     components/voting.h
     components/xclient/accessory.cpp
     components/xclient/accessory.h
+    components/xclient/fx_renderer.cpp
+    components/xclient/fx_renderer.h
     components/xclient/hook_fx.cpp
     components/xclient/hook_fx.h
     components/xclient/jump_fx.cpp
@@ -3567,6 +3573,7 @@ if(TOOLS)
           src/engine/client/backend/opengl/opengl_sl.cpp
           src/engine/client/backend/opengl/opengl_sl_program.cpp
           src/engine/client/backend/glsl_shader_compiler.cpp
+          src/engine/client/backend/xclient/xc_renderer.cpp
           src/engine/client/backend/backend_base.cpp
           src/engine/client/backend_threaded.cpp
           src/engine/client/blocklist_driver.cpp
