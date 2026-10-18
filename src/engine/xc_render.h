@@ -11,8 +11,8 @@ namespace XcRender
 
 	enum EShape
 	{
-		SHAPE_ELLIPSE = 0, // filled circle / ellipse (half width, half height)
-		SHAPE_RING, // ellipse outline, m_Param0 = thickness
+		SHAPE_ELLIPSE = 0, // filled circle / ellipse, m_Param1 > 0 = radial gradient power (color2 in the center)
+		SHAPE_RING, // ellipse outline, m_Param0 = thickness, m_Param1 = +1 front (lower) half only, -1 back (upper) half only
 		SHAPE_ROUNDRECT, // m_Param0 = corner radius
 		SHAPE_STAR, // m_Param0 = number of points, m_Param1 = inner radius ratio (0..1)
 		SHAPE_TRIANGLE, // isosceles, apex up, half width at the base and half height
