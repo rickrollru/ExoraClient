@@ -36,6 +36,14 @@ struct SFxShape
 		m_Gpu.m_OutlineWidth = -1.0f;
 		return Glow(Radius, Strength);
 	}
+	// ellipse only: Center color in the middle, the shape color at the edge
+	SFxShape &RadialGradient(ColorRGBA Center, float Power);
+	// ring only: +1 keeps the front (lower) half, -1 the back (upper) half
+	SFxShape &Half(float Side)
+	{
+		m_Gpu.m_Param1 = Side;
+		return *this;
+	}
 	SFxShape &Rotate(float Angle)
 	{
 		m_Gpu.m_Rotation = Angle;

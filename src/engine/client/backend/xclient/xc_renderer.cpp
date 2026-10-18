@@ -159,6 +159,12 @@ void main()
 
 	float t = clamp(p.y / max(2.0 * v_Half.y, 0.0001) + 0.5, 0.0, 1.0);
 	vec4 Fill = mix(v_Color, v_Color2, t);
+	if(Shape == 0 && v_Shape.w > 0.0)
+	{
+		// radial gradient: color2 in the center, color at the edge
+		float k = clamp(length(p / max(v_Half, vec2(0.0001))), 0.0, 1.0);
+		Fill = mix(v_Color2, v_Color, pow(k, v_Shape.w));
+	}
 
 	float Alpha;
 	vec3 Rgb;
@@ -216,6 +222,13 @@ void main()
 			float Glow = GlowStrength * GlowFalloff(d, GlowRadius) * (1.0 - Coverage);
 			Alpha += Glow * Fill.a;
 		}
+	}
+
+	if(Shape == 1 && v_Shape.w != 0.0)
+	{
+		// half ring: param1 > 0 keeps the lower (front) half, < 0 the upper (back) half
+		float Side = sign(v_Shape.w) * p.y;
+		Alpha *= clamp(0.5 + Side / max(fwidth(p.y), 0.0001), 0.0, 1.0);
 	}
 
 	if(u_BloomPass != 0)
