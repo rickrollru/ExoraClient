@@ -2190,6 +2190,12 @@ set(EXPECTED_DATA
   xclient/fonts/Unbounded-Bold.ttf
   xclient/fonts/Unbounded-Regular.ttf
   xclient/fonts/Unbounded-SemiBold.ttf
+  xclient/hats/cat_ears.png
+  xclient/hats/party_hat.png
+  xclient/hats/santa_hat.png
+  xclient/hats/sunglasses.png
+  xclient/hats/top_hat.png
+  xclient/hats/wizard_hat.png
   xclient/sounds/click.opus
   xclient/sounds/error.opus
   xclient/sounds/notify.opus
@@ -2952,6 +2958,8 @@ if(CLIENT)
     components/xclient/accessory.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
+    components/xclient/hats.cpp
+    components/xclient/hats.h
     components/xclient/hook_fx.cpp
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
@@ -2977,6 +2985,7 @@ if(CLIENT)
     components/xclient/ui/menu.h
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
+    components/xclient/ui/menu_cosmetics.cpp
     components/xclient/ui/menu_demos.cpp
     components/xclient/ui/menu_home.cpp
     components/xclient/ui/menu_presets.cpp
