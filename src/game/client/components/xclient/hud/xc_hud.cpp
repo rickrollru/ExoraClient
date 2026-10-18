@@ -643,6 +643,24 @@ ColorRGBA CXcHud::WheelPanelColor() const
 	return ColorRGBA(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.88f);
 }
 
+ColorRGBA CXcHud::ScoreboardPanelColor() const
+{
+	const STheme &t = Theme();
+	return ColorRGBA(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.86f);
+}
+
+ColorRGBA CXcHud::ScoreboardHighlightColor() const
+{
+	const STheme &t = Theme();
+	return ColorRGBA(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.32f);
+}
+
+ColorRGBA CXcHud::ScoreboardHoverColor() const
+{
+	const STheme &t = Theme();
+	return ColorRGBA(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.55f);
+}
+
 ColorRGBA CXcHud::WheelSelectColor() const
 {
 	const STheme &t = Theme();

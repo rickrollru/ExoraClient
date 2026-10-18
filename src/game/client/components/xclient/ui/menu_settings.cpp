@@ -430,6 +430,11 @@ void CXcMenu::RenderSettingsHud()
 		Description(Tr("The text stays readable on bright maps"));
 		EndCard();
 	}
+	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list in the colors of the menu, your row in the accent color"), &g_Config.m_XcHudScoreboard))
+	{
+		Description(Tr("Press Tab in game to see it"));
+		EndCard();
+	}
 	if(BeginCard("##hud_wheels", Tr("Wheels"), Tr("Emote wheel and spectator menu in the colors of the menu"), &g_Config.m_XcHudWheels))
 	{
 		Description(Tr("The chosen emote lights up in the accent color"));

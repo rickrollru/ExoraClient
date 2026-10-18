@@ -385,6 +385,8 @@ namespace XcUi
 			{"Shake strength", "Сила тряски"},
 			{"Only the picture moves, aim and movement stay the same", "Двигается только картинка, прицел и управление не меняются"},
 			{"Events", "События"},
+			{"The player list in the colors of the menu, your row in the accent color", "Список игроков в цветах меню, твоя строка подсвечена акцентом"},
+			{"Press Tab in game to see it", "Нажми Tab в игре, чтобы посмотреть"},
 			{"New messages slide in", "Новые сообщения плавно выезжают"},
 			{"Focus mode", "Режим фокуса"},
 			{"Focus mode on", "Режим фокуса включён"},

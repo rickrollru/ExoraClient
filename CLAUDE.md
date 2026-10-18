@@ -352,6 +352,8 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   - Анимация чата и килфида (`xc_chat_anim`, вкл): строка чата выезжает слева и проявляется за ~0,3 с, сообщение
     килфида выезжает справа и уезжает перед исчезновением (`infomessages.cpp`). Сдвиг в
     `RenderQuadContainerEx`/`RenderTextContainer` в `CChat::OnRender`, контейнеры не пересобираются).
+  - Таблица игроков (Tab) в цветах меню (`xc_hud_scoreboard`, вкл): панели цвета темы, скругления 14, своя строка и
+    наведение — акцентом (вставки `// XClient` в `scoreboard.cpp`, цвета из `CXcHud::Scoreboard*Color`).
   - Не берём: Snap Tap, «быстрый/лучший ввод» и прочее, что меняет управление (правило «без читов»).
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`). Короткие эффекты — видео `ffmpeg -f x11grab`.

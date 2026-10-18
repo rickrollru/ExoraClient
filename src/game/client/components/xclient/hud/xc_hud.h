@@ -43,6 +43,10 @@ public:
 	void RenderWheelBackground(vec2 Center, float InnerRadius, float OuterRadius, int NumItems, int Selected, float Alpha) const;
 	ColorRGBA WheelPanelColor() const;
 	ColorRGBA WheelSelectColor() const;
+	// the scoreboard in the colors of the menu (xc_hud_scoreboard)
+	ColorRGBA ScoreboardPanelColor() const;
+	ColorRGBA ScoreboardHighlightColor() const;
+	ColorRGBA ScoreboardHoverColor() const;
 
 	// big banner at the top: finish time, new records (Kind 0 = finish, 1 = personal record, 2 = server record)
 	void ShowBanner(const char *pTitle, const char *pSubtitle, int Kind);
