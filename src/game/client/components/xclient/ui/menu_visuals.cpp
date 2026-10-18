@@ -137,6 +137,8 @@ void CXcMenu::RenderVisualsWeapons()
 		ToggleRow(Tr("Glow around bullets and grenades"), "xc_projectile_glow", &g_Config.m_XcProjectileGlow);
 		ToggleRow(Tr("Comet tail"), "xc_projectile_trail", &g_Config.m_XcProjectileTrail);
 		ToggleRow(Tr("Laser glow"), "xc_laser_glow", &g_Config.m_XcLaserGlow);
+		ToggleRow(Tr("Own laser beam instead of the stock one"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
+		ToggleRow(Tr("Hide the stock smoke trails"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
 		ConfigSlider(Tr("Laser glow strength"), "xc_laser_glow_strength", &g_Config.m_XcLaserGlowStrength, 10, 250, "%d%%");
 		Description(Tr("The color is set in the Pickups card under World"));
 		EndCard();
@@ -156,6 +158,15 @@ void CXcMenu::RenderVisualsWeapons()
 	if(StyleCard("##fx_hammer", Tr("Hammer hit"), Tr("A flash where the hammer lands"), "xc_hammer_fx", &g_Config.m_XcHammerFx, apHammer, 3))
 	{
 		EffectColorPicker("##hammer_color", &g_Config.m_XcHammerColorMode, &g_Config.m_XcHammerColor);
+		ToggleRow(Tr("Hide the stock hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		EndCard();
+	}
+	const char *apExplosions[] = {Tr("Shockwave"), Tr("Neon"), Tr("Sparks")};
+	if(StyleCard("##fx_explosion", Tr("Grenade explosion"), Tr("A shockwave, neon rings or hot sparks where a grenade explodes"), "xc_explosion_fx", &g_Config.m_XcExplosionFx, apExplosions, 3))
+	{
+		EffectColorPicker("##explosion_color", &g_Config.m_XcExplosionColorMode, &g_Config.m_XcExplosionColor);
+		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
+		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
 		EndCard();
 	}
 	const char *apCrosshairs[] = {Tr("Dot"), Tr("Cross"), Tr("Circle"), Tr("Circle + dot")};
@@ -311,6 +322,20 @@ void CXcMenu::RenderVisualsEvents()
 			}
 			ImGui::PopID();
 		}
+		EndCard();
+	}
+	if(BeginCard("##fx_stock", Tr("Stock effects"), Tr("Hide the standard game effects so only ours stay, sounds remain")))
+	{
+		ToggleRow(Tr("Hammer hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
+		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ToggleRow(Tr("Double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
+		ToggleRow(Tr("Skid smoke when turning"), "xc_replace_skid", &g_Config.m_XcReplaceSkid);
+		ToggleRow(Tr("Purple spawn smoke"), "xc_replace_spawn", &g_Config.m_XcReplaceSpawn);
+		ToggleRow(Tr("Blood on death"), "xc_replace_death", &g_Config.m_XcReplaceDeath);
+		ToggleRow(Tr("Snowflakes on frozen tees"), "xc_replace_freeze", &g_Config.m_XcReplaceFreeze);
+		Description(Tr("Turn on our effect for the same event in its card, otherwise nothing is shown"));
 		EndCard();
 	}
 	if(BeginCard("##fx_dummy_arrow", Tr("Dummy arrow"), Tr("A glowing arrow at the screen edge shows where the dummy is"), &g_Config.m_XcDummyArrow))

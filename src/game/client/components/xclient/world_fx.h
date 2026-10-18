@@ -22,6 +22,13 @@ public:
 	};
 	enum
 	{
+		EXPLOSION_OFF = 0,
+		EXPLOSION_SHOCKWAVE,
+		EXPLOSION_NEON,
+		EXPLOSION_SPARKS,
+	};
+	enum
+	{
 		CROSSHAIR_DEFAULT = 0,
 		CROSSHAIR_DOT,
 		CROSSHAIR_CROSS,
@@ -36,6 +43,8 @@ public:
 
 	// called by CEffects::HammerHit
 	void HammerHit(vec2 Pos);
+	// called by CEffects::Explosion
+	void Explosion(vec2 Pos);
 	// called by CHud::RenderCursor, true when the own crosshair was drawn instead of the weapon cursor
 	bool RenderCrosshair(vec2 Pos, float Alpha, float Scale);
 

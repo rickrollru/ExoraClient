@@ -25,6 +25,12 @@ CEffects::CEffects()
 
 void CEffects::AirJump(vec2 Pos, float Alpha, float Volume)
 {
+	if(g_Config.m_XcReplaceAirJump) // XClient
+	{
+		if(g_Config.m_SndGame)
+			GameClient()->m_Sounds.PlayAt(CSounds::CHN_WORLD, SOUND_PLAYER_AIRJUMP, Volume, Pos);
+		return;
+	}
 	CParticle p;
 	p.SetDefault();
 	p.m_Spr = SPRITE_PART_AIRJUMP;
@@ -79,7 +85,7 @@ void CEffects::PowerupShine(vec2 Pos, vec2 Size, float Alpha)
 
 void CEffects::FreezingFlakes(vec2 Pos, vec2 Size, float Alpha)
 {
-	if(!m_Add5hz)
+	if(!m_Add5hz || g_Config.m_XcReplaceFreeze) // XClient
 		return;
 
 	CParticle p;
@@ -126,7 +132,7 @@ void CEffects::SparkleTrail(vec2 Pos, float Alpha)
 
 void CEffects::SmokeTrail(vec2 Pos, vec2 Vel, float Alpha, float TimePassed)
 {
-	if(!m_Add50hz && TimePassed < 0.001f)
+	if((!m_Add50hz && TimePassed < 0.001f) || g_Config.m_XcReplaceTrails) // XClient
 		return;
 
 	CParticle p;
@@ -146,7 +152,7 @@ void CEffects::SmokeTrail(vec2 Pos, vec2 Vel, float Alpha, float TimePassed)
 
 void CEffects::SkidTrail(vec2 Pos, vec2 Vel, int Direction, float Alpha, float Volume)
 {
-	if(m_Add100hz)
+	if(m_Add100hz && !g_Config.m_XcReplaceSkid) // XClient
 	{
 		CParticle p;
 		p.SetDefault();
@@ -175,7 +181,7 @@ void CEffects::SkidTrail(vec2 Pos, vec2 Vel, int Direction, float Alpha, float V
 
 void CEffects::BulletTrail(vec2 Pos, float Alpha, float TimePassed)
 {
-	if(!m_Add100hz && TimePassed < 0.001f)
+	if((!m_Add100hz && TimePassed < 0.001f) || g_Config.m_XcReplaceTrails) // XClient
 		return;
 
 	CParticle p;
@@ -194,7 +200,7 @@ void CEffects::BulletTrail(vec2 Pos, float Alpha, float TimePassed)
 void CEffects::PlayerSpawn(vec2 Pos, float Alpha, float Volume)
 {
 	GameClient()->m_XcEventFx.PlayerSpawn(Pos); // XClient
-	for(int i = 0; i < 32; i++)
+	for(int i = 0; i < (g_Config.m_XcReplaceSpawn ? 0 : 32); i++) // XClient
 	{
 		CParticle p;
 		p.SetDefault();
@@ -219,6 +225,8 @@ void CEffects::PlayerSpawn(vec2 Pos, float Alpha, float Volume)
 void CEffects::PlayerDeath(vec2 Pos, int ClientId, float Alpha)
 {
 	GameClient()->m_XcEventFx.PlayerDeath(Pos, ClientId); // XClient
+	if(g_Config.m_XcReplaceDeath) // XClient
+		return;
 	ColorRGBA BloodColor(1.0f, 1.0f, 1.0f);
 
 	if(ClientId >= 0)
@@ -332,6 +340,7 @@ void CEffects::Explosion(vec2 Pos, float Alpha)
 	// XClient: a grenade close to your tee shakes the camera
 	if(distance(Pos, GameClient()->m_LocalCharacterPos) < 260.0f)
 		GameClient()->m_ScreenFx.Shake(0.55f);
+	GameClient()->m_WorldFx.Explosion(Pos);
 	// add to flow
 	for(int y = -8; y <= 8; y++)
 		for(int x = -8; x <= 8; x++)
@@ -342,6 +351,9 @@ void CEffects::Explosion(vec2 Pos, float Alpha)
 			float a = 1 - (length(vec2(x, y)) / length(vec2(8.0f, 8.0f)));
 			GameClient()->m_Flow.Add(Pos + vec2(x, y) * 16.0f, normalize(vec2(x, y)) * 5000.0f * a, 10.0f);
 		}
+
+	if(g_Config.m_XcReplaceExplosion) // XClient: flow stays, sprite and smoke go
+		return;
 
 	// add the explosion
 	CParticle p;
@@ -399,6 +411,12 @@ void CEffects::Explosion(vec2 Pos, float Alpha)
 void CEffects::HammerHit(vec2 Pos, float Alpha, float Volume)
 {
 	GameClient()->m_WorldFx.HammerHit(Pos); // XClient
+	if(g_Config.m_XcReplaceHammer) // XClient
+	{
+		if(g_Config.m_SndGame)
+			GameClient()->m_Sounds.PlayAt(CSounds::CHN_WORLD, SOUND_HAMMER_HIT, Volume, Pos);
+		return;
+	}
 	// add the explosion
 	CParticle p;
 	p.SetDefault();
