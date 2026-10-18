@@ -115,6 +115,32 @@ private:
 	bool BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin = 0.0f, float UMax = 1.0f);
 	void RenderSettingsBackground();
 
+	// theme and performance presets (menu_presets.cpp)
+	struct SThemePreset
+	{
+		std::string m_Name;
+		int m_Theme = 0;
+		int m_Accent = 0;
+		int m_Font = 0;
+		int m_Background = 1;
+		int m_Dim = 25;
+		std::string m_BgFile;
+		std::string m_MenuMap;
+		bool m_Builtin = false;
+	};
+	std::vector<SThemePreset> m_vThemePresets;
+	bool m_ThemePresetsLoaded = false;
+	char m_aPresetName[32] = {};
+	std::string m_PresetDeleteArmed;
+	float m_PresetDeleteArmedUntil = 0.0f;
+	void LoadThemePresets();
+	void SaveThemePresets();
+	bool ThemePresetActive(const SThemePreset &Preset) const;
+	void ApplyThemePreset(const SThemePreset &Preset);
+	void RenderThemePresets();
+	int CurrentPerformancePreset() const;
+	void RenderPerformance();
+
 	// last applied style values, the style and fonts are rebuilt when they change
 	int m_AppliedTheme = -1;
 	int m_AppliedAccent = -1;
