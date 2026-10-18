@@ -33,9 +33,9 @@ namespace XcUi
 		return s_Theme;
 	}
 
-	void SetTheme(int Theme, int Accent)
+	STheme MakeTheme(int Theme, int Accent)
 	{
-		STheme &t = s_Theme;
+		STheme t;
 		t.m_Dark = Theme != THEME_LIGHT;
 		if(t.m_Dark)
 		{
@@ -67,6 +67,12 @@ namespace XcUi
 		// dark text on light accents (white, lime, mint), white text on the others
 		const float Luma = 0.299f * t.m_Accent.x + 0.587f * t.m_Accent.y + 0.114f * t.m_Accent.z;
 		t.m_OnAccent = Luma > 0.6f ? Hex(0x0A0B0E) : Hex(0xFFFFFF);
+		return t;
+	}
+
+	void SetTheme(int Theme, int Accent)
+	{
+		s_Theme = MakeTheme(Theme, Accent);
 	}
 
 	float Scale()

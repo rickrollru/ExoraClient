@@ -183,6 +183,12 @@ void CXcMenu::RenderSettingsInterface()
 		EndCard();
 	}
 
+	if(BeginCard("##presets", Tr("Theme presets"), Tr("Save theme, accent, font and background together")))
+	{
+		RenderThemePresets();
+		EndCard();
+	}
+
 	if(BeginCard("##font", Tr("Font"), Tr("Main font of the menu")))
 	{
 		const char *apFonts[] = {"Manrope", "Onest", "Unbounded"};
@@ -347,6 +353,11 @@ void CXcMenu::RenderSettingsChat()
 void CXcMenu::RenderSettingsGraphics()
 {
 	BeginCardGrid("##graphics", 2);
+	if(BeginCard("##performance", Tr("Performance"), Tr("Low, medium or high in one click")))
+	{
+		RenderPerformance();
+		EndCard();
+	}
 	if(BeginCard("##screen", Tr("Screen"), Tr("Window mode and frame rate")))
 	{
 		ParamLabel(Tr("Window mode"));
