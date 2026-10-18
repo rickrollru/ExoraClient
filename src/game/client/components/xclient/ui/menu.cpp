@@ -115,7 +115,7 @@ void CXcMenu::OnStateChange(int NewState, int OldState)
 	// while connecting the classic menu shows its progress popup
 	if(NewState == IClient::STATE_OFFLINE)
 		SetActive(true);
-	else if(NewState == IClient::STATE_CONNECTING || NewState == IClient::STATE_LOADING || NewState == IClient::STATE_ONLINE)
+	else if(NewState == IClient::STATE_CONNECTING || NewState == IClient::STATE_LOADING || NewState == IClient::STATE_ONLINE || NewState == IClient::STATE_DEMOPLAYBACK)
 		SetActive(false);
 	(void)OldState;
 }
@@ -138,6 +138,9 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 	const bool EscapePressed = (Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_ESCAPE;
 	if(!m_Active)
 	{
+		// in a demo Esc belongs to the demo player controls (pause, seek, exit)
+		if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			return false;
 		// Esc opens the new menu, unless the classic one is open in game (it closes itself then)
 		if(EscapePressed && (!IsOnline() || !GameClient()->m_Menus.IsActive()))
 		{
@@ -509,7 +512,10 @@ void CXcMenu::RenderTopBar(float Width)
 		CapsuleWidth += S(32.0f) + S(8.0f) + pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, apIcons[i]).x + pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, apLabels[i]).x;
 	ImGui::SetCursorScreenPos(ImVec2(Start.x + (Width - CapsuleWidth) * 0.5f, Start.y));
 	if(TabCapsule("##pages", &m_Page, apIcons, apLabels, NUM_PAGES))
+	{
 		m_ScrollTarget = 0.0f;
+		m_DemosDirty = true; // new recordings show up when the page is opened again
+	}
 
 	// quick buttons on the right: search, language, theme, classic menu, avatar, close
 	const int NumButtons = 6;
@@ -804,11 +810,6 @@ void CXcMenu::RenderHome()
 		m_WantClassic = false;
 		OpenClassicMenu();
 	}
-}
-
-void CXcMenu::RenderDemos()
-{
-	RenderPlaceholder(XC_ICON_FILM, Tr("Demos"), Tr("This page is being built"), true);
 }
 
 void CXcMenu::RenderVisuals()
