@@ -213,6 +213,7 @@ void CScreenFx::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+	GameClient()->m_XcEventFx.RenderDummyArrow();
 	const int Tint = g_Config.m_XcWorldTint;
 	const float Vignette = g_Config.m_XcVignette / 100.0f;
 	if(Tint == TINT_OFF && Vignette <= 0.0f)

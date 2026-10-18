@@ -55,6 +55,7 @@ public:
 		VISUALS_MOVEMENT,
 		VISUALS_WEAPONS,
 		VISUALS_WORLD,
+		VISUALS_EVENTS,
 		VISUALS_COSMETICS,
 		NUM_VISUALS,
 	};
@@ -221,6 +222,7 @@ private:
 	void RenderVisualsMovement();
 	void RenderVisualsWeapons();
 	void RenderVisualsWorld();
+	void RenderVisualsEvents();
 	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
 	void RenderVisualsCosmetics();
 	void RenderHatEditor(float Size);

@@ -88,6 +88,7 @@
 #include "components/touch_controls.h"
 #include "components/voting.h"
 #include "components/xclient/accessory.h"
+#include "components/xclient/event_fx.h"
 #include "components/xclient/fx_renderer.h"
 #include "components/xclient/hats.h"
 #include "components/xclient/hook_fx.h"
@@ -260,6 +261,7 @@ public:
 	// XClient Components
 	CAccessory m_Accessory;
 	CXcHats m_XcHats;
+	CXcEventFx m_XcEventFx;
 	CFxRenderer m_FxRenderer;
 	CXcMenu m_XcMenu;
 	CXcHud m_XcHud;

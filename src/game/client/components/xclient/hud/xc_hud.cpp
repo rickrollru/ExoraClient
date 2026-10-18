@@ -363,6 +363,67 @@ void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
 		pDraw->AddCircleFilled(ImVec2(TextX + 3.0f * U + i * 8.0f * U, Max.y - 14.0f * U), 2.6f * U, Col(t.m_Accent, Alpha), 12);
 }
 
+void CXcHud::ShowBanner(const char *pTitle, const char *pSubtitle, int Kind)
+{
+	str_copy(m_aBannerTitle, pTitle);
+	str_copy(m_aBannerSubtitle, pSubtitle);
+	m_BannerKind = Kind;
+	m_BannerStart = Client()->GlobalTime();
+	PlayUiSound(SOUND_NOTIFY);
+}
+
+void CXcHud::RenderBanner(ImDrawList *pDraw)
+{
+	constexpr float IN = 0.35f, STAY = 3.4f, OUT = 0.5f;
+	const float Age = Client()->GlobalTime() - m_BannerStart;
+	if(Age < 0.0f || Age > IN + STAY + OUT)
+		return;
+	const STheme &t = Theme();
+	// pops in a bit too big and settles, then fades up and away
+	const float In = std::clamp(Age / IN, 0.0f, 1.0f);
+	const float Out = std::clamp((Age - IN - STAY) / OUT, 0.0f, 1.0f);
+	const float Pop = 1.0f + 0.12f * std::sin(In * pi) * (1.0f - In * 0.5f);
+	const float Alpha = In * (1.0f - Out);
+	const float U = Graphics()->ScreenHeight() / 1080.0f * Pop;
+	const ImVec4 Gold(1.0f, 0.78f, 0.25f, 1.0f);
+	const ImVec4 Color = m_BannerKind == 2 ? Gold : (m_BannerKind == 1 ? t.m_Accent : t.m_TextSecondary);
+	ImFont *pTitleFont = m_Backend.Fonts().m_pHeader;
+	ImFont *pSubFont = m_Backend.Fonts().m_pTitle;
+	const float TitleSize = 30.0f * U;
+	const float SubSize = 19.0f * U;
+	const ImVec2 TitleDim = pTitleFont->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, m_aBannerTitle);
+	const ImVec2 SubDim = pSubFont->CalcTextSizeA(SubSize, FLT_MAX, 0.0f, m_aBannerSubtitle);
+	const float Width = std::max(TitleDim.x, SubDim.x) + 80.0f * U;
+	const float Height = 96.0f * U;
+	const float CenterX = Graphics()->ScreenWidth() * 0.5f;
+	const float Top = Graphics()->ScreenHeight() * 0.16f - Out * 30.0f * U;
+	const ImVec2 Min(CenterX - Width * 0.5f, Top);
+	const ImVec2 Max(CenterX + Width * 0.5f, Top + Height);
+	const float Rounding = 18.0f * U;
+	// soft colored glow behind, the plate, a colored rim
+	for(int i = 4; i >= 1; i--)
+	{
+		const float Grow = i * 7.0f * U;
+		pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow), ImVec2(Max.x + Grow, Max.y + Grow), Col(Color, 0.05f * Alpha), Rounding + Grow);
+	}
+	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.92f), Alpha), Rounding);
+	pDraw->AddRect(Min, Max, Col(Color, 0.8f * Alpha), Rounding, 0, 2.0f * U);
+	// a light sweep across records
+	if(m_BannerKind > 0)
+	{
+		const float Sweep = std::fmod(Age, 1.6f) / 1.6f;
+		const float X = Min.x + (Width + 120.0f * U) * Sweep - 60.0f * U;
+		pDraw->PushClipRect(Min, Max, true);
+		const ImU32 Clear = Col(ImVec4(1, 1, 1, 1), 0.0f);
+		const ImU32 Light = Col(ImVec4(1, 1, 1, 1), 0.10f * Alpha);
+		pDraw->AddRectFilledMultiColor(ImVec2(X - 60.0f * U, Min.y), ImVec2(X, Max.y), Clear, Light, Light, Clear);
+		pDraw->AddRectFilledMultiColor(ImVec2(X, Min.y), ImVec2(X + 60.0f * U, Max.y), Light, Clear, Clear, Light);
+		pDraw->PopClipRect();
+	}
+	pDraw->AddText(pTitleFont, TitleSize, ImVec2(CenterX - TitleDim.x * 0.5f, Min.y + 16.0f * U), Col(m_BannerKind ? Color : t.m_Text, Alpha), m_aBannerTitle);
+	pDraw->AddText(pSubFont, SubSize, ImVec2(CenterX - SubDim.x * 0.5f, Min.y + 16.0f * U + TitleSize + 8.0f * U), Col(t.m_TextSecondary, Alpha), m_aBannerSubtitle);
+}
+
 // cuts the text with "…" so it fits into MaxWidth
 static void FitText(ImFont *pFont, float Size, const char *pText, float MaxWidth, char *pBuf, int BufSize)
 {
@@ -712,6 +773,8 @@ void CXcHud::OnRender()
 			RenderWeapon(pDraw, a);
 		if(g_Config.m_XcHudMusic)
 			RenderMusic(pDraw, a);
+		if(!m_Editing)
+			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
 			RenderEditor(ImGui::GetForegroundDrawList());
 		else if(g_Config.m_XcHudToasts && HasToasts())
