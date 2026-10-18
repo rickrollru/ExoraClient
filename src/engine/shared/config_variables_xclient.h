@@ -40,3 +40,13 @@ MACRO_CONFIG_INT(XcAccessoryPhysics, xc_accessory_physics, 100, 0, 200, CFGFLAG_
 MACRO_CONFIG_INT(XcAccessorySelf, xc_accessory_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on yourself")
 MACRO_CONFIG_INT(XcAccessoryDummy, xc_accessory_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on your dummy")
 MACRO_CONFIG_INT(XcAccessoryOthers, xc_accessory_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on other players")
+
+// Hook
+MACRO_CONFIG_INT(XcHookStyle, xc_hook_style, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook look (0 = default, 1 = colored chain, 2 = solid line, 3 = glowing line)")
+MACRO_CONFIG_COL(XcHookColor, xc_hook_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hook color") // #4F8CFF
+MACRO_CONFIG_INT(XcHookRainbow, xc_hook_rainbow, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Animated rainbow hook color")
+MACRO_CONFIG_INT(XcHookWidth, xc_hook_width, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the hook line in percent")
+MACRO_CONFIG_INT(XcHookHitFx, xc_hook_hit_fx, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect when the hook grabs something (0 = off, 1 = ring, 2 = sparks, 3 = stars)")
+MACRO_CONFIG_INT(XcHookSelf, xc_hook_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the hook look and effects for yourself")
+MACRO_CONFIG_INT(XcHookDummy, xc_hook_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the hook look and effects for your dummy")
+MACRO_CONFIG_INT(XcHookOthers, xc_hook_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the hook look and effects for other players")
