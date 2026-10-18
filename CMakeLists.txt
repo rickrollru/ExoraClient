@@ -3217,9 +3217,53 @@ if(CLIENT)
     endif()
   endif()
 
-  # XClient: the music player reads the system media sessions through C++/WinRT
+  # XClient: the music player reads the system media sessions through C++/WinRT. It is only used
+  # when this test program builds, otherwise the client is built without the player on Windows.
+  set(XC_MEDIA_WINRT OFF)
   if(MSVC)
-    list(APPEND LIBS_CLIENT windowsapp)
+    include(CheckCXXSourceCompiles)
+    set(CMAKE_REQUIRED_FLAGS "/std:c++20 /EHsc /permissive-")
+    set(CMAKE_REQUIRED_LIBRARIES windowsapp)
+    check_cxx_source_compiles("
+      #include <winrt/Windows.Foundation.h>
+      #include <winrt/Windows.Media.Control.h>
+      #include <winrt/Windows.Storage.Streams.h>
+      #include <winrt/base.h>
+      #include <chrono>
+      #include <vector>
+      using namespace winrt::Windows::Media::Control;
+      using namespace winrt::Windows::Storage::Streams;
+      int main()
+      {
+        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        auto Manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+        auto Session = Manager.GetCurrentSession();
+        if(!Session)
+          return 0;
+        auto Properties = Session.TryGetMediaPropertiesAsync().get();
+        std::string Title = winrt::to_string(Properties.Title()) + winrt::to_string(Session.SourceAppUserModelId());
+        auto Playback = Session.GetPlaybackInfo();
+        bool Playing = Playback.PlaybackStatus() == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing && Playback.Controls().IsPlaybackPositionEnabled();
+        auto Timeline = Session.GetTimelineProperties();
+        double Seconds = std::chrono::duration<double>(Timeline.EndTime() - Timeline.StartTime()).count() + std::chrono::duration<double>(winrt::clock::now() - Timeline.LastUpdatedTime()).count();
+        auto Stream = Properties.Thumbnail().OpenReadAsync().get();
+        Buffer Data((uint32_t)Stream.Size());
+        auto Result = Stream.ReadAsync(Data, (uint32_t)Stream.Size(), InputStreamOptions::ReadAhead).get();
+        std::vector<unsigned char> Bytes(Result.Length());
+        DataReader::FromBuffer(Result).ReadBytes(Bytes);
+        Session.TryTogglePlayPauseAsync().get();
+        Session.TrySkipNextAsync().get();
+        Session.TrySkipPreviousAsync().get();
+        return Playing && Seconds > 0.0 && !Title.empty() ? 1 : 0;
+      }" XC_MEDIA_WINRT_WORKS)
+    unset(CMAKE_REQUIRED_FLAGS)
+    unset(CMAKE_REQUIRED_LIBRARIES)
+    if(XC_MEDIA_WINRT_WORKS)
+      set(XC_MEDIA_WINRT ON)
+      list(APPEND LIBS_CLIENT windowsapp)
+    else()
+      message(STATUS "XClient: C++/WinRT media sessions not available, building without the music player")
+    endif()
   endif()
 
   if(TARGET_OS STREQUAL "windows")
@@ -3357,6 +3401,10 @@ if(CLIENT)
 
   if(VULKAN)
     target_compile_definitions(game-client PRIVATE CONF_BACKEND_VULKAN)
+  endif()
+
+  if(XC_MEDIA_WINRT)
+    target_compile_definitions(game-client PRIVATE CONF_XC_MEDIA_WINRT)
   endif()
 
   list(APPEND TARGETS_OWN game-client)
