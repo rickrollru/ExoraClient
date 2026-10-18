@@ -57,3 +57,15 @@ MACRO_CONFIG_INT(XcHookHitFx, xc_hook_hit_fx, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_
 MACRO_CONFIG_INT(XcHookSelf, xc_hook_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the hook look and effects for yourself")
 MACRO_CONFIG_INT(XcHookDummy, xc_hook_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the hook look and effects for your dummy")
 MACRO_CONFIG_INT(XcHookOthers, xc_hook_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the hook look and effects for other players")
+
+// Neon outline around tees
+MACRO_CONFIG_INT(XcGlow, xc_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Neon glow and outline around tees (needs the render module)")
+MACRO_CONFIG_COL(XcGlowColor, xc_glow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow color") // #4F8CFF
+MACRO_CONFIG_INT(XcGlowRainbow, xc_glow_rainbow, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Animated rainbow glow")
+MACRO_CONFIG_INT(XcGlowSize, xc_glow_size, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the glow reaches in percent")
+MACRO_CONFIG_INT(XcGlowStrength, xc_glow_strength, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow brightness in percent")
+MACRO_CONFIG_INT(XcGlowOutline, xc_glow_outline, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the crisp outline in percent (0 = only the soft glow)")
+MACRO_CONFIG_INT(XcGlowPulse, xc_glow_pulse, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow softly pulses")
+MACRO_CONFIG_INT(XcGlowSelf, xc_glow_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow around your tee")
+MACRO_CONFIG_INT(XcGlowDummy, xc_glow_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow around your dummy")
+MACRO_CONFIG_INT(XcGlowOthers, xc_glow_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow around other players")

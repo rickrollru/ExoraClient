@@ -2930,6 +2930,8 @@ if(CLIENT)
     components/xclient/hook_fx.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
+    components/xclient/tee_glow.cpp
+    components/xclient/tee_glow.h
     components/xclient/weather.cpp
     components/xclient/weather.h
     components/xclient/xc_helpers.cpp

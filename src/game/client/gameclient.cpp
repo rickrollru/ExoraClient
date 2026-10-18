@@ -153,6 +153,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Accessory, // XClient
 					      &m_HookFx, // XClient
 					      &m_FxRenderer, // XClient: draws the queued world effects
+					      &m_TeeGlow, // XClient
 					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
 					      &m_MovingTilesForeground, // TClient
