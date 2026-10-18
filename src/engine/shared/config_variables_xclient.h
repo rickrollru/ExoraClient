@@ -27,6 +27,8 @@ MACRO_CONFIG_INT(XcUiAnimations, xc_ui_animations, 2, 0, 3, CFGFLAG_CLIENT | CFG
 MACRO_CONFIG_INT(XcUiSounds, xc_ui_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play interface sounds in the menu")
 MACRO_CONFIG_INT(XcUiSoundVolume, xc_ui_sound_volume, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Volume of interface sounds in percent")
 MACRO_CONFIG_STR(XcStatsUrl, xc_stats_url, 128, "https://ddnet.org/players/?json2=%s", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Where the home page gets player stats from, %s is the player name")
+MACRO_CONFIG_INT(XcMenuMapInfo, xc_menu_map_info, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "In game Esc opens Home with a card about the current map")
+MACRO_CONFIG_STR(XcMapInfoUrl, xc_map_info_url, 128, "https://ddnet.org/maps/?json=%s", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Where the map card gets its info from, %s is the map name")
 MACRO_CONFIG_INT(XcMenuBackground, xc_menu_background, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Menu background (0 = blurred game, 1 = animated, 2 = map / plain game, 3 = own picture or gif)")
 MACRO_CONFIG_STR(XcMenuBgFile, xc_menu_bg_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own menu background, a file in xclient/backgrounds")
 MACRO_CONFIG_INT(XcMenuBgDim, xc_menu_bg_dim, 25, 0, 90, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Darken the own menu background (percent)")

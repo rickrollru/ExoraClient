@@ -3004,6 +3004,7 @@ if(CLIENT)
     components/xclient/ui/menu.cpp
     components/xclient/ui/menu.h
     components/xclient/ui/menu_assets.cpp
+    components/xclient/ui/menu_mapinfo.cpp
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu_cosmetics.cpp
@@ -3016,6 +3017,8 @@ if(CLIENT)
     components/xclient/ui/menu_settings.cpp
     components/xclient/ui/menu_tclient.cpp
     components/xclient/ui/menu_visuals.cpp
+    components/xclient/ui/map_info.cpp
+    components/xclient/ui/map_info.h
     components/xclient/ui/player_stats.cpp
     components/xclient/ui/player_stats.h
     components/xclient/ui/theme.cpp
