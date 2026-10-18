@@ -2960,6 +2960,8 @@ if(CLIENT)
     components/xclient/jump_fx.h
     components/xclient/tee_glow.cpp
     components/xclient/tee_glow.h
+    components/xclient/trail_fx.cpp
+    components/xclient/trail_fx.h
     components/xclient/ui/backgrounds.cpp
     components/xclient/ui/backgrounds.h
     components/xclient/ui/feedback.cpp
