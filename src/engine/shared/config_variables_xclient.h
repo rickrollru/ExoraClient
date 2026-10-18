@@ -98,6 +98,28 @@ MACRO_CONFIG_INT(XcProjectileTrail, xc_projectile_trail, 1, 0, 1, CFGFLAG_CLIENT
 MACRO_CONFIG_INT(XcLaserGlow, xc_laser_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow along lasers")
 MACRO_CONFIG_INT(XcLaserGlowStrength, xc_laser_glow_strength, 100, 10, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Brightness of the laser glow in percent")
 
+// Freeze, hammer, crosshair, world color
+MACRO_CONFIG_INT(XcFreezeFx, xc_freeze_fx, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice aura around frozen tees")
+MACRO_CONFIG_INT(XcFreezeBurst, xc_freeze_burst, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice shards when a tee freezes and when the ice breaks")
+MACRO_CONFIG_INT(XcFreezeColorMode, xc_freeze_color_mode, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcFreezeColor, xc_freeze_color, 9895812, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice color") // light blue
+MACRO_CONFIG_INT(XcFreezeSelf, xc_freeze_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice effects for yourself")
+MACRO_CONFIG_INT(XcFreezeDummy, xc_freeze_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice effects for your dummy")
+MACRO_CONFIG_INT(XcFreezeOthers, xc_freeze_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ice effects for other players")
+MACRO_CONFIG_INT(XcHammerFx, xc_hammer_fx, 2, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect when the hammer hits (0 = off, 1 = ring, 2 = sparks, 3 = stars)")
+MACRO_CONFIG_INT(XcHammerColorMode, xc_hammer_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hammer effect color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcHammerColor, xc_hammer_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Hammer effect color")
+MACRO_CONFIG_INT(XcCrosshair, xc_crosshair, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Crosshair (0 = weapon cursor, 1 = dot, 2 = cross, 3 = circle, 4 = circle with dot)")
+MACRO_CONFIG_INT(XcCrosshairSize, xc_crosshair_size, 100, 30, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Crosshair size in percent")
+MACRO_CONFIG_INT(XcCrosshairGap, xc_crosshair_gap, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gap in the middle of the crosshair in percent")
+MACRO_CONFIG_INT(XcCrosshairColorMode, xc_crosshair_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Crosshair color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcCrosshairColor, xc_crosshair_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Crosshair color")
+MACRO_CONFIG_INT(XcCrosshairGlow, xc_crosshair_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glowing crosshair")
+MACRO_CONFIG_INT(XcCrosshairOutline, xc_crosshair_outline, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dark outline around the crosshair")
+MACRO_CONFIG_INT(XcWorldTint, xc_world_tint, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color filter over the world (0 = off, 1 = warm, 2 = cool, 3 = accent, 4 = night)")
+MACRO_CONFIG_INT(XcWorldTintStrength, xc_world_tint_strength, 60, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the color filter in percent")
+MACRO_CONFIG_INT(XcVignette, xc_vignette, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dark corners around the screen in percent")
+
 // Accessory on the tee
 MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
 MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")

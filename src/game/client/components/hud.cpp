@@ -860,6 +860,8 @@ void CHud::RenderCursor()
 			Alpha /= 2.0f;
 	}
 
+	if(GameClient()->m_WorldFx.RenderCrosshair(TargetPos, Alpha, Scale)) // XClient: own crosshair
+		return;
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
 	Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteWeaponCursors[CurWeapon]);
 	Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_aCursorOffset[CurWeapon], TargetPos.x, TargetPos.y, Scale, Scale);

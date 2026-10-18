@@ -393,6 +393,7 @@ void CEffects::Explosion(vec2 Pos, float Alpha)
 
 void CEffects::HammerHit(vec2 Pos, float Alpha, float Volume)
 {
+	GameClient()->m_WorldFx.HammerHit(Pos); // XClient
 	// add the explosion
 	CParticle p;
 	p.SetDefault();
