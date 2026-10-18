@@ -2452,6 +2452,7 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   config_includes.h
   config_variables.h
   config_variables_tclient.h
+  config_variables_xclient.h
   console.cpp
   console.h
   csv.cpp
@@ -2917,6 +2918,8 @@ if(CLIENT)
     components/touch_controls.h
     components/voting.cpp
     components/voting.h
+    components/xclient/weather.cpp
+    components/xclient/weather.h
     gameclient.cpp
     gameclient.h
     laser_data.cpp

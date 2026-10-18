@@ -122,3 +122,14 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
 - 18.10.2026: Репозиторий стал форком TClient (ветка master sjrc6/TaterClient-ddnet, полная история;
   remote `upstream`). Добавлены CLAUDE.md и пометка об изменённой версии в README.md.
   Дальше: Макс собирает и запускает как есть на Windows (шаг 1 MVP).
+- 18.10.2026: Шаг 2 MVP — погода (`src/game/client/components/xclient/weather.cpp`): снег / листья / сакура /
+  пепел поверх игры (под HUD) и поверх фона главного меню (под UI), двигается вместе с камерой.
+  Рисуется через IGraphics, поэтому работает и на OpenGL, и на Vulkan.
+  Настройки: `xc_weather` (0 выкл, 1 снег, 2 листья, 3 сакура, 4 пепел), `xc_weather_density`,
+  `xc_weather_size`, `xc_weather_speed`, `xc_weather_alpha`, `xc_weather_ingame`, `xc_weather_menu`.
+  Проверено: собирается на Linux. На Windows ещё не запускали.
+
+## Соглашения по коду
+- Наш код лежит в `src/game/client/components/xclient/`, помечаем вставки в чужие файлы комментарием `// XClient`.
+- Наши настройки: префикс `xc_`, файл `src/engine/shared/config_variables_xclient.h`,
+  сохраняются в `settings_xclient.cfg`. Префикс рабочий, при смене названия можно оставить.
