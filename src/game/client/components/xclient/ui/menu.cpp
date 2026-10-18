@@ -146,6 +146,9 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 		if(EscapePressed && (!IsOnline() || !GameClient()->m_Menus.IsActive()))
 		{
 			SetActive(true);
+			// in game the menu opens on Home: the map card is the first thing there
+			if(IsOnline() && g_Config.m_XcMenuMapInfo)
+				m_Page = PAGE_HOME;
 			return true;
 		}
 		return false;
@@ -734,6 +737,9 @@ void CXcMenu::RenderHome()
 	}
 
 	BeginCardGrid("##home", 2);
+
+	if(IsOnline() && g_Config.m_XcMenuMapInfo)
+		RenderMapInfoCard();
 
 	// profile with the tee
 	if(BeginCard("##hero", Client()->PlayerName(), g_Config.m_PlayerClan[0] ? g_Config.m_PlayerClan : Tr("Profile")))

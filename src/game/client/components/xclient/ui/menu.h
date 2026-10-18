@@ -3,6 +3,7 @@
 
 #include "backgrounds.h"
 #include "imgui_backend.h"
+#include "map_info.h"
 #include "player_stats.h"
 
 #include <engine/console.h>
@@ -229,6 +230,14 @@ private:
 	SPlayerStats m_Stats;
 	void UpdatePlayerStats();
 	void RenderPlayerStats();
+
+	// the current map from ddnet.org (menu_mapinfo.cpp)
+	std::shared_ptr<IHttpRequest> m_pMapTask;
+	char m_aMapInfoName[128] = {};
+	int m_MapInfoState = STATS_LOADING;
+	SMapInfo m_MapInfo;
+	void UpdateMapInfo();
+	void RenderMapInfoCard();
 
 	// search (menu_search.cpp)
 	bool m_SearchOpen = false;
