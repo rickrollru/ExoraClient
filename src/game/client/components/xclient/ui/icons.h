@@ -25,5 +25,11 @@
 #define XC_ICON_EXIT "\xef\x8b\xb5" // U+F2F5
 #define XC_ICON_HAMMER "\xef\x9b\xa3" // U+F6E3
 #define XC_ICON_BOLT "\xef\x83\xa7" // U+F0E7
+#define XC_ICON_STAR "\xef\x80\x85" // U+F005
+#define XC_ICON_USERS "\xef\x83\x80" // U+F0C0
+#define XC_ICON_SIGNAL "\xef\x80\x92" // U+F012
+#define XC_ICON_ROTATE "\xef\x8b\xb1" // U+F2F1
+#define XC_ICON_MAP "\xef\x89\xb9" // U+F279
+#define XC_ICON_ARROW_RIGHT "\xef\x81\xa1" // U+F061
 
 #endif

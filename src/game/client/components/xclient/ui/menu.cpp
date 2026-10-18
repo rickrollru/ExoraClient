@@ -435,11 +435,6 @@ void CXcMenu::RenderHome()
 	}
 }
 
-void CXcMenu::RenderServers()
-{
-	RenderPlaceholder(XC_ICON_SERVER, Tr("Server browser"), Tr("Server cards with filters are coming. The classic browser works meanwhile."), true);
-}
-
 void CXcMenu::RenderVisuals()
 {
 	RenderPlaceholder(XC_ICON_WAND, Tr("Visuals"), Tr("Visual effects are being redesigned."), false);

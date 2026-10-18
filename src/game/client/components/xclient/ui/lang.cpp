@@ -155,6 +155,23 @@ namespace XcUi
 			{"Offline", "Не в игре"},
 			{"Quick actions", "Быстрые действия"},
 			{"Open the server list", "Открыть список серверов"},
+			// servers
+			{"Pick a server to see who is playing", "Выбери сервер, чтобы увидеть, кто играет"},
+			{"Players", "Игроки"},
+			{"Ping", "Пинг"},
+			{"Game type", "Режим"},
+			{"Join", "Войти"},
+			{"Remove from favorites", "Убрать из избранного"},
+			{"Add to favorites", "В избранное"},
+			{"Nobody is playing", "Никто не играет"},
+			{"Search by name or map", "Поиск по названию или карте"},
+			{"All", "Все"},
+			{"Favorites", "Избранное"},
+			{"Refresh", "Обновить"},
+			{"Loading servers...", "Загрузка серверов..."},
+			{"No servers found", "Серверы не найдены"},
+			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
+			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
 		};
 		if(!IsRussian())
 			return pEnglish;
