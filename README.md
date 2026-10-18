@@ -1,3 +1,8 @@
+> **Изменённая версия / Altered version.** Это неофициальный модифицированный форк
+> [TClient](https://github.com/sjrc6/TaterClient-ddnet) (основан на [DDNet](https://github.com/ddnet/ddnet)).
+> Не является оригинальным TClient или DDNet. Рабочее название проекта временное.
+> This is an unofficial altered fork of TClient/DDNet and is not the original software (zlib license, clause 2).
+
 [![DDraceNetwork](docs/assets/TClient_Logo_Horizontal.svg)](https://tclient.app) 
 
 [![Build status](https://github.com/TaterClient/TClient/workflows/Build/badge.svg)](https://github.com/TaterClient/TClient/actions/workflows/build.yml)
