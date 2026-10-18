@@ -153,7 +153,9 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 	const unsigned char *pIcons = ReadFont(ICON_FONT, &IconSize);
 
 	static const ImWchar s_aIconRanges[] = {0xe000, 0xf8ff, 0};
-	const ImWchar *pTextRanges = pAtlas->GetGlyphRangesCyrillic();
+	// Latin, Cyrillic and the general punctuation (dashes, quotes, ellipsis)
+	static const ImWchar s_aTextRanges[] = {0x0020, 0x00ff, 0x0400, 0x052f, 0x2000, 0x206f, 0x2116, 0x2116, 0};
+	const ImWchar *pTextRanges = s_aTextRanges;
 
 	const auto AddFont = [&](const unsigned char *pData, int Size, float Pixels) -> ImFont * {
 		if(!pData)
