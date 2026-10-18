@@ -153,6 +153,15 @@ MACRO_CONFIG_INT(XcDummyArrowSize, xc_dummy_arrow_size, 100, 50, 250, CFGFLAG_CL
 MACRO_CONFIG_INT(XcDummyArrowColorMode, xc_dummy_arrow_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcDummyArrowColor, xc_dummy_arrow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color")
 
+// Gradient names above the tees
+MACRO_CONFIG_INT(XcNameGradient, xc_name_gradient, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient names (0 = off, 1 = accent, 2 = rainbow, 3 = skin colors, 4 = two own colors)")
+MACRO_CONFIG_COL(XcNameGradientColor1, xc_name_gradient_color1, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "First color of the own name gradient")
+MACRO_CONFIG_COL(XcNameGradientColor2, xc_name_gradient_color2, 15325048, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Second color of the own name gradient")
+MACRO_CONFIG_INT(XcNameGradientFlow, xc_name_gradient_flow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The gradient slowly flows along the name")
+MACRO_CONFIG_INT(XcNameGradientSelf, xc_name_gradient_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient name for yourself")
+MACRO_CONFIG_INT(XcNameGradientDummy, xc_name_gradient_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient name for your dummy")
+MACRO_CONFIG_INT(XcNameGradientOthers, xc_name_gradient_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient names for other players")
+
 // Jelly tee
 MACRO_CONFIG_INT(XcJelly, xc_jelly, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The tee squashes when it lands and stretches when it jumps")
 MACRO_CONFIG_INT(XcJellyStrength, xc_jelly_strength, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How soft the jelly tee is in percent")

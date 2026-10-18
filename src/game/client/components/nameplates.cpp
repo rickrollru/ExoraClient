@@ -11,6 +11,7 @@
 #include <generated/client_data.h>
 
 #include <game/client/animstate.h>
+#include <game/client/components/xclient/xc_helpers.h>
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
 
@@ -342,11 +343,46 @@ public:
 	}
 };
 
+// XClient: gradient names (xc_name_gradient), color at T (0 = first letter, 1 = last)
+static ColorRGBA XcNameGradientColor(const CGameClient &This, int ClientId, float T, float Shift)
+{
+	switch(g_Config.m_XcNameGradient)
+	{
+	case 1: return XcHelpers::EffectColor(&This, 0, 0, ClientId, T * 0.12f + Shift);
+	case 2: return color_cast<ColorRGBA>(ColorHSLA(std::fmod(T * 0.75f + Shift + 1.0f, 1.0f), 0.85f, 0.68f, 1.0f));
+	case 3:
+	{
+		const CTeeRenderInfo &Info = This.m_aClients[ClientId].m_RenderInfo;
+		const ColorRGBA Body = Info.m_CustomColoredSkin ? Info.m_ColorBody : Info.m_BloodColor;
+		const ColorRGBA Feet = Info.m_CustomColoredSkin ? Info.m_ColorFeet : Body;
+		const float Wave = 0.5f + 0.5f * std::sin((T + Shift) * 2.0f * pi);
+		return ColorRGBA(mix(Body.r, Feet.r, Wave), mix(Body.g, Feet.g, Wave), mix(Body.b, Feet.b, Wave), 1.0f);
+	}
+	default:
+	{
+		const ColorRGBA A = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_XcNameGradientColor1));
+		const ColorRGBA B = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_XcNameGradientColor2));
+		const float Wave = 0.5f - 0.5f * std::cos((T + Shift) * pi);
+		return ColorRGBA(mix(A.r, B.r, Wave), mix(A.g, B.g, Wave), mix(A.b, B.b, Wave), 1.0f);
+	}
+	}
+}
+
 class CNamePlatePartName : public CNamePlatePartText
 {
 private:
 	char m_aText[std::max((size_t)MAX_NAME_LENGTH, (size_t)protocol7::MAX_NAME_ARRAY_SIZE)] = "";
 	float m_FontSize = -INFINITY;
+	int m_XcGradientKey = -1; // XClient: what the letter colors were built for, -1 none
+
+	// XClient: the gradient key changes with the mode and the colors, and over time when it flows
+	int XcGradientKey(const CGameClient &This, int ClientId) const
+	{
+		if(!g_Config.m_XcNameGradient || !XcHelpers::ShowFor(&This, ClientId, g_Config.m_XcNameGradientSelf, g_Config.m_XcNameGradientDummy, g_Config.m_XcNameGradientOthers))
+			return -1;
+		const int Step = g_Config.m_XcNameGradientFlow ? (int)(This.Client()->GlobalTime() * 12.0f) % 1000 : 0;
+		return g_Config.m_XcNameGradient * 1000 + Step + (int)((g_Config.m_XcNameGradientColor1 ^ g_Config.m_XcNameGradientColor2 ^ g_Config.m_XcUiAccent) % 997) * 5000;
+	}
 
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
@@ -356,14 +392,22 @@ protected:
 			return false;
 		m_Color = Data.m_Color;
 		// TClient
+		bool XcWarColor = false; // XClient
 		if(g_Config.m_TcWarList)
 		{
 			if(This.m_WarList.GetWarData(Data.m_ClientId).m_WarName)
 				m_Color = This.m_WarList.GetNameplateColor(Data.m_ClientId).WithAlpha(Data.m_Color.a);
 			else if(This.m_WarList.GetWarData(Data.m_ClientId).m_WarClan)
 				m_Color = This.m_WarList.GetClanColor(Data.m_ClientId).WithAlpha(Data.m_Color.a);
+			XcWarColor = This.m_WarList.GetWarData(Data.m_ClientId).m_WarName || This.m_WarList.GetWarData(Data.m_ClientId).m_WarClan; // XClient
 		}
-		return m_FontSize != Data.m_FontSize || str_comp(m_aText, Data.m_aName) != 0;
+		// XClient: the letters carry the gradient, the part color only keeps the alpha
+		const int GradientKey = XcWarColor || !Data.m_InGame ? -1 : XcGradientKey(This, Data.m_ClientId);
+		if(GradientKey >= 0)
+			m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
+		const bool GradientChanged = GradientKey != m_XcGradientKey;
+		m_XcGradientKey = GradientKey;
+		return GradientChanged || m_FontSize != Data.m_FontSize || str_comp(m_aText, Data.m_aName) != 0;
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
 	{
@@ -371,7 +415,29 @@ protected:
 		str_copy(m_aText, Data.m_aName);
 		CTextCursor Cursor;
 		Cursor.m_FontSize = m_FontSize;
-		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
+		if(m_XcGradientKey < 0)
+		{
+			This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
+			return;
+		}
+		// XClient: letter by letter, each in its own color
+		size_t Bytes, Letters;
+		str_utf8_stats(m_aText, sizeof(m_aText), sizeof(m_aText), &Bytes, &Letters);
+		Letters = std::max<size_t>(Letters, 1);
+		const float Shift = g_Config.m_XcNameGradientFlow ? std::fmod(This.Client()->GlobalTime() * 0.25f, 1.0f) : 0.0f;
+		const ColorRGBA Saved = This.TextRender()->GetTextColor();
+		const char *pCursor = m_aText;
+		for(int i = 0; *pCursor; i++)
+		{
+			const char *pNext = pCursor;
+			str_utf8_decode(&pNext);
+			char aLetter[8];
+			str_truncate(aLetter, sizeof(aLetter), pCursor, pNext - pCursor);
+			This.TextRender()->TextColor(XcNameGradientColor(This, Data.m_ClientId, Letters > 1 ? i / (float)(Letters - 1) : 0.0f, Shift));
+			This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, aLetter);
+			pCursor = pNext;
+		}
+		This.TextRender()->TextColor(Saved);
 	}
 
 public:
