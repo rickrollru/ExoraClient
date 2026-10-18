@@ -252,6 +252,16 @@ bool CImGuiBackend::OnInput(const IInput::CEvent &Event)
 	return true;
 }
 
+void CImGuiBackend::OnMouseMove(vec2 MousePos)
+{
+	if(!m_pContext)
+		return;
+	ImGui::SetCurrentContext(m_pContext);
+	const float ScaleX = m_pGraphics->ScreenWidth() / std::max((float)m_pGraphics->WindowWidth(), 1.0f);
+	const float ScaleY = m_pGraphics->ScreenHeight() / std::max((float)m_pGraphics->WindowHeight(), 1.0f);
+	ImGui::GetIO().AddMousePosEvent(MousePos.x * ScaleX, MousePos.y * ScaleY);
+}
+
 void CImGuiBackend::NewFrame(float Dt, vec2 MousePos)
 {
 	ImGui::SetCurrentContext(m_pContext);
