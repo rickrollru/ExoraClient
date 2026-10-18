@@ -47,6 +47,7 @@
 #define XC_ICON_FORWARD "\xef\x81\x91" // U+F051
 #define XC_ICON_BACKWARD "\xef\x81\x88" // U+F048
 #define XC_ICON_SLIDERS "\xef\x87\x9e" // U+F1DE
+#define XC_ICON_CODE "\xef\x84\xa1" // U+F121
 #define XC_ICON_HAT "\xef\x9b\xa8" // U+F6E8
 #define XC_ICON_FOLDER_OPEN "\xef\x81\xbc" // U+F07C
 
