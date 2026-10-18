@@ -20,6 +20,8 @@ public:
 	// true when the view was changed, then End must be called after drawing the tee
 	bool Begin(int ClientId);
 	void End();
+	// "flying name plates": the name follows the tee on a soft spring, like a kite (xc_flying_names)
+	vec2 FlyingNamePlate(int ClientId, vec2 Target);
 
 private:
 	struct SState
@@ -31,6 +33,14 @@ private:
 		float m_LastTime = 0.0f;
 	};
 	SState m_aStates[MAX_CLIENTS];
+	struct SPlate
+	{
+		bool m_Valid = false;
+		vec2 m_Pos = vec2(0.0f, 0.0f);
+		vec2 m_Vel = vec2(0.0f, 0.0f);
+		float m_LastTime = 0.0f;
+	};
+	SPlate m_aPlates[MAX_CLIENTS];
 	CScreenRect m_SavedScreen = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);
 };
 

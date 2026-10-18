@@ -169,6 +169,9 @@ MACRO_CONFIG_INT(XcJellySelf, xc_jelly_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 MACRO_CONFIG_INT(XcJellyDummy, xc_jelly_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Jelly tee for your dummy")
 MACRO_CONFIG_INT(XcJellyOthers, xc_jelly_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Jelly tee for other players")
 
+MACRO_CONFIG_INT(XcFlyingNames, xc_flying_names, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Names follow the tees on a soft spring, like kites")
+MACRO_CONFIG_INT(XcFlyingNamesLag, xc_flying_names_lag, 100, 30, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the flying names lag behind in percent")
+
 // Floating glowing cubes and orbs
 MACRO_CONFIG_INT(XcFloaters, xc_floaters, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Floating lights in the world (0 = off, 1 = cubes, 2 = orbs, 3 = both)")
 MACRO_CONFIG_INT(XcFloatersCount, xc_floaters_count, 30, 5, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many floating lights")
