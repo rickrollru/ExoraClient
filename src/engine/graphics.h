@@ -182,6 +182,14 @@ typedef std::function<bool(uint32_t &Width, uint32_t &Height, CImageInfo::EImage
 
 struct CDataSprite;
 
+// XClient render module types, see engine/xc_render.h
+namespace XcRender
+{
+	struct SShapeGpu;
+	struct SDrawSettings;
+	struct SBlurSettings;
+} // namespace XcRender
+
 class CScreenRect
 {
 public:
@@ -335,6 +343,11 @@ public:
 	void MapScreenToSize(float Width, float Height);
 
 	virtual CScreenRect GetScreen() const = 0;
+
+	// XClient render module (OpenGL 3.3 only, check XcRenderAvailable first)
+	virtual bool XcRenderAvailable() const = 0;
+	virtual void XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int NumAlpha, const XcRender::SShapeGpu *pAdditive, int NumAdditive, const XcRender::SDrawSettings &Settings) = 0;
+	virtual void XcBlurScreen(const XcRender::SBlurSettings &Settings) = 0;
 
 	// TODO: These should perhaps not be virtuals
 	virtual void BlendNone() = 0;

@@ -926,6 +926,11 @@ public:
 	void MapScreen(const CScreenRect &ScreenRect) override;
 	CScreenRect GetScreen() const override;
 
+	// XClient render module
+	bool XcRenderAvailable() const override;
+	void XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int NumAlpha, const XcRender::SShapeGpu *pAdditive, int NumAdditive, const XcRender::SDrawSettings &Settings) override;
+	void XcBlurScreen(const XcRender::SBlurSettings &Settings) override;
+
 	void LinesBegin() override;
 	void LinesEnd() override;
 	void LinesDraw(const CLineItem *pArray, size_t Num) override;

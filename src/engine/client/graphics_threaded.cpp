@@ -3,6 +3,8 @@
 
 #include "graphics_threaded.h"
 
+#include "backend/xclient/xc_commands.h" // XClient
+
 #include <base/dbg.h>
 #include <base/detect.h>
 #include <base/io.h>
@@ -2999,4 +3001,63 @@ void CGraphics_Threaded::GetCurrentVideoMode(CVideoMode &CurMode, int Screen)
 extern IEngineGraphics *CreateEngineGraphicsThreaded()
 {
 	return new CGraphics_Threaded();
+}
+
+// XClient render module
+
+bool CGraphics_Threaded::XcRenderAvailable() const
+{
+	return XcRender::IsAvailable();
+}
+
+void CGraphics_Threaded::XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int NumAlpha, const XcRender::SShapeGpu *pAdditive, int NumAdditive, const XcRender::SDrawSettings &Settings)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcDrawShapes while drawing");
+	// keep each command well below the command buffer data size
+	constexpr int MAX_PER_COMMAND = 4096;
+	while(NumAlpha > 0 || NumAdditive > 0)
+	{
+		const int ChunkAlpha = std::min(NumAlpha, MAX_PER_COMMAND);
+		const int ChunkAdditive = std::min(NumAdditive, MAX_PER_COMMAND - ChunkAlpha);
+
+		XcRender::SCommand_DrawShapes Cmd;
+		Cmd.m_ScreenLeft = m_State.m_ScreenTL.x;
+		Cmd.m_ScreenTop = m_State.m_ScreenTL.y;
+		Cmd.m_ScreenRight = m_State.m_ScreenBR.x;
+		Cmd.m_ScreenBottom = m_State.m_ScreenBR.y;
+		Cmd.m_NumAlpha = ChunkAlpha;
+		Cmd.m_NumAdditive = ChunkAdditive;
+		Cmd.m_Settings = Settings;
+		const size_t AlphaSize = sizeof(XcRender::SShapeGpu) * ChunkAlpha;
+		const size_t AdditiveSize = sizeof(XcRender::SShapeGpu) * ChunkAdditive;
+		// one block for both lists, so a buffer kick can never split them
+		const auto Fill = [&](void *pData) {
+			if(pData == nullptr)
+				return false;
+			Cmd.m_pAlpha = (XcRender::SShapeGpu *)pData;
+			Cmd.m_pAdditive = Cmd.m_pAlpha + ChunkAlpha;
+			if(AlphaSize)
+				mem_copy(Cmd.m_pAlpha, pAlpha, AlphaSize);
+			if(AdditiveSize)
+				mem_copy(Cmd.m_pAdditive, pAdditive, AdditiveSize);
+			return true;
+		};
+		Fill(AllocCommandBufferData(AlphaSize + AdditiveSize));
+		AddCmd(Cmd, [&] { return Fill(m_pCommandBuffer->AllocData(AlphaSize + AdditiveSize)); });
+		m_pCommandBuffer->AddRenderCalls(1);
+
+		pAlpha += ChunkAlpha;
+		NumAlpha -= ChunkAlpha;
+		pAdditive += ChunkAdditive;
+		NumAdditive -= ChunkAdditive;
+	}
+}
+
+void CGraphics_Threaded::XcBlurScreen(const XcRender::SBlurSettings &Settings)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcBlurScreen while drawing");
+	XcRender::SCommand_BlurScreen Cmd;
+	Cmd.m_Settings = Settings;
+	AddCmd(Cmd);
+	m_pCommandBuffer->AddRenderCalls(1);
 }
