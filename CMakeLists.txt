@@ -3003,6 +3003,7 @@ if(CLIENT)
     components/xclient/ui/lang.h
     components/xclient/ui/menu.cpp
     components/xclient/ui/menu.h
+    components/xclient/ui/menu_assets.cpp
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu_cosmetics.cpp

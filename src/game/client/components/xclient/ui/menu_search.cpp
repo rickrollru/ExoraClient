@@ -88,6 +88,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##effects", "Effects", "Quality of the render module (OpenGL 3.3)", "эффекты качество bloom свечение quality render"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_main", "New HUD", "Watermark, timer, speed and weapon in the style of the menu", "худ hud редактор editor ватермарка watermark таймер timer скорость speed оружие weapon"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##music_player", "Music player", "What plays in the browser or a music app: YouTube, SoundCloud, Yandex Music, Spotify...", "музыка плеер трек music player spotify youtube"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_TEXTURES, "##tex_sets", "Textures", "Weapons, emotes, particles, HUD icons and entities. Click a set to use it", "текстуры ассеты оружие эмоции частицы худ энтитис entities assets textures game emoticons particles hud extras gameskin"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_TCLIENT, nullptr, "TClient", "All TClient settings", "tclient тклиент тиклиент обводка outline индикатор indicator радуга rainbow вар war питомец pet антипинг antiping призраки ghosts перевод translate"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_plates", "Name plates", "Names above the tees on dark rounded plates", "ники ники-плашки плашки nameplates names"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_wheels", "Wheels", "Emote wheel and spectator menu in the colors of the menu", "колесо эмоции эмоций спектатор наблюдение wheel emote spectator"},

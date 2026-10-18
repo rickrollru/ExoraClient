@@ -45,6 +45,7 @@ public:
 		SETTINGS_CHAT,
 		SETTINGS_GRAPHICS,
 		SETTINGS_HUD,
+		SETTINGS_TEXTURES,
 		SETTINGS_TCLIENT,
 		NUM_SETTINGS,
 	};
@@ -118,6 +119,31 @@ private:
 	};
 	CXcBackgrounds m_Backgrounds;
 	bool m_BackgroundsScanned = false;
+
+	// game textures (assets), menu_assets.cpp
+	enum
+	{
+		ASSET_GAME = 0,
+		ASSET_EMOTICONS,
+		ASSET_PARTICLES,
+		ASSET_HUD,
+		ASSET_EXTRAS,
+		ASSET_ENTITIES,
+		NUM_ASSET_TYPES,
+	};
+	struct SAssetEntry
+	{
+		std::string m_Name;
+		IGraphics::CTextureHandle m_Preview;
+		bool m_Loaded = false;
+	};
+	int m_AssetType = ASSET_GAME;
+	std::vector<SAssetEntry> m_avAssets[NUM_ASSET_TYPES];
+	bool m_aAssetsScanned[NUM_ASSET_TYPES] = {};
+	char m_aAssetPath[IO_MAX_PATH_LENGTH] = "";
+	void ScanAssets(int Type);
+	void UnloadAssetPreviews();
+	void HandleAssetFile(const char *pPath);
 	char m_aBgPath[512] = {};
 	// textures must not be unloaded while the ImGui frame that draws them is being built,
 	// so adding and deleting happen at the start of the next frame
@@ -312,6 +338,7 @@ private:
 	void ConfigColorRow(const char *pLabel, unsigned *pValue, bool Alpha);
 	// Settings > TClient (menu_tclient.cpp)
 	void RenderSettingsTClient();
+	void RenderSettingsTextures(); // menu_assets.cpp
 	char m_aTcSearch[64] = {};
 	bool m_TcOnlyChanged = false;
 };

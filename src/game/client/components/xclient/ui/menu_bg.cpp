@@ -209,7 +209,8 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 			ImGui::SetTooltip("%s", Armed ? Tr("Click again to delete") : Tr("Delete"));
 		DeleteClicked = Clicked && OverTrash;
 	}
-	*pDelete = DeleteClicked;
+	if(pDelete)
+		*pDelete = DeleteClicked;
 	ImGui::PopID();
 	return Clicked && !DeleteClicked;
 }
