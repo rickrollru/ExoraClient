@@ -2947,6 +2947,7 @@ if(CLIENT)
     components/xclient/ui/lang.cpp
     components/xclient/ui/lang.h
     components/xclient/ui/menu.cpp
+    components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu.h
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp

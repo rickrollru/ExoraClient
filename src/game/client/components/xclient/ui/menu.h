@@ -70,6 +70,24 @@ private:
 	std::vector<const CServerInfo *> m_vServers;
 	bool m_ServersRequested = false;
 
+	// configs page
+	struct SConfigEntry
+	{
+		std::string m_Name;
+		long long m_Modified;
+	};
+	std::vector<SConfigEntry> m_vConfigs;
+	bool m_ConfigsDirty = true;
+	std::string m_SelectedConfig;
+	std::string m_SelectedCode; // export code of the selected config
+	char m_aNewConfigName[32] = {};
+	char m_aImportCode[4096] = {};
+	char m_aRenameBuffer[32] = {};
+	std::string m_RenameFor; // config the rename field was filled for
+	float m_DeleteArmedUntil = 0.0f;
+	std::string m_ConfigStatus;
+	float m_ConfigStatusTime = -10.0f;
+
 	// last applied style values, the style and fonts are rebuilt when they change
 	int m_AppliedTheme = -1;
 	int m_AppliedAccent = -1;
@@ -90,6 +108,15 @@ private:
 	void RenderServerDetails(const CServerInfo *pInfo, float Height);
 	void RenderVisuals();
 	void RenderConfigs();
+	void RefreshConfigList();
+	void ConfigPath(const char *pName, char *pBuf, int BufSize) const;
+	std::string CurrentConfigText() const;
+	bool WriteConfig(const char *pName, const std::string &Text);
+	bool ReadConfig(const char *pName, std::string &Text) const;
+	static std::string EncodeConfig(const std::string &Text);
+	static bool DecodeConfig(const char *pCode, std::string &Text);
+	static std::string FilterConfig(const std::string &Text);
+	void SetConfigStatus(const char *pText);
 	void RenderPlaceholder(const char *pIcon, const char *pTitle, const char *pText, bool ClassicButton);
 	void BeginSmoothScroll(const char *pId, ImVec2 Size);
 	void EndSmoothScroll();
