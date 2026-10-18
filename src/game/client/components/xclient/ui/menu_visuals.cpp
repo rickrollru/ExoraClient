@@ -226,6 +226,15 @@ void CXcMenu::RenderVisualsEvents()
 		EffectColorPicker("##teleport_color", &g_Config.m_XcTeleportColorMode, &g_Config.m_XcTeleportColor);
 		EndCard();
 	}
+	if(BeginCard("##fx_juice", Tr("Juice"), Tr("Screen flashes and camera shake on freeze, death, finish and explosions")))
+	{
+		ToggleRow(Tr("Screen flash"), "xc_screen_flash", &g_Config.m_XcScreenFlash);
+		ConfigSlider(Tr("Flash strength"), "xc_screen_flash_strength", &g_Config.m_XcScreenFlashStrength, 5, 100, "%d%%");
+		ToggleRow(Tr("Camera shake"), "xc_camera_shake", &g_Config.m_XcCameraShake);
+		ConfigSlider(Tr("Shake strength"), "xc_camera_shake_strength", &g_Config.m_XcCameraShakeStrength, 10, 300, "%d%%");
+		Description(Tr("Only the picture moves, aim and movement stay the same"));
+		EndCard();
+	}
 	if(BeginCard("##fx_event_sounds", Tr("Event sounds"), Tr("Short sounds when you freeze, finish, set a record or teleport"), &g_Config.m_XcEventSounds))
 	{
 		ConfigSlider(Tr("Volume"), "xc_event_sound_volume", &g_Config.m_XcEventSoundVolume, 0, 100, "%d%%");

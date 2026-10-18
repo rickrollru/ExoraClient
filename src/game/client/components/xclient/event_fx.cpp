@@ -91,6 +91,7 @@ void CXcEventFx::OnMessage(int MsgType, void *pRawMsg)
 	if(!IsOwn(ClientId))
 		return;
 	PlayEventSound(pMsg->m_RecordPersonal || pMsg->m_RecordServer ? EVENT_SOUND_RECORD : EVENT_SOUND_FINISH);
+	GameClient()->m_ScreenFx.Flash(pMsg->m_RecordServer || pMsg->m_RecordPersonal ? ColorRGBA(1.0f, 0.8f, 0.3f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), 0.9f);
 	if(!g_Config.m_XcFinishBanner)
 		return;
 	char aTime[32];
@@ -204,6 +205,11 @@ void CXcEventFx::Fireworks(vec2 Pos, int ClientId)
 
 void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 {
+	if(ClientId >= 0 && ClientId == GameClient()->m_aLocalIds[g_Config.m_ClDummy])
+	{
+		GameClient()->m_ScreenFx.Flash(ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f), 0.8f);
+		GameClient()->m_ScreenFx.Shake(0.9f);
+	}
 	if(IsOwn(ClientId))
 		PlayEventSound(EVENT_SOUND_DEATH);
 	const int Style = g_Config.m_XcDeathFx;
@@ -396,7 +402,14 @@ void CXcEventFx::OnRender()
 		const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
 		const bool Frozen = Data.m_FreezeEnd != 0 || Data.m_RegularPredicted.m_FreezeEnd != 0;
 		if(m_aLastValid[i] && Frozen != m_aWasFrozen[i] && i == g_Config.m_ClDummy && m_aSinceDeath[i] > 0.3f)
+		{
 			PlayEventSound(Frozen ? EVENT_SOUND_FREEZE : EVENT_SOUND_UNFREEZE);
+			if(Frozen)
+			{
+				GameClient()->m_ScreenFx.Flash(ColorRGBA(0.45f, 0.8f, 1.0f, 1.0f), 0.7f);
+				GameClient()->m_ScreenFx.Shake(0.35f);
+			}
+		}
 		m_aWasFrozen[i] = Frozen;
 		m_aLastPos[i] = Pos;
 		m_aLastValid[i] = true;

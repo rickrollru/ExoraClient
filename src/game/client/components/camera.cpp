@@ -406,6 +406,10 @@ void CCamera::OnRender()
 
 	// demo always count as spectating
 	m_WasSpectating = GameClient()->m_Snap.m_SpecInfo.m_Active;
+
+	// XClient: camera shake, only the view moves (the saved camera state above stays untouched)
+	if(m_CamType == CAMTYPE_PLAYER && !m_CameraSmoothing)
+		m_Center += GameClient()->m_ScreenFx.ShakeOffset();
 }
 
 void CCamera::OnConsoleInit()
