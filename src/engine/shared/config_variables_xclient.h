@@ -64,6 +64,7 @@ MACRO_CONFIG_INT(XcChatAnim, xc_chat_anim, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAV
 MACRO_CONFIG_INT(XcFocusMode, xc_focus_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Focus mode: only the timer and the speed, no chat (xc_focus toggles it)")
 MACRO_CONFIG_INT(XcHudToasts, xc_hud_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: show notifications in game")
 MACRO_CONFIG_INT(XcHudPlates, xc_hud_plates, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dark rounded plates behind name plates")
+MACRO_CONFIG_INT(XcHudScoreboard, xc_hud_scoreboard, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Scoreboard in the colors of the menu")
 MACRO_CONFIG_INT(XcHudWheels, xc_hud_wheels, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "New look for the emote wheel and the spectator menu")
 // Weather
 MACRO_CONFIG_INT(XcWeather, xc_weather, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weather effect (0 = off, 1 = snow, 2 = leaves, 3 = sakura, 4 = ash)")
