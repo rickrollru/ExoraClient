@@ -291,7 +291,7 @@ void CScoreboard::RenderTitleBar(CUIRect TitleBar, int Team, const char *pTitle)
 
 void CScoreboard::RenderGoals(CUIRect Goals)
 {
-	Goals.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), IGraphics::CORNER_ALL, 7.5f);
+	Goals.Draw((g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardPanelColor() : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f)), IGraphics::CORNER_ALL, (g_Config.m_XcHudScoreboard ? 14.0f : 7.5f)); // XClient: menu colors
 	Goals.VMargin(5.0f, &Goals);
 
 	const float FontSize = 10.0f;
@@ -319,7 +319,7 @@ void CScoreboard::RenderGoals(CUIRect Goals)
 
 void CScoreboard::RenderSpectators(CUIRect Spectators)
 {
-	Spectators.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), IGraphics::CORNER_ALL, 7.5f);
+	Spectators.Draw((g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardPanelColor() : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f)), IGraphics::CORNER_ALL, (g_Config.m_XcHudScoreboard ? 14.0f : 7.5f)); // XClient: menu colors
 	constexpr float SpectatorCut = 5.0f;
 	Spectators.Margin(SpectatorCut, &Spectators);
 
@@ -692,7 +692,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				(GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW && pInfo->m_Local) ||
 				(GameClient()->m_Snap.m_SpecInfo.m_Active && pInfo->m_ClientId == GameClient()->m_Snap.m_SpecInfo.m_SpectatorId))
 			{
-				Row.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, RoundRadius);
+				Row.Draw(g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardHighlightColor() : ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, RoundRadius); // XClient: accent
 			}
 
 			const CGameClient::CClientData &ClientData = GameClient()->m_aClients[pInfo->m_ClientId];
@@ -716,7 +716,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				if(Ui()->HotItem() == &Player.m_PlayerButtonId ||
 					(Ui()->IsPopupOpen(&m_ScoreboardPopupContext) && m_ScoreboardPopupContext.m_ClientId == pInfo->m_ClientId))
 				{
-					Row.Draw(ColorRGBA(0.7f, 0.7f, 0.7f, 0.7f), IGraphics::CORNER_ALL, RoundRadius);
+					Row.Draw(g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardHoverColor() : ColorRGBA(0.7f, 0.7f, 0.7f, 0.7f), IGraphics::CORNER_ALL, RoundRadius); // XClient: accent
 				}
 			}
 
@@ -1012,8 +1012,8 @@ void CScoreboard::OnRender()
 
 		RedTitle.Draw(ColorRGBA(0.975f, 0.17f, 0.17f, 0.5f), IGraphics::CORNER_T, 7.5f);
 		BlueTitle.Draw(ColorRGBA(0.17f, 0.46f, 0.975f, 0.5f), IGraphics::CORNER_T, 7.5f);
-		RedScoreboard.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), IGraphics::CORNER_B, 7.5f);
-		BlueScoreboard.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), IGraphics::CORNER_B, 7.5f);
+		RedScoreboard.Draw((g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardPanelColor() : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f)), IGraphics::CORNER_B, (g_Config.m_XcHudScoreboard ? 14.0f : 7.5f)); // XClient: menu colors
+		BlueScoreboard.Draw((g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardPanelColor() : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f)), IGraphics::CORNER_B, (g_Config.m_XcHudScoreboard ? 14.0f : 7.5f)); // XClient: menu colors
 
 		RenderTitleBar(RedTitle, TEAM_RED, pRedTeamName == nullptr ? Localize("Red team") : pRedTeamName);
 		RenderTitleBar(BlueTitle, TEAM_BLUE, pBlueTeamName == nullptr ? Localize("Blue team") : pBlueTeamName);
@@ -1039,7 +1039,7 @@ void CScoreboard::OnRender()
 	}
 	else
 	{
-		Scoreboard.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), IGraphics::CORNER_ALL, 7.5f);
+		Scoreboard.Draw((g_Config.m_XcHudScoreboard ? GameClient()->m_XcHud.ScoreboardPanelColor() : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f)), IGraphics::CORNER_ALL, (g_Config.m_XcHudScoreboard ? 14.0f : 7.5f)); // XClient: menu colors
 
 		const char *pTitle;
 		if(pGameInfoObj && (pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER))
