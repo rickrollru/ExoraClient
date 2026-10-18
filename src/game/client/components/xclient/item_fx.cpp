@@ -135,6 +135,24 @@ void CItemFx::Laser(vec2 From, vec2 To, ColorRGBA LaserColor, float Alpha)
 	m_vShapes.push_back(FxShape::Line(From, To, 7.0f, Color).GlowOnly(22.0f, 0.5f * Strength * Alpha).Additive());
 }
 
+void CItemFx::LaserBeam(vec2 From, vec2 To, ColorRGBA OuterColor, ColorRGBA InnerColor, float Fade, float Alpha)
+{
+	if(Fade <= 0.0f || Alpha <= 0.0f)
+		return;
+	const ColorRGBA Color = ItemColor(OuterColor, 0.0f);
+	const float Strength = g_Config.m_XcLaserGlowStrength / 100.0f;
+	// smooth thinning instead of the stock linear one, the beam stays bright until the end
+	const float Width = 1.0f - (1.0f - Fade) * (1.0f - Fade);
+	const ColorRGBA Core(mix(InnerColor.r, 1.0f, 0.55f), mix(InnerColor.g, 1.0f, 0.55f), mix(InnerColor.b, 1.0f, 0.55f), Alpha);
+	if(distance(From, To) >= 1.0f)
+	{
+		m_vShapes.push_back(FxShape::Line(From, To, 11.0f * Width, Color.WithAlpha(0.9f * Alpha)).Glow(18.0f * Width, 0.55f * Strength).Additive());
+		m_vShapes.push_back(FxShape::Line(From, To, 4.5f * Width, Core).Additive());
+	}
+	// a hot spot where the beam ends
+	m_vShapes.push_back(FxShape::Circle(To, 7.0f * Width, Core).Glow(16.0f * Width, 0.7f * Strength).Additive());
+}
+
 void CItemFx::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)

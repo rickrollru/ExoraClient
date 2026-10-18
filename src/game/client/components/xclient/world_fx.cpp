@@ -112,6 +112,122 @@ void CWorldFx::HammerHit(vec2 Pos)
 	}
 }
 
+void CWorldFx::Explosion(vec2 Pos)
+{
+	const int Style = g_Config.m_XcExplosionFx;
+	if(Style == EXPLOSION_OFF)
+		return;
+	const float Scale = g_Config.m_XcExplosionSize / 100.0f;
+	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcExplosionColorMode, g_Config.m_XcExplosionColor, -1, random_float(0.0f, 0.15f));
+	const ColorRGBA Hot(mix(Color.r, 1.0f, 0.65f), mix(Color.g, 1.0f, 0.65f), mix(Color.b, 1.0f, 0.65f), Color.a);
+
+	// the bright core first, every style has it
+	CXcParticles::SParticle Flash;
+	Flash.m_Type = CXcParticles::EType::FLASH;
+	Flash.m_Pos = Pos;
+	Flash.m_LifeSpan = 0.24f;
+	Flash.m_StartSize = 30.0f * Scale;
+	Flash.m_EndSize = 120.0f * Scale;
+	Flash.m_Color = Hot;
+	m_Particles.Add(Flash);
+
+	CXcParticles::SParticle Ring;
+	Ring.m_Type = CXcParticles::EType::RING;
+	Ring.m_Pos = Pos;
+	Ring.m_Squash = 1.0f;
+
+	if(Style == EXPLOSION_SHOCKWAVE)
+	{
+		// a wide pressure wave and a quicker, whiter one right behind it
+		Ring.m_LifeSpan = 0.5f;
+		Ring.m_StartSize = 16.0f * Scale;
+		Ring.m_EndSize = 135.0f * Scale;
+		Ring.m_Thickness = 14.0f * Scale;
+		Ring.m_Color = Color;
+		m_Particles.Add(Ring);
+		Ring.m_Life = -0.05f;
+		Ring.m_LifeSpan = 0.32f;
+		Ring.m_StartSize = 8.0f * Scale;
+		Ring.m_EndSize = 80.0f * Scale;
+		Ring.m_Thickness = 7.0f * Scale;
+		Ring.m_Color = Hot;
+		m_Particles.Add(Ring);
+		// soft smoke that drifts outward and up
+		for(int i = 0; i < 8; i++)
+		{
+			const float Angle = 2.0f * pi * i / 8 + random_float(-0.3f, 0.3f);
+			CXcParticles::SParticle Dust;
+			Dust.m_Type = CXcParticles::EType::DUST;
+			Dust.m_Pos = Pos + direction(Angle) * 10.0f * Scale;
+			Dust.m_Vel = direction(Angle) * random_float(140.0f, 220.0f) * Scale;
+			Dust.m_Gravity = -60.0f;
+			Dust.m_Friction = 0.05f;
+			Dust.m_LifeSpan = random_float(0.5f, 0.8f);
+			Dust.m_StartSize = random_float(26.0f, 38.0f) * Scale;
+			Dust.m_EndSize = 50.0f * Scale;
+			Dust.m_Color = ColorRGBA(mix(Color.r, 0.5f, 0.6f), mix(Color.g, 0.5f, 0.6f), mix(Color.b, 0.5f, 0.6f), 0.35f);
+			m_Particles.Add(Dust);
+		}
+	}
+	else if(Style == EXPLOSION_NEON)
+	{
+		// thin glowing rings and stars thrown out evenly, like a firework
+		for(int i = 0; i < 2; i++)
+		{
+			Ring.m_Life = -0.07f * i;
+			Ring.m_LifeSpan = 0.45f;
+			Ring.m_StartSize = 10.0f * Scale;
+			Ring.m_EndSize = (i == 0 ? 110.0f : 70.0f) * Scale;
+			Ring.m_Thickness = 6.0f * Scale;
+			Ring.m_Color = i == 0 ? Color : Hot;
+			m_Particles.Add(Ring);
+		}
+		const int Count = 12;
+		for(int i = 0; i < Count; i++)
+		{
+			const float Angle = 2.0f * pi * i / Count;
+			CXcParticles::SParticle Star;
+			Star.m_Type = CXcParticles::EType::STAR;
+			Star.m_Pos = Pos;
+			Star.m_Vel = direction(Angle) * 360.0f * Scale;
+			Star.m_Gravity = 80.0f;
+			Star.m_Friction = 0.04f;
+			Star.m_LifeSpan = random_float(0.45f, 0.6f);
+			Star.m_StartSize = 18.0f * Scale;
+			Star.m_EndSize = 0.0f;
+			Star.m_Rot = Angle;
+			Star.m_RotSpeed = 5.0f;
+			Star.m_Color = i % 2 ? Hot : Color;
+			m_Particles.Add(Star);
+		}
+	}
+	else
+	{
+		// hot sparks fly out and fall
+		Ring.m_LifeSpan = 0.3f;
+		Ring.m_StartSize = 10.0f * Scale;
+		Ring.m_EndSize = 70.0f * Scale;
+		Ring.m_Thickness = 8.0f * Scale;
+		Ring.m_Color = Color;
+		m_Particles.Add(Ring);
+		for(int i = 0; i < 26; i++)
+		{
+			const float Angle = random_float(0.0f, 2.0f * pi);
+			CXcParticles::SParticle Spark;
+			Spark.m_Type = CXcParticles::EType::SPARK;
+			Spark.m_Pos = Pos;
+			Spark.m_Vel = direction(Angle) * random_float(250.0f, 620.0f) * Scale;
+			Spark.m_Gravity = 900.0f;
+			Spark.m_Friction = 0.08f;
+			Spark.m_LifeSpan = random_float(0.4f, 0.8f);
+			Spark.m_StartSize = random_float(9.0f, 14.0f) * Scale;
+			Spark.m_EndSize = 0.0f;
+			Spark.m_Color = i % 3 ? Color : Hot;
+			m_Particles.Add(Spark);
+		}
+	}
+}
+
 void CWorldFx::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
