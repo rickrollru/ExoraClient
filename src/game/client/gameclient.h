@@ -94,6 +94,7 @@
 #include "components/xclient/item_fx.h"
 #include "components/xclient/hud/xc_hud.h"
 #include "components/xclient/jump_fx.h"
+#include "components/xclient/music/music.h"
 #include "components/xclient/tee_glow.h"
 #include "components/xclient/trail_fx.h"
 #include "components/xclient/ui/menu.h"
@@ -262,6 +263,7 @@ public:
 	CFxRenderer m_FxRenderer;
 	CXcMenu m_XcMenu;
 	CXcHud m_XcHud;
+	CXcMusic m_XcMusic;
 	CHookFx m_HookFx;
 	CJumpFx m_JumpFx;
 	CTeeGlow m_TeeGlow;

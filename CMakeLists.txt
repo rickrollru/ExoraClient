@@ -2968,6 +2968,12 @@ if(CLIENT)
     components/xclient/item_fx.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
+    components/xclient/music/media_session.cpp
+    components/xclient/music/media_session.h
+    components/xclient/music/media_session_linux.cpp
+    components/xclient/music/media_session_windows.cpp
+    components/xclient/music/music.cpp
+    components/xclient/music/music.h
     components/xclient/tee_glow.cpp
     components/xclient/tee_glow.h
     components/xclient/trail_fx.cpp
@@ -2988,6 +2994,7 @@ if(CLIENT)
     components/xclient/ui/menu_cosmetics.cpp
     components/xclient/ui/menu_demos.cpp
     components/xclient/ui/menu_home.cpp
+    components/xclient/ui/menu_music.cpp
     components/xclient/ui/menu_presets.cpp
     components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
@@ -3207,6 +3214,11 @@ if(CLIENT)
     else()
       list(APPEND LIBS_CLIENT ${CMAKE_DL_LIBS})
     endif()
+  endif()
+
+  # XClient: the music player reads the system media sessions through C++/WinRT
+  if(MSVC)
+    list(APPEND LIBS_CLIENT windowsapp)
   endif()
 
   if(TARGET_OS STREQUAL "windows")

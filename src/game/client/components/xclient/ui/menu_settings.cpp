@@ -40,6 +40,9 @@ static const SBindEntry s_aBinds[] = {
 	{"Emoticons", "+emote"},
 	{"Spectator mode", "+spectate"},
 	{"Toggle dummy", "toggle cl_dummy 0 1"},
+	{"Music: play / pause", "xc_music_play_pause"},
+	{"Music: next track", "xc_music_next"},
+	{"Music: previous track", "xc_music_prev"},
 };
 
 // --------------------------------------------------------------------------------------------
@@ -394,6 +397,7 @@ void CXcMenu::RenderSettingsHud()
 		ToggleRow(Tr("Timer"), "xc_hud_timer", &g_Config.m_XcHudTimer);
 		ToggleRow(Tr("Speed"), "xc_hud_speed", &g_Config.m_XcHudSpeed);
 		ToggleRow(Tr("Weapon"), "xc_hud_weapon", &g_Config.m_XcHudWeapon);
+		ToggleRow(Tr("Music"), "xc_hud_music", &g_Config.m_XcHudMusic);
 		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
 		EndCard();
 	}
@@ -403,6 +407,16 @@ void CXcMenu::RenderSettingsHud()
 		ConfigSlider(Tr("Timer"), "xc_hud_timer_scale", &g_Config.m_XcHudTimerScale, 50, 200, "%d%%");
 		ConfigSlider(Tr("Speed"), "xc_hud_speed_scale", &g_Config.m_XcHudSpeedScale, 50, 200, "%d%%");
 		ConfigSlider(Tr("Weapon"), "xc_hud_weapon_scale", &g_Config.m_XcHudWeaponScale, 50, 200, "%d%%");
+		ConfigSlider(Tr("Music"), "xc_hud_music_scale", &g_Config.m_XcHudMusicScale, 50, 200, "%d%%");
+		EndCard();
+	}
+	if(BeginCard("##music_player", Tr("Music player"), Tr("What plays in the browser or a music app: YouTube, SoundCloud, Yandex Music, Spotify..."), &g_Config.m_XcMusic))
+	{
+		if(!GameClient()->m_XcMusic.Supported())
+			Description(Tr("Not supported on this system"));
+		ToggleRow(Tr("Hide in the HUD when paused"), "xc_hud_music_autohide", &g_Config.m_XcHudMusicAutohide);
+		ToggleRow(Tr("Show the next track"), "xc_music_toasts", &g_Config.m_XcMusicToasts);
+		Description(Tr("Keys for play, next and previous are in Controls > Key binds"));
 		EndCard();
 	}
 	if(BeginCard("##hud_plates", Tr("Name plates"), Tr("Names above the tees on dark rounded plates"), &g_Config.m_XcHudPlates))

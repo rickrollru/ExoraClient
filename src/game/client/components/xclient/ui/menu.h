@@ -172,6 +172,7 @@ private:
 	void RenderFrame();
 	void RenderTopBar(float Width);
 	void RenderHome();
+	void RenderMusicCard(); // menu_music.cpp
 	// the tee is drawn by DDNet in the middle of the ImGui frame through a draw callback
 	struct STeeDraw
 	{

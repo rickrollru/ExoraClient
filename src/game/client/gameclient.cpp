@@ -176,6 +176,7 @@ void CGameClient::OnConsoleInit()
 					      &m_CustomCommunities, // TClient
 					      &m_ScreenFx, // XClient: color filter and vignette under the HUD
 					      &m_Hud,
+					      &m_XcMusic, // XClient: music player state for the HUD and the menu
 					      &m_XcHud, // XClient: new HUD over the classic one
 					      &m_Spectator,
 					      &m_Emoticon,
