@@ -1012,8 +1012,13 @@ add_library(json EXCLUDE_FROM_ALL OBJECT ${DEP_JSON_SRC})
 set_src(DEP_MD5_SRC GLOB src/engine/external/md5 md5.c md5.h)
 add_library(md5 EXCLUDE_FROM_ALL OBJECT ${DEP_MD5_SRC})
 
-list(APPEND TARGETS_DEP json md5)
+# XClient: Dear ImGui for the new menu
+set_src(DEP_IMGUI_SRC GLOB src/engine/external/imgui imconfig.h imgui.cpp imgui.h imgui_draw.cpp imgui_internal.h imgui_tables.cpp imgui_widgets.cpp imstb_rectpack.h imstb_textedit.h imstb_truetype.h)
+add_library(imgui EXCLUDE_FROM_ALL OBJECT ${DEP_IMGUI_SRC})
+
+list(APPEND TARGETS_DEP json md5 imgui)
 set(DEP_JSON $<TARGET_OBJECTS:json>)
+set(DEP_IMGUI $<TARGET_OBJECTS:imgui>)
 set(DEP_MD5)
 if(NOT CRYPTO_FOUND)
   set(DEP_MD5 $<TARGET_OBJECTS:md5>)
@@ -2170,6 +2175,18 @@ set(EXPECTED_DATA
   themes/winter_night.map
   touch_controls.json
   wordlist.txt
+  xclient/fonts/Manrope-Bold.ttf
+  xclient/fonts/Manrope-Regular.ttf
+  xclient/fonts/Manrope-SemiBold.ttf
+  xclient/fonts/OFL_Manrope.txt
+  xclient/fonts/OFL_Onest.txt
+  xclient/fonts/OFL_Unbounded.txt
+  xclient/fonts/Onest-Bold.ttf
+  xclient/fonts/Onest-Regular.ttf
+  xclient/fonts/Onest-SemiBold.ttf
+  xclient/fonts/Unbounded-Bold.ttf
+  xclient/fonts/Unbounded-Regular.ttf
+  xclient/fonts/Unbounded-SemiBold.ttf
   # tidy-alphabetical-end
 )
 
@@ -2924,6 +2941,18 @@ if(CLIENT)
     components/voting.h
     components/xclient/fx_renderer.cpp
     components/xclient/fx_renderer.h
+    components/xclient/ui/icons.h
+    components/xclient/ui/imgui_backend.cpp
+    components/xclient/ui/imgui_backend.h
+    components/xclient/ui/lang.cpp
+    components/xclient/ui/lang.h
+    components/xclient/ui/menu.cpp
+    components/xclient/ui/menu.h
+    components/xclient/ui/menu_settings.cpp
+    components/xclient/ui/theme.cpp
+    components/xclient/ui/theme.h
+    components/xclient/ui/widgets.cpp
+    components/xclient/ui/widgets.h
     components/xclient/xc_helpers.cpp
     components/xclient/xc_helpers.h
     gameclient.cpp
@@ -3094,7 +3123,7 @@ if(CLIENT)
   )
   set(CLIENT_SRC ${ENGINE_CLIENT} ${PLATFORM_CLIENT} ${GAME_CLIENT} ${GAME_EDITOR} ${GAME_MAP} ${GAME_GENERATED_CLIENT})
 
-  set(DEPS_CLIENT ${DEPS} ${GLEW_DEP})
+  set(DEPS_CLIENT ${DEPS} ${GLEW_DEP} ${DEP_IMGUI}) # XClient: imgui
 
   # Libraries
   set(LIBS_CLIENT

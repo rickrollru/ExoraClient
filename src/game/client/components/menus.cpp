@@ -2379,6 +2379,9 @@ void CMenus::OnWindowResize()
 
 void CMenus::OnRender()
 {
+	if(GameClient()->m_XcMenu.IsActive()) // XClient: the new menu replaces this one
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		SetActive(true);
 

@@ -182,6 +182,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Statboard,
 					      &m_Motd,
 					      &m_Menus,
+					      &m_XcMenu, // XClient: new menu, drawn over the classic one
 					      &m_Tooltips,
 					      &m_Scripting, // TClient
 					      &m_KeyBinder,
@@ -199,6 +200,7 @@ void CGameClient::OnConsoleInit()
 						  &m_BindWheel, // TClient
 						  &m_Emoticon,
 						  &m_ImportantAlert,
+						  &m_XcMenu, // XClient: gets Esc before the classic menu
 						  &m_Menus,
 						  &m_Controls,
 						  &m_TouchControls,
