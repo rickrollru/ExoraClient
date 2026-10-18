@@ -327,7 +327,12 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   `+spectate`) — в цветах меню; звук — драйвер SDL `disk` пишет вывод в файл, звук смерти виден в записи и пропадает,
   если его выключить; перетаскивание файла — свой XDND-источник на python-xlib бросает png в окно, шапка
   добавляется, надевается, появляется тост. Заголовок окна теперь «XClient» (`graphics_threaded.cpp`, `CLIENT_NAME`
-  для серверов не трогали). Непроверенной осталась только сборка C++/WinRT-плеера в VS (защищена проверкой в CMake).
+  для серверов не трогали).
+  Код плеера для Windows сверен с официальными заголовками C++/WinRT из NuGet-пакета Microsoft.Windows.SDK.CPP
+  (10.0.22621): `clang++ --target=x86_64-w64-mingw32 -std=c++20 -fsyntax-only -fms-extensions` + mingw-w64 +
+  предварительно подключённый шим (`<version>`, `<cstring>`, `<intrin.h>`, `using std::nullptr_t`). Ошибок в нашем
+  коде нет (контрольная ошибка ловится); единственная ошибка — внутри base.h из-за libstdc++ (у MSVC её нет).
+  Тестовая программа из CMake проверена так же.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`). Короткие эффекты — видео `ffmpeg -f x11grab`.
   Звук — `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=...` (48 кГц, стерео, s16). Окно ищется по имени «XClient».
