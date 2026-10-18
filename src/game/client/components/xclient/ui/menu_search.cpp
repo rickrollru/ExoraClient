@@ -55,6 +55,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##hat_editor", "Own hat", "Any picture or gif on your tee. Drag it on the tee, pull the corner to resize, the circle to turn it", "шапка шляпа косметика редактор кепка уши очки hat cosmetics editor gif png"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##hat_gallery", "My hats", "Pictures and gifs with a transparent background work best. Drag a file onto the game window, paste its path or open the folder", "мои шапки галерея добавить hats gallery add"},
 		{CXcMenu::PAGE_HOME, -1, "##music", "Music", "What plays in the browser or a music app", "музыка плеер трек песня ютуб саундклауд яндекс спотифай music player youtube soundcloud yandex spotify"},
+		{CXcMenu::PAGE_HOME, -1, "##mapinfo", "Current map", "Mapper, difficulty, points and the best players of the map", "карта инфо маппер автор сложность топ рекорды map info mapper top mapinfo"},
 		{CXcMenu::PAGE_HOME, -1, "##tools", "Tools", "Make your own maps and play them on a server right on your computer", "редактор карт локальный сервер инструменты editor map local server tools"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_finish", "Finish", "Confetti or fireworks when you finish the map", "финиш конфетти салют рекорд finish confetti fireworks record"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_death", "Death and spawn", "A tee bursts into pieces, rings close in where it appears again", "смерть килл осколки пепел появление респавн death kill spawn"},
