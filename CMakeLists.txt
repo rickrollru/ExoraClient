@@ -2963,6 +2963,7 @@ if(CLIENT)
     components/xclient/ui/menu.h
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
+    components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp
     components/xclient/ui/theme.cpp

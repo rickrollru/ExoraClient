@@ -150,6 +150,11 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 	if(EscapePressed)
 	{
 		// Esc first leaves a text field, then closes the menu in game
+		if(m_SearchOpen)
+		{
+			m_SearchOpen = false;
+			return true;
+		}
 		if(ImGui::GetIO().WantTextInput)
 		{
 			m_Backend.OnInput(Event);
@@ -464,6 +469,7 @@ void CXcMenu::RenderFrame()
 	case PAGE_SERVERS: RenderServers(); break;
 	case PAGE_VISUALS: RenderVisuals(); break;
 	case PAGE_CONFIGS: RenderConfigs(); break;
+	case PAGE_DEMOS: RenderDemos(); break;
 	default: RenderSettings(); break;
 	}
 	ImGui::EndChild();
@@ -471,6 +477,9 @@ void CXcMenu::RenderFrame()
 	ImGui::PopFont();
 	ImGui::End();
 
+	if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+		OpenSearch();
+	RenderSearch();
 	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, (float)ImGui::GetTime(), Open);
 }
 
@@ -489,8 +498,8 @@ void CXcMenu::RenderTopBar(float Width)
 	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(Start.x + DotRadius * 2.0f + S(14.0f), Start.y + BarHeight * 0.5f - pTitle->FontSize * 0.5f), Col(t.m_Text), XC_CLIENT_NAME);
 
 	// tabs in a capsule in the middle
-	const char *apIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_GEAR};
-	const char *apLabels[NUM_PAGES] = {Tr("Home"), Tr("Servers"), Tr("Visuals"), Tr("Configs"), Tr("Settings")};
+	const char *apIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_GEAR};
+	const char *apLabels[NUM_PAGES] = {Tr("Home"), Tr("Servers"), Tr("Visuals"), Tr("Configs"), Tr("Demos"), Tr("Settings")};
 	ImFont *pLabel = Fonts().m_pLabel;
 	float CapsuleWidth = S(8.0f);
 	for(int i = 0; i < NUM_PAGES; i++)
@@ -499,8 +508,8 @@ void CXcMenu::RenderTopBar(float Width)
 	if(TabCapsule("##pages", &m_Page, apIcons, apLabels, NUM_PAGES))
 		m_ScrollTarget = 0.0f;
 
-	// quick buttons on the right
-	const int NumButtons = 4;
+	// quick buttons on the right: search, language, theme, classic menu, avatar, close
+	const int NumButtons = 6;
 	const float ButtonsWidth = NumButtons * S(34.0f) + (NumButtons - 1) * S(8.0f);
 	float x = Start.x + Width - ButtonsWidth;
 	const float y = Start.y + (BarHeight - S(34.0f)) * 0.5f;
@@ -508,6 +517,9 @@ void CXcMenu::RenderTopBar(float Width)
 		ImGui::SetCursorScreenPos(ImVec2(x, y));
 		x += S(34.0f) + S(8.0f);
 	};
+	Place();
+	if(IconButton(XC_ICON_SEARCH, Tr("Search (Ctrl+F)"), m_SearchOpen))
+		OpenSearch();
 	Place();
 	if(IconButton(XC_ICON_GLOBE, Tr("Language")))
 		SetConfigString("cl_languagefile", IsRussian() ? "" : "languages/russian.txt");
@@ -517,6 +529,20 @@ void CXcMenu::RenderTopBar(float Width)
 	Place();
 	if(IconButton(XC_ICON_WINDOW, Tr("Classic menu")))
 		m_WantClassic = true;
+	Place();
+	{
+		// avatar: the own tee, opens the player settings
+		const ImVec2 AvatarPos = ImGui::GetCursorScreenPos();
+		const float Size = S(34.0f);
+		if(IconButton("", Tr("Profile"), m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_PLAYER))
+		{
+			m_Page = PAGE_SETTINGS;
+			m_SettingsSection = SETTINGS_PLAYER;
+			m_ScrollTarget = 0.0f;
+		}
+		// the tee fills the button (its body is about 0.6 of the preview rect)
+		AddTeePreview(pDraw, ImVec2(AvatarPos.x - Size * 0.2f, AvatarPos.y - Size * 0.2f), ImVec2(AvatarPos.x + Size * 1.2f, AvatarPos.y + Size * 1.2f));
+	}
 	Place();
 	if(IsOnline())
 	{
@@ -595,13 +621,21 @@ void CXcMenu::RenderPlaceholder(const char *pIcon, const char *pTitle, const cha
 void CXcMenu::TeePreviewCallback(const ImDrawList *pList, const ImDrawCmd *pCmd)
 {
 	(void)pList;
-	static_cast<CXcMenu *>(pCmd->UserCallbackData)->DrawTeePreview();
+	const STeeDraw *pData = static_cast<const STeeDraw *>(pCmd->UserCallbackData);
+	pData->m_pMenu->DrawTeePreview(pData->m_aRect);
 }
 
-void CXcMenu::DrawTeePreview()
+void CXcMenu::AddTeePreview(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max)
 {
-	const vec2 Min(m_aTeePreview[0], m_aTeePreview[1]);
-	const vec2 Max(m_aTeePreview[2], m_aTeePreview[3]);
+	const STeeDraw Data = {this, {Min.x, Min.y, Max.x, Max.y}};
+	pDraw->AddCallback(TeePreviewCallback, (void *)&Data, sizeof(Data));
+	pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+}
+
+void CXcMenu::DrawTeePreview(const float *pRect)
+{
+	const vec2 Min(pRect[0], pRect[1]);
+	const vec2 Max(pRect[2], pRect[3]);
 	const vec2 Center = (Min + Max) * 0.5f;
 	CTeeRenderInfo Info;
 	Info.Apply(GameClient()->m_Skins.Find(g_Config.m_ClPlayerSkin));
@@ -637,12 +671,7 @@ void CXcMenu::RenderHome()
 		const ImVec2 Center(Pos.x + PreviewSize * 0.5f, Pos.y + PreviewSize * 0.5f);
 		pDraw->AddCircleFilled(Center, PreviewSize * 0.46f, Col(t.m_Accent, 0.10f), 64);
 		pDraw->AddCircle(Center, PreviewSize * 0.46f, Col(t.m_Accent, 0.35f), 64, S(1.5f));
-		m_aTeePreview[0] = Pos.x;
-		m_aTeePreview[1] = Pos.y;
-		m_aTeePreview[2] = Pos.x + PreviewSize;
-		m_aTeePreview[3] = Pos.y + PreviewSize;
-		pDraw->AddCallback(TeePreviewCallback, this);
-		pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+		AddTeePreview(pDraw, Pos, ImVec2(Pos.x + PreviewSize, Pos.y + PreviewSize));
 		ImGui::Dummy(ImVec2(PreviewSize, PreviewSize));
 
 		ImGui::SameLine(0.0f, S(16.0f));
@@ -771,6 +800,11 @@ void CXcMenu::RenderHome()
 		m_WantClassic = false;
 		OpenClassicMenu();
 	}
+}
+
+void CXcMenu::RenderDemos()
+{
+	RenderPlaceholder(XC_ICON_FILM, Tr("Demos"), Tr("This page is being built"), true);
 }
 
 void CXcMenu::RenderVisuals()

@@ -35,6 +35,7 @@ static ImGuiKey TranslateKey(int Key)
 	case KEY_ESCAPE: return ImGuiKey_Escape;
 	case KEY_A: return ImGuiKey_A;
 	case KEY_C: return ImGuiKey_C;
+	case KEY_F: return ImGuiKey_F;
 	case KEY_V: return ImGuiKey_V;
 	case KEY_X: return ImGuiKey_X;
 	case KEY_Y: return ImGuiKey_Y;

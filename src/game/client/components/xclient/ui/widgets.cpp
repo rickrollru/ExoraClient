@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -56,9 +57,29 @@ namespace XcUi
 		ImGuiID m_CardId;
 		bool m_InCard;
 		bool m_Dimmed;
+		bool m_Highlighted;
 		ImDrawListSplitter m_Splitter;
 	};
 	static std::vector<SCardGrid> s_vGrids;
+
+	static std::string s_HighlightCard;
+	static double s_HighlightStart = -10.0;
+	static float s_HighlightY = -1.0f;
+	static constexpr double HIGHLIGHT_TIME = 2.2;
+
+	void HighlightCard(const char *pId)
+	{
+		s_HighlightCard = pId;
+		s_HighlightStart = ImGui::GetTime();
+		s_HighlightY = -1.0f;
+	}
+
+	float HighlightedCardY()
+	{
+		const float y = s_HighlightY;
+		s_HighlightY = -1.0f;
+		return y;
+	}
 
 	static float Gap() { return S(12.0f); }
 	static float CardPadding() { return S(16.0f); }
@@ -618,6 +639,13 @@ namespace XcUi
 		Grid.m_CardPos = ImVec2(Grid.m_Start.x + Column * (Grid.m_CardWidth + Gap()), Grid.m_aColumnY[Column]);
 		Grid.m_CardId = ImGui::GetID(pId);
 		Grid.m_InCard = true;
+		Grid.m_Highlighted = ImGui::GetTime() - s_HighlightStart < HIGHLIGHT_TIME && s_HighlightCard == pId;
+		if(Grid.m_Highlighted)
+		{
+			// position inside the scrolled content, the page scrolls there
+			const ImGuiWindow *pWindow = ImGui::GetCurrentWindow();
+			s_HighlightY = Grid.m_CardPos.y - pWindow->Pos.y + pWindow->Scroll.y;
+		}
 
 		ImDrawList *pDraw = ImGui::GetWindowDrawList();
 		Grid.m_Splitter.Split(pDraw, 2);
@@ -670,6 +698,14 @@ namespace XcUi
 		const STheme &t = Theme();
 		PanelRect(pDraw, Min, Max, S(12.0f), Mix(t.m_Card, t.m_CardHover, Hover));
 		Grid.m_Splitter.Merge(pDraw);
+		if(Grid.m_Highlighted)
+		{
+			// found by the search: the accent frame pulses a few times and fades out
+			const float Age = (float)(ImGui::GetTime() - s_HighlightStart);
+			const float Fade = 1.0f - Age / (float)HIGHLIGHT_TIME;
+			const float Pulse = 0.55f + 0.45f * std::cos(Age * 7.0f);
+			pDraw->AddRect(Min, Max, Col(t.m_Accent, Fade * Pulse), S(12.0f), 0, S(2.0f));
+		}
 
 		ImGui::PopID();
 		Grid.m_aColumnY[Grid.m_Column] = Bottom + Gap();
