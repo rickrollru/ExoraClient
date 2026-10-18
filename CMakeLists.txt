@@ -2978,6 +2978,8 @@ if(CLIENT)
     components/xclient/hud/xc_hud.h
     components/xclient/item_fx.cpp
     components/xclient/item_fx.h
+    components/xclient/jelly.cpp
+    components/xclient/jelly.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
     components/xclient/music/media_session.cpp

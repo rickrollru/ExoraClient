@@ -1272,7 +1272,10 @@ void CPlayers::OnRender()
 			RenderPlayer(ScreenRect, &GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId, 0.0f, true);
 		}
 		const bool XcGlow = GameClient()->m_TeeGlow.Begin(ClientId); // XClient
+		const bool XcJelly = GameClient()->m_XcJelly.Begin(ClientId); // XClient
 		RenderPlayer(ScreenRect, &GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId);
+		if(XcJelly)
+			GameClient()->m_XcJelly.End(); // XClient
 		if(XcGlow)
 			GameClient()->m_TeeGlow.End(ClientId); // XClient
 	}
@@ -1281,7 +1284,10 @@ void CPlayers::OnRender()
 		const CGameClient::CClientData *pClientData = &GameClient()->m_aClients[RenderLastId];
 		RenderHookCollLine(ScreenRect, &pClientData->m_RenderPrev, &pClientData->m_RenderCur, RenderLastId);
 		const bool XcGlow = GameClient()->m_TeeGlow.Begin(RenderLastId); // XClient
+		const bool XcJelly = GameClient()->m_XcJelly.Begin(RenderLastId); // XClient
 		RenderPlayer(ScreenRect, &pClientData->m_RenderPrev, &pClientData->m_RenderCur, &aRenderInfo[RenderLastId], RenderLastId);
+		if(XcJelly)
+			GameClient()->m_XcJelly.End(); // XClient
 		if(XcGlow)
 			GameClient()->m_TeeGlow.End(RenderLastId); // XClient
 	}

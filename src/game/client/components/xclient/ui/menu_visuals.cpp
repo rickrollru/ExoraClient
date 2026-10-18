@@ -64,6 +64,13 @@ void CXcMenu::RenderVisualsTee()
 		EndCard();
 	}
 
+	if(BeginCard("##fx_jelly", Tr("Jelly tee"), Tr("Squashes when landing, stretches when jumping and wobbles back"), &g_Config.m_XcJelly))
+	{
+		ConfigSlider(Tr("Softness"), "xc_jelly_strength", &g_Config.m_XcJellyStrength, 10, 300, "%d%%");
+		TargetChips("##jelly_targets", &g_Config.m_XcJellySelf, &g_Config.m_XcJellyDummy, &g_Config.m_XcJellyOthers);
+		EndCard();
+	}
+
 	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown")};
 	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 3))
 	{

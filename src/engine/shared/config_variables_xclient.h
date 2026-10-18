@@ -153,6 +153,13 @@ MACRO_CONFIG_INT(XcDummyArrowSize, xc_dummy_arrow_size, 100, 50, 250, CFGFLAG_CL
 MACRO_CONFIG_INT(XcDummyArrowColorMode, xc_dummy_arrow_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcDummyArrowColor, xc_dummy_arrow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color")
 
+// Jelly tee
+MACRO_CONFIG_INT(XcJelly, xc_jelly, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The tee squashes when it lands and stretches when it jumps")
+MACRO_CONFIG_INT(XcJellyStrength, xc_jelly_strength, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How soft the jelly tee is in percent")
+MACRO_CONFIG_INT(XcJellySelf, xc_jelly_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Jelly tee for yourself")
+MACRO_CONFIG_INT(XcJellyDummy, xc_jelly_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Jelly tee for your dummy")
+MACRO_CONFIG_INT(XcJellyOthers, xc_jelly_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Jelly tee for other players")
+
 // Floating glowing cubes and orbs
 MACRO_CONFIG_INT(XcFloaters, xc_floaters, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Floating lights in the world (0 = off, 1 = cubes, 2 = orbs, 3 = both)")
 MACRO_CONFIG_INT(XcFloatersCount, xc_floaters_count, 30, 5, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many floating lights")
