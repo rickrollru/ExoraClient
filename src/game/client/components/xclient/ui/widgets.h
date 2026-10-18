@@ -62,6 +62,10 @@ namespace XcUi
 	// should be drawn (always, the body is dimmed when the toggle is off).
 	bool BeginCard(const char *pId, const char *pTitle, const char *pDescription, int *pEnabled = nullptr);
 	void EndCard();
+	// search: the card with this id gets a pulsing frame for a moment
+	void HighlightCard(const char *pId);
+	// y of the highlighted card inside the scrolled content if it was drawn since the last call, else -1
+	float HighlightedCardY();
 
 	// panel background with border and rounding
 	void PanelRect(ImDrawList *pDrawList, ImVec2 Min, ImVec2 Max, float Rounding, const ImVec4 &Fill);

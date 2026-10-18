@@ -148,6 +148,16 @@ void CXcMenu::RenderSettings()
 	case SETTINGS_GRAPHICS: RenderSettingsGraphics(); break;
 	default: RenderSettingsHud(); break;
 	}
+	// opened from the search: glide to the found card
+	if(m_ScrollToHighlight)
+	{
+		const float CardY = HighlightedCardY();
+		if(CardY >= 0.0f)
+		{
+			m_ScrollTarget = std::max(CardY - S(12.0f), 0.0f);
+			m_ScrollToHighlight = false;
+		}
+	}
 	ImGui::Dummy(ImVec2(0.0f, S(12.0f)));
 	EndSmoothScroll();
 }
