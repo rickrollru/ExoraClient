@@ -80,6 +80,11 @@ void CXcMenu::RenderVisualsTee()
 		TargetChips("##gradient_targets", &g_Config.m_XcNameGradientSelf, &g_Config.m_XcNameGradientDummy, &g_Config.m_XcNameGradientOthers);
 		EndCard();
 	}
+	if(BeginCard("##fx_flying_names", Tr("Flying names"), Tr("Names follow the tees on a soft spring, like kites"), &g_Config.m_XcFlyingNames))
+	{
+		ConfigSlider(Tr("Lag"), "xc_flying_names_lag", &g_Config.m_XcFlyingNamesLag, 30, 300, "%d%%");
+		EndCard();
+	}
 	if(BeginCard("##fx_jelly", Tr("Jelly tee"), Tr("Squashes when landing, stretches when jumping and wobbles back"), &g_Config.m_XcJelly))
 	{
 		ConfigSlider(Tr("Softness"), "xc_jelly_strength", &g_Config.m_XcJellyStrength, 10, 300, "%d%%");
