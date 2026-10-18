@@ -431,6 +431,14 @@ void CXcMenu::RenderSettingsHud()
 		Description(Tr("The text stays readable on bright maps"));
 		EndCard();
 	}
+	if(BeginCard("##hud_own_scoreboard", Tr("Own scoreboard"), Tr("Tab shows players by teams with medals, times and pings in the style of the menu"), &g_Config.m_XcScoreboard))
+	{
+		ToggleRow(Tr("Show clans"), "xc_scoreboard_clan", &g_Config.m_XcScoreboardClan);
+		ConfigSlider(Tr("Size"), "xc_scoreboard_scale", &g_Config.m_XcScoreboardScale, 60, 150, "%d%%");
+		ToggleRow(Tr("Top of the server in the HUD"), "xc_hud_minitop", &g_Config.m_XcHudMinitop);
+		ConfigSlider(Tr("Players in the list"), "xc_hud_minitop_count", &g_Config.m_XcHudMinitopCount, 1, 5);
+		EndCard();
+	}
 	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list in the colors of the menu, your row in the accent color"), &g_Config.m_XcHudScoreboard))
 	{
 		Description(Tr("Press Tab in game to see it"));

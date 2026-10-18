@@ -91,6 +91,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##music_player", "Music player", "What plays in the browser or a music app: YouTube, SoundCloud, Yandex Music, Spotify...", "музыка плеер трек music player spotify youtube"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_TEXTURES, "##tex_sets", "Textures", "Weapons, emotes, particles, HUD icons and entities. Click a set to use it", "текстуры ассеты оружие эмоции частицы худ энтитис entities assets textures game emoticons particles hud extras gameskin"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_TCLIENT, nullptr, "TClient", "All TClient settings", "tclient тклиент тиклиент обводка outline индикатор indicator радуга rainbow вар war питомец pet антипинг antiping призраки ghosts перевод translate"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_own_scoreboard", "Own scoreboard", "Tab shows players by teams with medals, times and pings in the style of the menu", "таблица игроков таб скорборд топ мини-топ scoreboard tab top minitop"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_plates", "Name plates", "Names above the tees on dark rounded plates", "ники ники-плашки плашки nameplates names"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_wheels", "Wheels", "Emote wheel and spectator menu in the colors of the menu", "колесо эмоции эмоций спектатор наблюдение wheel emote spectator"},
 	};

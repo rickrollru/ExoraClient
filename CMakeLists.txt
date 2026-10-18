@@ -2976,6 +2976,7 @@ if(CLIENT)
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
     components/xclient/hud/xc_hud.h
+    components/xclient/hud/xc_scoreboard.cpp
     components/xclient/item_fx.cpp
     components/xclient/item_fx.h
     components/xclient/jelly.cpp
