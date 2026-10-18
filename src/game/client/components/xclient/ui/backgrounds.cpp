@@ -18,9 +18,6 @@
 #include <cstdlib>
 #include <cstring>
 
-// biggest side of a decoded picture; gifs are kept smaller, they have many frames
-static constexpr int MAX_PICTURE_SIZE = 2560;
-static constexpr int MAX_GIF_SIZE = 960;
 static constexpr int THUMBNAIL_SIZE = 384;
 static constexpr size_t GIF_MEMORY_BUDGET = 256 * 1024 * 1024;
 static constexpr size_t MAX_GIF_FRAMES = 1000;
@@ -117,7 +114,11 @@ private:
 	}
 };
 
-CXcBackgrounds::CXcBackgrounds() = default;
+// MaxPictureSize / MaxGifSize: biggest side of a decoded picture; gifs are kept smaller, they have many frames
+CXcBackgrounds::CXcBackgrounds(const char *pFolder, int MaxPictureSize, int MaxGifSize, bool AllowMaps) :
+	m_pFolder(pFolder), m_MaxPictureSize(MaxPictureSize), m_MaxGifSize(MaxGifSize), m_AllowMaps(AllowMaps)
+{
+}
 CXcBackgrounds::~CXcBackgrounds() = default;
 
 void CXcBackgrounds::Init(IGraphics *pGraphics, IStorage *pStorage, IEngine *pEngine)
@@ -126,7 +127,7 @@ void CXcBackgrounds::Init(IGraphics *pGraphics, IStorage *pStorage, IEngine *pEn
 	m_pStorage = pStorage;
 	m_pEngine = pEngine;
 	m_pStorage->CreateFolder("xclient", IStorage::TYPE_SAVE);
-	m_pStorage->CreateFolder(FOLDER, IStorage::TYPE_SAVE);
+	m_pStorage->CreateFolder(m_pFolder, IStorage::TYPE_SAVE);
 }
 
 void CXcBackgrounds::Shutdown()
@@ -151,8 +152,18 @@ int CXcBackgrounds::ScanCallback(const char *pName, int IsDir, int StorageType, 
 	CXcBackgrounds *pSelf = static_cast<CXcBackgrounds *>(pUser);
 	if(IsDir || !IsImageFile(pName))
 		return 0;
+	// the same name in data/ and in the save folder: the save folder wins
+	for(SEntry &Other : pSelf->m_vEntries)
+	{
+		if(Other.m_Name == pName)
+		{
+			Other.m_Builtin = Other.m_Builtin && StorageType != IStorage::TYPE_SAVE;
+			return 0;
+		}
+	}
 	SEntry Entry;
 	Entry.m_Name = pName;
+	Entry.m_Builtin = StorageType != IStorage::TYPE_SAVE;
 	Entry.m_Animated = str_endswith_nocase(pName, ".gif");
 	pSelf->m_vEntries.push_back(std::move(Entry));
 	return 0;
@@ -163,13 +174,17 @@ void CXcBackgrounds::Refresh()
 	// keep the thumbnails of files that are still there
 	std::vector<SEntry> vOld = std::move(m_vEntries);
 	m_vEntries.clear();
-	m_pStorage->ListDirectory(IStorage::TYPE_SAVE, FOLDER, ScanCallback, this);
+	m_pStorage->ListDirectory(IStorage::TYPE_ALL, m_pFolder, ScanCallback, this);
 	std::sort(m_vEntries.begin(), m_vEntries.end(), [](const SEntry &a, const SEntry &b) { return str_comp_nocase(a.m_Name.c_str(), b.m_Name.c_str()) < 0; });
 	for(SEntry &Old : vOld)
 	{
 		auto It = std::find_if(m_vEntries.begin(), m_vEntries.end(), [&](const SEntry &e) { return e.m_Name == Old.m_Name; });
 		if(It != m_vEntries.end())
+		{
+			const bool Builtin = It->m_Builtin;
 			*It = std::move(Old);
+			It->m_Builtin = Builtin;
+		}
 		else
 			m_pGraphics->UnloadTexture(&Old.m_Thumbnail);
 	}
@@ -178,10 +193,10 @@ void CXcBackgrounds::Refresh()
 std::shared_ptr<CXcBackgrounds::CDecodeJob> CXcBackgrounds::StartJob(const char *pName, int MaxSize, bool FirstFrameOnly)
 {
 	char aPath[IO_MAX_PATH_LENGTH];
-	str_format(aPath, sizeof(aPath), "%s/%s", FOLDER, pName);
+	str_format(aPath, sizeof(aPath), "%s/%s", m_pFolder, pName);
 	void *pData;
 	unsigned Size;
-	if(!m_pStorage->ReadFile(aPath, IStorage::TYPE_SAVE, &pData, &Size))
+	if(!m_pStorage->ReadFile(aPath, IStorage::TYPE_ALL, &pData, &Size))
 		return nullptr;
 	std::vector<unsigned char> vData((unsigned char *)pData, (unsigned char *)pData + Size);
 	free(pData);
@@ -232,7 +247,7 @@ void CXcBackgrounds::UpdateThumbnails()
 
 CXcBackgrounds::EAddResult CXcBackgrounds::AddFile(const char *pPath, char *pAddedName, int AddedNameSize)
 {
-	const bool IsMap = str_endswith_nocase(pPath, ".map");
+	const bool IsMap = m_AllowMaps && str_endswith_nocase(pPath, ".map");
 	if(!IsMap && !IsImageFile(pPath))
 		return ADD_UNSUPPORTED;
 
@@ -264,7 +279,7 @@ CXcBackgrounds::EAddResult CXcBackgrounds::AddFile(const char *pPath, char *pAdd
 		if(*p == '"' || *p == ';' || *p == '\\' || *p == '/')
 			*p = '_';
 	}
-	const char *pFolder = IsMap ? "themes" : FOLDER;
+	const char *pFolder = IsMap ? "themes" : m_pFolder;
 	if(IsMap)
 		m_pStorage->CreateFolder("themes", IStorage::TYPE_SAVE);
 
@@ -298,14 +313,14 @@ CXcBackgrounds::EAddResult CXcBackgrounds::AddFile(const char *pPath, char *pAdd
 		str_copy(pAddedName, aFile, AddedNameSize);
 	if(!IsMap)
 		Refresh();
-	log_info("xclient", "added background '%s'", aPath);
+	log_info("xclient", "added '%s'", aPath);
 	return IsMap ? ADD_MAP : ADD_IMAGE;
 }
 
 bool CXcBackgrounds::Remove(const char *pName)
 {
 	char aPath[IO_MAX_PATH_LENGTH];
-	str_format(aPath, sizeof(aPath), "%s/%s", FOLDER, pName);
+	str_format(aPath, sizeof(aPath), "%s/%s", m_pFolder, pName);
 	if(!m_pStorage->RemoveFile(aPath, IStorage::TYPE_SAVE))
 		return false;
 	if(m_ActiveName == pName)
@@ -344,7 +359,7 @@ void CXcBackgrounds::Update(const char *pName, float Dt, float Speed)
 		if(pName[0])
 		{
 			const bool Gif = str_endswith_nocase(pName, ".gif");
-			m_pActiveJob = StartJob(pName, Gif ? MAX_GIF_SIZE : MAX_PICTURE_SIZE, false);
+			m_pActiveJob = StartJob(pName, Gif ? m_MaxGifSize : m_MaxPictureSize, false);
 			m_ActiveFailed = m_pActiveJob == nullptr;
 		}
 	}
@@ -405,4 +420,29 @@ bool CXcBackgrounds::Render(float Width, float Height, float Alpha)
 	m_pGraphics->QuadsDrawTL(&Item, 1);
 	m_pGraphics->QuadsEnd();
 	return true;
+}
+
+IGraphics::CTextureHandle CXcBackgrounds::CurrentFrame() const
+{
+	if(m_CurrentFrame >= m_vFrames.size())
+		return IGraphics::CTextureHandle();
+	return m_vFrames[m_CurrentFrame];
+}
+
+void CXcBackgrounds::RenderQuad(vec2 Center, vec2 Size, float Angle, float Alpha, bool Flip) const
+{
+	if(m_CurrentFrame >= m_vFrames.size())
+		return;
+	m_pGraphics->TextureSet(m_vFrames[m_CurrentFrame]);
+	m_pGraphics->WrapClamp();
+	m_pGraphics->QuadsBegin();
+	m_pGraphics->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+	if(Flip)
+		m_pGraphics->QuadsSetSubset(1.0f, 0.0f, 0.0f, 1.0f);
+	m_pGraphics->QuadsSetRotation(Angle);
+	IGraphics::CQuadItem Item(Center.x, Center.y, Size.x, Size.y);
+	m_pGraphics->QuadsDraw(&Item, 1);
+	m_pGraphics->QuadsEnd();
+	m_pGraphics->QuadsSetRotation(0.0f);
+	m_pGraphics->WrapNormal();
 }

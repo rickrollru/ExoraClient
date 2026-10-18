@@ -73,6 +73,33 @@ namespace XcUi
 
 	// panel background with border and rounding
 	void PanelRect(ImDrawList *pDrawList, ImVec2 Min, ImVec2 Max, float Rounding, const ImVec4 &Fill);
+
+	// lays out tiles in rows; call Next() before each tile
+	class CTileGrid
+	{
+	public:
+		CTileGrid(float AvailWidth, float MinWidth, float Gap) :
+			m_Gap(Gap)
+		{
+			m_Columns = std::max(1, (int)((AvailWidth + Gap) / (MinWidth + Gap)));
+			m_Width = (AvailWidth - Gap * (m_Columns - 1)) / m_Columns;
+		}
+		float Width() const { return m_Width; }
+		void Next()
+		{
+			if(m_Index % m_Columns != 0)
+				ImGui::SameLine(0.0f, m_Gap);
+			else if(m_Index > 0)
+				ImGui::Dummy(ImVec2(0.0f, m_Gap * 0.5f));
+			m_Index++;
+		}
+
+	private:
+		float m_Gap;
+		int m_Columns;
+		float m_Width;
+		int m_Index = 0;
+	};
 } // namespace XcUi
 
 #endif

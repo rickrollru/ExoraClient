@@ -104,13 +104,14 @@ void CXcMenu::RemoveBackground(const std::string &Key)
 	Toast(Tr("Deleted"));
 }
 
-// One picture in a gallery: image cropped to 16:9 with rounded corners, name below.
-// Returns true when clicked; *pDelete is set when the trash button was clicked.
-bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin, float UMax)
+// One picture in a gallery: image cropped to the tile (16:9 by default) with rounded corners, name below.
+// Contain shows the whole picture instead (hats). Returns true when clicked; *pDelete is set when the
+// trash button was clicked.
+bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin, float UMax, float TileAspect, bool Contain)
 {
 	const STheme &t = Theme();
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
-	const float ImageHeight = Width * 9.0f / 16.0f;
+	const float ImageHeight = Width / TileAspect;
 	const float NameHeight = ImGui::GetFontSize() + S(10.0f);
 	const ImVec2 Pos = ImGui::GetCursorScreenPos();
 	const ImVec2 ImageMax(Pos.x + Width, Pos.y + ImageHeight);
@@ -124,10 +125,19 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 
 	// picture, or a placeholder while the thumbnail loads
 	pDraw->AddRectFilled(Pos, ImageMax, Col(t.m_Track), Rounding);
-	if(Texture.IsValid() && !Texture.IsNullTexture())
+	if(Texture.IsValid() && !Texture.IsNullTexture() && Contain)
 	{
-		// cover: crop the side that does not fit 16:9, inside the used part [UMin, UMax] of the texture
-		const float TileAspect = 16.0f / 9.0f;
+		// contain: the whole picture with some air around it
+		const float Padding = Width * 0.12f;
+		const ImVec2 Room(Width - Padding * 2.0f, ImageHeight - Padding * 2.0f);
+		const ImVec2 Fit = TextureAspect > Room.x / Room.y ? ImVec2(Room.x, Room.x / TextureAspect) : ImVec2(Room.y * TextureAspect, Room.y);
+		const ImVec2 ImgMin(Pos.x + (Width - Fit.x) * 0.5f, Pos.y + (ImageHeight - Fit.y) * 0.5f);
+		const float Lift = Hover * S(3.0f);
+		pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), ImVec2(ImgMin.x, ImgMin.y - Lift), ImVec2(ImgMin.x + Fit.x, ImgMin.y + Fit.y - Lift));
+	}
+	else if(Texture.IsValid() && !Texture.IsNullTexture())
+	{
+		// cover: crop the side that does not fit the tile, inside the used part [UMin, UMax] of the texture
 		ImVec2 Uv0(UMin, 0), Uv1(UMax, 1);
 		if(TextureAspect > TileAspect)
 		{
@@ -203,33 +213,6 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 	ImGui::PopID();
 	return Clicked && !DeleteClicked;
 }
-
-// lays out tiles in rows; call Next() before each tile
-class CTileGrid
-{
-public:
-	CTileGrid(float AvailWidth, float MinWidth, float Gap) :
-		m_Gap(Gap)
-	{
-		m_Columns = std::max(1, (int)((AvailWidth + Gap) / (MinWidth + Gap)));
-		m_Width = (AvailWidth - Gap * (m_Columns - 1)) / m_Columns;
-	}
-	float Width() const { return m_Width; }
-	void Next()
-	{
-		if(m_Index % m_Columns != 0)
-			ImGui::SameLine(0.0f, m_Gap);
-		else if(m_Index > 0)
-			ImGui::Dummy(ImVec2(0.0f, m_Gap * 0.5f));
-		m_Index++;
-	}
-
-private:
-	float m_Gap;
-	int m_Columns;
-	float m_Width;
-	int m_Index = 0;
-};
 
 void CXcMenu::RenderSettingsBackground()
 {

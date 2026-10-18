@@ -54,6 +54,7 @@ public:
 		VISUALS_MOVEMENT,
 		VISUALS_WEAPONS,
 		VISUALS_WORLD,
+		VISUALS_COSMETICS,
 		NUM_VISUALS,
 	};
 
@@ -125,7 +126,7 @@ private:
 	int EffectiveBackground() const;
 	void HandleBackgroundFile(const char *pPath);
 	void RemoveBackground(const std::string &Key);
-	bool BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin = 0.0f, float UMax = 1.0f);
+	bool BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture, float TextureAspect, const char *pName, const char *pBadge, bool Selected, bool Deletable, bool *pDelete, float Width, float UMin = 0.0f, float UMax = 1.0f, float TileAspect = 16.0f / 9.0f, bool Contain = false);
 	void RenderSettingsBackground();
 
 	// theme and performance presets (menu_presets.cpp)
@@ -176,10 +177,11 @@ private:
 	{
 		CXcMenu *m_pMenu;
 		float m_aRect[4]; // x0, y0, x1, y1 in pixels
+		bool m_Still; // looks to the right without bobbing (hat editor)
 	};
 	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
-	void DrawTeePreview(const float *pRect);
-	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max);
+	void DrawTeePreview(const float *pRect, bool Still);
+	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still = false);
 
 	// player stats from ddnet.org (menu_home.cpp)
 	enum
@@ -217,6 +219,18 @@ private:
 	void RenderVisualsMovement();
 	void RenderVisualsWeapons();
 	void RenderVisualsWorld();
+	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
+	void RenderVisualsCosmetics();
+	void RenderHatEditor(float Size);
+	void HandleHatFile(const char *pPath);
+	bool m_HatsScanned = false;
+	char m_aHatPath[512] = {};
+	std::string m_HatPendingAdd;
+	std::string m_HatPendingRemove;
+	int m_HatDrag = 0; // 0 none, 1 move, 2 resize, 3 rotate
+	float m_aHatDragStart[4] = {}; // x, y, size, rotation when the drag started
+	float m_aHatDragMouse[2] = {};
+	bool m_WheelCaptured = false; // the hat preview uses the mouse wheel, the page must not scroll
 	void RenderVisuals();
 	void RenderConfigs();
 

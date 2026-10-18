@@ -189,8 +189,8 @@ void CXcMenu::RenderVisualsWorld()
 
 void CXcMenu::RenderVisuals()
 {
-	const char *apIcons[NUM_VISUALS] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_CROSSHAIR, XC_ICON_GLOBE};
-	const char *apLabels[NUM_VISUALS] = {Tr("Tee"), Tr("Movement"), Tr("Hook and weapons"), Tr("World")};
+	const char *apIcons[NUM_VISUALS] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_HAT};
+	const char *apLabels[NUM_VISUALS] = {Tr("Tee"), Tr("Movement"), Tr("Hook and weapons"), Tr("World"), Tr("Cosmetics")};
 	const float NavWidth = S(210.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
 	if(SideNav("##visual_sections", &m_VisualsSection, apIcons, apLabels, NUM_VISUALS, NavWidth))
@@ -205,8 +205,11 @@ void CXcMenu::RenderVisuals()
 	case VISUALS_TEE: RenderVisualsTee(); break;
 	case VISUALS_MOVEMENT: RenderVisualsMovement(); break;
 	case VISUALS_WEAPONS: RenderVisualsWeapons(); break;
+	case VISUALS_COSMETICS: RenderVisualsCosmetics(); break;
 	default: RenderVisualsWorld(); break;
 	}
+	if(m_VisualsSection != VISUALS_COSMETICS)
+		m_WheelCaptured = false;
 	if(m_ScrollToHighlight)
 	{
 		const float CardY = HighlightedCardY();
