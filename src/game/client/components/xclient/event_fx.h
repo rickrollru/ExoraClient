@@ -29,7 +29,20 @@ public:
 		DEATH_ASH,
 	};
 
+	enum
+	{
+		EVENT_SOUND_FINISH = 0,
+		EVENT_SOUND_RECORD,
+		EVENT_SOUND_FREEZE,
+		EVENT_SOUND_UNFREEZE,
+		EVENT_SOUND_DEATH,
+		EVENT_SOUND_TELEPORT,
+		NUM_EVENT_SOUNDS,
+	};
+
 	int Sizeof() const override { return sizeof(*this); }
+	void OnInit() override;
+	void OnShutdown() override;
 	void OnRender() override;
 	void OnReset() override;
 	void OnMapLoad() override;
@@ -41,6 +54,7 @@ public:
 
 	// for the preview buttons in the menu
 	void Finish(vec2 Pos, int ClientId);
+	void PlayEventSound(int Sound);
 	// called by CScreenFx, after the map foreground
 	void RenderDummyArrow();
 
@@ -50,6 +64,9 @@ private:
 	bool m_aLastValid[NUM_DUMMIES] = {};
 	float m_aSinceDeath[NUM_DUMMIES] = {};
 	vec2 m_DummyLastPos = vec2(0.0f, 0.0f);
+	bool m_aWasFrozen[NUM_DUMMIES] = {};
+	int m_aSounds[NUM_EVENT_SOUNDS] = {-1, -1, -1, -1, -1, -1};
+	bool IsOwn(int ClientId) const;
 
 	void Confetti(vec2 Pos, int ClientId);
 	void Fireworks(vec2 Pos, int ClientId);
