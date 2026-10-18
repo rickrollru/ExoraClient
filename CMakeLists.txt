@@ -2918,6 +2918,8 @@ if(CLIENT)
     components/touch_controls.h
     components/voting.cpp
     components/voting.h
+    components/xclient/jump_fx.cpp
+    components/xclient/jump_fx.h
     components/xclient/weather.cpp
     components/xclient/weather.h
     gameclient.cpp

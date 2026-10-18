@@ -87,6 +87,7 @@
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
+#include "components/xclient/jump_fx.h"
 #include "components/xclient/weather.h"
 
 #include <memory>
@@ -246,6 +247,7 @@ public:
 	CMovingTiles m_MovingTilesForeground = CMovingTiles{true};
 
 	// XClient Components
+	CJumpFx m_JumpFx;
 	CWeather m_Weather;
 
 private:
