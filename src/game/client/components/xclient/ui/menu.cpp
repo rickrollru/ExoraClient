@@ -406,11 +406,18 @@ void CXcMenu::OnRender()
 	// own background: loaded only while it is chosen, so it does not hold video memory otherwise
 	m_Backgrounds.Update(g_Config.m_XcMenuBackground == 3 ? g_Config.m_XcMenuBgFile : "", Dt, g_Config.m_XcMenuBgGifSpeed / 100.0f);
 	// files dropped on the window while the background settings are open become backgrounds
-	const bool CaptureDrops = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_BACKGROUND;
-	Client()->XcSetDropCapture(CaptureDrops);
+	// and while the cosmetics editor is open they become hats
+	const bool CaptureBackgrounds = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_BACKGROUND;
+	const bool CaptureHats = m_Active && m_Page == PAGE_VISUALS && m_VisualsSection == VISUALS_COSMETICS;
+	Client()->XcSetDropCapture(CaptureBackgrounds || CaptureHats);
 	char aDropped[IO_MAX_PATH_LENGTH];
-	if(CaptureDrops && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
-		HandleBackgroundFile(aDropped);
+	if((CaptureBackgrounds || CaptureHats) && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
+	{
+		if(CaptureHats)
+			HandleHatFile(aDropped);
+		else
+			HandleBackgroundFile(aDropped);
+	}
 	const float Target = m_Active ? 1.0f : 0.0f;
 	const float Speed = AnimationSpeed() > 0.0f ? 6.0f * AnimationSpeed() : 1000.0f;
 	m_OpenAnimation = m_OpenAnimation < Target ? std::min(m_OpenAnimation + Dt * Speed, Target) : std::max(m_OpenAnimation - Dt * Speed, Target);
@@ -577,7 +584,7 @@ void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size)
 	ImGui::BeginChild(pId, Size, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse);
 	// the wheel sets a target, the view glides there
 	const float MaxScroll = ImGui::GetScrollMaxY();
-	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0.0f)
+	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0.0f && !m_WheelCaptured)
 		m_ScrollTarget -= ImGui::GetIO().MouseWheel * S(90.0f);
 	m_ScrollTarget = std::clamp(m_ScrollTarget, 0.0f, MaxScroll);
 	const float Scroll = Animate(ImGui::GetID("##scroll"), m_ScrollTarget, 14.0f);
@@ -632,17 +639,17 @@ void CXcMenu::TeePreviewCallback(const ImDrawList *pList, const ImDrawCmd *pCmd)
 {
 	(void)pList;
 	const STeeDraw *pData = static_cast<const STeeDraw *>(pCmd->UserCallbackData);
-	pData->m_pMenu->DrawTeePreview(pData->m_aRect);
+	pData->m_pMenu->DrawTeePreview(pData->m_aRect, pData->m_Still);
 }
 
-void CXcMenu::AddTeePreview(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max)
+void CXcMenu::AddTeePreview(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still)
 {
-	const STeeDraw Data = {this, {Min.x, Min.y, Max.x, Max.y}};
+	const STeeDraw Data = {this, {Min.x, Min.y, Max.x, Max.y}, Still};
 	pDraw->AddCallback(TeePreviewCallback, (void *)&Data, sizeof(Data));
 	pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 
-void CXcMenu::DrawTeePreview(const float *pRect)
+void CXcMenu::DrawTeePreview(const float *pRect, bool Still)
 {
 	const vec2 Min(pRect[0], pRect[1]);
 	const vec2 Max(pRect[2], pRect[3]);
@@ -654,9 +661,14 @@ void CXcMenu::DrawTeePreview(const float *pRect)
 	// the eyes follow the cursor
 	const ImVec2 Mouse = ImGui::GetIO().MousePos;
 	vec2 Dir = vec2(Mouse.x, Mouse.y) - Center;
-	Dir = length(Dir) > 1.0f ? normalize(Dir) : vec2(1.0f, 0.0f);
-	const float Bob = std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
+	Dir = length(Dir) > 1.0f && !Still ? normalize(Dir) : vec2(1.0f, 0.0f);
+	const float Bob = Still ? 0.0f : std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
+	// the tiny avatar in the top bar stays without the hat, it would stick out of the bar
+	if(g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f)
+	{
+		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
+	}
 	Graphics()->WrapClamp();
 }
 

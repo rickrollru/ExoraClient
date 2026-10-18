@@ -1,6 +1,8 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_UI_BACKGROUNDS_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_UI_BACKGROUNDS_H
 
+#include <base/vmath.h>
+
 #include <engine/graphics.h>
 
 #include <memory>
@@ -10,12 +12,14 @@
 class IEngine;
 class IStorage;
 
-// Own menu backgrounds: pictures and gifs in xclient/backgrounds (save folder).
+// A folder of pictures and gifs: own menu backgrounds (xclient/backgrounds) and own hats (xclient/hats).
 // Files are decoded in a worker job, only the texture upload happens on the main thread.
+// The save folder can add to files shipped in data/ with the same folder name, those cannot be deleted.
 class CXcBackgrounds
 {
 public:
 	static constexpr const char *FOLDER = "xclient/backgrounds";
+	static constexpr const char *HATS_FOLDER = "xclient/hats";
 
 	struct SEntry
 	{
@@ -25,6 +29,7 @@ public:
 		float m_Aspect = 16.0f / 9.0f; // width / height
 		bool m_ThumbnailRequested = false;
 		bool m_Broken = false; // the file could not be decoded
+		bool m_Builtin = false; // shipped with the client, not in the save folder
 	};
 
 	enum EAddResult
@@ -35,8 +40,11 @@ public:
 		ADD_UNSUPPORTED,
 	};
 
-	CXcBackgrounds();
+	// AllowMaps: AddFile copies .map files into themes/ (menu backgrounds only)
+	explicit CXcBackgrounds(const char *pFolder = FOLDER, int MaxPictureSize = 2560, int MaxGifSize = 960, bool AllowMaps = true);
 	~CXcBackgrounds();
+
+	const char *Folder() const { return m_pFolder; }
 
 	void Init(IGraphics *pGraphics, IStorage *pStorage, IEngine *pEngine);
 	void Shutdown();
@@ -59,6 +67,11 @@ public:
 	bool HasFrames() const { return !m_vFrames.empty(); }
 	// draws the active background over the whole screen (cover fit), false when nothing is loaded
 	bool Render(float Width, float Height, float Alpha);
+	// current frame and its width / height, for drawing it elsewhere
+	IGraphics::CTextureHandle CurrentFrame() const;
+	float FrameAspect() const { return m_FrameHeight > 0.0f ? m_FrameWidth / m_FrameHeight : 1.0f; }
+	// draws the current frame as a rotated quad in the current screen mapping, Flip mirrors it
+	void RenderQuad(vec2 Center, vec2 Size, float Angle, float Alpha, bool Flip) const;
 
 private:
 	class CDecodeJob;
@@ -66,6 +79,10 @@ private:
 	IGraphics *m_pGraphics = nullptr;
 	IStorage *m_pStorage = nullptr;
 	IEngine *m_pEngine = nullptr;
+	const char *m_pFolder;
+	int m_MaxPictureSize;
+	int m_MaxGifSize;
+	bool m_AllowMaps;
 
 	std::vector<SEntry> m_vEntries;
 	std::vector<std::pair<std::string, std::shared_ptr<CDecodeJob>>> m_vThumbnailJobs;

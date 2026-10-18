@@ -46,6 +46,8 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_crosshair", "Crosshair", "Your own aim instead of the weapon cursor", "прицел курсор точка крест crosshair cursor aim"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_tint", "World color", "A soft color filter over the map", "цвет мира фильтр тёплый холодный ночь tint filter color grading"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_vignette", "Vignette", "Darker screen edges to focus on the center", "виньетка затемнение края vignette"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##hat_editor", "Own hat", "Any picture or gif on your tee. Drag it on the tee, pull the corner to resize, the circle to turn it", "шапка шляпа косметика редактор кепка уши очки hat cosmetics editor gif png"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##hat_gallery", "My hats", "Pictures and gifs with a transparent background work best. Drag a file onto the game window, paste its path or open the folder", "мои шапки галерея добавить hats gallery add"},
 		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
 		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##theme", "Theme", "Look of the menu: dark or light, and the accent color", "тема тёмная светлая dark light акцент accent цвет color"},

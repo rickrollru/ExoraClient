@@ -89,6 +89,7 @@
 #include "components/voting.h"
 #include "components/xclient/accessory.h"
 #include "components/xclient/fx_renderer.h"
+#include "components/xclient/hats.h"
 #include "components/xclient/hook_fx.h"
 #include "components/xclient/item_fx.h"
 #include "components/xclient/hud/xc_hud.h"
@@ -257,6 +258,7 @@ public:
 
 	// XClient Components
 	CAccessory m_Accessory;
+	CXcHats m_XcHats;
 	CFxRenderer m_FxRenderer;
 	CXcMenu m_XcMenu;
 	CXcHud m_XcHud;
