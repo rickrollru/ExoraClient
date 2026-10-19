@@ -683,6 +683,8 @@ void CXcMenu::DrawTeePreview(const float *pRect, bool Still)
 	const float Bob = Still ? 0.0f : std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
 	// the tiny avatar in the top bar stays without the hat, it would stick out of the bar
 	const bool Hat = g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
+	if(g_Config.m_XcCapeSelf && Max.y - Min.y > 64.0f)
+		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, ImGui::GetStyle().Alpha, Client()->GlobalTime());
 	if(Hat && g_Config.m_XcHatBehind)
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);

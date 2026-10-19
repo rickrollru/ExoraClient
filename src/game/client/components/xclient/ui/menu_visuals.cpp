@@ -103,6 +103,18 @@ void CXcMenu::RenderVisualsTee()
 		TargetChips("##accessory_targets", &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryDummy, &g_Config.m_XcAccessoryOthers);
 		EndCard();
 	}
+	const char *apCapes[] = {Tr("Cape"), Tr("Scarf")};
+	if(StyleCard("##fx_cape", Tr("Cape"), Tr("A cloth cape or a scarf that flies behind the tee"), "xc_cape", &g_Config.m_XcCape, apCapes, 2))
+	{
+		EffectColorPicker("##cape_color", &g_Config.m_XcCapeColorMode, &g_Config.m_XcCapeColor);
+		ConfigSlider(Tr("Length"), "xc_cape_length", &g_Config.m_XcCapeLength, 50, 200, "%d%%");
+		ConfigSlider(Tr("Width"), "xc_cape_width", &g_Config.m_XcCapeWidth, 50, 200, "%d%%");
+		ConfigSlider(Tr("Wind"), "xc_cape_wind", &g_Config.m_XcCapeWind, 0, 200, "%d%%");
+		ConfigSlider(Tr("Opacity"), "xc_cape_alpha", &g_Config.m_XcCapeAlpha, 10, 100, "%d%%");
+		TargetChips("##cape_targets", &g_Config.m_XcCapeSelf, &g_Config.m_XcCapeDummy, &g_Config.m_XcCapeOthers);
+		EndCard();
+	}
+
 	if(BeginCard("##fx_freeze", Tr("Freeze"), Tr("An icy aura around frozen tees and shards when the ice breaks"), &g_Config.m_XcFreezeFx))
 	{
 		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);

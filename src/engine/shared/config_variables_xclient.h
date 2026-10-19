@@ -276,6 +276,17 @@ MACRO_CONFIG_INT(XcHatDummy, xc_hat_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAV
 MACRO_CONFIG_INT(XcHatOthers, xc_hat_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the hat on other players too")
 
 // Accessory on the tee
+// Cape or scarf with cloth physics behind the tee
+MACRO_CONFIG_INT(XcCape, xc_cape, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape behind the tee (0 = off, 1 = cape, 2 = scarf)")
+MACRO_CONFIG_INT(XcCapeColorMode, xc_cape_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcCapeColor, xc_cape_color, 65407, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the cape") // red
+MACRO_CONFIG_INT(XcCapeLength, xc_cape_length, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Length of the cape in percent")
+MACRO_CONFIG_INT(XcCapeWidth, xc_cape_width, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the cape in percent")
+MACRO_CONFIG_INT(XcCapeWind, xc_cape_wind, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the cape flutters in the wind in percent")
+MACRO_CONFIG_INT(XcCapeAlpha, xc_cape_alpha, 100, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the cape in percent")
+MACRO_CONFIG_INT(XcCapeSelf, xc_cape_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on yourself")
+MACRO_CONFIG_INT(XcCapeDummy, xc_cape_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on your dummy")
+MACRO_CONFIG_INT(XcCapeOthers, xc_cape_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on other players")
 MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
 MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")
 MACRO_CONFIG_INT(XcAccessoryAlpha, xc_accessory_alpha, 85, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the accessory in percent")
