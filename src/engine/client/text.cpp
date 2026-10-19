@@ -1253,10 +1253,22 @@ public:
 		std::vector<std::string> vCustomFonts;
 		Storage()->ListDirectory(IStorage::TYPE_ALL, "tclient/fonts", LaziestFileCallback, &vCustomFonts);
 		std::sort(vCustomFonts.begin(), vCustomFonts.end());
+		// XClient: the font of the restyled map editor
+		{
+			std::vector<std::string> vXcFonts;
+			Storage()->ListDirectory(IStorage::TYPE_ALL, "xclient/fonts/editor", LaziestFileCallback, &vXcFonts);
+			for(const std::string &File : vXcFonts)
+				if(str_endswith(File.c_str(), ".ttf"))
+					vCustomFonts.push_back("xclient/fonts/editor/" + File);
+		}
+
 		for(const std::string &FilePath : vCustomFonts)
 		{
 			char aFontName[IO_MAX_PATH_LENGTH];
-			str_format(aFontName, sizeof(aFontName), "tclient/fonts/%s", FilePath.c_str());
+			if(str_startswith(FilePath.c_str(), "xclient/")) // XClient: full path
+				str_copy(aFontName, FilePath.c_str());
+			else
+				str_format(aFontName, sizeof(aFontName), "tclient/fonts/%s", FilePath.c_str());
 			void *pFontData;
 			unsigned FontDataSize;
 			if(Storage()->ReadFile(aFontName, IStorage::TYPE_ALL, &pFontData, &FontDataSize))
