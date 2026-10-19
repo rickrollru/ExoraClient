@@ -3,7 +3,7 @@
   "configurePresets": [
     {
       "name": "windows-release",
-      "displayName": "XClient Release",
+      "displayName": "Exora Client Release",
       "description": "Fast client build for playing",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-release",
@@ -13,7 +13,7 @@
     },
     {
       "name": "windows-debug",
-      "displayName": "XClient Debug",
+      "displayName": "Exora Client Debug",
       "description": "Slow build with debug checks, for finding crashes",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-debug",
@@ -23,7 +23,7 @@
     }
   ],
   "buildPresets": [
-    { "name": "windows-release", "displayName": "XClient Release", "configurePreset": "windows-release", "targets": ["game-client", "game-server"] },
-    { "name": "windows-debug", "displayName": "XClient Debug", "configurePreset": "windows-debug", "targets": ["game-client", "game-server"] }
+    { "name": "windows-release", "displayName": "Exora Client Release", "configurePreset": "windows-release", "targets": ["game-client", "game-server"] },
+    { "name": "windows-debug", "displayName": "Exora Client Debug", "configurePreset": "windows-debug", "targets": ["game-client", "game-server"] }
   ]
 }
