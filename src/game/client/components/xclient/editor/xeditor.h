@@ -5,6 +5,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_EDITOR_XEDITOR_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_EDITOR_XEDITOR_H
 
+#include <base/types.h>
 #include <base/vmath.h>
 
 #include <engine/input.h>
@@ -151,6 +152,25 @@ private:
 	// map details: author, version, credits, license
 	void RenderMapDetails();
 	bool m_MapDetailsRequest = false;
+	// open / save / add an image or a sound: the classic file browser in the new style
+	void RenderFileDialog();
+	bool m_FileDialogShown = false;
+	bool m_FileFocus = false;
+	char m_aFileFilter[IO_MAX_PATH_LENGTH] = {};
+	char m_aFileName[IO_MAX_PATH_LENGTH] = {};
+	// the new folder and delete cards over the file dialog
+	enum
+	{
+		FILESUB_NONE = 0,
+		FILESUB_NEW_FOLDER,
+		FILESUB_DELETE,
+	};
+	int m_FileSub = FILESUB_NONE;
+	bool m_FileSubFocus = false;
+	char m_aNewFolder[128] = {};
+	char m_aFileDelete[IO_MAX_PATH_LENGTH] = {};
+	bool m_FileDeleteIsDir = false;
+	void RenderFileSubDialog();
 	bool m_PaletteOpen = false;
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};

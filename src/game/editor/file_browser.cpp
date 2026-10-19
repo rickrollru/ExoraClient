@@ -310,100 +310,7 @@ void CFileBrowser::Render()
 		m_ListBox.WasItemActivated() ||
 		(m_ListBox.Active() && Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER)))
 	{
-		if(IsDir)
-		{
-			m_FilterInput.Clear();
-			Ui()->SetActiveItem(&m_FilterInput);
-			const bool ParentFolder = str_comp(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, "..") == 0;
-			if(ParentFolder)
-			{
-				str_copy(m_aSelectedFileDisplayName, fs_filename(m_pCurrentPath));
-				str_append(m_aSelectedFileDisplayName, "/");
-				if(fs_parent_dir(m_pCurrentPath))
-				{
-					if(str_comp(m_pCurrentPath, m_aCurrentFolder) == 0)
-					{
-						m_ShowingRoot = true;
-						if(m_StorageType == IStorage::TYPE_ALL)
-						{
-							m_aSelectedFileDisplayName[0] = '\0'; // will select first list item
-						}
-						else
-						{
-							Storage()->GetCompletePath(m_StorageType, m_pCurrentPath, m_aSelectedFileDisplayName, sizeof(m_aSelectedFileDisplayName));
-							str_append(m_aSelectedFileDisplayName, "/");
-						}
-					}
-					else
-					{
-						m_pCurrentPath = m_aCurrentFolder; // leave the link
-						str_copy(m_aSelectedFileDisplayName, m_aCurrentLink);
-						str_append(m_aSelectedFileDisplayName, "/");
-					}
-				}
-			}
-			else // sub folder
-			{
-				if(m_vpFilteredFileList[m_SelectedFileIndex]->m_IsLink)
-				{
-					m_pCurrentPath = m_aCurrentLink; // follow the link
-					str_copy(m_aCurrentLink, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename);
-				}
-				else
-				{
-					str_append(m_pCurrentPath, "/", IO_MAX_PATH_LENGTH);
-					str_append(m_pCurrentPath, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, IO_MAX_PATH_LENGTH);
-				}
-				if(m_ShowingRoot)
-				{
-					m_StorageType = m_vpFilteredFileList[m_SelectedFileIndex]->m_StorageType;
-				}
-				m_ShowingRoot = false;
-			}
-			FilelistPopulate(m_StorageType, ParentFolder);
-			UpdateFilenameInput();
-		}
-		else // file
-		{
-			const int StorageType = m_SelectedFileIndex >= 0 ? m_vpFilteredFileList[m_SelectedFileIndex]->m_StorageType : m_StorageType;
-
-			char aFilename[IO_MAX_PATH_LENGTH];
-			str_copy(aFilename, m_FilenameInput.GetString());
-			// XClient: the list shows names without extension, keep the real one of the chosen file (jpg, gif...)
-			if(m_SelectedFileIndex >= 0 && !m_vpFilteredFileList[m_SelectedFileIndex]->m_IsDir)
-			{
-				char aNameWithoutExt[IO_MAX_PATH_LENGTH];
-				fs_split_file_extension(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, aNameWithoutExt, sizeof(aNameWithoutExt));
-				if(str_comp(aNameWithoutExt, aFilename) == 0)
-					str_copy(aFilename, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename);
-			}
-			if(!XcMatchesFileType(aFilename, (int)m_FileType)) // XClient
-			{
-				str_append(aFilename, FILETYPE_EXTENSIONS[(int)m_FileType]);
-			}
-
-			char aSaveFilePath[IO_MAX_PATH_LENGTH];
-			str_format(aSaveFilePath, sizeof(aSaveFilePath), "%s/%s", m_pCurrentPath, aFilename);
-
-			if(m_SaveAction && !str_valid_filename(aFilename))
-			{
-				Editor()->ShowFileDialogError("This name cannot be used for files and folders.");
-			}
-			else if(m_SaveAction && Storage()->FileExists(aSaveFilePath, StorageType))
-			{
-				m_PopupConfirmOverwrite.m_pFileBrowser = this;
-				str_copy(m_PopupConfirmOverwrite.m_aOverwritePath, aSaveFilePath);
-				constexpr float PopupWidth = 400.0f;
-				constexpr float PopupHeight = 150.0f;
-				Ui()->DoPopupMenu(&m_PopupConfirmOverwrite,
-					OriginalWidth / 2.0f - PopupWidth / 2.0f, OriginalHeight / 2.0f - PopupHeight / 2.0f, PopupWidth, PopupHeight,
-					&m_PopupConfirmOverwrite, CPopupConfirmOverwrite::Render);
-			}
-			else if(m_pfnOpenCallback && (m_SaveAction || m_SelectedFileIndex >= 0))
-			{
-				m_pfnOpenCallback(aSaveFilePath, StorageType, m_pOpenCallbackUser);
-			}
-		}
+		XcOpenSelected(); // XClient: the same action for the new file dialog
 	}
 
 	ButtonBar.VSplitRight(ButtonSpacing, &ButtonBar, nullptr);
@@ -471,6 +378,107 @@ void CFileBrowser::Render()
 				OriginalWidth / 2.0f - PopupWidth / 2.0f, OriginalHeight / 2.0f - PopupHeight / 2.0f, PopupWidth, PopupHeight,
 				&m_PopupNewFolder, CPopupNewFolder::Render);
 			Ui()->SetActiveItem(&m_PopupNewFolder.m_NewFolderNameInput);
+		}
+	}
+}
+
+// XClient: opens the selected folder or the selected / named file, used by the classic and the new file dialog
+void CFileBrowser::XcOpenSelected()
+{
+	const bool IsDir = m_SelectedFileIndex >= 0 && m_vpFilteredFileList[m_SelectedFileIndex]->m_IsDir;
+	if(IsDir)
+	{
+		m_FilterInput.Clear();
+		if(!Editor()->XcNewUi()) // the new dialog has its own search field
+			Ui()->SetActiveItem(&m_FilterInput);
+		const bool ParentFolder = str_comp(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, "..") == 0;
+		if(ParentFolder)
+		{
+			str_copy(m_aSelectedFileDisplayName, fs_filename(m_pCurrentPath));
+			str_append(m_aSelectedFileDisplayName, "/");
+			if(fs_parent_dir(m_pCurrentPath))
+			{
+				if(str_comp(m_pCurrentPath, m_aCurrentFolder) == 0)
+				{
+					m_ShowingRoot = true;
+					if(m_StorageType == IStorage::TYPE_ALL)
+					{
+						m_aSelectedFileDisplayName[0] = '\0'; // will select first list item
+					}
+					else
+					{
+						Storage()->GetCompletePath(m_StorageType, m_pCurrentPath, m_aSelectedFileDisplayName, sizeof(m_aSelectedFileDisplayName));
+						str_append(m_aSelectedFileDisplayName, "/");
+					}
+				}
+				else
+				{
+					m_pCurrentPath = m_aCurrentFolder; // leave the link
+					str_copy(m_aSelectedFileDisplayName, m_aCurrentLink);
+					str_append(m_aSelectedFileDisplayName, "/");
+				}
+			}
+		}
+		else // sub folder
+		{
+			if(m_vpFilteredFileList[m_SelectedFileIndex]->m_IsLink)
+			{
+				m_pCurrentPath = m_aCurrentLink; // follow the link
+				str_copy(m_aCurrentLink, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename);
+			}
+			else
+			{
+				str_append(m_pCurrentPath, "/", IO_MAX_PATH_LENGTH);
+				str_append(m_pCurrentPath, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, IO_MAX_PATH_LENGTH);
+			}
+			if(m_ShowingRoot)
+			{
+				m_StorageType = m_vpFilteredFileList[m_SelectedFileIndex]->m_StorageType;
+			}
+			m_ShowingRoot = false;
+		}
+		FilelistPopulate(m_StorageType, ParentFolder);
+		UpdateFilenameInput();
+	}
+	else // file
+	{
+		const int StorageType = m_SelectedFileIndex >= 0 ? m_vpFilteredFileList[m_SelectedFileIndex]->m_StorageType : m_StorageType;
+
+		char aFilename[IO_MAX_PATH_LENGTH];
+		str_copy(aFilename, m_FilenameInput.GetString());
+		// XClient: the list shows names without extension, keep the real one of the chosen file (jpg, gif...)
+		if(m_SelectedFileIndex >= 0 && !m_vpFilteredFileList[m_SelectedFileIndex]->m_IsDir)
+		{
+			char aNameWithoutExt[IO_MAX_PATH_LENGTH];
+			fs_split_file_extension(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, aNameWithoutExt, sizeof(aNameWithoutExt));
+			if(str_comp(aNameWithoutExt, aFilename) == 0)
+				str_copy(aFilename, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename);
+		}
+		if(!XcMatchesFileType(aFilename, (int)m_FileType)) // XClient
+		{
+			str_append(aFilename, FILETYPE_EXTENSIONS[(int)m_FileType]);
+		}
+
+		char aSaveFilePath[IO_MAX_PATH_LENGTH];
+		str_format(aSaveFilePath, sizeof(aSaveFilePath), "%s/%s", m_pCurrentPath, aFilename);
+
+		if(m_SaveAction && !str_valid_filename(aFilename))
+		{
+			Editor()->ShowFileDialogError("This name cannot be used for files and folders.");
+		}
+		else if(m_SaveAction && Storage()->FileExists(aSaveFilePath, StorageType))
+		{
+			m_PopupConfirmOverwrite.m_pFileBrowser = this;
+			str_copy(m_PopupConfirmOverwrite.m_aOverwritePath, aSaveFilePath);
+			constexpr float PopupWidth = 400.0f;
+			constexpr float PopupHeight = 150.0f;
+			Ui()->DoPopupMenu(&m_PopupConfirmOverwrite,
+				Ui()->Screen()->w / 2.0f - PopupWidth / 2.0f, Ui()->Screen()->h / 2.0f - PopupHeight / 2.0f, PopupWidth, PopupHeight,
+				&m_PopupConfirmOverwrite, CPopupConfirmOverwrite::Render);
+		}
+		else if(m_pfnOpenCallback && (m_SaveAction || m_SelectedFileIndex >= 0))
+		{
+			m_pfnOpenCallback(aSaveFilePath, StorageType, m_pOpenCallbackUser);
 		}
 	}
 }
