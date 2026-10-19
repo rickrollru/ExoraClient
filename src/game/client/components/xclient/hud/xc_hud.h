@@ -100,6 +100,9 @@ private:
 	static void TeeCallback(const ImDrawList *pList, const ImDrawCmd *pCmd);
 	void AddTee(ImDrawList *pDraw, int ClientId, ImVec2 Center, float Size, float Alpha);
 	float m_ScoreboardOpen = 0.0f;
+	// elements fade in and out when they are turned on or off, the whole HUD while the menu opens
+	float m_aShown[NUM_ELEMENTS] = {};
+	float m_MenuFade = 1.0f;
 	float m_ScoreboardOpenTime = 0.0f;
 	float m_aKeyPress[5] = {};
 	char m_aBannerTitle[128] = {};
