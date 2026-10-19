@@ -18,6 +18,23 @@ SEditResult<E> CEditor::DoPropertiesWithState(CUIRect *pToolBox, CProperty *pPro
 	int Change = -1;
 	EEditState State = EEditState::NONE;
 
+	// XClient: the new properties panel draws these, the change it made comes back here
+	if(m_XcCapture.m_Active)
+	{
+		const int Call = m_XcCapture.m_Call++;
+		std::vector<SXcCapturedProp> &vProps = m_XcCapture.m_vvProps.emplace_back();
+		for(int i = 0; pProps[i].m_pName; i++)
+			vProps.push_back({pProps[i].m_pName, pProps[i].m_Value, pProps[i].m_Type, pProps[i].m_Min, pProps[i].m_Max});
+		if(m_XcCapture.m_PendingCall == Call && m_XcCapture.m_PendingProp >= 0 && m_XcCapture.m_PendingProp < (int)vProps.size())
+		{
+			*pNewVal = m_XcCapture.m_PendingValue;
+			Change = m_XcCapture.m_PendingProp;
+			State = m_XcCapture.m_PendingState;
+			m_XcCapture.m_PendingCall = -1;
+		}
+		return SEditResult<E>{State, static_cast<E>(Change)};
+	}
+
 	for(int i = 0; pProps[i].m_pName; i++)
 	{
 		const ColorRGBA *pColor = i >= (int)vColors.size() ? &ms_DefaultPropColor : &vColors[i];

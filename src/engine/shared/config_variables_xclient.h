@@ -341,6 +341,7 @@ MACRO_CONFIG_INT(XcMusicToasts, xc_music_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFL
 // Map editor
 MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the XClient style: flat dark panels, accent selection, the menu font")
 MACRO_CONFIG_INT(XcEditorGuideSeen, xc_editor_guide_seen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The map editor guide was shown once")
+MACRO_CONFIG_INT(XcEditorUi, xc_editor_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The new map editor interface in the XClient style (0 = the classic editor)")
 MACRO_CONFIG_INT(XcEditorLayout, xc_editor_layout, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor layout like Photoshop: tools on the left, layers on the right")
 MACRO_CONFIG_INT(XcEditorEraserSize, xc_editor_eraser_size, 1, 1, 16, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the map editor eraser in tiles")
 MACRO_CONFIG_INT(XcEditorBrightness, xc_editor_brightness, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor interface brightness (0 = darkest, 1 = dark, 2 = medium)")

@@ -39,6 +39,8 @@ CUIRect CEditor::XcFloatingToolsRect(CUIRect Area)
 
 bool CEditor::XcMouseOverFloatingTools()
 {
+	if(XcNewUi()) // the panels, menus and the tool capsule of the new interface
+		return m_XcUi.WantsMouse();
 	return m_XcFloatingTools.w > 0.0f && Ui()->MouseInside(&m_XcFloatingTools);
 }
 
