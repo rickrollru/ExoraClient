@@ -173,6 +173,12 @@ void CEditor::LayerSelectImage()
 
 void CEditor::MapDetails()
 {
+	if(XcNewUi()) // XClient: the map details window of the new interface
+	{
+		Map()->m_MapInfoTmp.Copy(Map()->m_MapInfo);
+		m_XcUi.OpenMapDetails();
+		return;
+	}
 	const CUIRect *pScreen = Ui()->Screen();
 	Map()->m_MapInfoTmp.Copy(Map()->m_MapInfo);
 	static SPopupMenuId s_PopupMapInfoId;

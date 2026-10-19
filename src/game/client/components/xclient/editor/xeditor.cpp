@@ -363,6 +363,7 @@ void CXcEditorUi::Render()
 			RenderCapsule();
 		if(m_PaletteOpen)
 			RenderPalette();
+		RenderMapDetails();
 
 		const ImGuiIO &Io = ImGui::GetIO();
 		m_WantsMouse = Io.WantCaptureMouse && !ClassicBusy;
@@ -1131,7 +1132,26 @@ void CXcEditorUi::RenderLayersTree()
 				}
 				else
 				{
+					// like the classic list: a layer without a name is called by its image or sound
 					const char *pName = pLayer->m_aName[0] ? pLayer->m_aName : Tr(pLayer->TypeName());
+					if(!pLayer->m_aName[0] && pLayer->m_Type == LAYERTYPE_TILES)
+					{
+						const int Image = std::static_pointer_cast<CLayerTiles>(pLayer)->m_Image;
+						if(Image >= 0 && Image < (int)pMap->m_vpImages.size())
+							pName = pMap->m_vpImages[Image]->m_aName;
+					}
+					else if(!pLayer->m_aName[0] && pLayer->m_Type == LAYERTYPE_QUADS)
+					{
+						const int Image = std::static_pointer_cast<CLayerQuads>(pLayer)->m_Image;
+						if(Image >= 0 && Image < (int)pMap->m_vpImages.size())
+							pName = pMap->m_vpImages[Image]->m_aName;
+					}
+					else if(!pLayer->m_aName[0] && pLayer->m_Type == LAYERTYPE_SOUNDS)
+					{
+						const int Sound = std::static_pointer_cast<CLayerSounds>(pLayer)->m_Sound;
+						if(Sound >= 0 && Sound < (int)pMap->m_vpSounds.size())
+							pName = pMap->m_vpSounds[Sound]->m_aName;
+					}
 					pDraw->AddText(pFont, pFont->FontSize, ImVec2(LNameX, LMin.y + (RowHeight - pFont->FontSize) * 0.5f), Col(Selected ? t.m_Text : t.m_TextSecondary, pLayer->m_Visible ? 1.0f : 0.5f), pName);
 					if(pLayer->m_Flags & LAYERFLAG_DETAIL)
 					{
@@ -1724,4 +1744,65 @@ void CXcEditorUi::RenderPalette()
 		ImGui::End();
 	ImGui::PopStyleVar(3);
 	ImGui::PopStyleColor(2);
+}
+
+// ------------------------------------------------------------------------------------------------
+// map details
+
+void CXcEditorUi::RenderMapDetails()
+{
+	CEditor &E = *m_pEditor;
+	CEditorMap *pMap = E.Map();
+	const STheme &t = Theme();
+	if(m_MapDetailsRequest)
+	{
+		ImGui::OpenPopup("##xe_mapinfo");
+		m_MapDetailsRequest = false;
+	}
+	const ImVec2 Display = ImGui::GetIO().DisplaySize;
+	const float Width = std::min(S(520.0f), Display.x - S(40.0f));
+	ImGui::SetNextWindowPos(ImVec2(Display.x * 0.5f, Display.y * 0.42f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(ImVec2(Width, 0.0f));
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.0f, 0.0f, 0.0f, 0.45f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, S(16.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(20.0f), S(18.0f)));
+	if(ImGui::BeginPopupModal("##xe_mapinfo", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		Header(Tr("Map details"));
+		Description(Tr("Saved in the map file: everybody who plays the map can read it"));
+		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+		CEditorMap::CMapInfo &Info = pMap->m_MapInfoTmp;
+		const auto Field = [&](const char *pLabel, const char *pId, char *pBuf, int BufSize, const char *pHint) {
+			ParamLabel(pLabel);
+			InputText(pId, pBuf, BufSize, pHint, Width - S(40.0f));
+			ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+		};
+		Field(Tr("Author"), "##author", Info.m_aAuthor, sizeof(Info.m_aAuthor), Tr("Your name or nickname"));
+		Field(Tr("Version"), "##version", Info.m_aVersion, sizeof(Info.m_aVersion), "1.0");
+		Field(Tr("Credits"), "##credits", Info.m_aCredits, sizeof(Info.m_aCredits), Tr("Who helped: testers, tileset authors"));
+		Field(Tr("License"), "##license", Info.m_aLicense, sizeof(Info.m_aLicense), "CC BY-SA 4.0");
+		ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
+		const float ButtonWidth = (Width - S(40.0f) - S(8.0f)) * 0.5f;
+		bool Close = false;
+		if(Button(Tr("Cancel"), false, ButtonWidth) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+			Close = true;
+		ImGui::SameLine(0.0f, S(8.0f));
+		if(Button(Tr("Save"), true, ButtonWidth) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+		{
+			// the same as the classic popup: only a real change marks the map as modified
+			const bool Different = str_comp(Info.m_aAuthor, pMap->m_MapInfo.m_aAuthor) != 0 || str_comp(Info.m_aVersion, pMap->m_MapInfo.m_aVersion) != 0 ||
+					       str_comp(Info.m_aCredits, pMap->m_MapInfo.m_aCredits) != 0 || str_comp(Info.m_aLicense, pMap->m_MapInfo.m_aLicense) != 0;
+			if(Different)
+				pMap->OnModify();
+			pMap->m_MapInfo.Copy(Info);
+			Close = true;
+		}
+		if(Close)
+			ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+	}
+	ImGui::PopStyleVar(2);
+	ImGui::PopStyleColor(2);
+	(void)E;
 }

@@ -397,7 +397,8 @@ void CXcEditorUi::RenderCaptureCard(int Kind, const char *pId, const char *pTitl
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, Danger ? ImVec4(0.85f, 0.25f, 0.25f, 0.5f) : Mix(t.m_Track, t.m_Accent, 0.35f));
 		ImGui::PushStyleColor(ImGuiCol_Text, Danger ? ImVec4(1.0f, 0.55f, 0.55f, 1.0f) : t.m_Text);
 		ImGui::PushFont(Fonts().m_pLabel);
-		if(ImGui::Button(Tr(ButtonData.m_Label.c_str()), ImVec2(Width - Pad * 2.0f, S(30.0f))))
+		const bool Letter = ButtonData.m_Label.size() <= 1 && !ButtonData.m_Tooltip.empty();
+		if(ImGui::Button(Tr(Letter ? ButtonData.m_Tooltip.c_str() : ButtonData.m_Label.c_str()), ImVec2(Width - Pad * 2.0f, S(30.0f))))
 			Capture.m_pPendingButton = ButtonData.m_pId;
 		ImGui::PopFont();
 		ImGui::PopStyleColor(4);
@@ -490,6 +491,43 @@ void CXcEditorUi::RenderRightPanel()
 			{
 				RunCapture(CAPTURE_SOURCE, CEditor::PopupSource, &E);
 				RenderCaptureCard(CAPTURE_SOURCE, "##source", Tr("Sound source"), nullptr);
+			}
+		}
+
+		// the numbers the brush paints on the special layers of the game group
+		if(E.m_Mode == MODE_LAYERS && pLayer && pMap->m_vSelectedLayers.size() == 1)
+		{
+			CUi::FPopupMenuFunction pfnBrush = nullptr;
+			const char *pBrushTitle = nullptr;
+			if(pLayer == pMap->m_pTeleLayer)
+			{
+				pfnBrush = CEditor::PopupTele;
+				pBrushTitle = Tr("Teleporter brush");
+			}
+			else if(pLayer == pMap->m_pSwitchLayer)
+			{
+				pfnBrush = CEditor::PopupSwitch;
+				pBrushTitle = Tr("Switch brush");
+			}
+			else if(pLayer == pMap->m_pSpeedupLayer)
+			{
+				pfnBrush = CEditor::PopupSpeedup;
+				pBrushTitle = Tr("Speedup brush");
+			}
+			else if(pLayer == pMap->m_pTuneLayer)
+			{
+				pfnBrush = CEditor::PopupTune;
+				pBrushTitle = Tr("Tune brush");
+			}
+			if(pfnBrush)
+			{
+				// these popups also react to keys (N, Ctrl+F) like when they are open, so they only run while the
+				// mouse is over this panel; the card keeps the last values meanwhile
+				const bool PanelHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByPopup);
+				if(PanelHovered || m_pLastBrushLayer != pLayer.get() || m_aCaptures[CAPTURE_BRUSH].m_PendingCall >= 0 || m_aCaptures[CAPTURE_BRUSH].m_pPendingButton)
+					RunCapture(CAPTURE_BRUSH, pfnBrush, &E);
+				m_pLastBrushLayer = pLayer.get();
+				RenderCaptureCard(CAPTURE_BRUSH, "##brush", pBrushTitle, Tr("What the brush paints on this layer"));
 			}
 		}
 
