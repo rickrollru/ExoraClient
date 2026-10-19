@@ -213,6 +213,18 @@ CUi::EPopupMenuFunctionResult CEditor::PopupMenuSettings(void *pContext, CUIRect
 	CEditor *pEditor = static_cast<CEditor *>(pContext);
 
 	CUIRect Slot;
+	// XClient: Photoshop like preferences
+	if(XcEditorStyle::Enabled())
+	{
+		View.HSplitTop(12.0f, &Slot, &View);
+		static int s_XcPreferencesButton = 0;
+		if(pEditor->DoButton_MenuItem(&s_XcPreferencesButton, "Preferences… (Ctrl+K)", 0, &Slot, BUTTONFLAG_LEFT, "Look of the editor: interface brightness, transparency grid, rulers, cursor."))
+		{
+			pEditor->XcOpenPreferences();
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+		View.HSplitTop(2.0f, nullptr, &View);
+	}
 	View.HSplitTop(12.0f, &Slot, &View);
 	static int s_EntitiesButtonId = 0;
 	char aButtonText[64];

@@ -292,3 +292,8 @@ MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(XcEditorGuideSeen, xc_editor_guide_seen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The map editor guide was shown once")
 MACRO_CONFIG_INT(XcEditorLayout, xc_editor_layout, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor layout like Photoshop: tools on the left, layers on the right")
 MACRO_CONFIG_INT(XcEditorEraserSize, xc_editor_eraser_size, 1, 1, 16, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the map editor eraser in tiles")
+MACRO_CONFIG_INT(XcEditorBrightness, xc_editor_brightness, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor interface brightness (0 = darkest, 1 = dark, 2 = medium)")
+MACRO_CONFIG_INT(XcEditorCheckerSize, xc_editor_checker_size, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the transparency grid in the map editor (0 = small, 1 = medium, 2 = large)")
+MACRO_CONFIG_INT(XcEditorCheckerShade, xc_editor_checker_shade, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shade of the transparency grid in the map editor (0 = dark, 1 = medium, 2 = light)")
+MACRO_CONFIG_INT(XcEditorRulers, xc_editor_rulers, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rulers in tiles on top and left of the map view, guides are dragged out of them")
+MACRO_CONFIG_INT(XcEditorPreciseCursor, xc_editor_precise_cursor, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A thin cross at the mouse in the map view")
