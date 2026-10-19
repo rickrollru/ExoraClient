@@ -27,10 +27,11 @@ struct SGuideStep
 };
 
 const SGuideStep s_aSteps[] = {
-	{-1, "Welcome to the map editor", "This short tour shows what every part of the editor does. It looks like a photo editor: layers on the left, tools on top, the picture in the middle."},
+	{-1, "Welcome to the map editor", "This short tour shows what every part of the editor does. It works like Photoshop: tools on the left, layers on the right, tool options on top, the map in the middle."},
 	{CEditor::XC_ZONE_MENU, "Menu", "File: new map, open, save, save as and export. Tools: automapper, removing unused images and sounds and other helpers. Settings: grid, colors and editor options."},
 	{CEditor::XC_ZONE_TABS, "Open maps", "Every open map has a tab, like documents in Photoshop. Switch between maps here, the cross closes a map."},
 	{CEditor::XC_ZONE_TOOLBAR, "Tool bar", "HD shows detail layers, play starts the animations, Proof shows what a player sees on the screen. Then zoom, grid, flip and rotate for the brush, and colors to paint quads."},
+	{CEditor::XC_ZONE_TOOLS, "Tools", "Like in Photoshop: B brush, E eraser, G bucket fill, I eyedropper, H hand, Z zoom. Hover a tool to see what it does. The brush is the classic editor tool."},
 	{CEditor::XC_ZONE_TOOLBOX, "Layers", "Like layers in Photoshop: groups hold layers, the eye hides a layer, a click selects it, a right click opens its settings. The Game layer is where the physics are: walls, freeze, death. The icons on top switch to images and sounds."},
 	{CEditor::XC_ZONE_VIEW, "Canvas", "Left mouse: select tiles and make them a brush, then paint with it. Right mouse: drop the brush. Wheel: zoom. Middle mouse or space: move around. Ctrl+Z undoes, Ctrl+S saves."},
 	{CEditor::XC_ZONE_STATUS, "Hints and panels", "The line at the bottom explains what is under the mouse. On the right: History (every change, click to go back), Server settings of the map and Envelopes (animations for quads and colors)."},
@@ -58,7 +59,7 @@ void CEditor::XcRenderGuide()
 
 	const CUIRect Screen = *Ui()->Screen();
 	const SGuideStep &Step = s_aSteps[std::clamp(m_XcGuideStep, 0, NUM_STEPS - 1)];
-	const bool Highlight = Step.m_Zone >= 0 && m_GuiActive;
+	const bool Highlight = Step.m_Zone >= 0 && m_GuiActive && m_aXcZones[Step.m_Zone].w > 0.0f;
 	CUIRect Lit = Highlight ? m_aXcZones[Step.m_Zone] : CUIRect{Screen.w * 0.5f, Screen.h * 0.5f, 0.0f, 0.0f};
 	if(Highlight)
 		Lit.Margin(-2.0f, &Lit);
