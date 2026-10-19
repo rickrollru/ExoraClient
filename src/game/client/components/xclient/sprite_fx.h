@@ -11,8 +11,8 @@
 #include <vector>
 
 // Soft textured sprites for the "new" effect style (xc_fx_style 1): light is built from layers of
-// blurred textures added on top of each other (a wide bloom, a glow and a bright core), the look of
-// the Minecraft clients. Textures from data/xclient/fx (see CREDITS.txt there). Drawn with IGraphics,
+// blurred textures added on top of each other (a wide bloom, a glow and a bright core).
+// Textures from data/xclient/fx (see CREDITS.txt there). Drawn with IGraphics,
 // so it works on every backend.
 class CXcSprites : public CComponent
 {

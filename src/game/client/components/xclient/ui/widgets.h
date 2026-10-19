@@ -63,7 +63,7 @@ namespace XcUi
 	// vertical list of sections
 	bool SideNav(const char *pId, int *pCurrent, const char *const *ppIcons, const char *const *ppLabels, int NumItems, float Width);
 
-	// Two column masonry grid of cards (like Space Visuals). Each card goes into the shorter column.
+	// Two column masonry grid of cards. Each card goes into the shorter column.
 	void BeginCardGrid(const char *pId, int Columns = 2);
 	void EndCardGrid();
 	// Card header: title, gray description, optional bind plate and toggle. Returns true when the body
