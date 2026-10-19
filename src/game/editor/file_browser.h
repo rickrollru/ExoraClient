@@ -36,6 +36,7 @@ public:
 
 	void OnEditorClose();
 	void XcOpenSelected(); // XClient
+	bool m_XcAskOverwrite = false; // XClient: the file to save exists, the new dialog asks before overwriting
 	void OnDialogClose();
 
 private:

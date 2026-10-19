@@ -1842,6 +1842,98 @@ CUi::EPopupMenuFunctionResult CEditor::PopupMapInfo(void *pContext, CUIRect View
 	return CUi::POPUP_KEEP_OPEN;
 }
 
+// XClient: the title and the message of the event popup, the new editor interface shows them in its own dialog
+void CEditor::XcPopupEventText(const char **ppTitle, const char **ppMessage, char *pBuf, int BufSize)
+{
+	if(m_PopupEventType == POPEVENT_EXIT)
+	{
+		*ppTitle = "Exit the editor";
+		*ppMessage = "The map contains unsaved data, you might want to save it before you exit the editor.\n\nContinue anyway?";
+	}
+	else if(m_PopupEventType == POPEVENT_CLOSE_MAP)
+	{
+		*ppTitle = "Save changes?";
+		str_format(pBuf, BufSize, "Do you want to save your changes to '%s'?\n\nYour changes will be lost if you do not save them.", Map()->m_aDisplayName);
+		*ppMessage = pBuf;
+	}
+	else if(m_PopupEventType == POPEVENT_LARGELAYER)
+	{
+		*ppTitle = "Large layer";
+		*ppMessage = "You are trying to set the height or width of a layer to more than 1000 tiles. This is actually possible, but only rarely necessary. It may cause the editor to work slower and will result in a larger file size as well as higher memory usage for client and server.";
+	}
+	else if(m_PopupEventType == POPEVENT_PREVENTUNUSEDTILES)
+	{
+		*ppTitle = "Unused tiles disabled";
+		*ppMessage = "Unused tiles can't be placed by default because they could get a use later and then destroy your map.\n\nActivate the 'Allow unused' setting to be able to place every tile.";
+	}
+	else if(m_PopupEventType == POPEVENT_IMAGEDIV16)
+	{
+		*ppTitle = "Image width/height";
+		*ppMessage = "The width or height of this image is not divisible by 16. This is required for images used in tile layers.";
+	}
+	else if(m_PopupEventType == POPEVENT_IMAGE_MAX)
+	{
+		*ppTitle = "Max images";
+		str_format(pBuf, BufSize, "The client only allows a maximum of %" PRIzu " images.", MAX_MAPIMAGES);
+		*ppMessage = pBuf;
+	}
+	else if(m_PopupEventType == POPEVENT_SOUND_MAX)
+	{
+		*ppTitle = "Max sounds";
+		str_format(pBuf, BufSize, "The client only allows a maximum of %" PRIzu " sounds.", MAX_MAPSOUNDS);
+		*ppMessage = pBuf;
+	}
+	else if(m_PopupEventType == POPEVENT_PLACE_BORDER_TILES)
+	{
+		*ppTitle = "Place border tiles";
+		*ppMessage = "This is going to overwrite any existing tiles around the edges of the layer.\n\nContinue?";
+	}
+	else if(m_PopupEventType == POPEVENT_TILE_ART_BIG_IMAGE)
+	{
+		*ppTitle = "Big image";
+		*ppMessage = "The selected image is big. Converting it to tile art may take some time.\n\nContinue anyway?";
+	}
+	else if(m_PopupEventType == POPEVENT_TILE_ART_MANY_COLORS)
+	{
+		*ppTitle = "Many colors";
+		*ppMessage = "The selected image contains many colors, which will lead to a big mapfile. You may want to consider reducing the number of colors.\n\nContinue anyway?";
+	}
+	else if(m_PopupEventType == POPEVENT_TILE_ART_TOO_MANY_COLORS)
+	{
+		*ppTitle = "Too many colors";
+		*ppMessage = "The client only supports 64 images but more would be needed to add the selected image as tile art.";
+	}
+	else if(m_PopupEventType == POPEVENT_QUAD_ART_BIG_IMAGE)
+	{
+		*ppTitle = "Big image";
+		*ppMessage = "The selected image is really big. Expect performance issues!\n\nContinue anyway?";
+	}
+	else if(m_PopupEventType == POPEVENT_REMOVE_USED_IMAGE)
+	{
+		*ppTitle = "Remove image";
+		*ppMessage = "This image is used in the map. Removing it will reset all layers that use this image to their default.\n\nRemove anyway?";
+	}
+	else if(m_PopupEventType == POPEVENT_REMOVE_USED_SOUND)
+	{
+		*ppTitle = "Remove sound";
+		*ppMessage = "This sound is used in the map. Removing it will reset all layers that use this sound to their default.\n\nRemove anyway?";
+	}
+	else if(m_PopupEventType == POPEVENT_RESTART_SERVER)
+	{
+		*ppTitle = "Restart server";
+		*ppMessage = "You have a local server running, but you are not authorized or connected.\n\nDo you want to restart the server and reconnect?";
+	}
+	else if(m_PopupEventType == POPEVENT_RESTARTING_SERVER)
+	{
+		*ppTitle = "Restarting server";
+		*ppMessage = "Local server is restarting. Please wait…";
+	}
+	else
+	{
+		dbg_assert_failed("m_PopupEventType invalid");
+	}
+}
+
 CUi::EPopupMenuFunctionResult CEditor::PopupEvent(void *pContext, CUIRect View, bool Active)
 {
 	CEditor *pEditor = static_cast<CEditor *>(pContext);
@@ -1849,89 +1941,8 @@ CUi::EPopupMenuFunctionResult CEditor::PopupEvent(void *pContext, CUIRect View, 
 	const char *pTitle;
 	const char *pMessage;
 	char aMessageBuf[128 + IO_MAX_PATH_LENGTH];
-	if(pEditor->m_PopupEventType == POPEVENT_EXIT)
+	if(pEditor->m_PopupEventType == POPEVENT_RESTARTING_SERVER)
 	{
-		pTitle = "Exit the editor";
-		pMessage = "The map contains unsaved data, you might want to save it before you exit the editor.\n\nContinue anyway?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_CLOSE_MAP)
-	{
-		pTitle = "Save changes?";
-		str_format(aMessageBuf, sizeof(aMessageBuf), "Do you want to save your changes to '%s'?\n\nYour changes will be lost if you do not save them.", pEditor->Map()->m_aDisplayName);
-		pMessage = aMessageBuf;
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_LARGELAYER)
-	{
-		pTitle = "Large layer";
-		pMessage = "You are trying to set the height or width of a layer to more than 1000 tiles. This is actually possible, but only rarely necessary. It may cause the editor to work slower and will result in a larger file size as well as higher memory usage for client and server.";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_PREVENTUNUSEDTILES)
-	{
-		pTitle = "Unused tiles disabled";
-		pMessage = "Unused tiles can't be placed by default because they could get a use later and then destroy your map.\n\nActivate the 'Allow unused' setting to be able to place every tile.";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_IMAGEDIV16)
-	{
-		pTitle = "Image width/height";
-		pMessage = "The width or height of this image is not divisible by 16. This is required for images used in tile layers.";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_IMAGE_MAX)
-	{
-		pTitle = "Max images";
-		str_format(aMessageBuf, sizeof(aMessageBuf), "The client only allows a maximum of %" PRIzu " images.", MAX_MAPIMAGES);
-		pMessage = aMessageBuf;
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_SOUND_MAX)
-	{
-		pTitle = "Max sounds";
-		str_format(aMessageBuf, sizeof(aMessageBuf), "The client only allows a maximum of %" PRIzu " sounds.", MAX_MAPSOUNDS);
-		pMessage = aMessageBuf;
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_PLACE_BORDER_TILES)
-	{
-		pTitle = "Place border tiles";
-		pMessage = "This is going to overwrite any existing tiles around the edges of the layer.\n\nContinue?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_TILE_ART_BIG_IMAGE)
-	{
-		pTitle = "Big image";
-		pMessage = "The selected image is big. Converting it to tile art may take some time.\n\nContinue anyway?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_TILE_ART_MANY_COLORS)
-	{
-		pTitle = "Many colors";
-		pMessage = "The selected image contains many colors, which will lead to a big mapfile. You may want to consider reducing the number of colors.\n\nContinue anyway?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_TILE_ART_TOO_MANY_COLORS)
-	{
-		pTitle = "Too many colors";
-		pMessage = "The client only supports 64 images but more would be needed to add the selected image as tile art.";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_QUAD_ART_BIG_IMAGE)
-	{
-		pTitle = "Big image";
-		pMessage = "The selected image is really big. Expect performance issues!\n\nContinue anyway?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_REMOVE_USED_IMAGE)
-	{
-		pTitle = "Remove image";
-		pMessage = "This image is used in the map. Removing it will reset all layers that use this image to their default.\n\nRemove anyway?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_REMOVE_USED_SOUND)
-	{
-		pTitle = "Remove sound";
-		pMessage = "This sound is used in the map. Removing it will reset all layers that use this sound to their default.\n\nRemove anyway?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_RESTART_SERVER)
-	{
-		pTitle = "Restart server";
-		pMessage = "You have a local server running, but you are not authorized or connected.\n\nDo you want to restart the server and reconnect?";
-	}
-	else if(pEditor->m_PopupEventType == POPEVENT_RESTARTING_SERVER)
-	{
-		pTitle = "Restarting server";
-		pMessage = "Local server is restarting. Please wait…";
-
 		CGameClient *pGameClient = (CGameClient *)pEditor->Kernel()->RequestInterface<IGameClient>();
 		if(!pGameClient->m_LocalServer.IsServerRunning())
 		{
@@ -1939,10 +1950,7 @@ CUi::EPopupMenuFunctionResult CEditor::PopupEvent(void *pContext, CUIRect View, 
 			return CUi::POPUP_CLOSE_CURRENT;
 		}
 	}
-	else
-	{
-		dbg_assert_failed("m_PopupEventType invalid");
-	}
+	pEditor->XcPopupEventText(&pTitle, &pMessage, aMessageBuf, sizeof(aMessageBuf)); // XClient
 
 	CUIRect Label, ButtonBar, Button;
 
