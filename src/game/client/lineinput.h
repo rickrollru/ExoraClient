@@ -193,6 +193,7 @@ public:
 	const void *GetClearButtonId() const { return &m_ClearButtonId; }
 
 	bool IsActive() const { return GetActiveInput() == this; }
+	void XcMarkRendered() { m_WasRendered = true; } // XClient: an input that is drawn by ImGui stays active
 	void Activate(EInputPriority Priority);
 	void Deactivate() const;
 };

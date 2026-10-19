@@ -108,8 +108,10 @@ static bool GroupMapping(CEditor *pEditor, CScreenRect *pRect)
 
 void CEditor::XcRenderRulers(CUIRect View)
 {
-	// Ctrl+K opens the preferences everywhere in the editor
-	if(XcEditorStyle::Enabled() && m_Dialog == DIALOG_NONE && CLineInput::GetActiveInput() == nullptr && Input()->ModifierIsPressed() && Input()->KeyPress(KEY_K))
+	// Ctrl+K opens the preferences in the classic interface, the new one has its command palette there
+	// and the preferences on Ctrl+comma like most apps
+	if(XcEditorStyle::Enabled() && m_Dialog == DIALOG_NONE && CLineInput::GetActiveInput() == nullptr && Input()->ModifierIsPressed() &&
+		((!XcNewUi() && Input()->KeyPress(KEY_K)) || Input()->KeyPress(KEY_COMMA)))
 		XcOpenPreferences();
 	if(!XcEditorStyle::Enabled() || m_ShowPicker || m_Mode != MODE_LAYERS)
 		return;
