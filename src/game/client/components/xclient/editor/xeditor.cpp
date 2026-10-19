@@ -811,12 +811,18 @@ void CXcEditorUi::RenderLeftPanel()
 		ImDrawList *pDraw = ImGui::GetWindowDrawList();
 		pDraw->AddLine(ImVec2(m_LeftWidth - 1.0f, m_TopHeight), ImVec2(m_LeftWidth - 1.0f, m_TopHeight + Height), Col(t.m_Border));
 		// layers, images and sounds like the pages of a Figma panel
-		const char *apModes[] = {Tr("Layers"), Tr("Images"), Tr("Sounds")};
-		int Mode = E.m_Mode;
-		if(Segmented("##xe_mode", &Mode, apModes, 3))
-			E.m_Mode = Mode;
+		// the fourth page is the prefab library, the editor stays in the layers mode for painting
+		const char *apModes[] = {Tr("Layers"), Tr("Images"), Tr("Sounds"), Tr("Prefabs")};
+		int Mode = m_ShowPrefabs && E.m_Mode == MODE_LAYERS ? 3 : E.m_Mode;
+		if(Segmented("##xe_mode", &Mode, apModes, 4))
+		{
+			m_ShowPrefabs = Mode == 3;
+			E.m_Mode = m_ShowPrefabs ? (int)MODE_LAYERS : Mode;
+		}
 		ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
-		if(E.m_Mode == MODE_LAYERS)
+		if(m_ShowPrefabs && E.m_Mode == MODE_LAYERS)
+			RenderPrefabsPanel();
+		else if(E.m_Mode == MODE_LAYERS)
 			RenderLayersTree();
 		else if(E.m_Mode == MODE_IMAGES)
 			RenderImagesPanel();
