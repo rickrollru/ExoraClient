@@ -88,6 +88,7 @@
 #include "components/touch_controls.h"
 #include "components/voting.h"
 #include "components/xclient/accessory.h"
+#include "components/xclient/cape.h"
 #include "components/xclient/event_fx.h"
 #include "components/xclient/floaters.h"
 #include "components/xclient/fx_renderer.h"
@@ -264,6 +265,7 @@ public:
 	CAccessory m_Accessory;
 	CXcHats m_XcHats;
 	CXcHatsBehind m_XcHatsBehind;
+	CXcCape m_XcCape;
 	CXcFloaters m_XcFloaters;
 	CXcOverTiles m_XcOverTiles;
 	CXcJelly m_XcJelly;
