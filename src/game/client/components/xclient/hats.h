@@ -65,6 +65,7 @@ private:
 
 	void UpdateState(int ClientId, vec2 Pos, float Dt);
 	friend class CXcHatsBehind;
+	friend class CXcOverTiles;
 	// draws the hats of all players; called once a frame, behind or in front of the tees (xc_hat_behind)
 	void RenderAll();
 	bool LooksLeft(int ClientId) const;
@@ -72,6 +73,15 @@ private:
 
 // The pass behind the tees (wings, capes), registered before the players.
 class CXcHatsBehind : public CComponent
+{
+public:
+	int Sizeof() const override { return sizeof(*this); }
+	void OnRender() override;
+};
+
+// Registered right after the front map layer: with xc_fx_over_tiles / xc_hats_over_tiles the queued
+// effects and the hats are drawn here, over the blocks, instead of under them.
+class CXcOverTiles : public CComponent
 {
 public:
 	int Sizeof() const override { return sizeof(*this); }

@@ -82,6 +82,8 @@ class CFxRenderer : public CComponent
 public:
 	int Sizeof() const override { return sizeof(*this); }
 	void OnRender() override;
+	// draws and clears the queued world effects (called by OnRender, or later by CXcOverTiles)
+	void FlushWorld();
 
 	// true when shapes are drawn by the render module
 	bool ModuleActive() const;

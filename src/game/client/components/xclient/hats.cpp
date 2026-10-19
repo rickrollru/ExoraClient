@@ -258,8 +258,16 @@ void CXcHatsBehind::OnRender()
 void CXcHats::OnRender()
 {
 	Update();
-	if(!g_Config.m_XcHatBehind)
+	if(!g_Config.m_XcHatBehind && !g_Config.m_XcHatsOverTiles)
 		RenderAll();
+}
+
+void CXcOverTiles::OnRender()
+{
+	if(g_Config.m_XcFxOverTiles)
+		GameClient()->m_FxRenderer.FlushWorld();
+	if(g_Config.m_XcHatsOverTiles && !g_Config.m_XcHatBehind)
+		GameClient()->m_XcHats.RenderAll();
 }
 
 void CXcHats::RenderAll()
