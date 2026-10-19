@@ -30,6 +30,7 @@
 #include <generated/client_data.h>
 
 #include <game/client/components/xclient/editor/editor_style.h> // XClient
+#include <game/client/components/xclient/ui/lang.h> // XClient
 #include <game/client/components/camera.h>
 #include <game/client/gameclient.h>
 #include <game/client/lineinput.h>
@@ -3682,6 +3683,10 @@ void CEditor::RenderMenubar(CUIRect MenuBar)
 	MenuBar.VSplitRight(15.0f, &MenuBar, &Close);
 	MenuBar.VSplitRight(5.0f, &MenuBar, nullptr);
 	MenuBar.VSplitRight(15.0f, &MenuBar, &Help);
+	// XClient: the guide button
+	CUIRect XcGuide;
+	MenuBar.VSplitRight(5.0f, &MenuBar, nullptr);
+	MenuBar.VSplitRight(XcEditorStyle::Enabled() ? 50.0f : 0.0f, &MenuBar, &XcGuide);
 	MenuBar.VSplitRight(5.0f, &Info, nullptr);
 
 	char aTimeStr[6];
@@ -3690,6 +3695,13 @@ void CEditor::RenderMenubar(CUIRect MenuBar)
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "X: %.1f, Y: %.1f, Z: %.1f, T: %.1f, A: %.1f, G: %i  %s", MapView()->MouseWorldPos().x / 32.0f, MapView()->MouseWorldPos().y / 32.0f, MapView()->Zoom()->GetValue(), Map()->m_EnvelopeEvaluator.m_AnimateTime * Map()->m_EnvelopeEvaluator.m_AnimateSpeed, Map()->m_EnvelopeEvaluator.m_AnimateSpeed, MapView()->MapGrid()->Factor(), aTimeStr);
 	Ui()->DoLabel(&Info, aBuf, 10.0f, TEXTALIGN_MR);
+
+	static int s_XcGuideButton = 0;
+	if(XcEditorStyle::Enabled() && DoButton_Editor(&s_XcGuideButton, XcUi::Tr("Guide"), m_XcGuideOpen ? 1 : 0, &XcGuide, BUTTONFLAG_LEFT, "What every part of the editor does, step by step"))
+	{
+		m_XcGuideOpen = !m_XcGuideOpen;
+		m_XcGuideStep = 0;
+	}
 
 	static int s_HelpButton = 0;
 	if(DoButton_Editor(&s_HelpButton, "?", 0, &Help, BUTTONFLAG_LEFT, "[F1] Open the DDNet Wiki page for the map editor in a web browser."))
@@ -3757,6 +3769,13 @@ void CEditor::Render()
 		View.HSplitBottom(16.0f, &View, &StatusBar);
 		if(!m_ShowPicker && m_ActiveExtraEditor != EXTRAEDITOR_NONE)
 			View.HSplitBottom(m_aExtraEditorSplits[(int)m_ActiveExtraEditor], &View, &ExtraEditor);
+		// XClient: places the guide points at
+		m_aXcZones[XC_ZONE_MENU] = MenuBar;
+		ToolBar.HSplitTop(22.0f, &m_aXcZones[XC_ZONE_TABS], &m_aXcZones[XC_ZONE_TOOLBAR]);
+		m_aXcZones[XC_ZONE_TABS].VSplitLeft(m_ToolBoxWidth, nullptr, &m_aXcZones[XC_ZONE_TABS]);
+		m_aXcZones[XC_ZONE_TOOLBOX] = ToolBox;
+		m_aXcZones[XC_ZONE_VIEW] = View;
+		m_aXcZones[XC_ZONE_STATUS] = StatusBar;
 	}
 	else
 	{
@@ -4036,6 +4055,7 @@ void CEditor::Render()
 	m_FileBrowser.Render();
 	m_Prompt.Render();
 	m_FontTyper.Render();
+	XcRenderGuide(); // XClient
 
 	MapView()->UpdateZoom();
 
