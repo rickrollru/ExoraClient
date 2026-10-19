@@ -210,6 +210,8 @@ MACRO_CONFIG_INT(XcDummyArrow, xc_dummy_arrow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(XcDummyArrowSize, xc_dummy_arrow_size, 100, 50, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the dummy arrow in percent")
 MACRO_CONFIG_INT(XcDummyArrowColorMode, xc_dummy_arrow_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcDummyArrowColor, xc_dummy_arrow_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dummy arrow color")
+MACRO_CONFIG_INT(XcTeamArrows, xc_team_arrows, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Arrows at the screen edge pointing to your team mates")
+MACRO_CONFIG_INT(XcFriendArrows, xc_friend_arrows, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Arrows at the screen edge pointing to your friends")
 
 // Gradient names above the tees
 MACRO_CONFIG_INT(XcNameGradient, xc_name_gradient, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient names (0 = off, 1 = accent, 2 = rainbow, 3 = skin colors, 4 = two own colors)")
