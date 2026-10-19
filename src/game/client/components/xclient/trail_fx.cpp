@@ -301,6 +301,7 @@ void CTrailFx::OnRender()
 				Emit(ClientId, Pos - Dir * Trail.m_EmitDistance, Dir, Scale);
 			}
 			Trail.m_EmitDistance = std::min(Trail.m_EmitDistance, Spacing);
+			continue; // only the particles, no line under them
 		}
 
 		if(Style == TRAIL_GHOSTS)
