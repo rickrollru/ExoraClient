@@ -121,6 +121,13 @@ bool CFxRenderer::ModuleActive() const
 
 void CFxRenderer::OnRender()
 {
+	// over the map tiles the queue is drawn after the front layer
+	if(!g_Config.m_XcFxOverTiles)
+		FlushWorld();
+}
+
+void CFxRenderer::FlushWorld()
+{
 	if(m_vWorld.empty())
 		return;
 	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)

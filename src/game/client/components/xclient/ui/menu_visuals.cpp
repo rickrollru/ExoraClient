@@ -230,6 +230,13 @@ void CXcMenu::RenderVisualsWorld()
 		ConfigSlider(Tr("Strength"), "xc_world_tint_strength", &g_Config.m_XcWorldTintStrength, 5, 100, "%d%%");
 		EndCard();
 	}
+	if(BeginCard("##fx_over_tiles", Tr("Over the blocks"), Tr("Effects and hats can be drawn over the map blocks, they stay visible behind walls")))
+	{
+		ToggleRow(Tr("Effects over the blocks"), "xc_fx_over_tiles", &g_Config.m_XcFxOverTiles);
+		ToggleRow(Tr("Hats over the blocks"), "xc_hats_over_tiles", &g_Config.m_XcHatsOverTiles);
+		Description(Tr("Jumps, rings, freeze, death, finish and accessories. Hats placed behind the tee stay behind"));
+		EndCard();
+	}
 	if(BeginCard("##fx_vignette", Tr("Vignette"), Tr("Darker screen edges to focus on the center")))
 	{
 		ConfigSlider(Tr("Strength"), "xc_vignette", &g_Config.m_XcVignette, 0, 100, "%d%%");

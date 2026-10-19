@@ -265,6 +265,7 @@ public:
 	CXcHats m_XcHats;
 	CXcHatsBehind m_XcHatsBehind;
 	CXcFloaters m_XcFloaters;
+	CXcOverTiles m_XcOverTiles;
 	CXcJelly m_XcJelly;
 	CXcEventFx m_XcEventFx;
 	CFxRenderer m_FxRenderer;
