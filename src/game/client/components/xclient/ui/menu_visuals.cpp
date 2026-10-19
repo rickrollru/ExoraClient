@@ -416,8 +416,12 @@ void CXcMenu::RenderVisualsEvents()
 		Description(Tr("Turn on our effect for the same event in its card, otherwise nothing is shown"));
 		EndCard();
 	}
-	if(BeginCard("##fx_dummy_arrow", Tr("Dummy arrow"), Tr("A glowing arrow at the screen edge shows where the dummy is"), &g_Config.m_XcDummyArrow))
+	if(BeginCard("##fx_dummy_arrow", Tr("Arrows to players"), Tr("Glowing arrows at the screen edge show where the dummy, team mates and friends are")))
 	{
+		ToggleRow(Tr("Dummy"), "xc_dummy_arrow", &g_Config.m_XcDummyArrow);
+		ToggleRow(Tr("Team mates"), "xc_team_arrows", &g_Config.m_XcTeamArrows);
+		ToggleRow(Tr("Friends"), "xc_friend_arrows", &g_Config.m_XcFriendArrows);
+		ParamLabel(Tr("Dummy arrow color"));
 		EffectColorPicker("##arrow_color", &g_Config.m_XcDummyArrowColorMode, &g_Config.m_XcDummyArrowColor);
 		ConfigSlider(Tr("Size"), "xc_dummy_arrow_size", &g_Config.m_XcDummyArrowSize, 50, 250, "%d%%");
 		EndCard();

@@ -64,6 +64,8 @@ private:
 	bool m_aLastValid[NUM_DUMMIES] = {};
 	float m_aSinceDeath[NUM_DUMMIES] = {};
 	vec2 m_DummyLastPos = vec2(0.0f, 0.0f);
+	vec2 m_aLastSeenPos[MAX_CLIENTS] = {};
+	float m_aLastSeenTime[MAX_CLIENTS] = {}; // 0 = never seen
 	bool m_aWasFrozen[NUM_DUMMIES] = {};
 	int m_aSounds[NUM_EVENT_SOUNDS] = {-1, -1, -1, -1, -1, -1};
 	bool IsOwn(int ClientId) const;

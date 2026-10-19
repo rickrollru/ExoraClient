@@ -63,6 +63,8 @@ void CXcEventFx::OnReset()
 	for(int i = 0; i < NUM_DUMMIES; i++)
 		m_aLastValid[i] = false;
 	m_DummyLastPos = vec2(0.0f, 0.0f);
+	for(float &Time : m_aLastSeenTime)
+		Time = 0.0f;
 }
 
 void CXcEventFx::OnMapLoad()
@@ -335,44 +337,116 @@ void CXcEventFx::TeleportFlash(vec2 From, vec2 To, int ClientId)
 void CXcEventFx::RenderDummyArrow()
 {
 	const FxGlow::CScope GlowScope(FxGlow::ARROW);
-	if(!g_Config.m_XcDummyArrow || !Client()->DummyConnected() || Client()->State() != IClient::STATE_ONLINE)
+	if(Client()->State() != IClient::STATE_ONLINE)
 		return;
-	const int Other = GameClient()->m_aLocalIds[!g_Config.m_ClDummy];
-	// far away the dummy drops out of the snapshot, then its last known place is used
-	if(Other < 0 || !GameClient()->m_aClients[Other].m_Active)
+	struct STarget
+	{
+		vec2 m_Pos;
+		int m_ClientId;
+		ColorRGBA m_Color;
+		bool m_Name;
+	};
+	std::vector<STarget> vTargets;
+	const int Own = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+	int Other = -1;
+	if(g_Config.m_XcDummyArrow && Client()->DummyConnected())
+	{
+		Other = GameClient()->m_aLocalIds[!g_Config.m_ClDummy];
+		// far away the dummy drops out of the snapshot, then its last known place is used
+		if(Other >= 0 && GameClient()->m_aClients[Other].m_Active)
+		{
+			if(GameClient()->m_Snap.m_aCharacters[Other].m_Active)
+				m_DummyLastPos = GameClient()->m_aClients[Other].m_RenderPos;
+			if(m_DummyLastPos != vec2(0.0f, 0.0f))
+				vTargets.push_back({m_DummyLastPos, Other, EffectColor(GameClient(), g_Config.m_XcDummyArrowColorMode, g_Config.m_XcDummyArrowColor, Other), false});
+		}
+	}
+	// team mates (the same DDRace team) and friends, while they are in the snapshot
+	if((g_Config.m_XcTeamArrows || g_Config.m_XcFriendArrows) && Own >= 0)
+	{
+		const int OwnTeam = GameClient()->m_Teams.Team(Own);
+		for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
+		{
+			const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
+			if(ClientId == Own || ClientId == Other || !Data.m_Active)
+				continue;
+			// far away players drop out of the snapshot: their last known place is used for a while
+			if(GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
+			{
+				m_aLastSeenPos[ClientId] = Data.m_RenderPos;
+				m_aLastSeenTime[ClientId] = Client()->GlobalTime();
+			}
+			else if(Client()->GlobalTime() - m_aLastSeenTime[ClientId] > 20.0f || m_aLastSeenTime[ClientId] <= 0.0f)
+				continue;
+			const bool Mate = g_Config.m_XcTeamArrows && OwnTeam != TEAM_FLOCK && OwnTeam != TEAM_SUPER && GameClient()->m_Teams.Team(ClientId) == OwnTeam;
+			const bool Friend = g_Config.m_XcFriendArrows && Data.m_Friend;
+			if(!Mate && !Friend)
+				continue;
+			// friends are mint, team mates wear their body color
+			const ColorRGBA Color = Friend && !Mate ? ColorRGBA(0.24f, 0.84f, 0.64f, 1.0f) : EffectColor(GameClient(), COLOR_SKIN, 0, ClientId);
+			vTargets.push_back({m_aLastSeenPos[ClientId], ClientId, GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ? Color : Color.WithMultipliedAlpha(0.6f), true});
+		}
+	}
+	if(vTargets.empty())
 		return;
-	if(GameClient()->m_Snap.m_aCharacters[Other].m_Active)
-		m_DummyLastPos = GameClient()->m_aClients[Other].m_RenderPos;
-	if(m_DummyLastPos == vec2(0.0f, 0.0f))
-		return;
+
 	// drawn over the map foreground, so it maps the world itself
 	const CScreenRect Saved = Graphics()->GetScreen();
 	const vec2 Camera = GameClient()->m_Camera.m_Center;
 	const CScreenRect Screen = Graphics()->MapScreenToWorld(Camera.x, Camera.y, 100.0f, 100.0f, 100.0f, 0.0f, 0.0f, Graphics()->ScreenAspect(), GameClient()->m_Camera.m_Zoom);
 	const float X0 = Screen.m_TopLeft.x, Y0 = Screen.m_TopLeft.y, X1 = Screen.m_BottomRight.x, Y1 = Screen.m_BottomRight.y;
-	const vec2 Pos = m_DummyLastPos;
-	if(Pos.x > X0 && Pos.x < X1 && Pos.y > Y0 && Pos.y < Y1)
-		return;
 	Graphics()->MapScreen(Screen);
 	// world units per screen pixel, so the arrow keeps its size with any zoom
 	const float Unit = (X1 - X0) / std::max((float)Graphics()->ScreenWidth(), 1.0f) * Graphics()->ScreenHeight() / 1080.0f;
 	const vec2 Center((X0 + X1) * 0.5f, (Y0 + Y1) * 0.5f);
-	const vec2 Dir = normalize(Pos - Center);
 	const float Margin = 46.0f * Unit;
-	// where the line from the middle to the dummy leaves the screen
-	const vec2 Half((X1 - X0) * 0.5f - Margin, (Y1 - Y0) * 0.5f - Margin);
-	const float t = std::min(Dir.x != 0.0f ? Half.x / std::abs(Dir.x) : 1e9f, Dir.y != 0.0f ? Half.y / std::abs(Dir.y) : 1e9f);
-	const vec2 Tip = Center + Dir * t;
-	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcDummyArrowColorMode, g_Config.m_XcDummyArrowColor, Other);
 	const float Pulse = 0.85f + 0.15f * std::sin(Client()->GlobalTime() * 5.0f);
-	const float Size = 20.0f * Unit * g_Config.m_XcDummyArrowSize / 100.0f;
 	std::vector<SFxShape> vShapes;
-	// a dark round plate keeps the arrow readable on bright maps
-	vShapes.push_back(FxShape::Circle(Tip, Size * 1.45f, ColorRGBA(0.04f, 0.045f, 0.06f, 0.55f)));
-	vShapes.push_back(FxShape::Ring(Tip, vec2(Size * 1.45f, Size * 1.45f), 1.5f * Unit, Color.WithAlpha(0.5f * Pulse)));
-	const float Angle = std::atan2(Dir.y, Dir.x) + pi / 2.0f; // the triangle points up by default
-	CFxRenderer::AppendGlowing(vShapes, FxShape::Triangle(Tip + Dir * Size * 0.12f, vec2(Size * 0.7f, Size * 0.75f), Color.WithAlpha(0.95f * Pulse)).Rotate(Angle), 10.0f * Unit, 0.6f);
+	struct SLabel
+	{
+		vec2 m_Tip;
+		vec2 m_Dir;
+		float m_Size;
+		const char *m_pName;
+	};
+	std::vector<SLabel> vLabels;
+	for(const STarget &Target : vTargets)
+	{
+		const vec2 Pos = Target.m_Pos;
+		if(Pos.x > X0 && Pos.x < X1 && Pos.y > Y0 && Pos.y < Y1)
+			continue;
+		const vec2 Dir = normalize(Pos - Center);
+		// where the line from the middle to the player leaves the screen
+		const vec2 Half((X1 - X0) * 0.5f - Margin, (Y1 - Y0) * 0.5f - Margin);
+		const float t = std::min(Dir.x != 0.0f ? Half.x / std::abs(Dir.x) : 1e9f, Dir.y != 0.0f ? Half.y / std::abs(Dir.y) : 1e9f);
+		const vec2 Tip = Center + Dir * t;
+		// the others get smaller arrows than the dummy
+		const float Size = (Target.m_Name ? 15.0f : 20.0f) * Unit * g_Config.m_XcDummyArrowSize / 100.0f;
+		const ColorRGBA Color = Target.m_Color;
+		// a dark round plate keeps the arrow readable on bright maps
+		vShapes.push_back(FxShape::Circle(Tip, Size * 1.45f, ColorRGBA(0.04f, 0.045f, 0.06f, 0.55f)));
+		vShapes.push_back(FxShape::Ring(Tip, vec2(Size * 1.45f, Size * 1.45f), 1.5f * Unit, Color.WithAlpha(0.5f * Pulse)));
+		const float Angle = std::atan2(Dir.y, Dir.x) + pi / 2.0f; // the triangle points up by default
+		CFxRenderer::AppendGlowing(vShapes, FxShape::Triangle(Tip + Dir * Size * 0.12f, vec2(Size * 0.7f, Size * 0.75f), Color.WithAlpha(0.95f * Pulse)).Rotate(Angle), 10.0f * Unit, 0.6f);
+		if(Target.m_Name)
+			vLabels.push_back({Tip, Dir, Size, GameClient()->m_aClients[Target.m_ClientId].m_aName});
+	}
 	GameClient()->m_FxRenderer.Draw(vShapes, true);
+	// the name next to the arrows of team mates and friends, towards the middle of the screen
+	const float FontSize = 11.0f * Unit;
+	for(const SLabel &Label : vLabels)
+	{
+		const float Width = TextRender()->TextWidth(FontSize, Label.m_pName);
+		// next to the plate, on the side of the middle of the screen
+		const vec2 Box(Width * 0.5f + 4.0f * Unit, FontSize * 0.6f + 2.0f * Unit);
+		const float Reach = std::min(Label.m_Dir.x != 0.0f ? Box.x / std::abs(Label.m_Dir.x) : 1e9f, Label.m_Dir.y != 0.0f ? Box.y / std::abs(Label.m_Dir.y) : 1e9f);
+		const vec2 Pos = Label.m_Tip - Label.m_Dir * (Label.m_Size * 1.6f + Reach);
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
+		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.6f));
+		TextRender()->Text(Pos.x - Width * 0.5f, Pos.y - FontSize * 0.6f, FontSize, Label.m_pName);
+	}
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+	TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
 	Graphics()->MapScreen(Saved);
 }
 
