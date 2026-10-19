@@ -3770,11 +3770,19 @@ void CEditor::Render()
 	UpdateBrushPicker();
 
 	CUIRect MenuBar, ModeBar, ToolBar, StatusBar, ExtraEditor, ToolBox;
+	CUIRect XcToolStrip = {0.0f, 0.0f, 0.0f, 0.0f}; // XClient
 	if(m_GuiActive)
 	{
 		View.HSplitTop(20.0f, &MenuBar, &View);
 		View.HSplitTop(78.0f, &ToolBar, &View);
-		View.VSplitLeft(m_ToolBoxWidth, &ToolBox, &View);
+		// XClient: Photoshop layout, tools on the left, layers on the right
+		if(XcPhotoshopLayout())
+		{
+			View.VSplitLeft(30.0f, &XcToolStrip, &View);
+			View.VSplitRight(m_ToolBoxWidth, &View, &ToolBox);
+		}
+		else
+			View.VSplitLeft(m_ToolBoxWidth, &ToolBox, &View);
 
 		View.HSplitBottom(16.0f, &View, &StatusBar);
 		if(!m_ShowPicker && m_ActiveExtraEditor != EXTRAEDITOR_NONE)
@@ -3786,6 +3794,7 @@ void CEditor::Render()
 		m_aXcZones[XC_ZONE_TOOLBOX] = ToolBox;
 		m_aXcZones[XC_ZONE_VIEW] = View;
 		m_aXcZones[XC_ZONE_STATUS] = StatusBar;
+		m_aXcZones[XC_ZONE_TOOLS] = XcToolStrip;
 	}
 	else
 	{
@@ -3844,17 +3853,26 @@ void CEditor::Render()
 
 		RenderBackground(ToolBar, g_pData->m_aImages[IMAGE_BACKGROUND_NOISE].m_Id, BackgroundScale, BackgroundBrightness);
 		ToolBar.Margin(2.0f, &ToolBar);
-		ToolBar.VSplitLeft(m_ToolBoxWidth, &ModeBar, &ToolBar);
+		if(XcPhotoshopLayout()) // XClient: the mode switch sits on top of the layers panel
+		{
+			ToolBox.HSplitTop(22.0f, &ModeBar, &ToolBox);
+			ToolBox.HSplitTop(4.0f, nullptr, &ToolBox);
+			RenderBackground(XcToolStrip, g_pData->m_aImages[IMAGE_BACKGROUND_NOISE].m_Id, BackgroundScale, BackgroundBrightness);
+		}
+		else
+			ToolBar.VSplitLeft(m_ToolBoxWidth, &ModeBar, &ToolBar);
 
 		RenderBackground(StatusBar, g_pData->m_aImages[IMAGE_BACKGROUND_NOISE].m_Id, BackgroundScale, BackgroundBrightness);
 		// XClient: thin lines between the panels, like in Photoshop
 		if(XcEditorStyle::Enabled())
 		{
 			const ColorRGBA Line = XcEditorStyle::PanelLine();
+			const bool Ps = XcPhotoshopLayout();
 			const CUIRect aLines[] = {
-				{ToolBar.x - 2.0f, ToolBar.y + ToolBar.h + 2.0f, ToolBar.w + 4.0f + m_ToolBoxWidth, 1.0f},
-				{ToolBox.x + ToolBox.w + 2.0f, ToolBox.y - 2.0f, 1.0f, ToolBox.h + 4.0f},
+				{Ps ? ToolBar.x - 2.0f : ToolBar.x - 2.0f, ToolBar.y + ToolBar.h + 2.0f, ToolBar.w + 4.0f + (Ps ? 0.0f : m_ToolBoxWidth), 1.0f},
+				{Ps ? ToolBox.x - 3.0f : ToolBox.x + ToolBox.w + 2.0f, ToolBox.y - (Ps ? 28.0f : 2.0f), 1.0f, ToolBox.h + (Ps ? 30.0f : 4.0f)},
 				{StatusBar.x - 2.0f, StatusBar.y - 2.0f, StatusBar.w + 4.0f, 1.0f},
+				{XcToolStrip.x + XcToolStrip.w, XcToolStrip.y, Ps ? 1.0f : 0.0f, XcToolStrip.h},
 			};
 			for(const CUIRect &LineRect : aLines)
 				LineRect.Draw(Line, IGraphics::CORNER_NONE, 0.0f);
@@ -3932,10 +3950,21 @@ void CEditor::Render()
 	if(m_GuiActive)
 	{
 		CUIRect DragBar;
-		ToolBox.VSplitRight(1.0f, &ToolBox, &DragBar);
-		DragBar.x -= 2.0f;
-		DragBar.w += 4.0f;
-		DoEditorDragBar(ToolBox, &DragBar, EDragSide::RIGHT, &m_ToolBoxWidth);
+		if(XcPhotoshopLayout()) // XClient: the panel is on the right, it is dragged on its left edge
+		{
+			ToolBox.VSplitLeft(1.0f, &DragBar, &ToolBox);
+			DragBar.x -= 4.0f;
+			DragBar.w += 4.0f;
+			DoEditorDragBar(ToolBox, &DragBar, EDragSide::LEFT, &m_ToolBoxWidth);
+			XcRenderToolStrip(XcToolStrip);
+		}
+		else
+		{
+			ToolBox.VSplitRight(1.0f, &ToolBox, &DragBar);
+			DragBar.x -= 2.0f;
+			DragBar.w += 4.0f;
+			DoEditorDragBar(ToolBox, &DragBar, EDragSide::RIGHT, &m_ToolBoxWidth);
+		}
 
 		if(m_Mode == MODE_LAYERS)
 			RenderLayers(ToolBox);
