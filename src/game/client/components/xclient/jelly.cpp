@@ -30,11 +30,15 @@ vec2 CXcJelly::FlyingNamePlate(int ClientId, vec2 Target)
 	if(!g_Config.m_XcFlyingNames || ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return Target;
 	SPlate &Plate = m_aPlates[ClientId];
-	const float Now = Client()->GlobalTime();
-	const float Dt = std::clamp(Now - Plate.m_LastTime, 0.0f, 0.1f);
-	Plate.m_LastTime = Now;
-	// too far behind (teleport, spawn, a frame without the plate): jump to the tee
-	if(!Plate.m_Valid || distance(Plate.m_Pos, Target) > 300.0f || Dt <= 0.0f)
+	// the length of this frame, the same plate asked again in the same frame does not move
+	// (the global time as a float is too coarse at a high frame rate and made the names shake)
+	if(Plate.m_Valid && Plate.m_LastFrame == m_Frame)
+		return Plate.m_Pos;
+	const bool Consecutive = Plate.m_LastFrame == m_Frame - 1;
+	Plate.m_LastFrame = m_Frame;
+	const float Dt = std::clamp(Client()->RenderFrameTime(), 0.0f, 0.1f);
+	// too far behind (teleport, spawn, frames without the plate): jump to the tee
+	if(!Plate.m_Valid || !Consecutive || distance(Plate.m_Pos, Target) > 300.0f)
 	{
 		Plate.m_Valid = true;
 		Plate.m_Pos = Target;

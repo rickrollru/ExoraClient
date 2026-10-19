@@ -16,6 +16,7 @@ public:
 	int Sizeof() const override { return sizeof(*this); }
 	void OnReset() override;
 	void OnMapLoad() override;
+	void OnRender() override { m_Frame++; }
 
 	// true when the view was changed, then End must be called after drawing the tee
 	bool Begin(int ClientId);
@@ -38,9 +39,10 @@ private:
 		bool m_Valid = false;
 		vec2 m_Pos = vec2(0.0f, 0.0f);
 		vec2 m_Vel = vec2(0.0f, 0.0f);
-		float m_LastTime = 0.0f;
+		int m_LastFrame = -1;
 	};
 	SPlate m_aPlates[MAX_CLIENTS];
+	int m_Frame = 0; // counts rendered frames, a plate moves once per frame
 	CScreenRect m_SavedScreen = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);
 };
 
