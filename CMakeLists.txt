@@ -2179,6 +2179,8 @@ set(EXPECTED_DATA
   touch_controls.json
   wordlist.txt
   xclient/fonts/Manrope-Bold.ttf
+  xclient/fonts/editor/OFL_Manrope.txt
+  xclient/fonts/editor/XClientUI.ttf
   xclient/fonts/Manrope-Regular.ttf
   xclient/fonts/Manrope-SemiBold.ttf
   xclient/fonts/OFL_Manrope.txt
@@ -2975,6 +2977,8 @@ if(CLIENT)
     components/xclient/hook_fx.cpp
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
+    components/xclient/editor/editor_style.cpp
+    components/xclient/editor/editor_style.h
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/item_fx.cpp
