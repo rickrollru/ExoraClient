@@ -918,7 +918,7 @@ void CXcHud::OnRender()
 		RenderScoreboard(ImGui::GetForegroundDrawList(), Dt);
 	m_Backend.Render();
 
-	if(m_Editing)
+	if(m_Editing || ScoreboardMouse())
 	{
 		const float Width = (float)Graphics()->ScreenWidth();
 		const float Height = (float)Graphics()->ScreenHeight();
@@ -930,7 +930,7 @@ void CXcHud::OnRender()
 
 bool CXcHud::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 {
-	if(!m_Editing)
+	if(!m_Editing && !ScoreboardMouse())
 		return false;
 	Ui()->ConvertMouseMove(&x, &y, CursorType);
 	Ui()->OnCursorMove(x, y);
@@ -940,6 +940,23 @@ bool CXcHud::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 
 bool CXcHud::OnInput(const IInput::CEvent &Event)
 {
+	if(!m_Editing && ScoreboardMouse())
+	{
+		// the scoreboard with the mouse: clicks go to its rows and popup, the rest (Esc, the unlock key)
+		// stays with the scoreboard
+		if(Event.m_Key == KEY_MOUSE_1 || Event.m_Key == KEY_MOUSE_2)
+		{
+			m_Backend.MakeCurrent();
+			m_Backend.OnInput(Event);
+			return true;
+		}
+		if(Event.m_Key == KEY_ESCAPE && (Event.m_Flags & IInput::FLAG_PRESS) && m_ScoreboardPopupId >= 0)
+		{
+			m_ScoreboardPopupId = -1;
+			return true;
+		}
+		return false;
+	}
 	if(!m_Editing)
 		return false;
 	if((Event.m_Flags & IInput::FLAG_PRESS) && (Event.m_Key == KEY_ESCAPE || Event.m_Key == KEY_RETURN))
