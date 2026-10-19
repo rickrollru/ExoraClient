@@ -1,3 +1,4 @@
+#include "feedback.h"
 #include "icons.h"
 #include "lang.h"
 #include "menu.h"
@@ -12,6 +13,7 @@
 #include <engine/keys.h>
 #include <engine/shared/config.h>
 
+#include <game/client/components/xclient/hud/xc_hud.h>
 #include <game/client/gameclient.h>
 
 #include <map>
@@ -251,19 +253,137 @@ void CXcMenu::RenderSettingsInterface()
 
 void CXcMenu::RenderSettingsPlayer()
 {
+	const STheme &t = Theme();
+	const bool Dummy = m_PlayerTarget == 1;
 	BeginCardGrid("##player", 2);
-	if(BeginCard("##profile", Tr("Profile"), Tr("Name and clan of you and your dummy")))
+	if(BeginCard("##profile", Tr("Tee"), Tr("Name, clan, skin and colors of you or your dummy")))
 	{
-		ConfigText(Tr("Name"), "player_name", g_Config.m_PlayerName, sizeof(g_Config.m_PlayerName));
-		ConfigText(Tr("Clan"), "player_clan", g_Config.m_PlayerClan, sizeof(g_Config.m_PlayerClan));
-		ConfigText(Tr("Dummy name"), "dummy_name", g_Config.m_ClDummyName, sizeof(g_Config.m_ClDummyName));
-		ConfigText(Tr("Dummy clan"), "dummy_clan", g_Config.m_ClDummyClan, sizeof(g_Config.m_ClDummyClan));
+		const char *apWho[] = {Tr("Me"), Tr("Dummy")};
+		Segmented("##who", &m_PlayerTarget, apWho, 2);
+		// a big living preview of the tee that is edited
+		const float PreviewHeight = S(150.0f);
+		const ImVec2 Pos = ImGui::GetCursorScreenPos();
+		const float Width = AvailWidth();
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		pDraw->AddRectFilled(Pos, ImVec2(Pos.x + Width, Pos.y + PreviewHeight), Col(t.m_Track), S(10.0f));
+		AddTeePreview(pDraw, ImVec2(Pos.x + Width * 0.5f - PreviewHeight * 0.5f, Pos.y), ImVec2(Pos.x + Width * 0.5f + PreviewHeight * 0.5f, Pos.y + PreviewHeight), false, m_PlayerTarget);
+		ImGui::Dummy(ImVec2(Width, PreviewHeight));
+		if(Dummy)
+		{
+			ConfigText(Tr("Name"), "dummy_name", g_Config.m_ClDummyName, sizeof(g_Config.m_ClDummyName));
+			ConfigText(Tr("Clan"), "dummy_clan", g_Config.m_ClDummyClan, sizeof(g_Config.m_ClDummyClan));
+			ConfigText(Tr("Skin name"), "dummy_skin", g_Config.m_ClDummySkin, sizeof(g_Config.m_ClDummySkin));
+			ToggleRow(Tr("Custom colors"), "dummy_use_custom_color", &g_Config.m_ClDummyUseCustomColor);
+			if(g_Config.m_ClDummyUseCustomColor)
+			{
+				ConfigColorRow(Tr("Body"), &g_Config.m_ClDummyColorBody, false);
+				ConfigColorRow(Tr("Feet"), &g_Config.m_ClDummyColorFeet, false);
+			}
+		}
+		else
+		{
+			ConfigText(Tr("Name"), "player_name", g_Config.m_PlayerName, sizeof(g_Config.m_PlayerName));
+			ConfigText(Tr("Clan"), "player_clan", g_Config.m_PlayerClan, sizeof(g_Config.m_PlayerClan));
+			ConfigText(Tr("Skin name"), "player_skin", g_Config.m_ClPlayerSkin, sizeof(g_Config.m_ClPlayerSkin));
+			ToggleRow(Tr("Custom colors"), "player_use_custom_color", &g_Config.m_ClPlayerUseCustomColor);
+			if(g_Config.m_ClPlayerUseCustomColor)
+			{
+				ConfigColorRow(Tr("Body"), &g_Config.m_ClPlayerColorBody, false);
+				ConfigColorRow(Tr("Feet"), &g_Config.m_ClPlayerColorFeet, false);
+			}
+		}
 		EndCard();
 	}
-	if(BeginCard("##skin", Tr("Skin"), Tr("Skin name and custom colors")))
+
+	if(BeginCard("##dummy", Tr("Dummy"), Tr("A second tee on the same server that you can switch to")))
 	{
-		ConfigText(Tr("Skin name"), "player_skin", g_Config.m_ClPlayerSkin, sizeof(g_Config.m_ClPlayerSkin));
-		ToggleRow(Tr("Custom colors"), "player_use_custom_color", &g_Config.m_ClPlayerUseCustomColor);
+		const bool Online = Client()->State() == IClient::STATE_ONLINE;
+		const bool Connected = Client()->DummyConnected();
+		const bool Connecting = Client()->DummyConnecting() || Client()->DummyConnectingDelayed();
+		Description(Connected ? Tr("The dummy is on the server") : (Connecting ? Tr("The dummy is connecting...") : (Online ? Tr("The dummy is not connected") : Tr("Join a server to spawn the dummy"))));
+		ImGui::BeginDisabled(!Online || Connecting);
+		if(Button(Connected ? Tr("Disconnect the dummy") : Tr("Connect the dummy"), !Connected, AvailWidth()))
+		{
+			if(Connected)
+				Client()->DummyDisconnect(nullptr);
+			else if(Client()->DummyAllowed())
+				Client()->DummyConnect();
+			else
+				Toast(Tr("This server does not allow a dummy"), TOAST_ERROR);
+		}
+		ImGui::EndDisabled();
+		ImGui::BeginDisabled(!Connected);
+		if(Button(g_Config.m_ClDummy ? Tr("Play as yourself") : Tr("Play as the dummy"), false, AvailWidth()))
+			SetConfigInt("cl_dummy", g_Config.m_ClDummy ? 0 : 1);
+		ImGui::EndDisabled();
+		if(Button(Tr("Copy my skin to the dummy"), false, AvailWidth()))
+		{
+			SetConfigString("dummy_skin", g_Config.m_ClPlayerSkin);
+			SetConfigInt("dummy_use_custom_color", g_Config.m_ClPlayerUseCustomColor);
+			SetConfigInt("dummy_color_body", (int)g_Config.m_ClPlayerColorBody);
+			SetConfigInt("dummy_color_feet", (int)g_Config.m_ClPlayerColorFeet);
+			Toast(Tr("The dummy wears your skin now"), TOAST_SUCCESS);
+		}
+		EndCard();
+	}
+
+	if(BeginCard("##skins", Tr("Skins"), Dummy ? Tr("Click a skin to put it on the dummy") : Tr("Click a skin to put it on")))
+	{
+		// search in the skin names, the list filters itself
+		static char s_aFilter[sizeof(g_Config.m_ClSkinFilterString)] = {};
+		if(InputText("##skin_filter", s_aFilter, sizeof(s_aFilter), Tr("Search skins")))
+		{
+			str_copy(g_Config.m_ClSkinFilterString, s_aFilter);
+			GameClient()->m_Skins.SkinList().ForceRefresh();
+		}
+		std::vector<CSkins::CSkinListEntry> &vSkins = GameClient()->m_Skins.SkinList().Skins();
+		const char *pCurrent = Dummy ? g_Config.m_ClDummySkin : g_Config.m_ClPlayerSkin;
+		const float Tile = S(72.0f);
+		const float Gap = S(6.0f);
+		const float Width = AvailWidth();
+		const int Columns = std::max(1, (int)((Width + Gap) / (Tile + Gap)));
+		const int Rows = ((int)vSkins.size() + Columns - 1) / Columns;
+		const float ListHeight = std::min(Rows * (Tile + Gap), S(340.0f));
+		ImGui::BeginChild("##skin_grid", ImVec2(Width, std::max(ListHeight, Tile)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		ImDrawList *pGridDraw = ImGui::GetWindowDrawList();
+		const ImVec2 Start = ImGui::GetCursorScreenPos();
+		for(int i = 0; i < (int)vSkins.size(); i++)
+		{
+			const ImVec2 Min(Start.x + (i % Columns) * (Tile + Gap), Start.y + (i / Columns) * (Tile + Gap));
+			const ImVec2 Max(Min.x + Tile, Min.y + Tile);
+			ImGui::SetCursorScreenPos(Min);
+			ImGui::PushID(i);
+			const bool Clicked = ImGui::InvisibleButton("##skin", ImVec2(Tile, Tile));
+			const bool Hovered = ImGui::IsItemHovered();
+			ImGui::PopID();
+			// only the visible tiles load their skins and draw
+			if(!ImGui::IsRectVisible(Min, Max))
+				continue;
+			CSkins::CSkinListEntry &Entry = vSkins[i];
+			Entry.RequestLoad();
+			const char *pName = Entry.SkinContainer()->Name();
+			const bool Selected = str_comp(pName, pCurrent) == 0;
+			pGridDraw->AddRectFilled(Min, Max, Col(Selected ? ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.22f) : t.m_Track, Hovered ? 1.3f : 1.0f), S(8.0f));
+			if(Selected)
+				pGridDraw->AddRect(Min, Max, Col(t.m_Accent), S(8.0f), 0, S(1.5f));
+			AddTeePreview(pGridDraw, ImVec2(Min.x + Tile * 0.1f, Min.y + Tile * 0.02f), ImVec2(Max.x - Tile * 0.1f, Max.y - Tile * 0.18f), true, m_PlayerTarget, pName);
+			char aShort[32];
+			XcFitText(Fonts().m_pSmall, Fonts().m_pSmall->FontSize, pName, Tile - S(6.0f), aShort, sizeof(aShort));
+			const ImVec2 TextSize = Fonts().m_pSmall->CalcTextSizeA(Fonts().m_pSmall->FontSize, FLT_MAX, 0.0f, aShort);
+			pGridDraw->AddText(Fonts().m_pSmall, Fonts().m_pSmall->FontSize, ImVec2((Min.x + Max.x - TextSize.x) * 0.5f, Max.y - TextSize.y - S(3.0f)), Col(Selected ? t.m_Text : t.m_TextMuted), aShort);
+			if(Hovered)
+				ImGui::SetTooltip("%s", pName);
+			if(Clicked)
+			{
+				PlayUiSound(SOUND_CLICK);
+				SetConfigString(Dummy ? "dummy_skin" : "player_skin", pName);
+			}
+		}
+		ImGui::SetCursorScreenPos(ImVec2(Start.x, Start.y + Rows * (Tile + Gap)));
+		ImGui::Dummy(ImVec2(1.0f, 1.0f));
+		ImGui::EndChild();
+		if(vSkins.empty())
+			Description(Tr("No skins found"));
 		EndCard();
 	}
 	EndCardGrid();

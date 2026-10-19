@@ -214,10 +214,13 @@ private:
 		CXcMenu *m_pMenu;
 		float m_aRect[4]; // x0, y0, x1, y1 in pixels
 		bool m_Still; // looks to the right without bobbing (hat editor)
+		int m_Who; // 0 = you, 1 = the dummy
+		char m_aSkin[24]; // a skin from the gallery in the colors of m_Who, empty = the skin m_Who wears
 	};
 	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
-	void DrawTeePreview(const float *pRect, bool Still);
-	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still = false);
+	void DrawTeePreview(const STeeDraw &Data);
+	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still = false, int Who = 0, const char *pSkin = nullptr);
+	int m_PlayerTarget = 0; // Settings > Player edits 0 = you, 1 = the dummy
 
 	// player stats from ddnet.org (menu_home.cpp)
 	enum
