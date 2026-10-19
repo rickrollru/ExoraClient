@@ -96,7 +96,8 @@ void CAccessory::OnRender()
 	{
 		SState &State = m_aStates[ClientId];
 		if(!GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||
-			!ShowFor(GameClient(), ClientId, g_Config.m_XcAccessorySelf, g_Config.m_XcAccessoryDummy, g_Config.m_XcAccessoryOthers))
+			(!ShowFor(GameClient(), ClientId, g_Config.m_XcAccessorySelf, g_Config.m_XcAccessoryDummy, g_Config.m_XcAccessoryOthers) &&
+				!(g_Config.m_XcAccessoryFriends && GameClient()->m_aClients[ClientId].m_Friend)))
 		{
 			State.m_Valid = false;
 			continue;
@@ -146,7 +147,7 @@ void CAccessory::RenderCone(vec2 Head, float Scale, float Tilt, float Squash, fl
 	CFxRenderer &Fx = GameClient()->m_FxRenderer;
 	constexpr float BRIM_SQUASH = 0.3f;
 	const float Radius = 30.0f * Scale;
-	const float Height = 24.0f * Scale * Squash;
+	const float Height = 24.0f * Scale * Squash * g_Config.m_XcAccessoryHeight / 100.0f;
 	const vec2 Base = Rotate(Head + vec2(0.0f, 4.0f * Scale), Head, Tilt);
 	const vec2 Body = Rotate(Head + vec2(0.0f, 4.0f * Scale - Height * 0.5f), Head, Tilt);
 	const vec2 Brim = vec2(Radius, Radius * BRIM_SQUASH);

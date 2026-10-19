@@ -107,6 +107,12 @@ void CXcMenu::RenderVisualsTee()
 		ConfigSlider(Tr("Size"), "xc_accessory_size", &g_Config.m_XcAccessorySize, 50, 200, "%d%%");
 		ConfigSlider(Tr("Opacity"), "xc_accessory_alpha", &g_Config.m_XcAccessoryAlpha, 10, 100, "%d%%");
 		ConfigSlider(Tr("Sway"), "xc_accessory_physics", &g_Config.m_XcAccessoryPhysics, 0, 200, "%d%%");
+		if(g_Config.m_XcAccessory == 1)
+			ConfigSlider(Tr("Height"), "xc_accessory_height", &g_Config.m_XcAccessoryHeight, 30, 250, "%d%%");
+		// the same values as the accessory group in Visuals > World > Glow
+		ConfigSlider(Tr("Glow strength"), "xc_fxglow_accessory", &g_Config.m_XcFxglowAccessory, 0, 300, "%d%%");
+		ConfigSlider(Tr("Glow size"), "xc_fxglow_accessory_size", &g_Config.m_XcFxglowAccessorySize, 25, 300, "%d%%");
+		ToggleRow(Tr("Also on friends"), "xc_accessory_friends", &g_Config.m_XcAccessoryFriends);
 		TargetChips("##accessory_targets", &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryDummy, &g_Config.m_XcAccessoryOthers);
 		EndCard();
 	}
