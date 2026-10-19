@@ -305,6 +305,8 @@ namespace XcUi
 			const ImRect Segment(ImVec2(Rect.Min.x + Inset + SegmentWidth * i, Rect.Min.y), ImVec2(Rect.Min.x + Inset + SegmentWidth * (i + 1), Rect.Max.y));
 			const ImGuiID SegmentId = Id + 10 + i;
 			bool Hovered, Held;
+			// every part is its own item: a button that is not added never gets the click
+			ImGui::ItemAdd(Segment, SegmentId);
 			if(ImGui::ButtonBehavior(Segment, SegmentId, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
@@ -450,6 +452,7 @@ namespace XcUi
 			const ImVec2 Center(Pos.x + S(2.0f) + Radius + i * (Radius * 2.0f + Spacing), Pos.y + S(2.0f) + Radius);
 			const ImRect Hit(ImVec2(Center.x - Radius, Center.y - Radius), ImVec2(Center.x + Radius, Center.y + Radius));
 			bool Hovered, Held;
+			ImGui::ItemAdd(Hit, Id + 10 + i);
 			if(ImGui::ButtonBehavior(Hit, Id + 10 + i, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
@@ -547,6 +550,7 @@ namespace XcUi
 		{
 			const ImRect Tab(ImVec2(x, Rect.Min.y), ImVec2(x + aWidths[i], Rect.Max.y));
 			bool Hovered, Held;
+			ImGui::ItemAdd(Tab, Id + 10 + i);
 			if(ImGui::ButtonBehavior(Tab, Id + 10 + i, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;
@@ -592,6 +596,7 @@ namespace XcUi
 		{
 			const ImRect Item(ImVec2(Pos.x, Pos.y + ItemHeight * i), ImVec2(Pos.x + Width, Pos.y + ItemHeight * (i + 1)));
 			bool Hovered, Held;
+			ImGui::ItemAdd(Item, Id + 10 + i);
 			if(ImGui::ButtonBehavior(Item, Id + 10 + i, &Hovered, &Held) && *pCurrent != i)
 			{
 				*pCurrent = i;

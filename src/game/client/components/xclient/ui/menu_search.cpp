@@ -12,6 +12,7 @@
 #include <engine/external/imgui/imgui_internal.h>
 
 #include <algorithm>
+#include <iterator>
 #include <vector>
 
 using namespace XcUi;
@@ -223,7 +224,9 @@ void CXcMenu::RenderSearch()
 
 	static const char *const s_apPageIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_GEAR};
 	static const char *const s_apPageNames[NUM_PAGES] = {"Home", "Servers", "Visuals", "Configs", "Demos", "Settings"};
-	static const char *const s_apSectionNames[NUM_SETTINGS] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD"};
+	// one name per section: a missing one would be a null string and crash the search
+	static const char *const s_apSectionNames[] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD", "Textures", "TClient"};
+	static_assert(std::size(s_apSectionNames) == NUM_SETTINGS, "every settings section needs a name");
 	float y = Min.y + InputHeight + S(8.0f);
 	if(NumShown == 0)
 	{
@@ -254,7 +257,8 @@ void CXcMenu::RenderSearch()
 		ImFont *pSmall = Fonts().m_pSmall;
 		pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(8.0f)), Col(t.m_Text), Tr(Entry.m_pTitle));
 		char aPath[128];
-		static const char *const s_apVisualNames[NUM_VISUALS] = {"Tee", "Movement", "Hook and weapons", "World"};
+		static const char *const s_apVisualNames[] = {"Tee", "Movement", "Hook and weapons", "World", "Events", "Cosmetics"};
+		static_assert(std::size(s_apVisualNames) == NUM_VISUALS, "every visuals section needs a name");
 		if(Entry.m_Section >= 0)
 			str_format(aPath, sizeof(aPath), "%s  >  %s", Tr(s_apPageNames[Entry.m_Page]), Tr(Entry.m_Page == PAGE_VISUALS ? s_apVisualNames[Entry.m_Section] : s_apSectionNames[Entry.m_Section]));
 		else
