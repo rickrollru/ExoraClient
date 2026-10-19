@@ -2980,6 +2980,8 @@ if(CLIENT)
     components/xclient/editor/editor_guide.cpp
     components/xclient/editor/editor_style.cpp
     components/xclient/editor/editor_style.h
+    components/xclient/editor/image_tools.cpp
+    components/xclient/editor/image_tools.h
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/item_fx.cpp

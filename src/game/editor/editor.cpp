@@ -30,6 +30,7 @@
 #include <generated/client_data.h>
 
 #include <game/client/components/xclient/editor/editor_style.h> // XClient
+#include <game/client/components/xclient/editor/image_tools.h> // XClient
 #include <game/client/components/xclient/ui/lang.h> // XClient
 #include <game/client/components/camera.h>
 #include <game/client/gameclient.h>
@@ -237,11 +238,15 @@ bool CEditor::CallbackCustomEntities(const char *pFilename, int StorageType, voi
 	}
 
 	CImageInfo ImgInfo;
-	if(!pEditor->Graphics()->LoadPng(ImgInfo, pFilename, StorageType))
+	// XClient: jpg, bmp, gif, tga and psd are converted on the fly, the map stores the pixels anyway
+	const bool IsPng = str_endswith_nocase(pFilename, ".png");
+	if(!(IsPng ? pEditor->Graphics()->LoadPng(ImgInfo, pFilename, StorageType) : XcImageTools::LoadAnyImage(pEditor->Storage(), pFilename, StorageType, ImgInfo)))
 	{
 		pEditor->ShowFileDialogError("Failed to load image from file '%s'.", pFilename);
 		return false;
 	}
+	if(!IsPng)
+		log_info("editor", "converted '%s' to RGBA (%dx%d)", pFilename, (int)ImgInfo.m_Width, (int)ImgInfo.m_Height);
 
 	pEditor->m_SelectEntitiesImage = aBuf;
 	pEditor->m_AllowPlaceUnusedTiles = EUnusedEntities::ALLOWED_IMPLICIT;
@@ -3027,7 +3032,8 @@ bool CEditor::ReplaceImage(const char *pFilename, int StorageType, bool CheckDup
 	}
 
 	CImageInfo ImgInfo;
-	if(!Graphics()->LoadPng(ImgInfo, pFilename, StorageType))
+	// XClient: other formats are converted like in AddImage
+	if(!(str_endswith_nocase(pFilename, ".png") ? Graphics()->LoadPng(ImgInfo, pFilename, StorageType) : XcImageTools::LoadAnyImage(Storage(), pFilename, StorageType, ImgInfo)))
 	{
 		ShowFileDialogError("Failed to load image from file '%s'.", pFilename);
 		return false;
@@ -3083,11 +3089,15 @@ bool CEditor::AddImage(const char *pFilename, int StorageType, void *pUser)
 	}
 
 	CImageInfo ImgInfo;
-	if(!pEditor->Graphics()->LoadPng(ImgInfo, pFilename, StorageType))
+	// XClient: jpg, bmp, gif, tga and psd are converted on the fly, the map stores the pixels anyway
+	const bool IsPng = str_endswith_nocase(pFilename, ".png");
+	if(!(IsPng ? pEditor->Graphics()->LoadPng(ImgInfo, pFilename, StorageType) : XcImageTools::LoadAnyImage(pEditor->Storage(), pFilename, StorageType, ImgInfo)))
 	{
 		pEditor->ShowFileDialogError("Failed to load image from file '%s'.", pFilename);
 		return false;
 	}
+	if(!IsPng)
+		log_info("editor", "converted '%s' to RGBA (%dx%d)", pFilename, (int)ImgInfo.m_Width, (int)ImgInfo.m_Height);
 
 	std::shared_ptr<CEditorImage> pImg = std::make_shared<CEditorImage>(pEditor->Map());
 	*pImg = std::move(ImgInfo);
@@ -3303,7 +3313,7 @@ void CEditor::RenderImagesList(CUIRect ToolBox)
 
 				if(Result == 2)
 				{
-					const int Height = Map()->SelectedImage()->m_External ? 73 : 107;
+					const int Height = Map()->SelectedImage()->m_External ? 73 : (XcEditorStyle::Enabled() ? 158 : 107); // XClient: room for upscaling
 					static SPopupMenuId s_PopupImageId;
 					Ui()->DoPopupMenu(&s_PopupImageId, Ui()->MouseX(), Ui()->MouseY(), 140, Height, this, PopupImage);
 				}
@@ -4058,6 +4068,10 @@ void CEditor::Render()
 	XcRenderGuide(); // XClient
 
 	MapView()->UpdateZoom();
+
+	// XClient: Esc closes the guide first
+	if(m_XcGuideOpen && Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+		m_XcGuideOpen = false;
 
 	// Cancel color pipette with escape before closing popup menus with escape
 	if(m_ColorPipetteActive && Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))

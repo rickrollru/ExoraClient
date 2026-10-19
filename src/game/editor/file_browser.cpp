@@ -12,12 +12,21 @@
 #include <engine/sound.h>
 #include <engine/storage.h>
 
+#include <game/client/components/xclient/editor/image_tools.h> // XClient
 #include <game/editor/editor.h>
 
 static constexpr const char *FILETYPE_EXTENSIONS[] = {
 	".map",
 	".png",
 	".opus"};
+
+// XClient: images also open from jpg, bmp, gif, tga and psd (the editor converts them)
+static bool XcMatchesFileType(const char *pFilename, int FileType)
+{
+	if(FileType == 1)
+		return XcImageTools::IsSupportedImage(pFilename);
+	return str_endswith(pFilename, FILETYPE_EXTENSIONS[FileType]);
+}
 
 void CFileBrowser::ShowFileDialog(
 	int StorageType, EFileType FileType,
@@ -360,7 +369,15 @@ void CFileBrowser::Render()
 
 			char aFilename[IO_MAX_PATH_LENGTH];
 			str_copy(aFilename, m_FilenameInput.GetString());
-			if(!str_endswith(aFilename, FILETYPE_EXTENSIONS[(int)m_FileType]))
+			// XClient: the list shows names without extension, keep the real one of the chosen file (jpg, gif...)
+			if(m_SelectedFileIndex >= 0 && !m_vpFilteredFileList[m_SelectedFileIndex]->m_IsDir)
+			{
+				char aNameWithoutExt[IO_MAX_PATH_LENGTH];
+				fs_split_file_extension(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, aNameWithoutExt, sizeof(aNameWithoutExt));
+				if(str_comp(aNameWithoutExt, aFilename) == 0)
+					str_copy(aFilename, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename);
+			}
+			if(!XcMatchesFileType(aFilename, (int)m_FileType)) // XClient
 			{
 				str_append(aFilename, FILETYPE_EXTENSIONS[(int)m_FileType]);
 			}
@@ -491,7 +508,7 @@ bool CFileBrowser::CanPreviewFile() const
 void CFileBrowser::UpdateFilePreview()
 {
 	if(m_PreviewState != EPreviewState::UNLOADED ||
-		!str_endswith(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, FILETYPE_EXTENSIONS[(int)m_FileType]))
+		!XcMatchesFileType(m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename, (int)m_FileType)) // XClient
 	{
 		return;
 	}
@@ -501,7 +518,7 @@ void CFileBrowser::UpdateFilePreview()
 		char aImagePath[IO_MAX_PATH_LENGTH];
 		str_format(aImagePath, sizeof(aImagePath), "%s/%s", m_pCurrentPath, m_vpFilteredFileList[m_SelectedFileIndex]->m_aFilename);
 		CImageInfo PreviewImageInfo;
-		if(Graphics()->LoadPng(PreviewImageInfo, aImagePath, m_vpFilteredFileList[m_SelectedFileIndex]->m_StorageType))
+		if(XcImageTools::LoadAnyImage(Storage(), aImagePath, m_vpFilteredFileList[m_SelectedFileIndex]->m_StorageType, PreviewImageInfo)) // XClient: any format
 		{
 			Graphics()->UnloadTexture(&m_PreviewImage);
 			m_PreviewImageWidth = PreviewImageInfo.m_Width;
@@ -783,7 +800,7 @@ int CFileBrowser::DirectoryListingCallback(const CFsFileInfo *pInfo, int IsDir, 
 	}
 	else
 	{
-		if(!str_endswith(pInfo->m_pName, FILETYPE_EXTENSIONS[(int)pFileBrowser->m_FileType]))
+		if(!XcMatchesFileType(pInfo->m_pName, (int)pFileBrowser->m_FileType)) // XClient
 		{
 			return 0;
 		}

@@ -13,6 +13,9 @@
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
+#include <game/client/components/xclient/editor/editor_style.h> // XClient
+#include <game/client/components/xclient/editor/image_tools.h> // XClient
+#include <game/client/components/xclient/ui/lang.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/client/ui_scrollregion.h>
 #include <game/editor/mapitems/image.h>
@@ -1578,6 +1581,57 @@ CUi::EPopupMenuFunctionResult CEditor::PopupImage(void *pContext, CUIRect View, 
 			}
 			pEditor->m_FileBrowser.ShowFileDialog(IStorage::TYPE_SAVE, CFileBrowser::EFileType::IMAGE, "Save image", "Save", "mapres", pImg->m_aName, CallbackSaveImage, pEditor);
 			return CUi::POPUP_CLOSE_CURRENT;
+		}
+	}
+
+	// XClient: upscale an embedded image two or four times, sharp for pixel art or smooth for drawings
+	if(!pImg->m_External && XcEditorStyle::Enabled() && pImg->m_pData != nullptr)
+	{
+		View.HSplitTop(6.0f, nullptr, &View);
+		View.HSplitTop(RowHeight, &Slot, &View);
+		char aSize[64];
+		str_format(aSize, sizeof(aSize), "%s: %dx%d", XcUi::Tr("Upscale"), (int)pImg->m_Width, (int)pImg->m_Height);
+		pEditor->Ui()->DoLabel(&Slot, aSize, RowHeight - 3.0f, TEXTALIGN_ML);
+		static int s_aUpscaleButtons[4] = {};
+		struct SUpscale
+		{
+			int m_Factor;
+			XcImageTools::EUpscale m_Mode;
+			const char *m_pLabel;
+		};
+		const SUpscale aUpscales[] = {
+			{2, XcImageTools::EUpscale::SHARP, "x2 sharp"},
+			{4, XcImageTools::EUpscale::SHARP, "x4 sharp"},
+			{2, XcImageTools::EUpscale::SMOOTH, "x2 smooth"},
+			{4, XcImageTools::EUpscale::SMOOTH, "x4 smooth"},
+		};
+		for(int Row = 0; Row < 2; Row++)
+		{
+			View.HSplitTop(3.0f, nullptr, &View);
+			View.HSplitTop(RowHeight, &Slot, &View);
+			CUIRect Left, Right;
+			Slot.VSplitMid(&Left, &Right, 3.0f);
+			for(int Column = 0; Column < 2; Column++)
+			{
+				const int Index = Row * 2 + Column;
+				const SUpscale &Upscale = aUpscales[Index];
+				if(pEditor->DoButton_Editor(&s_aUpscaleButtons[Index], XcUi::Tr(Upscale.m_pLabel), 0, Column == 0 ? &Left : &Right, BUTTONFLAG_LEFT,
+					   Upscale.m_Mode == XcImageTools::EUpscale::SHARP ? "Pixel art: the edges stay crisp, no new colors appear." : "Drawings and photos: smooth filtering."))
+				{
+					if(!XcImageTools::Upscale(*pImg, Upscale.m_Factor, Upscale.m_Mode))
+					{
+						pEditor->ShowFileDialogError("The image would be bigger than 8192 pixels.");
+						return CUi::POPUP_KEEP_OPEN;
+					}
+					pEditor->Graphics()->UnloadTexture(&pImg->m_Texture);
+					int TextureLoadFlag = pEditor->Graphics()->TextureLoadFlags();
+					if(pImg->m_Width % 16 != 0 || pImg->m_Height % 16 != 0)
+						TextureLoadFlag = 0;
+					pImg->m_Texture = pEditor->Graphics()->LoadTextureRaw(*pImg, TextureLoadFlag, pImg->m_aName);
+					pEditor->Map()->OnModify();
+					return CUi::POPUP_KEEP_OPEN;
+				}
+			}
 		}
 	}
 
