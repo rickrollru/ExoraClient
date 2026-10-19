@@ -410,6 +410,8 @@ namespace XcUi
 			{"Yes", "Да"},
 			{"Show the guide", "Показать гид"},
 			{"Clear guides", "Убрать направляющие"},
+			{"Drag to move the tools: to the left, to the right or anywhere over the map", "Тяни, чтобы переместить инструменты: влево, вправо или в любое место над картой"},
+			{"Drag to move the layers panel to the other side", "Тяни, чтобы перенести панель слоёв на другую сторону"},
 			{"Checkpoints", "Чекпоинты"},
 			{"A ring and rising sparks when your tee passes a time checkpoint", "Кольцо и взлетающие искры, когда твой ти проходит чекпоинт"},
 			{"Arrows to players", "Стрелки на игроков"},

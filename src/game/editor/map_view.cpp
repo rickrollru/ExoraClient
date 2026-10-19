@@ -132,7 +132,7 @@ void CMapView::Render(CUIRect View)
 		View.w = View.h = Max;
 	}
 
-	const bool Inside = Ui()->MouseInside(&View);
+	const bool Inside = Ui()->MouseInside(&View) && !Editor()->XcMouseOverFloatingTools() && Editor()->m_XcDragPanel == CEditor::XC_PANEL_NONE; // XClient: not under the floating tools or while a panel is dragged
 
 	// fetch mouse position
 	float wx = MouseWorldPos().x;

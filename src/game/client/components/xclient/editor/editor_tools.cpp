@@ -72,7 +72,20 @@ void CEditor::XcHandleToolHotkeys()
 void CEditor::XcRenderToolStrip(CUIRect Strip)
 {
 	XcHandleToolHotkeys();
+	if(m_XcFloatingTools.w > 0.0f)
+	{
+		// floating over the map: its own panel with a shadow
+		CUIRect Shadow = Strip;
+		Shadow.Margin(-2.0f, &Shadow);
+		Shadow.y += 2.0f;
+		Shadow.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_ALL, 7.0f);
+		Strip.Draw(XcEditorStyle::Panel(), IGraphics::CORNER_ALL, 6.0f);
+		Strip.DrawOutline(XcEditorStyle::PanelLine());
+	}
 	Strip.Margin(3.0f, &Strip);
+	CUIRect Grip;
+	Strip.HSplitTop(10.0f, &Grip, &Strip);
+	XcDoPanelGrip(Grip, XC_PANEL_TOOLS);
 	static int s_aButtons[XC_NUM_TOOLS] = {};
 	for(int Tool = 0; Tool < XC_NUM_TOOLS; Tool++)
 	{

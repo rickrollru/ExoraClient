@@ -2981,6 +2981,7 @@ if(CLIENT)
     components/xclient/cape.h
     components/xclient/editor/editor_animate.cpp
     components/xclient/editor/editor_guide.cpp
+    components/xclient/editor/editor_panels.cpp
     components/xclient/editor/editor_prefs.cpp
     components/xclient/editor/editor_style.cpp
     components/xclient/editor/gif_import.cpp

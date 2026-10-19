@@ -338,3 +338,7 @@ MACRO_CONFIG_INT(XcEditorCheckerSize, xc_editor_checker_size, 1, 0, 2, CFGFLAG_C
 MACRO_CONFIG_INT(XcEditorCheckerShade, xc_editor_checker_shade, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shade of the transparency grid in the map editor (0 = dark, 1 = medium, 2 = light)")
 MACRO_CONFIG_INT(XcEditorRulers, xc_editor_rulers, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rulers in tiles on top and left of the map view, guides are dragged out of them")
 MACRO_CONFIG_INT(XcEditorPreciseCursor, xc_editor_precise_cursor, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A thin cross at the mouse in the map view")
+MACRO_CONFIG_INT(XcEditorToolsDock, xc_editor_tools_dock, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Place of the tool strip in the map editor (0 = left, 1 = right, 2 = floating)")
+MACRO_CONFIG_INT(XcEditorToolsX, xc_editor_tools_x, 100, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "X of the floating tool strip in 1/1000 of the screen")
+MACRO_CONFIG_INT(XcEditorToolsY, xc_editor_tools_y, 150, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Y of the floating tool strip in 1/1000 of the screen")
+MACRO_CONFIG_INT(XcEditorLayersSide, xc_editor_layers_side, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Side of the layers panel in the map editor (0 = right, 1 = left)")

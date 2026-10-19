@@ -737,6 +737,22 @@ public:
 	static CUi::EPopupMenuFunctionResult XcPopupAnimate(void *pContext, CUIRect View, bool Active);
 	void XcOpenAnimate();
 	void XcRenderRulers(CUIRect View);
+	// XClient: panels that are dragged by their grip (xclient/editor/editor_panels.cpp): the tool strip docks
+	// left or right or floats over the map, the layers panel docks left or right
+	enum
+	{
+		XC_PANEL_NONE = 0,
+		XC_PANEL_TOOLS,
+		XC_PANEL_LAYERS,
+	};
+	int m_XcDragPanel = XC_PANEL_NONE;
+	vec2 m_XcDragOffset = vec2(0.0f, 0.0f);
+	CUIRect m_XcWorkArea = {0.0f, 0.0f, 0.0f, 0.0f}; // everything under the tool bar
+	CUIRect m_XcFloatingTools = {0.0f, 0.0f, 0.0f, 0.0f}; // empty while the strip is docked
+	CUIRect XcFloatingToolsRect(CUIRect Area);
+	bool XcMouseOverFloatingTools();
+	void XcDoPanelGrip(CUIRect Grip, int Panel);
+	void XcRenderPanelDrag();
 	void ShowHelp();
 	void Exit();
 

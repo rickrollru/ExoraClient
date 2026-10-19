@@ -3771,15 +3771,28 @@ void CEditor::Render()
 
 	CUIRect MenuBar, ModeBar, ToolBar, StatusBar, ExtraEditor, ToolBox;
 	CUIRect XcToolStrip = {0.0f, 0.0f, 0.0f, 0.0f}; // XClient
+	CUIRect XcLayersGrip = {0.0f, 0.0f, 0.0f, 0.0f}; // XClient
 	if(m_GuiActive)
 	{
 		View.HSplitTop(20.0f, &MenuBar, &View);
 		View.HSplitTop(78.0f, &ToolBar, &View);
 		// XClient: Photoshop layout, tools on the left, layers on the right
+		m_XcFloatingTools = {0.0f, 0.0f, 0.0f, 0.0f};
 		if(XcPhotoshopLayout())
 		{
-			View.VSplitLeft(30.0f, &XcToolStrip, &View);
-			View.VSplitRight(m_ToolBoxWidth, &View, &ToolBox);
+			// the panels are dragged around by their grips (xclient/editor/editor_panels.cpp)
+			m_XcWorkArea = View;
+			m_XcWorkArea.h -= 16.0f; // the status bar
+			if(g_Config.m_XcEditorToolsDock == 0)
+				View.VSplitLeft(30.0f, &XcToolStrip, &View);
+			else if(g_Config.m_XcEditorToolsDock == 1)
+				View.VSplitRight(30.0f, &View, &XcToolStrip);
+			if(g_Config.m_XcEditorLayersSide)
+				View.VSplitLeft(m_ToolBoxWidth, &ToolBox, &View);
+			else
+				View.VSplitRight(m_ToolBoxWidth, &View, &ToolBox);
+			if(g_Config.m_XcEditorToolsDock == 2)
+				m_XcFloatingTools = XcToolStrip = XcFloatingToolsRect(View);
 		}
 		else
 			View.VSplitLeft(m_ToolBoxWidth, &ToolBox, &View);
@@ -3855,9 +3868,11 @@ void CEditor::Render()
 		ToolBar.Margin(2.0f, &ToolBar);
 		if(XcPhotoshopLayout()) // XClient: the mode switch sits on top of the layers panel
 		{
+			ToolBox.HSplitTop(10.0f, &XcLayersGrip, &ToolBox);
 			ToolBox.HSplitTop(22.0f, &ModeBar, &ToolBox);
 			ToolBox.HSplitTop(4.0f, nullptr, &ToolBox);
-			RenderBackground(XcToolStrip, g_pData->m_aImages[IMAGE_BACKGROUND_NOISE].m_Id, BackgroundScale, BackgroundBrightness);
+			if(m_XcFloatingTools.w <= 0.0f) // a floating strip draws its own panel over the map
+				RenderBackground(XcToolStrip, g_pData->m_aImages[IMAGE_BACKGROUND_NOISE].m_Id, BackgroundScale, BackgroundBrightness);
 		}
 		else
 			ToolBar.VSplitLeft(m_ToolBoxWidth, &ModeBar, &ToolBar);
@@ -3870,9 +3885,9 @@ void CEditor::Render()
 			const bool Ps = XcPhotoshopLayout();
 			const CUIRect aLines[] = {
 				{Ps ? ToolBar.x - 2.0f : ToolBar.x - 2.0f, ToolBar.y + ToolBar.h + 2.0f, ToolBar.w + 4.0f + (Ps ? 0.0f : m_ToolBoxWidth), 1.0f},
-				{Ps ? ToolBox.x - 3.0f : ToolBox.x + ToolBox.w + 2.0f, ToolBox.y - (Ps ? 28.0f : 2.0f), 1.0f, ToolBox.h + (Ps ? 30.0f : 4.0f)},
+				{Ps ? (g_Config.m_XcEditorLayersSide ? ToolBox.x + ToolBox.w + 2.0f : ToolBox.x - 3.0f) : ToolBox.x + ToolBox.w + 2.0f, ToolBox.y - (Ps ? 38.0f : 2.0f), 1.0f, ToolBox.h + (Ps ? 40.0f : 4.0f)},
 				{StatusBar.x - 2.0f, StatusBar.y - 2.0f, StatusBar.w + 4.0f, 1.0f},
-				{XcToolStrip.x + XcToolStrip.w, XcToolStrip.y, Ps ? 1.0f : 0.0f, XcToolStrip.h},
+				{g_Config.m_XcEditorToolsDock == 1 ? XcToolStrip.x : XcToolStrip.x + XcToolStrip.w, XcToolStrip.y, Ps && m_XcFloatingTools.w <= 0.0f ? 1.0f : 0.0f, XcToolStrip.h},
 			};
 			for(const CUIRect &LineRect : aLines)
 				LineRect.Draw(Line, IGraphics::CORNER_NONE, 0.0f);
@@ -3952,10 +3967,21 @@ void CEditor::Render()
 		CUIRect DragBar;
 		if(XcPhotoshopLayout()) // XClient: the panel is on the right, it is dragged on its left edge
 		{
-			ToolBox.VSplitLeft(1.0f, &DragBar, &ToolBox);
-			DragBar.x -= 4.0f;
-			DragBar.w += 4.0f;
-			DoEditorDragBar(ToolBox, &DragBar, EDragSide::LEFT, &m_ToolBoxWidth);
+			if(g_Config.m_XcEditorLayersSide)
+			{
+				ToolBox.VSplitRight(1.0f, &ToolBox, &DragBar);
+				DragBar.x -= 2.0f;
+				DragBar.w += 4.0f;
+				DoEditorDragBar(ToolBox, &DragBar, EDragSide::RIGHT, &m_ToolBoxWidth);
+			}
+			else
+			{
+				ToolBox.VSplitLeft(1.0f, &DragBar, &ToolBox);
+				DragBar.x -= 4.0f;
+				DragBar.w += 4.0f;
+				DoEditorDragBar(ToolBox, &DragBar, EDragSide::LEFT, &m_ToolBoxWidth);
+			}
+			XcDoPanelGrip(XcLayersGrip, XC_PANEL_LAYERS);
 			XcRenderToolStrip(XcToolStrip);
 		}
 		else
@@ -3980,7 +4006,10 @@ void CEditor::Render()
 	Ui()->MapScreen();
 
 	if(m_GuiActive)
+	{
 		XcRenderRulers(View); // XClient
+		XcRenderPanelDrag(); // XClient
+	}
 
 	CUIRect TooltipRect;
 	if(m_GuiActive)
