@@ -1,125 +1,129 @@
 <div align="center">
 
-# ✦ Exora Client
+<img src="docs/xclient/logo/files/exora_hook_x.png" width="110" alt="Exora">
 
-**Красивый клиент для DDNet**
+# Exora Client
 
-Новое меню, новый HUD, свечение и эффекты почти на всё — и при этом обычная DDNet без читов.
+**A beautiful client for DDNet**
 
-`Windows` · `OpenGL 3.3 / Vulkan` · `RU / EN`
+A new menu, a new HUD, glow and effects on almost everything — and still plain DDNet with no cheats.
+
+`Windows` · `OpenGL 3.3 / Vulkan` · `EN / RU`
+
+**English** · [Русский](README.ru.md)
 
 </div>
 
-> **Изменённая версия / Altered version.** Exora Client — неофициальный модифицированный форк
-> [TClient](https://github.com/sjrc6/TaterClient-ddnet), который основан на [DDNet](https://github.com/ddnet/ddnet).
-> Это не оригинальный TClient и не DDNet. Название проекта рабочее.
-> This is an unofficial altered fork of TClient/DDNet and is not the original software (zlib license, clause 2).
+> **Altered version.** Exora Client is an unofficial modified fork of
+> [TClient](https://github.com/sjrc6/TaterClient-ddnet), which is based on [DDNet](https://github.com/ddnet/ddnet).
+> It is not the original TClient or DDNet software (zlib license, clause 2).
 
-![Игра с новым HUD, плащом и нимбом](docs/xclient/screenshots/game.jpg)
+![The game with the new HUD, a cape and a halo](docs/xclient/screenshots/game.jpg)
 
 ---
 
-## Что это  
+## What it is
 
-Exora Client — клиент для [DDraceNetwork](https://ddnet.org) с современным оформлением. Игра, физика и сеть
-остались как в DDNet: Exora Client играет на любых серверах DDNet. Поверх добавлены новое меню, новый HUD и визуальные эффекты.
+Exora Client is a client for [DDraceNetwork](https://ddnet.org) with a modern look. The game, physics and network code
+are the same as in DDNet, so Exora Client plays on any DDNet server. On top of that it adds a new menu, a new HUD and
+visual effects.
 
-**Главное правило: никаких читов.** Ни ботов, ни автохука, ни авто-фейза, ни ESP. Только внешний вид, HUD и
-удобство. Всё, что делает Exora Client, видишь только ты.
+**The main rule: no cheats.** No bots, no auto-hook, no auto-phase, no ESP. Only looks, HUD and quality of life.
+Everything Exora Client draws is visible only to you.
 
-## Возможности
+## Features
 
-### 🖥 Новое меню
-Меню полностью заменяет стандартное и открывается по <kbd>Esc</kbd>.
+### 🖥 New menu
+The menu fully replaces the default one and opens with <kbd>Esc</kbd>.
 
-- **Вкладки:** Главная · Серверы · Визуалы · Конфиги · Демки · Голосование · Настройки.
-- **Карточки настроек** в две колонки: тоглы, слайдеры, переключатели, всё анимировано.
-- **Оформление:** тёмная и светлая тема, 7 цветов акцента, шрифты Manrope / Onest / Unbounded, масштаб под 1080p / 2K / 4K.
-- **Фон меню:** анимированный, блюр игры, карта или своя картинка / гифка.
-- **Удобство:** поиск по всем настройкам (<kbd>Ctrl</kbd>+<kbd>F</kbd>), звуки интерфейса, уведомления-тосты.
-  Меню запоминает, где ты его закрыл.
-- **Главная:** профиль со статистикой с ddnet.org, друзья онлайн, новости, информация о карте (маппер, сложность, топ).
-- **Серверы:** карточки серверов с фильтрами Novice / Moderate / Brutal / Insane, избранное и поиск.
-- **Конфиги:** сохранение настроек и обмен ими коротким кодом. Чужой код меняет только настройки Exora Client.
-- **Демки:** просмотр, переименование и удаление.
-- **Игрок:** скины и цвета для себя и для дамми; дамми подключается и переключается прямо из меню.
-- **Голосование:** голосовать за/против, запускать голосования сервера, кик и перенос в зрители.
-- **TClient:** все настройки TClient собраны в одном разделе.
+- **Tabs:** Home · Servers · Visuals · Configs · Demos · Votes · Settings.
+- **Settings cards** in two columns: toggles, sliders, segmented switches, all animated.
+- **Look:** dark and light themes, 7 accent colors, Manrope / Onest / Unbounded fonts, scaling for 1080p / 2K / 4K.
+- **Menu background:** animated, blurred game, a map or your own picture / gif.
+- **Comfort:** search through all settings (<kbd>Ctrl</kbd>+<kbd>F</kbd>), UI sounds, toast notifications.
+  The menu remembers where you closed it.
+- **Home:** profile with ddnet.org stats, friends online, news, map info (mapper, difficulty, top times).
+- **Servers:** server cards with Novice / Moderate / Brutal / Insane filters, favorites and search.
+- **Configs:** save your settings and share them with a short code. Imported codes only change Exora Client settings.
+- **Demos:** watch, rename and delete.
+- **Player:** skins and colors for you and your dummy; connect and switch to the dummy right from the menu.
+- **Votes:** vote yes / no, start server votes, kick or move players to spectators.
+- **TClient:** all TClient settings in one section.
 
 <p align="center">
-  <img src="docs/xclient/screenshots/visuals.jpg" width="49%" alt="Вкладка «Визуалы»">
-  <img src="docs/xclient/screenshots/player.jpg" width="49%" alt="Игрок и дамми">
+  <img src="docs/xclient/screenshots/visuals.jpg" width="49%" alt="The Visuals tab">
+  <img src="docs/xclient/screenshots/player.jpg" width="49%" alt="Player and dummy">
 </p>
 
-### ✨ Визуалы
-Почти у каждого эффекта есть свой цвет (акцент / свой / радуга / цвет скина), сила свечения и выбор, для кого
-его показывать: **Мои / Дамми / Другие**.
+### ✨ Visuals
+Almost every effect has its own color (accent / custom / rainbow / skin color), glow strength and a choice of who
+it is shown for: **Me / Dummy / Others**.
 
-| Раздел | Что есть |
+| Section | What's inside |
 |---|---|
-| **Ти** | неоновый контур, шлейф (лента / искры / звёзды / комета / штрихи / призраки), плащ и шарф с физикой ткани, нимб / корона / China Hat, желейный ти, градиентные и «летающие» ники |
-| **Движение** | круги при прыжке и приземлении, пыль при беге |
-| **Хук и оружие** | светящийся хук и цветная цепь, эффект зацепа, удар молотком, взрыв гранаты (волна / неон / искры), светящиеся пули и лазеры, свой прицел |
-| **Мир** | погода (снег, листья, сакура, пепел), летающие 3D-огоньки, свечение предметов, цвет мира, виньетка, тонкая настройка свечения |
-| **События** | конфетти и салют на финише, плашка рекорда, эффекты смерти и появления, вспышки на чекпоинтах и телепортах, стрелки на дамми, напарников и друзей за экраном, звуки событий, тряска камеры |
-| **Косметика** | свои шапки из любой png / gif: двигаешь и крутишь прямо на ти, 6 встроенных + крылья |
+| **Tee** | neon outline, trail (ribbon / sparks / stars / comet / dashes / ghosts), cape and scarf with cloth physics, halo / crown / China Hat, jelly tee, gradient and "flying" name plates |
+| **Movement** | circles on jump and landing, dust when running |
+| **Hook and weapons** | glowing hook and colored chain, hook hit effect, hammer hit, grenade explosion (shockwave / neon / sparks), glowing bullets and lasers, custom crosshair |
+| **World** | weather (snow, leaves, sakura, ash), floating 3D lights, item glow, world tint, vignette, fine glow settings |
+| **Events** | confetti and fireworks on finish, record banner, death and spawn effects, flashes on checkpoints and teleports, arrows to your dummy, teammates and friends off screen, event sounds, camera shake |
+| **Cosmetics** | your own hats from any png / gif: move and rotate them right on the tee, 6 built-in hats + wings |
 
-Стандартные эффекты DDNet (дым, брызги, лазеры) можно заменить своими. Пресеты производительности
-**Низкое / Среднее / Высокое** выключают тяжёлые эффекты одним кликом.
+Default DDNet effects (smoke, splashes, lasers) can be replaced with our own. Performance presets
+**Low / Medium / High** turn heavy effects off in one click.
 
 ### 📊 HUD
-- Плашки в стиле меню: ватермарка (ник, FPS, пинг, время), таймер с сотыми, скорость, оружие, музыка,
-  нажатые клавиши, мини-топ сервера.
-- **Редактор HUD:** перетаскиваешь элементы мышкой, колесом меняешь размер.
-- Своя таблица игроков по <kbd>Tab</kbd>, чат и килфид в стиле меню, колесо эмоций, плашки под никами.
-- Режим фокуса: на экране остаются только таймер и скорость.
-- **Музыкальный плеер:** показывает и переключает то, что играет в браузере (YouTube, SoundCloud, Яндекс Музыка)
-  или в Spotify.
+- Plates in the menu style: watermark (name, FPS, ping, time), timer with hundredths, speed, weapon, music,
+  pressed keys, server mini-top.
+- **HUD editor:** drag elements with the mouse, resize with the wheel.
+- Custom scoreboard on <kbd>Tab</kbd>, chat and kill feed in the menu style, emote wheel, name plates.
+- Focus mode: only the timer and speed stay on screen.
+- **Music player:** shows and controls what plays in your browser (YouTube, SoundCloud, Yandex Music) or Spotify.
 
 <p align="center">
-  <img src="docs/xclient/screenshots/votes.jpg" width="70%" alt="Вкладка «Голосование»">
+  <img src="docs/xclient/screenshots/votes.jpg" width="70%" alt="The Votes tab">
 </p>
 
-### 🗺 Редактор карт «как Фотошоп»
-- Тёмный плоский интерфейс, слева инструменты, справа слои. Панели можно перетаскивать.
-- Инструменты как в Фотошопе: кисть <kbd>B</kbd>, ластик <kbd>E</kbd>, заливка <kbd>G</kbd>, пипетка <kbd>I</kbd>,
-  рука <kbd>H</kbd>, лупа <kbd>Z</kbd>. Есть линейки и направляющие, настройки по <kbd>Ctrl</kbd>+<kbd>K</kbd>.
-- **GIF прямо в карту:** анимация играет у всех игроков на любом клиенте.
-- Пресеты анимаций как в After Effects: покачивание, вращение, парение, мигание, радуга…
-- Картинки jpg / bmp / gif / tga подхватываются без конвертации. Увеличение ×2 / ×4 для пиксель-арта.
-- Гид по редактору для новичков.
+### 🗺 Map editor
+- A new Figma-style interface: menus on top, layer tree on the left, properties on the right, a tool capsule at the
+  bottom. Command palette on <kbd>Ctrl</kbd>+<kbd>K</kbd>, its own open / save file dialog.
+- Photoshop-like tools: brush <kbd>B</kbd>, eraser <kbd>E</kbd>, fill <kbd>G</kbd>, eyedropper <kbd>I</kbd>,
+  hand <kbd>H</kbd>, zoom <kbd>Z</kbd>. Rulers and guides, preferences on <kbd>Ctrl</kbd>+<kbd>,</kbd>.
+- **GIFs right into the map:** the animation plays for every player on any client.
+- After Effects-like animation presets: sway, spin, float, blink, rainbow…
+- jpg / bmp / gif / tga images work without converting. ×2 / ×4 upscaling for pixel art.
+- An editor guide for beginners.
 
 ---
 
-## Как запустить
+## How to run
 
-### Готовая сборка
-1. Распакуй архив в любую папку (не запускай прямо из zip).
-2. Запусти `DDNet.exe`.
-3. Если Windows пишет «Система Windows защитила ваш компьютер», нажми **Подробнее → Выполнить в любом случае**.
-4. Если не хватает `VCRUNTIME140.dll`, поставь
+### Ready build
+1. Unpack the archive into any folder (don't run it straight from the zip).
+2. Run `DDNet.exe`.
+3. If Windows says "Windows protected your PC", click **More info → Run anyway**.
+4. If `VCRUNTIME140.dll` is missing, install
    [Microsoft Visual C++ Redistributable x64](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
-В архиве должны быть `DDNet.exe`, `DDNet-Server.exe` (для локального сервера), папка `data` и все `.dll`.
+The archive must contain `DDNet.exe`, `DDNet-Server.exe` (for the local server), the `data` folder and all `.dll` files.
 
-### Сборка из исходников (Windows)
-Понадобятся: [Visual Studio 2022](https://visualstudio.microsoft.com/) с «Разработкой классических приложений на C++»,
-[Git](https://git-scm.com/) и [Rust](https://rustup.rs/).
+### Building from source (Windows)
+You need [Visual Studio 2022](https://visualstudio.microsoft.com/) with "Desktop development with C++",
+[Git](https://git-scm.com/) and [Rust](https://rustup.rs/).
 
 ```sh
 git clone --recursive https://github.com/rickrollru/KeyClient
 ```
 
-1. Открой папку проекта в Visual Studio (**Файл → Открыть → Папка**).
-2. Вверху выбери конфигурацию **Exora Client Release** (для игры) или **Exora Client Debug** (для поиска ошибок).
-3. Дождись в окне «Вывод» строки «Создание CMake завершено».
-4. **Сборка → Собрать всё** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>). Игра появится в папке `build-release`.
-5. Запуск — зелёная кнопка **▶ DDNet.exe**.
+1. Open the project folder in Visual Studio (**File → Open → Folder**).
+2. At the top pick the **Exora Client Release** configuration (for playing) or **Exora Client Debug** (for finding bugs).
+3. Wait for "CMake generation finished" in the Output window.
+4. **Build → Build All** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>). The game appears in the `build-release` folder.
+5. Run it with the green **▶ DDNet.exe** button.
 
-Если сборка ведёт себя странно: **Проект → Удалить кэш и перенастроить**, потом **Сборка → Перестроить всё**.
+If the build acts strange: **Project → Delete Cache and Reconfigure**, then **Build → Rebuild All**.
 
 ### Linux
-Сборка как у DDNet ([инструкция](https://github.com/ddnet/ddnet#cloning)):
+Same as DDNet ([instructions](https://github.com/ddnet/ddnet#cloning)):
 
 ```sh
 mkdir build && cd build
@@ -128,48 +132,48 @@ cmake .. -G Ninja && ninja game-client game-server
 
 ---
 
-## Настройки и команды
+## Settings and commands
 
-Настройки Exora Client начинаются с `xc_` и хранятся в `settings_xclient.cfg` в папке DDNet
-(`%APPDATA%\DDNet` на Windows). Обычно всё настраивается через меню, но есть и консоль (<kbd>F1</kbd>):
+Exora Client settings start with `xc_` and are stored in `settings_xclient.cfg` in the DDNet folder
+(`%APPDATA%\DDNet` on Windows). Usually everything is set up in the menu, but there is also the console (<kbd>F1</kbd>):
 
-| Команда | Что делает |
+| Command | What it does |
 |---|---|
-| `xc_menu` | открыть / закрыть новое меню |
-| `xc_new_menu 0` / `1` | старое / новое меню (в старом меню есть кнопка **Exora Client**, чтобы вернуться) |
-| `xc_hud_edit` | редактор HUD |
-| `xc_focus` | режим фокуса |
-| `xc_music_play_pause`, `xc_music_next`, `xc_music_prev` | управление музыкой |
-| `xc_editor_style 1; xc_editor_layout 1` | вернуть новый вид редактора карт |
+| `xc_menu` | open / close the new menu |
+| `xc_new_menu 0` / `1` | old / new menu (the old menu has an **Exora Client** button to come back) |
+| `xc_hud_edit` | HUD editor |
+| `xc_focus` | focus mode |
+| `xc_music_play_pause`, `xc_music_next`, `xc_music_prev` | music control |
+| `xc_editor_ui 0` / `1` | classic / new map editor |
 
-## Для разработчиков
+## For developers
 
-| Где | Что |
+| Where | What |
 |---|---|
-| `src/game/client/components/xclient/` | весь код Exora Client: эффекты, HUD, музыка |
-| `…/xclient/ui/` | новое меню на Dear ImGui |
-| `…/xclient/hud/` | HUD, таблица игроков, редактор HUD |
-| `…/xclient/editor/` | редактор карт «как Фотошоп» |
-| `src/engine/client/backend/xclient/` | рендер-модуль OpenGL 3.3: SDF-фигуры, bloom, блюр |
-| `src/engine/shared/config_variables_xclient.h` | все настройки `xc_*` |
-| `data/xclient/` | шрифты, звуки, текстуры эффектов, шапки |
-| `CLAUDE.md` | ТЗ и журнал разработки |
+| `src/game/client/components/xclient/` | all Exora Client code: effects, HUD, music |
+| `…/xclient/ui/` | the new menu on Dear ImGui |
+| `…/xclient/hud/` | HUD, scoreboard, HUD editor |
+| `…/xclient/editor/` | the new map editor |
+| `src/engine/client/backend/xclient/` | OpenGL 3.3 render module: SDF shapes, bloom, blur |
+| `src/engine/shared/config_variables_xclient.h` | all `xc_*` settings |
+| `data/xclient/` | fonts, sounds, effect textures, hats |
+| `docs/xclient/logo/` | logo files |
 
-Вставки Exora Client в файлы DDNet / TClient помечены комментарием `// Exora Client`.
-Документация оригинального TClient: [docs/tclient/README_TClient.md](docs/tclient/README_TClient.md).
+Exora Client changes in DDNet / TClient files are marked with a `// XClient` comment (the project's name in the code).
+The original TClient documentation: [docs/tclient/README_TClient.md](docs/tclient/README_TClient.md).
 
-## Спасибо и лицензии
+## Thanks and licenses
 
-- [DDNet](https://github.com/ddnet/ddnet) и [TClient](https://github.com/sjrc6/TaterClient-ddnet) — основа клиента,
-  лицензия zlib ([license.txt](license.txt)).
+- [DDNet](https://github.com/ddnet/ddnet) and [TClient](https://github.com/sjrc6/TaterClient-ddnet) — the base of the
+  client, zlib license ([license.txt](license.txt)).
 - [Dear ImGui](https://github.com/ocornut/imgui) — MIT; [stb_image](https://github.com/nothings/stb) — public domain / MIT.
-- Шрифты [Manrope](https://fonts.google.com/specimen/Manrope), [Onest](https://fonts.google.com/specimen/Onest),
-  [Unbounded](https://fonts.google.com/specimen/Unbounded) — SIL OFL; иконки [Font Awesome](https://fontawesome.com) Free.
-- Текстуры эффектов «мягкий свет» — из клиента Flower, с разрешения автора (друг)
+- Fonts [Manrope](https://fonts.google.com/specimen/Manrope), [Onest](https://fonts.google.com/specimen/Onest),
+  [Unbounded](https://fonts.google.com/specimen/Unbounded) — SIL OFL; icons [Font Awesome](https://fontawesome.com) Free.
+- "Soft light" effect textures — from the Flower client, with the author's permission
   ([CREDITS](data/xclient/fx/CREDITS.txt)).
 
 <div align="center">
 
-Сделано Максом (**Крутой**) · Discord: `rickroll.ru`
+Made by Max (**Krutoy**) · Discord: `rickroll.ru`
 
 </div>
