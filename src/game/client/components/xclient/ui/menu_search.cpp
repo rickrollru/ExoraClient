@@ -65,7 +65,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_teleport", "Teleports", "A flash where your tee or dummy leaves and arrives", "телепорт тп вспышка teleport tele"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_juice", "Juice", "Screen flashes and camera shake on freeze, death, finish and explosions", "сочность вспышка тряска камера shake flash juice"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_event_sounds", "Event sounds", "Short sounds when you freeze, finish, set a record or teleport", "звуки событий фриз финиш рекорд телепорт sounds events"},
-		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_dummy_arrow", "Dummy arrow", "A glowing arrow at the screen edge shows where the dummy is", "стрелка дамми напарник за экраном arrow dummy partner"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_dummy_arrow", "Arrows to players", "Glowing arrows at the screen edge show where the dummy, team mates and friends are", "стрелка дамми напарник друзья команда за экраном arrow dummy partner team friends"},
 		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
 		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##theme", "Theme", "Look of the menu: dark or light, and the accent color", "тема тёмная светлая dark light акцент accent цвет color"},
