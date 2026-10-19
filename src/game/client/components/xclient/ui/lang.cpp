@@ -408,6 +408,8 @@ namespace XcUi
 			{"Yes", "Да"},
 			{"Show the guide", "Показать гид"},
 			{"Clear guides", "Убрать направляющие"},
+			{"Checkpoints", "Чекпоинты"},
+			{"A ring and rising sparks when your tee passes a time checkpoint", "Кольцо и взлетающие искры, когда твой ти проходит чекпоинт"},
 			{"Arrows to players", "Стрелки на игроков"},
 			{"Glowing arrows at the screen edge show where the dummy, team mates and friends are", "Светящиеся стрелки у края экрана показывают, где дамми, напарники по команде и друзья"},
 			{"Team mates", "Напарники по команде"},

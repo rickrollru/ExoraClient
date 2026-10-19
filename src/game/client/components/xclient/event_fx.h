@@ -67,6 +67,7 @@ private:
 	vec2 m_aLastSeenPos[MAX_CLIENTS] = {};
 	float m_aLastSeenTime[MAX_CLIENTS] = {}; // 0 = never seen
 	bool m_aWasFrozen[NUM_DUMMIES] = {};
+	int m_aLastCheckpoint[NUM_DUMMIES] = {-1, -1};
 	int m_aSounds[NUM_EVENT_SOUNDS] = {-1, -1, -1, -1, -1, -1};
 	bool IsOwn(int ClientId) const;
 
@@ -74,6 +75,7 @@ private:
 	void Fireworks(vec2 Pos, int ClientId);
 	void Burst(vec2 Pos, ColorRGBA Color, int Count, float Speed, float Delay);
 	void TeleportFlash(vec2 From, vec2 To, int ClientId);
+	void CheckpointFlash(vec2 Pos, int ClientId, bool Controlled);
 };
 
 #endif
