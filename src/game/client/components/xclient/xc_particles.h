@@ -7,6 +7,7 @@
 #include <vector>
 
 class CFxRenderer;
+class CXcSprites;
 
 // Small world-space particle system shared by all XClient effects.
 // Separate from the game's own particles so our effects never steal their slots.
@@ -22,6 +23,7 @@ public:
 		CONFETTI, // flat rectangle that flips while falling
 		SHARD, // triangle splinter
 		FLASH, // bright soft disc that grows and fades quickly
+		ICON, // a picture particle of the new style (m_Sprite), e.g. a heart or a snowflake
 	};
 
 	struct SParticle
@@ -40,12 +42,15 @@ public:
 		float m_Squash = 1.0f; // rings: vertical squash
 		float m_Thickness = 4.0f; // rings: line thickness at the start
 		ColorRGBA m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+		int m_Sprite = -1; // ICON: CXcSprites::ESprite
 	};
 
 	void Add(const SParticle &Particle);
 	void Update(float Dt);
 	// Queues the particles as world shapes, drawn after all world effects.
 	void Render(CFxRenderer &Renderer) const;
+	// the new effect style: soft textured sprites, returns false when they are not available
+	bool RenderSprites(CXcSprites &Sprites) const;
 	void Clear() { m_vParticles.clear(); }
 	bool Empty() const { return m_vParticles.empty(); }
 

@@ -159,6 +159,7 @@ void CGameClient::OnConsoleInit()
 					      &m_XcEventFx, // XClient: finish, death, spawn and teleport effects, dummy arrow
 					      &m_Accessory, // XClient
 					      &m_HookFx, // XClient
+					      &m_XcSprites, // XClient: textures of the new effect style
 					      &m_FxRenderer, // XClient: draws the queued world effects
 					      &m_XcHats, // XClient: own hats, over the queued effects
 					      &m_TeeGlow, // XClient
