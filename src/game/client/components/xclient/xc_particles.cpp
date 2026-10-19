@@ -172,7 +172,7 @@ bool CXcParticles::RenderSprites(CXcSprites &Sprites) const
 			break;
 		case EType::JUMP_CIRCLE:
 		{
-			// like the jump circles of the Minecraft clients: opens from a fifth of its size with an ease out,
+			// opens from a fifth of its size with an ease out,
 			// stays bright and fades in the second part of its life
 			const float Size = mix(Particle.m_StartSize, Particle.m_EndSize, EaseOut);
 			const float x = std::clamp((t - 0.2f) / 0.8f, 0.0f, 1.0f);
