@@ -104,6 +104,8 @@ namespace XcUi
 		float m_Width;
 		int m_Index = 0;
 	};
+	// the Exora logo: a white line with a hook at its end crossed by a line in the accent color, on a dark tile
+	void DrawLogo(ImDrawList *pDraw, ImVec2 Center, float Size, const ImVec4 &Accent, float Alpha = 1.0f, bool Tile = true);
 } // namespace XcUi
 
 #endif

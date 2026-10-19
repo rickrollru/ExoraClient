@@ -15,6 +15,7 @@
 #include <game/client/components/xclient/ui/icons.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
+#include <game/client/components/xclient/ui/widgets.h>
 #include <game/client/gameclient.h>
 
 #include <algorithm>
@@ -225,9 +226,9 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const float Gap = 10.0f * U;
 	const float IconGap = 7.0f * U;
 	const float Height = 42.0f * U;
-	const float LogoRadius = 5.5f * U;
+	const float LogoSize = 24.0f * U;
 	const char *pName = "Exora Client";
-	float Width = Pad + LogoRadius * 2.0f + 8.0f * U + pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
+	float Width = Pad + LogoSize + 8.0f * U + pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
 	for(int i = 0; i < 4; i++)
 		Width += Gap * 2.0f + 1.0f + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apTexts[i]).x;
 	Width += Pad;
@@ -236,12 +237,11 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	RenderPlate(pDraw, Min, Max, U, Alpha);
 
-	// logo: accent dot with a soft glow, then the name
+	// logo, then the name
 	float x = Min.x + Pad;
 	const float MidY = Min.y + Height * 0.5f;
-	pDraw->AddCircleFilled(ImVec2(x + LogoRadius, MidY), LogoRadius * 2.2f, Col(t.m_Accent, 0.16f * Alpha), 24);
-	pDraw->AddCircleFilled(ImVec2(x + LogoRadius, MidY), LogoRadius, Col(t.m_Accent, Alpha), 24);
-	x += LogoRadius * 2.0f + 8.0f * U;
+	DrawLogo(pDraw, ImVec2(x + LogoSize * 0.5f, MidY), LogoSize, t.m_Accent, Alpha);
+	x += LogoSize + 8.0f * U;
 	pDraw->AddText(pBold, TitleSize, ImVec2(x, MidY - TitleSize * 0.55f), Col(t.m_Text, Alpha), pName);
 	x += pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
 

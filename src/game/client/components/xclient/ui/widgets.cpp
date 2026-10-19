@@ -740,4 +740,29 @@ namespace XcUi
 		Grid.m_aColumnY[Grid.m_Column] = Bottom - Grid.m_Rise + Gap();
 		Grid.m_InCard = false;
 	}
+
+	void DrawLogo(ImDrawList *pDraw, ImVec2 Center, float Size, const ImVec4 &Accent, float Alpha, bool Tile)
+	{
+		// the logo is drawn in a 100 x 100 box (docs/xclient/logo/files/exora_hook_x.svg)
+		const float k = Size / 100.0f;
+		auto P = [&](float x, float y) { return ImVec2(Center.x + (x - 50.0f) * k, Center.y + (y - 50.0f) * k); };
+		const float Thick = 9.0f * k;
+		if(Tile)
+			pDraw->AddRectFilled(P(0.0f, 0.0f), P(100.0f, 100.0f), Col(ImVec4(0.067f, 0.075f, 0.094f, 1.0f), Alpha), 28.0f * k);
+		const ImU32 White = Col(ImVec4(0.93f, 0.933f, 0.95f, 1.0f), Alpha);
+		const ImU32 Blue = Col(Accent, Alpha);
+		// the hook: a straight line that curls at the bottom left
+		pDraw->PathLineTo(P(74.0f, 26.0f));
+		pDraw->PathLineTo(P(40.0f, 62.0f));
+		pDraw->PathBezierCubicCurveTo(P(34.0f, 68.0f), P(30.0f, 72.0f), P(26.0f, 72.0f), 10);
+		pDraw->PathBezierCubicCurveTo(P(21.0f, 72.0f), P(20.0f, 66.0f), P(24.0f, 63.0f), 10);
+		pDraw->PathStroke(White, ImDrawFlags_None, Thick);
+		// round caps
+		pDraw->AddCircleFilled(P(74.0f, 26.0f), Thick * 0.5f, White, 16);
+		pDraw->AddCircleFilled(P(24.0f, 63.0f), Thick * 0.5f, White, 16);
+		// the accent line over it
+		pDraw->AddLine(P(28.0f, 26.0f), P(74.0f, 76.0f), Blue, Thick);
+		pDraw->AddCircleFilled(P(28.0f, 26.0f), Thick * 0.5f, Blue, 16);
+		pDraw->AddCircleFilled(P(74.0f, 76.0f), Thick * 0.5f, Blue, 16);
+	}
 } // namespace XcUi

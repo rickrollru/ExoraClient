@@ -539,12 +539,11 @@ void CXcMenu::RenderTopBar(float Width)
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 
-	// logo: accent dot and the client name
-	const float DotRadius = S(7.0f);
-	pDraw->AddCircleFilled(ImVec2(Start.x + DotRadius + S(4.0f), Start.y + BarHeight * 0.5f), DotRadius, Col(t.m_Accent), 24);
-	pDraw->AddCircleFilled(ImVec2(Start.x + DotRadius + S(4.0f), Start.y + BarHeight * 0.5f), DotRadius * 2.2f, Col(t.m_Accent, 0.12f), 32);
+	// logo and the client name
+	const float LogoSize = S(30.0f);
+	DrawLogo(pDraw, ImVec2(Start.x + LogoSize * 0.5f + S(2.0f), Start.y + BarHeight * 0.5f), LogoSize, t.m_Accent);
 	ImFont *pTitle = Fonts().m_pTitle;
-	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(Start.x + DotRadius * 2.0f + S(14.0f), Start.y + BarHeight * 0.5f - pTitle->FontSize * 0.5f), Col(t.m_Text), XC_CLIENT_NAME);
+	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(Start.x + LogoSize + S(12.0f), Start.y + BarHeight * 0.5f - pTitle->FontSize * 0.5f), Col(t.m_Text), XC_CLIENT_NAME);
 
 	// tabs in a capsule in the middle
 	const char *apIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_CHECK, XC_ICON_GEAR};

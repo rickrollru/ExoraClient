@@ -503,11 +503,10 @@ void CXcEditorUi::RenderTopBar()
 	// logo
 	const float Mid = m_TopHeight * 0.5f;
 	const float x0 = S(16.0f);
-	pDraw->AddCircleFilled(ImVec2(x0 + S(6.0f), Mid), S(6.0f), Col(t.m_Accent), 20);
-	pDraw->AddCircleFilled(ImVec2(x0 + S(6.0f), Mid), S(13.0f), Col(t.m_Accent, 0.15f), 24);
+	DrawLogo(pDraw, ImVec2(x0 + S(11.0f), Mid), S(24.0f), t.m_Accent);
 	ImFont *pTitle = Fonts().m_pTitle;
-	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(x0 + S(22.0f), Mid - pTitle->FontSize * 0.5f), Col(t.m_Text), Tr("Editor"));
-	const float MenusX = x0 + S(26.0f) + pTitle->CalcTextSizeA(pTitle->FontSize, FLT_MAX, 0.0f, Tr("Editor")).x + S(14.0f);
+	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(x0 + S(30.0f), Mid - pTitle->FontSize * 0.5f), Col(t.m_Text), Tr("Editor"));
+	const float MenusX = x0 + S(34.0f) + pTitle->CalcTextSizeA(pTitle->FontSize, FLT_MAX, 0.0f, Tr("Editor")).x + S(14.0f);
 	const float MenusEnd = RenderMenus(MenusX, Mid);
 
 	// right side: undo, redo, test, save
