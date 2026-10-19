@@ -375,6 +375,7 @@ void CXcEditorUi::Render()
 		if(m_PaletteOpen)
 			RenderPalette();
 		RenderMapDetails();
+		RenderThemes();
 		RenderFileDialog();
 		RenderEventDialog();
 		RenderMessages();
@@ -662,6 +663,8 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Add", "mapres", "", CEditor::XcCallbackAddGif, &E);
 				if(ImGui::MenuItem(Tr("Animation presets...")))
 					E.XcOpenAnimate();
+				if(ImGui::MenuItem(Tr("Background theme...")))
+					m_ThemesRequest = true;
 				ImGui::Separator();
 				if(ImGui::MenuItem(Tr("More tools...")))
 				{
