@@ -356,8 +356,18 @@ void CXcEditorUi::Render()
 			RenderLeftPanel();
 			if(m_ShowProperties)
 				RenderRightPanel();
+			if(!Dock)
+				m_SettingsDockOpen = false;
 			if(Dock)
+			{
 				RenderDockFrame();
+				if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_SERVER_SETTINGS)
+					RenderServerSettingsDock();
+				else
+					m_SettingsDockOpen = false;
+				if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_HISTORY)
+					RenderHistoryDock();
+			}
 			RenderStatusBar();
 		}
 		if(Gui && E.m_Mode == MODE_LAYERS && !E.m_ShowPicker)
@@ -386,14 +396,7 @@ void CXcEditorUi::Render()
 	{
 		if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_ENVELOPES)
 			E.m_EnvelopeEditor.Render(m_Dock);
-		else if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_SERVER_SETTINGS)
-		{
-			static bool s_ShowServerSettingsLast = false;
-			E.RenderServerSettingsEditor(m_Dock, s_ShowServerSettingsLast);
-			s_ShowServerSettingsLast = true;
-		}
-		else if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_HISTORY)
-			E.RenderEditorHistory(m_Dock);
+		// the server settings and the history are ImGui panels (RenderServerSettingsDock, RenderHistoryDock)
 	}
 
 	E.RenderPressedKeys(m_View);
