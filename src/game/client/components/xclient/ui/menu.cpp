@@ -21,6 +21,7 @@
 #include <game/client/gameclient.h>
 #include <game/version.h>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace XcUi;
@@ -40,6 +41,10 @@ void CXcMenu::ConToggleMenu(IConsole::IResult *pResult, void *pUserData)
 
 void CXcMenu::OnInit()
 {
+	// the page and sections from the last time the game ran
+	m_Page = std::clamp(g_Config.m_XcMenuPage, 0, NUM_PAGES - 1);
+	m_SettingsSection = std::clamp(g_Config.m_XcMenuSettingsSection, 0, NUM_SETTINGS - 1);
+	m_VisualsSection = std::clamp(g_Config.m_XcMenuVisualsSection, 0, NUM_VISUALS - 1);
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
 
@@ -145,10 +150,8 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 		// Esc opens the new menu, unless the classic one is open in game (it closes itself then)
 		if(EscapePressed && (!IsOnline() || !GameClient()->m_Menus.IsActive()))
 		{
+			// the menu opens where it was left last time (the map card stays on Home)
 			SetActive(true);
-			// in game the menu opens on Home: the map card is the first thing there
-			if(IsOnline() && g_Config.m_XcMenuMapInfo)
-				m_Page = PAGE_HOME;
 			return true;
 		}
 		return false;
@@ -181,10 +184,11 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 
 float CXcMenu::UiScale() const
 {
+	const float Size = g_Config.m_XcUiSize / 100.0f;
 	if(g_Config.m_XcUiScale > 0)
-		return g_Config.m_XcUiScale / 100.0f;
+		return g_Config.m_XcUiScale / 100.0f * Size;
 	// automatic: designed for 1080p, grows on bigger screens
-	return std::clamp(Graphics()->ScreenHeight() / 1080.0f, 0.75f, 3.0f);
+	return std::clamp(Graphics()->ScreenHeight() / 1080.0f, 0.75f, 3.0f) * Size;
 }
 
 void CXcMenu::UpdateStyle()
@@ -395,6 +399,14 @@ void CXcMenu::OnRender()
 {
 	if(!m_Backend.IsReady() || !g_Config.m_XcNewMenu)
 	{
+		// switched to the classic menu (or no fonts): hand the screen over to it, otherwise nothing shows
+		if(m_Active)
+		{
+			m_Active = false;
+			m_SearchOpen = false;
+			if(!IsOnline())
+				GameClient()->m_Menus.SetActive(true);
+		}
 		m_OpenAnimation = 0.0f;
 		Client()->XcSetDropCapture(false);
 		return;
@@ -492,6 +504,10 @@ void CXcMenu::RenderFrame()
 	{
 		m_LastPageKey = PageKey;
 		PageEntered();
+		// remembered for the next time the menu opens, also after a restart
+		g_Config.m_XcMenuPage = m_Page;
+		g_Config.m_XcMenuSettingsSection = m_SettingsSection;
+		g_Config.m_XcMenuVisualsSection = m_VisualsSection;
 	}
 	m_LastOpenAnimation = m_OpenAnimation;
 	ImGui::BeginChild("##page", ImVec2(PanelMax.x - PanelMin.x - S(40.0f), PanelMax.y - PanelMin.y - S(40.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);

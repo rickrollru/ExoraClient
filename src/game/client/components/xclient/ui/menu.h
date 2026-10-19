@@ -8,6 +8,8 @@
 
 #include <engine/console.h>
 
+#include <engine/shared/config.h>
+
 #include <game/client/component.h>
 
 #include <memory>
@@ -71,7 +73,7 @@ public:
 	void OnRender() override;
 	void OnStateChange(int NewState, int OldState) override;
 
-	bool IsActive() const { return m_Active; }
+	bool IsActive() const { return m_Active && g_Config.m_XcNewMenu; }
 	void SetActive(bool Active);
 
 private:
