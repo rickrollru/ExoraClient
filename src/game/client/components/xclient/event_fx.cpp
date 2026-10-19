@@ -15,6 +15,8 @@
 #include <game/client/components/sounds.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/gameclient.h>
+#include <game/collision.h>
+#include <game/mapitems.h>
 
 #include <cmath>
 
@@ -61,7 +63,10 @@ void CXcEventFx::OnReset()
 {
 	m_Particles.Clear();
 	for(int i = 0; i < NUM_DUMMIES; i++)
+	{
 		m_aLastValid[i] = false;
+		m_aLastCheckpoint[i] = -1;
+	}
 	m_DummyLastPos = vec2(0.0f, 0.0f);
 	for(float &Time : m_aLastSeenTime)
 		Time = 0.0f;
@@ -299,6 +304,45 @@ void CXcEventFx::PlayerSpawn(vec2 Pos)
 	}
 }
 
+void CXcEventFx::CheckpointFlash(vec2 Pos, int ClientId, bool Controlled)
+{
+	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcCheckpointColorMode, g_Config.m_XcCheckpointColor, ClientId);
+	// a flat ring on the ground level of the tee and a soft flash, sparks rise like from a gate
+	CXcParticles::SParticle Ring;
+	Ring.m_Type = CXcParticles::EType::RING;
+	Ring.m_Pos = Pos;
+	Ring.m_LifeSpan = 0.5f;
+	Ring.m_StartSize = 12.0f;
+	Ring.m_EndSize = 110.0f;
+	Ring.m_Thickness = 7.0f;
+	Ring.m_Squash = 0.35f;
+	Ring.m_Color = Color;
+	m_Particles.Add(Ring);
+	CXcParticles::SParticle Flash;
+	Flash.m_Type = CXcParticles::EType::FLASH;
+	Flash.m_Pos = Pos;
+	Flash.m_LifeSpan = 0.25f;
+	Flash.m_StartSize = 30.0f;
+	Flash.m_EndSize = 70.0f;
+	Flash.m_Color = Color.WithAlpha(0.7f);
+	m_Particles.Add(Flash);
+	for(int i = 0; i < 10; i++)
+	{
+		CXcParticles::SParticle Spark;
+		Spark.m_Type = CXcParticles::EType::SPARK;
+		Spark.m_Pos = Pos + vec2(random_float(-24.0f, 24.0f), random_float(-6.0f, 10.0f));
+		Spark.m_Vel = vec2(random_float(-30.0f, 30.0f), random_float(-260.0f, -140.0f));
+		Spark.m_Friction = 0.6f;
+		Spark.m_LifeSpan = random_float(0.4f, 0.7f);
+		Spark.m_StartSize = random_float(4.0f, 7.0f);
+		Spark.m_EndSize = 0.0f;
+		Spark.m_Color = Color;
+		m_Particles.Add(Spark);
+	}
+	if(Controlled)
+		GameClient()->m_ScreenFx.Flash(Color, 0.25f);
+}
+
 void CXcEventFx::TeleportFlash(vec2 From, vec2 To, int ClientId)
 {
 	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcTeleportColorMode, g_Config.m_XcTeleportColor, ClientId);
@@ -486,6 +530,19 @@ void CXcEventFx::OnRender()
 			}
 		}
 		m_aWasFrozen[i] = Frozen;
+		// checkpoints: the map says which time checkpoint tile is under the tee, a new one flashes
+		const int MapIndex = Collision()->GetMapIndex(Pos);
+		int Tile = MapIndex >= 0 ? Collision()->GetTileIndex(MapIndex) : 0;
+		if(Tile < TILE_START || Tile > TILE_TIME_CHECKPOINT_LAST)
+			Tile = MapIndex >= 0 ? Collision()->GetFrontTileIndex(MapIndex) : 0;
+		if(Tile == TILE_START)
+			m_aLastCheckpoint[i] = -1; // a new run
+		else if(Tile >= TILE_TIME_CHECKPOINT_FIRST && Tile <= TILE_TIME_CHECKPOINT_LAST && Tile != m_aLastCheckpoint[i])
+		{
+			if(m_aLastValid[i] && g_Config.m_XcCheckpointFx)
+				CheckpointFlash(Pos, ClientId, i == g_Config.m_ClDummy);
+			m_aLastCheckpoint[i] = Tile;
+		}
 		m_aLastPos[i] = Pos;
 		m_aLastValid[i] = true;
 	}
