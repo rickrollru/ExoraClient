@@ -855,29 +855,46 @@ void CXcHud::OnRender()
 	m_Backend.NewFrame(Dt, Ui()->UpdatedMousePos());
 	ImDrawList *pDraw = ImGui::GetBackgroundDrawList();
 	// the HUD steps back while the menu is open
-	const float Alpha = GameClient()->m_XcMenu.IsActive() ? 0.0f : 1.0f;
+	const float FadeSpeed = AnimationSpeed() > 0.0f ? 8.0f * AnimationSpeed() : 1000.0f;
+	const auto Approach = [&](float &Value, float Target) {
+		Value = Value < Target ? std::min(Value + Dt * FadeSpeed, Target) : std::max(Value - Dt * FadeSpeed, Target);
+	};
+	Approach(m_MenuFade, GameClient()->m_XcMenu.IsActive() ? 0.0f : 1.0f);
+	const float Alpha = m_MenuFade * m_MenuFade * (3.0f - 2.0f * m_MenuFade);
+	// focus mode keeps only the timer and the speed (the editor shows everything)
+	const bool Focus = g_Config.m_XcFocusMode && !m_Editing;
+	const bool aWanted[NUM_ELEMENTS] = {
+		g_Config.m_XcHudWatermark && !Focus,
+		(bool)g_Config.m_XcHudTimer,
+		(bool)g_Config.m_XcHudSpeed,
+		g_Config.m_XcHudWeapon && !Focus,
+		g_Config.m_XcHudMusic && !Focus,
+		g_Config.m_XcHudKeys && !Focus,
+		g_Config.m_XcHudMinitop && !Focus && (m_Editing || m_ScoreboardOpen < 1.0f),
+	};
+	for(int i = 0; i < NUM_ELEMENTS; i++)
+		Approach(m_aShown[i], aWanted[i] ? 1.0f : 0.0f);
 	if(HudVisible && (Alpha > 0.0f || m_Editing))
 	{
 		const float a = m_Editing ? 1.0f : Alpha;
 		if(m_Editing)
 			pDraw->AddRectFilled(ImVec2(0, 0), ImGui::GetIO().DisplaySize, Col(ImVec4(0, 0, 0, 1), 0.25f));
-		// focus mode keeps only the timer and the speed (the editor shows everything)
-		const bool Focus = g_Config.m_XcFocusMode && !m_Editing;
-		if(g_Config.m_XcHudWatermark && !Focus)
-			RenderWatermark(pDraw, a);
-		if(g_Config.m_XcHudTimer)
-			RenderTimer(pDraw, a);
-		if(g_Config.m_XcHudSpeed)
-			RenderSpeed(pDraw, a);
-		if(g_Config.m_XcHudWeapon && !Focus)
-			RenderWeapon(pDraw, a);
-		if(g_Config.m_XcHudMusic && !Focus)
-			RenderMusic(pDraw, a);
-		if(g_Config.m_XcHudKeys && !Focus)
-			RenderKeys(pDraw, a);
+		const auto Shown = [&](int Element) { return m_Editing ? (aWanted[Element] ? 1.0f : 0.0f) : m_aShown[Element]; };
+		if(Shown(ELEMENT_WATERMARK) > 0.0f)
+			RenderWatermark(pDraw, a * Shown(ELEMENT_WATERMARK));
+		if(Shown(ELEMENT_TIMER) > 0.0f)
+			RenderTimer(pDraw, a * Shown(ELEMENT_TIMER));
+		if(Shown(ELEMENT_SPEED) > 0.0f)
+			RenderSpeed(pDraw, a * Shown(ELEMENT_SPEED));
+		if(Shown(ELEMENT_WEAPON) > 0.0f)
+			RenderWeapon(pDraw, a * Shown(ELEMENT_WEAPON));
+		if(Shown(ELEMENT_MUSIC) > 0.0f)
+			RenderMusic(pDraw, a * Shown(ELEMENT_MUSIC));
+		if(Shown(ELEMENT_KEYS) > 0.0f)
+			RenderKeys(pDraw, a * Shown(ELEMENT_KEYS));
 		// the top list steps aside while the full scoreboard is open
-		if(g_Config.m_XcHudMinitop && !Focus && (m_Editing || m_ScoreboardOpen < 1.0f))
-			RenderMiniTop(pDraw, a * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen));
+		if(Shown(ELEMENT_MINITOP) > 0.0f)
+			RenderMiniTop(pDraw, a * Shown(ELEMENT_MINITOP) * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen));
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
