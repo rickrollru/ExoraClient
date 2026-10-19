@@ -167,6 +167,10 @@ bool CSpectator::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 
 bool CSpectator::OnInput(const IInput::CEvent &Event)
 {
+	// XClient: clicks in the new menu belong to the menu, not to the spectator camera
+	if(GameClient()->m_XcMenu.IsActive())
+		return false;
+
 	if(IsActive() && Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
 	{
 		OnRelease();

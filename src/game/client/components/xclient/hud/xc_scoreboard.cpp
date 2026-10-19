@@ -74,8 +74,12 @@ ImVec4 ToVec4(ColorRGBA Color)
 
 bool CXcHud::DrawsScoreboard() const
 {
-	// with the mouse unlocked the classic scoreboard is needed: it has the player popups
-	return g_Config.m_XcScoreboard && !GameClient()->m_Scoreboard.XcMouseUnlocked();
+	return g_Config.m_XcScoreboard;
+}
+
+bool CXcHud::ScoreboardMouse() const
+{
+	return DrawsScoreboard() && GameClient()->m_Scoreboard.IsActive() && GameClient()->m_Scoreboard.XcMouseUnlocked() && !GameClient()->m_XcMenu.IsActive();
 }
 
 // race time of a player in milliseconds, -1 when not finished, -2 when the game counts points
@@ -129,6 +133,13 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 	if(Want && m_ScoreboardOpen <= 0.0f)
 		m_ScoreboardOpenTime = Client()->GlobalTime();
 	m_ScoreboardOpen = Want ? std::min(m_ScoreboardOpen + Dt * Speed, 1.0f) : std::max(m_ScoreboardOpen - Dt * Speed, 0.0f);
+	const bool Mouse = Want && ScoreboardMouse();
+	if(!Mouse)
+		m_ScoreboardPopupId = -1;
+	const ImVec2 MousePos = ImGui::GetIO().MousePos;
+	const bool OverPopup = m_ScoreboardPopupId >= 0 && MousePos.x >= m_aScoreboardPopupRect[0] && MousePos.x <= m_aScoreboardPopupRect[2] &&
+			       MousePos.y >= m_aScoreboardPopupRect[1] && MousePos.y <= m_aScoreboardPopupRect[3];
+	bool RowClicked = false;
 	if(m_ScoreboardOpen <= 0.0f)
 		return;
 	const float Ease = 1.0f - (1.0f - m_ScoreboardOpen) * (1.0f - m_ScoreboardOpen) * (1.0f - m_ScoreboardOpen);
@@ -260,6 +271,21 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 			pDraw->AddRectFilled(RowMin, RowMax, Fill, 10.0f * U * S);
 			if(Own)
 				pDraw->AddRect(RowMin, RowMax, Col(t.m_Accent, 0.55f * RowAlpha), 10.0f * U * S, 0, 1.0f);
+			if(Mouse)
+			{
+				// with the mouse: the row under it lights up, a click opens the actions of the player
+				const bool Hovered = !OverPopup && MousePos.x >= RowMin.x && MousePos.x <= RowMax.x && MousePos.y >= RowMin.y && MousePos.y <= RowMax.y;
+				const bool Selected = m_ScoreboardPopupId == Id;
+				if(Hovered || Selected)
+					pDraw->AddRect(RowMin, RowMax, Col(t.m_Accent, (Selected ? 0.9f : 0.5f) * RowAlpha), 10.0f * U * S, 0, 1.5f * U);
+				if(Hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				{
+					RowClicked = true;
+					m_ScoreboardPopupId = Selected ? -1 : Id;
+					m_aScoreboardPopupPos[0] = MousePos.x;
+					m_aScoreboardPopupPos[1] = MousePos.y;
+				}
+			}
 			// team color on the left edge, the same as in the classic scoreboard
 			if(DDTeam != TEAM_FLOCK && DDTeam != TEAM_SUPER)
 			{
@@ -354,6 +380,129 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 		const float SpecY = Height - Pad - 22.0f * U;
 		const float SpecEnd = Max.x - Pad * S;
 		DrawFit(pDraw, pSmall, 13.0f * U * S, P(Pad, SpecY), SpecEnd, Col(t.m_TextSecondary, Alpha), aSpecs);
+	}
+
+	if(Mouse)
+	{
+		// a click anywhere else closes the popup
+		if(!RowClicked && !OverPopup && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			m_ScoreboardPopupId = -1;
+		if(m_ScoreboardPopupId >= 0)
+			RenderScoreboardPopup(pDraw, U, Alpha);
+		else
+			m_aScoreboardPopupRect[0] = m_aScoreboardPopupRect[2] = -1.0f;
+	}
+}
+
+void CXcHud::RenderScoreboardPopup(ImDrawList *pDraw, float U, float Alpha)
+{
+	const STheme &t = Theme();
+	CGameClient::CClientData &Player = GameClient()->m_aClients[m_ScoreboardPopupId];
+	if(!Player.m_Active)
+	{
+		m_ScoreboardPopupId = -1;
+		return;
+	}
+	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
+	ImFont *pSmall = m_Backend.Fonts().m_pSmall;
+	const bool Local = GameClient()->m_aLocalIds[0] == m_ScoreboardPopupId || (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == m_ScoreboardPopupId);
+	const bool Spectating = GameClient()->m_Snap.m_SpecInfo.m_Active && GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == m_ScoreboardPopupId;
+
+	enum
+	{
+		ACTION_FRIEND,
+		ACTION_CHAT,
+		ACTION_EMOTICONS,
+		ACTION_SPECTATE,
+	};
+	struct SAction
+	{
+		int m_Action;
+		const char *m_pIcon;
+		const char *m_pLabel;
+		bool m_On;
+	};
+	std::vector<SAction> vActions;
+	if(!Local)
+	{
+		vActions.push_back({ACTION_FRIEND, XC_ICON_STAR, Player.m_Friend ? Tr("Remove friend") : Tr("Add friend"), Player.m_Friend});
+		vActions.push_back({ACTION_CHAT, XC_ICON_COMMENTS, Player.m_ChatIgnore ? Tr("Unmute chat") : Tr("Mute chat"), Player.m_ChatIgnore});
+		vActions.push_back({ACTION_EMOTICONS, XC_ICON_XMARK, Player.m_EmoticonIgnore ? Tr("Unmute emoticons") : Tr("Mute emoticons"), Player.m_EmoticonIgnore});
+	}
+	vActions.push_back({ACTION_SPECTATE, XC_ICON_USER, Spectating ? Tr("Stop spectating") : Tr("Spectate"), Spectating});
+
+	const float Pad = 10.0f * U;
+	const float RowHeight = 30.0f * U;
+	const float TitleHeight = 28.0f * U;
+	float Width = pLabel->CalcTextSizeA(15.0f * U, FLT_MAX, 0.0f, Player.m_aName).x + Pad * 2.0f;
+	for(const SAction &Action : vActions)
+		Width = std::max(Width, pSmall->CalcTextSizeA(13.5f * U, FLT_MAX, 0.0f, Action.m_pLabel).x + 46.0f * U);
+	const float Height = Pad + TitleHeight + vActions.size() * RowHeight + Pad * 0.6f;
+	// next to the mouse, always inside the screen
+	const ImVec2 Display = ImGui::GetIO().DisplaySize;
+	ImVec2 Min(m_aScoreboardPopupPos[0] + 8.0f * U, m_aScoreboardPopupPos[1] + 8.0f * U);
+	Min.x = std::min(Min.x, Display.x - Width - 8.0f * U);
+	Min.y = std::min(Min.y, Display.y - Height - 8.0f * U);
+	const ImVec2 Max(Min.x + Width, Min.y + Height);
+	m_aScoreboardPopupRect[0] = Min.x;
+	m_aScoreboardPopupRect[1] = Min.y;
+	m_aScoreboardPopupRect[2] = Max.x;
+	m_aScoreboardPopupRect[3] = Max.y;
+
+	pDraw->AddRectFilled(ImVec2(Min.x, Min.y + 6.0f * U), ImVec2(Max.x, Max.y + 6.0f * U), Col(ImVec4(0, 0, 0, 1), 0.25f * Alpha), 12.0f * U);
+	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f), Alpha), 12.0f * U);
+	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), 12.0f * U);
+	char aName[64];
+	XcFitText(pLabel, 15.0f * U, Player.m_aName, Width - Pad * 2.0f, aName, sizeof(aName));
+	pDraw->AddText(pLabel, 15.0f * U, ImVec2(Min.x + Pad, Min.y + Pad), Col(t.m_Text, Alpha), aName);
+
+	const ImVec2 MousePos = ImGui::GetIO().MousePos;
+	float y = Min.y + Pad + TitleHeight;
+	for(size_t i = 0; i < vActions.size(); i++)
+	{
+		const SAction &Action = vActions[i];
+		const ImVec2 RowMin(Min.x + 5.0f * U, y);
+		const ImVec2 RowMax(Max.x - 5.0f * U, y + RowHeight - 2.0f * U);
+		const bool Hovered = MousePos.x >= RowMin.x && MousePos.x <= RowMax.x && MousePos.y >= RowMin.y && MousePos.y <= RowMax.y;
+		if(Hovered)
+			pDraw->AddRectFilled(RowMin, RowMax, Col(t.m_Accent, 0.18f * Alpha), 8.0f * U);
+		const ImVec4 IconColor = Action.m_On ? t.m_Accent : t.m_TextMuted;
+		const float MidY = (RowMin.y + RowMax.y) * 0.5f;
+		pDraw->AddText(pSmall, 13.0f * U, ImVec2(RowMin.x + 8.0f * U, MidY - 7.0f * U), Col(IconColor, Alpha), Action.m_pIcon);
+		pDraw->AddText(pSmall, 13.5f * U, ImVec2(RowMin.x + 32.0f * U, MidY - 7.5f * U), Col(Hovered ? t.m_Text : t.m_TextSecondary, Alpha), Action.m_pLabel);
+		y += RowHeight;
+		if(!Hovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			continue;
+
+		// the same actions as in the popup of the classic scoreboard
+		if(Action.m_Action == ACTION_FRIEND)
+		{
+			if(Player.m_Friend)
+				GameClient()->Friends()->RemoveFriend(Player.m_aName, Player.m_aClan);
+			else
+				GameClient()->Friends()->AddFriend(Player.m_aName, Player.m_aClan);
+		}
+		else if(Action.m_Action == ACTION_CHAT)
+			Player.m_ChatIgnore ^= 1;
+		else if(Action.m_Action == ACTION_EMOTICONS)
+			Player.m_EmoticonIgnore ^= 1;
+		else if(Spectating)
+		{
+			GameClient()->m_Spectator.Spectate(SPEC_FREEVIEW);
+			Console()->ExecuteLine("say /spec", IConsole::CLIENT_ID_UNSPECIFIED);
+		}
+		else if(GameClient()->m_Snap.m_SpecInfo.m_Active)
+			GameClient()->m_Spectator.Spectate(m_ScoreboardPopupId);
+		else
+		{
+			// escape the name like the classic scoreboard does
+			char aCommand[2 * MAX_NAME_LENGTH + 32];
+			str_copy(aCommand, "say /spec \"");
+			char *pDst = aCommand + str_length(aCommand);
+			str_escape(&pDst, Player.m_aName, aCommand + sizeof(aCommand));
+			str_append(aCommand, "\"");
+			Console()->ExecuteLine(aCommand, IConsole::CLIENT_ID_UNSPECIFIED);
+		}
 	}
 }
 
