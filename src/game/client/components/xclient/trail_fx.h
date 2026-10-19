@@ -26,6 +26,7 @@ public:
 		TRAIL_STARS,
 		TRAIL_DOTS,
 		TRAIL_DASHES, // animated dash sprites of the new effect style
+		TRAIL_GHOSTS, // fading copies of the tee where it was
 	};
 
 	int Sizeof() const override { return sizeof(*this); }
@@ -55,6 +56,18 @@ private:
 		float m_Scale;
 	};
 	std::vector<SDash> m_vDashes;
+	// one copy of the tee for the ghosts trail
+	struct SGhost
+	{
+		int m_ClientId;
+		vec2 m_Pos;
+		vec2 m_Dir;
+		float m_Born;
+		ColorRGBA m_Color;
+	};
+	std::vector<SGhost> m_vGhosts;
+	float m_aLastGhost[MAX_CLIENTS] = {};
+	void RenderGhosts(float Length);
 	CXcParticles m_Particles;
 	float m_Time = 0.0f;
 

@@ -9,6 +9,7 @@
 #include <engine/client.h>
 #include <engine/shared/config.h>
 
+#include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 
 #include <algorithm>
@@ -176,12 +177,37 @@ void CTrailFx::RenderDashes(float Length)
 	}
 }
 
+void CTrailFx::RenderGhosts(float Length)
+{
+	m_vGhosts.erase(std::remove_if(m_vGhosts.begin(), m_vGhosts.end(), [&](const SGhost &Ghost) {
+		return m_Time - Ghost.m_Born >= Length || !GameClient()->m_aClients[Ghost.m_ClientId].m_Active;
+	}), m_vGhosts.end());
+	const bool Skin = g_Config.m_XcTrailColorMode == COLOR_SKIN;
+	for(const SGhost &Ghost : m_vGhosts)
+	{
+		const float t = (m_Time - Ghost.m_Born) / Length;
+		// the oldest copies are the faintest, they also shrink a little
+		const float Alpha = 0.55f * (1.0f - t) * (1.0f - t) * Ghost.m_Color.a;
+		CTeeRenderInfo Info = GameClient()->m_aClients[Ghost.m_ClientId].m_RenderInfo;
+		if(!Skin)
+		{
+			// tinted in the trail color, like a hologram
+			Info.m_CustomColoredSkin = true;
+			Info.m_ColorBody = Ghost.m_Color.WithAlpha(1.0f);
+			Info.m_ColorFeet = Ghost.m_Color.WithAlpha(1.0f);
+		}
+		Info.m_Size *= 1.0f - 0.15f * t;
+		RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Ghost.m_Dir, Ghost.m_Pos, Alpha);
+	}
+}
+
 void CTrailFx::OnReset()
 {
 	for(STrail &Trail : m_aTrails)
 		Trail = STrail();
 	m_Particles.Clear();
 	m_vDashes.clear();
+	m_vGhosts.clear();
 }
 
 void CTrailFx::OnMapLoad()
@@ -266,7 +292,7 @@ void CTrailFx::OnRender()
 			// particles every few units walked, so the amount follows the speed
 			const float Walked = distance(OldHead, Pos);
 			Trail.m_EmitDistance += Walked;
-			const float Spacing = (Style == TRAIL_STARS ? 14.0f : 7.0f) * Scale;
+			const float Spacing = (Style == TRAIL_STARS ? 14.0f : 7.0f) * Scale * 100.0f / g_Config.m_XcTrailDensity;
 			const vec2 Dir = Walked > 0.001f ? (Pos - OldHead) / Walked : vec2(0.0f, 0.0f);
 			int Budget = 6;
 			while(Trail.m_EmitDistance > Spacing && Budget-- > 0)
@@ -277,12 +303,28 @@ void CTrailFx::OnRender()
 			Trail.m_EmitDistance = std::min(Trail.m_EmitDistance, Spacing);
 		}
 
+		if(Style == TRAIL_GHOSTS)
+		{
+			// a copy of the tee every few hundredths of a second while it moves
+			const float Interval = 0.045f * 100.0f / g_Config.m_XcTrailDensity;
+			const bool Moving = distance(OldHead, Pos) > 0.5f;
+			if(Moving && m_Time - m_aLastGhost[ClientId] >= Interval)
+			{
+				m_aLastGhost[ClientId] = m_Time;
+				const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
+				const float Angle = Data.m_RenderCur.m_Angle / 256.0f;
+				const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcTrailColorMode, g_Config.m_XcTrailColor, ClientId, 0.0f, PlayerFade);
+				m_vGhosts.push_back({ClientId, Pos, direction(Angle), m_Time, Color});
+			}
+			continue;
+		}
+
 		if(Style == TRAIL_DASHES && GameClient()->m_XcSprites.Enabled())
 		{
 			// a dash every few units walked, lying along the way
 			const float Walked = distance(OldHead, Pos);
 			Trail.m_EmitDistance += Walked;
-			const float Spacing = 17.0f * Scale;
+			const float Spacing = 17.0f * Scale * 100.0f / g_Config.m_XcTrailDensity;
 			const vec2 Dir = Walked > 0.001f ? (Pos - OldHead) / Walked : vec2(1.0f, 0.0f);
 			int Budget = 8;
 			while(Trail.m_EmitDistance > Spacing && Budget-- > 0)
@@ -361,6 +403,7 @@ void CTrailFx::OnRender()
 		RenderDashes(Length);
 	else
 		m_vDashes.clear();
+	RenderGhosts(Length);
 
 	m_Particles.Update(Dt);
 	m_Particles.Render(GameClient()->m_FxRenderer);
