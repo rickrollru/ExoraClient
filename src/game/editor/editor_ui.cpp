@@ -1,6 +1,7 @@
 #include <base/color.h>
 #include <base/math.h>
 
+#include <game/client/components/xclient/editor/editor_style.h> // XClient
 #include <game/client/ui.h>
 #include <game/editor/editor.h>
 #include <game/editor/editor_ui.h>
@@ -15,6 +16,8 @@ void CEditor::UpdateTooltip(const void *pId, const CUIRect *pRect, const char *p
 
 ColorRGBA CEditor::GetButtonColor(const void *pId, int Checked)
 {
+	if(XcEditorStyle::Enabled()) // XClient
+		return XcEditorStyle::ButtonColor(Checked, Ui()->HotItem() == pId);
 	if(Checked < 0)
 		return ColorRGBA(0, 0, 0, 0.5f);
 
@@ -323,6 +326,12 @@ SEditResult<int> CEditor::UiDoValueSelector(const void *pId, CUIRect *pRect, con
 
 void CEditor::RenderBackground(CUIRect View, IGraphics::CTextureHandle Texture, float Size, float Brightness) const
 {
+	// XClient: flat panels instead of the noise texture
+	if(XcEditorStyle::Enabled() && Texture.Id() != m_CheckerTexture.Id())
+	{
+		View.Draw(Brightness <= 0.0f ? XcEditorStyle::Window() : XcEditorStyle::Panel(), IGraphics::CORNER_NONE, 0.0f);
+		return;
+	}
 	Graphics()->TextureSet(Texture);
 	Graphics()->QuadsBegin();
 	Graphics()->SetColor(Brightness, Brightness, Brightness, 1.0f);

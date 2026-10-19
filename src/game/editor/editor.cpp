@@ -29,6 +29,7 @@
 
 #include <generated/client_data.h>
 
+#include <game/client/components/xclient/editor/editor_style.h> // XClient
 #include <game/client/components/camera.h>
 #include <game/client/gameclient.h>
 #include <game/client/lineinput.h>
@@ -3648,7 +3649,7 @@ void CEditor::RenderMenubar(CUIRect MenuBar)
 	CUIRect FileButton;
 	static int s_FileButton = 0;
 	MenuBar.VSplitLeft(60.0f, &FileButton, &MenuBar);
-	if(DoButton_Ex(&s_FileButton, "File", 0, &FileButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
+	if(DoButton_Ex(&s_FileButton, "File", XcEditorStyle::Enabled() ? 11 : 0, &FileButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
 	{
 		static SPopupMenuId s_PopupMenuFileId;
 		Ui()->DoPopupMenu(&s_PopupMenuFileId, FileButton.x, FileButton.y + FileButton.h - 1.0f, 120.0f, 210.0f, this, PopupMenuFile, PopupProperties);
@@ -3659,7 +3660,7 @@ void CEditor::RenderMenubar(CUIRect MenuBar)
 	CUIRect ToolsButton;
 	static int s_ToolsButton = 0;
 	MenuBar.VSplitLeft(60.0f, &ToolsButton, &MenuBar);
-	if(DoButton_Ex(&s_ToolsButton, "Tools", 0, &ToolsButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
+	if(DoButton_Ex(&s_ToolsButton, "Tools", XcEditorStyle::Enabled() ? 11 : 0, &ToolsButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
 	{
 		static SPopupMenuId s_PopupMenuToolsId;
 		Ui()->DoPopupMenu(&s_PopupMenuToolsId, ToolsButton.x, ToolsButton.y + ToolsButton.h - 1.0f, 200.0f, 78.0f, this, PopupMenuTools, PopupProperties);
@@ -3670,7 +3671,7 @@ void CEditor::RenderMenubar(CUIRect MenuBar)
 	CUIRect SettingsButton;
 	static int s_SettingsButton = 0;
 	MenuBar.VSplitLeft(60.0f, &SettingsButton, &MenuBar);
-	if(DoButton_Ex(&s_SettingsButton, "Settings", 0, &SettingsButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
+	if(DoButton_Ex(&s_SettingsButton, "Settings", XcEditorStyle::Enabled() ? 11 : 0, &SettingsButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
 	{
 		static SPopupMenuId s_PopupMenuSettingsId;
 		Ui()->DoPopupMenu(&s_PopupMenuSettingsId, SettingsButton.x, SettingsButton.y + SettingsButton.h - 1.0f, 280.0f, 148.0f, this, PopupMenuSettings, PopupProperties);
@@ -3742,7 +3743,7 @@ void CEditor::Render()
 	str_copy(m_aTooltip, "");
 
 	// render checker
-	RenderBackground(View, m_CheckerTexture, 32.0f, 1.0f);
+	RenderBackground(View, m_CheckerTexture, 32.0f, XcEditorStyle::Enabled() ? 0.38f : 1.0f); // XClient: darker like Photoshop
 
 	UpdateBrushPicker();
 
@@ -3817,6 +3818,18 @@ void CEditor::Render()
 		ToolBar.VSplitLeft(m_ToolBoxWidth, &ModeBar, &ToolBar);
 
 		RenderBackground(StatusBar, g_pData->m_aImages[IMAGE_BACKGROUND_NOISE].m_Id, BackgroundScale, BackgroundBrightness);
+		// XClient: thin lines between the panels, like in Photoshop
+		if(XcEditorStyle::Enabled())
+		{
+			const ColorRGBA Line = XcEditorStyle::PanelLine();
+			const CUIRect aLines[] = {
+				{ToolBar.x - 2.0f, ToolBar.y + ToolBar.h + 2.0f, ToolBar.w + 4.0f + m_ToolBoxWidth, 1.0f},
+				{ToolBox.x + ToolBox.w + 2.0f, ToolBox.y - 2.0f, 1.0f, ToolBox.h + 4.0f},
+				{StatusBar.x - 2.0f, StatusBar.y - 2.0f, StatusBar.w + 4.0f, 1.0f},
+			};
+			for(const CUIRect &LineRect : aLines)
+				LineRect.Draw(Line, IGraphics::CORNER_NONE, 0.0f);
+		}
 		StatusBar.Margin(2.0f, &StatusBar);
 	}
 
@@ -4875,6 +4888,10 @@ void CEditor::OnInput(const IInput::CEvent &Event)
 void CEditor::OnRender()
 {
 	Ui()->SetMouseSlow(false);
+	// XClient: the editor draws its text in the menu font
+	const bool XcFont = XcEditorStyle::FontFace()[0] != '\0';
+	if(XcFont)
+		TextRender()->SetCustomFace(XcEditorStyle::FontFace());
 
 	// toggle gui
 	if(m_Dialog == DIALOG_NONE &&
@@ -4917,6 +4934,9 @@ void CEditor::OnRender()
 	Input()->Clear();
 
 	CLineInput::RenderCandidates();
+
+	if(XcFont) // XClient
+		TextRender()->SetCustomFace(g_Config.m_TcCustomFont);
 
 #if defined(CONF_DEBUG)
 	Map()->CheckIntegrity();

@@ -284,3 +284,6 @@ MACRO_CONFIG_INT(XcGlowOthers, xc_glow_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 // Music player (system media sessions: browser tabs, Spotify...)
 MACRO_CONFIG_INT(XcMusic, xc_music, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player: show and control what plays in the browser or a music app")
 MACRO_CONFIG_INT(XcMusicToasts, xc_music_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player: a short note when the next track starts")
+
+// Map editor
+MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the XClient style: flat dark panels, accent selection, the menu font")
