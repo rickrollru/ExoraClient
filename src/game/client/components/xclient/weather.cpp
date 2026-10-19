@@ -242,6 +242,7 @@ vec2 CWeather::ParticleSize(const SParticle &Particle) const
 
 void CWeather::DrawShapes()
 {
+	const FxGlow::CScope GlowScope(FxGlow::WEATHER);
 	m_vShapes.clear();
 	for(const SParticle &Particle : m_vParticles)
 	{

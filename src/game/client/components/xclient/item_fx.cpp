@@ -69,8 +69,9 @@ void CItemFx::Pickup(vec2 Pos, int Type, int Subtype)
 	case POWERUP_WEAPON: ByType = WeaponColor(Subtype); break;
 	default: ByType = Hex(0xFFB43D); break; // weapon armors
 	}
-	const float Size = g_Config.m_XcItemsGlowSize / 100.0f;
-	const float Strength = g_Config.m_XcItemsGlowStrength / 100.0f;
+	const FxGlow::SScale Glow = FxGlow::For(FxGlow::ITEMS);
+	const float Size = g_Config.m_XcItemsGlowSize / 100.0f * Glow.m_Radius;
+	const float Strength = std::min(g_Config.m_XcItemsGlowStrength / 100.0f * Glow.m_Strength, 2.6f);
 	const float Time = Client()->GlobalTime();
 	// each pickup breathes with its own phase
 	const float Phase = Pos.x * 0.013f + Pos.y * 0.007f;
@@ -104,6 +105,7 @@ void CItemFx::Pickup(vec2 Pos, int Type, int Subtype)
 
 void CItemFx::Projectile(vec2 Pos, vec2 Vel, int Weapon, float Alpha)
 {
+	const FxGlow::CScope GlowScope(FxGlow::ITEMS);
 	if(!g_Config.m_XcProjectileGlow || Alpha <= 0.0f)
 		return;
 	const ColorRGBA Color = ItemColor(WeaponColor(Weapon), 0.0f);
@@ -128,6 +130,7 @@ void CItemFx::Projectile(vec2 Pos, vec2 Vel, int Weapon, float Alpha)
 
 void CItemFx::Laser(vec2 From, vec2 To, ColorRGBA LaserColor, float Alpha)
 {
+	const FxGlow::CScope GlowScope(FxGlow::LASERS);
 	if(!g_Config.m_XcLaserGlow || Alpha <= 0.0f || distance(From, To) < 1.0f)
 		return;
 	const ColorRGBA Color = ItemColor(LaserColor, 0.0f);
@@ -137,6 +140,7 @@ void CItemFx::Laser(vec2 From, vec2 To, ColorRGBA LaserColor, float Alpha)
 
 void CItemFx::LaserBeam(vec2 From, vec2 To, ColorRGBA OuterColor, ColorRGBA InnerColor, float Fade, float Alpha)
 {
+	const FxGlow::CScope GlowScope(FxGlow::LASERS);
 	if(Fade <= 0.0f || Alpha <= 0.0f)
 		return;
 	const ColorRGBA Color = ItemColor(OuterColor, 0.0f);

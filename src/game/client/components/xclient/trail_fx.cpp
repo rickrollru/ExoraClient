@@ -139,6 +139,7 @@ void CTrailFx::Emit(int ClientId, vec2 Pos, vec2 Dir, float Scale)
 
 void CTrailFx::OnRender()
 {
+	const FxGlow::CScope GlowScope(FxGlow::TRAIL);
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
