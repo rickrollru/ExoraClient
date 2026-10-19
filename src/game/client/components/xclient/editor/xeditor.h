@@ -9,6 +9,7 @@
 #include <game/mapitems.h>
 #include <base/vmath.h>
 
+#include <engine/graphics.h>
 #include <engine/input.h>
 
 #include <game/client/components/xclient/ui/imgui_backend.h>
@@ -241,6 +242,21 @@ private:
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};
 	int m_PaletteSelected = 0;
+
+	// the picture card with the color correction (xeditor_images.cpp)
+	const class CEditorImage *m_pAdjustImage = nullptr;
+	int m_aAdjust[4] = {}; // brightness, contrast, saturation in -100..100, hue in degrees
+	std::vector<uint8_t> m_vAdjustBackup; // the pixels before the last apply, for one undo
+	IGraphics::CTextureHandle m_ImagePreview;
+	void RenderImageCard();
+	void AdjustPixels(uint8_t *pData, size_t NumPixels) const;
+	void UpdateImagePreview(const class CEditorImage *pImage);
+	void ReloadImageTexture(class CEditorImage *pImage);
+
+	// map themes: a background group with a gradient (xeditor_images.cpp)
+	bool m_ThemesRequest = false;
+	void RenderThemes();
+	void AddThemeBackground(int Theme);
 
 	// small widgets in the editor style
 	bool IconButton(const char *pId, const char *pIcon, const char *pTooltip, bool Active = false, bool Enabled = true, float Size = 0.0f);
