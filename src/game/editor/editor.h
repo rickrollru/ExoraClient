@@ -734,6 +734,8 @@ public:
 	std::vector<float> m_vXcGuidesY;
 	static CUi::EPopupMenuFunctionResult XcPopupPreferences(void *pContext, CUIRect View, bool Active);
 	void XcOpenPreferences();
+	static CUi::EPopupMenuFunctionResult XcPopupAnimate(void *pContext, CUIRect View, bool Active);
+	void XcOpenAnimate();
 	void XcRenderRulers(CUIRect View);
 	void ShowHelp();
 	void Exit();

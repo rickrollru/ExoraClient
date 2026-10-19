@@ -82,6 +82,16 @@ void CEditor::XcRenderToolStrip(CUIRect Strip)
 		if(DoButton_FontIcon(&s_aButtons[Tool], s_aTools[Tool].m_pIcon, m_XcTool == Tool ? 1 : 0, &Button, BUTTONFLAG_LEFT, s_aTools[Tool].m_pHint, IGraphics::CORNER_ALL, 10.0f))
 			m_XcTool = Tool;
 	}
+	// After Effects like animation presets for the selection
+	{
+		Strip.HSplitTop(10.0f, nullptr, &Strip);
+		CUIRect Button;
+		Strip.HSplitTop(24.0f, &Button, &Strip);
+		Strip.HSplitTop(3.0f, nullptr, &Strip);
+		static int s_AnimateButton = 0;
+		if(DoButton_FontIcon(&s_AnimateButton, "\xef\x80\x88", 0, &Button, BUTTONFLAG_LEFT, XcUi::Tr("Animation presets (After Effects): sway, spin, pulse and more for the selected quads"), IGraphics::CORNER_ALL, 10.0f))
+			XcOpenAnimate();
+	}
 	if(m_XcTool == XC_TOOL_ERASER)
 	{
 		// the eraser size under the tools
