@@ -135,7 +135,7 @@ void CJumpFx::EmitJump(vec2 Feet, bool AirJump)
 	{
 		if(GameClient()->m_XcSprites.Enabled())
 		{
-			// one glowing circle lying on the ground, like the jump circles of the Minecraft clients
+			// one glowing circle lying on the ground
 			CXcParticles::SParticle Fx;
 			Fx.m_Type = CXcParticles::EType::JUMP_CIRCLE;
 			Fx.m_Sprite = CXcSprites::SPRITE_JUMP_RING;
