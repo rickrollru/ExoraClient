@@ -16,6 +16,8 @@ namespace XcUi
 
 	const char *Tr(const char *pEnglish)
 	{
+		if(!pEnglish)
+			return "";
 		static const std::unordered_map<std::string_view, const char *> s_Russian = {
 			// navigation
 			{"Home", "Главная"},
