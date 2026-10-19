@@ -54,9 +54,11 @@ void CXcMenu::RenderVisualsTee()
 		EndCard();
 	}
 
-	const char *apTrails[] = {Tr("Ribbon"), Tr("Sparks"), Tr("Stars"), Tr("Comet"), Tr("Dashes")};
-	if(StyleCard("##fx_trail", Tr("Trail"), Tr("A glowing ribbon behind the tee"), "xc_trail", &g_Config.m_XcTrail, apTrails, 5))
+	const char *apTrails[] = {Tr("Ribbon"), Tr("Sparks"), Tr("Stars"), Tr("Comet"), Tr("Dashes"), Tr("Ghosts")};
+	if(StyleCard("##fx_trail", Tr("Trail"), Tr("A glowing ribbon behind the tee"), "xc_trail", &g_Config.m_XcTrail, apTrails, 6))
 	{
+		if(g_Config.m_XcTrail >= 2 && g_Config.m_XcTrail != 4)
+			ConfigSlider(Tr("Density"), "xc_trail_density", &g_Config.m_XcTrailDensity, 25, 300, "%d%%");
 		if(g_Config.m_XcTrail == 5)
 		{
 			const char *apDashes[] = {Tr("Stretch"), Tr("Pop"), Tr("Spin"), Tr("Blink"), Tr("Spark")};

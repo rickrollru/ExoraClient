@@ -410,6 +410,8 @@ namespace XcUi
 			{"Yes", "Да"},
 			{"Show the guide", "Показать гид"},
 			{"Clear guides", "Убрать направляющие"},
+			{"Density", "Плотность"},
+			{"Ghosts", "Призраки"},
 			{"Also on friends", "Ещё на друзьях"},
 			{"Glow size", "Размер свечения"},
 			{"Height", "Высота"},
