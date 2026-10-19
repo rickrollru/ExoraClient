@@ -341,6 +341,18 @@ void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
 	{
 		Weapon = std::clamp(GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_Weapon, 0, NUM_WEAPONS - 1);
 		Ammo = GameClient()->m_Snap.m_aCharacters[ClientId].m_Cur.m_AmmoCount;
+		// the tee you play changes its weapon at once (prediction), the server snapshot comes a ping later:
+		// show the predicted one like the cursor does, so the HUD switches together with the tee
+		if(Client()->State() != IClient::STATE_DEMOPLAYBACK && ClientId == GameClient()->m_Snap.m_LocalClientId)
+		{
+			const int Predicted = GameClient()->m_aClients[ClientId].m_Predicted.m_ActiveWeapon;
+			if(Predicted >= 0 && Predicted < NUM_WEAPONS)
+			{
+				if(Predicted != Weapon)
+					Ammo = 0;
+				Weapon = Predicted;
+			}
+		}
 	}
 	static const char *const s_apNames[NUM_WEAPONS] = {"Hammer", "Gun", "Shotgun", "Grenade", "Laser", "Ninja"};
 	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
