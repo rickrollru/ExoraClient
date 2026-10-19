@@ -16,8 +16,14 @@
 #include <game/client/components/xclient/ui/widgets.h>
 #include <game/editor/editor.h>
 #include <game/editor/enums.h>
+#include <game/editor/explanations.h>
 #include <game/editor/mapitems/image.h>
 #include <game/editor/mapitems/layer_group.h>
+#include <game/editor/mapitems/layer_speedup.h>
+#include <game/editor/mapitems/layer_switch.h>
+#include <game/editor/mapitems/layer_tele.h>
+#include <game/editor/mapitems/layer_tiles.h>
+#include <game/editor/mapitems/layer_tune.h>
 #include <game/editor/mapitems/sound.h>
 
 #include <engine/external/imgui/imgui.h>
@@ -572,6 +578,9 @@ void CXcEditorUi::RenderRightPanel()
 			RenderCaptureCard(CAPTURE_GROUP, "##group", Tr("Group"), aSubtitle);
 		}
 
+		if(E.m_Mode == MODE_LAYERS && pLayer && pLayer->m_Type == LAYERTYPE_TILES)
+			RenderInspector(std::static_pointer_cast<CLayerTiles>(pLayer));
+
 		if(E.m_Mode == MODE_IMAGES)
 		{
 			Description(Tr("Click a picture on the left to see it here. Right click it to replace, embed, export or delete it."));
@@ -584,4 +593,121 @@ void CXcEditorUi::RenderRightPanel()
 			Description(Tr("Select a group or a layer on the left"));
 	}
 	ImGui::End();
+}
+
+// the tile under the mouse: what it is, how it is turned and the numbers of the special layers
+void CXcEditorUi::RenderInspector(const std::shared_ptr<CLayerTiles> &pLayer)
+{
+	CEditor &E = *m_pEditor;
+	CEditorMap *pMap = E.Map();
+	const STheme &t = Theme();
+	const vec2 Mouse = E.Ui()->UpdatedMousePos();
+	if(E.Ui()->MouseInside(&m_View))
+	{
+		const vec2 World = E.MapView()->MouseWorldPos();
+		m_InspectX = pLayer->ConvertX(World.x);
+		m_InspectY = pLayer->ConvertY(World.y);
+	}
+	(void)Mouse;
+	if(m_InspectX < 0 || m_InspectY < 0 || m_InspectX >= pLayer->m_Width || m_InspectY >= pLayer->m_Height)
+		return;
+	const CTile Tile = pLayer->GetTile(m_InspectX, m_InspectY);
+
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	pDraw->ChannelsSplit(2);
+	pDraw->ChannelsSetCurrent(1);
+	const ImVec2 CardMin = ImGui::GetCursorScreenPos();
+	const float Width = ImGui::GetContentRegionAvail().x;
+	const float Pad = S(12.0f);
+	ImGui::SetCursorScreenPos(ImVec2(CardMin.x + Pad, CardMin.y + Pad));
+	ImGui::BeginGroup();
+	ImGui::PushFont(Fonts().m_pTitle);
+	ImGui::TextColored(t.m_Text, "%s", Tr("Under the mouse"));
+	ImGui::PopFont();
+	ImGui::PushFont(Fonts().m_pSmall);
+	ImGui::TextColored(t.m_TextMuted, "x %d  y %d", m_InspectX, m_InspectY);
+	ImGui::Dummy(ImVec2(Width - Pad * 2.0f, S(4.0f)));
+	const auto Row = [&](const char *pName, const char *pValue) {
+		ImGui::TextColored(t.m_TextSecondary, "%s", pName);
+		ImGui::SameLine(Pad + (Width - Pad * 2.0f) * 0.42f);
+		ImGui::TextColored(t.m_Text, "%s", pValue);
+	};
+	char aBuf[128];
+	str_format(aBuf, sizeof(aBuf), "%d", Tile.m_Index);
+	Row(Tr("Tile"), Tile.m_Index ? aBuf : Tr("empty"));
+	if(Tile.m_Index)
+	{
+		// rotation and mirrors the same way the editor stores them
+		const int Rotation = (Tile.m_Flags & TILEFLAG_ROTATE) ? 90 : 0;
+		const bool FlipX = Tile.m_Flags & TILEFLAG_XFLIP;
+		const bool FlipY = Tile.m_Flags & TILEFLAG_YFLIP;
+		const int Angle = (Rotation + (FlipX && FlipY ? 180 : 0)) % 360;
+		str_format(aBuf, sizeof(aBuf), "%d°%s", Angle, FlipX != FlipY ? (FlipX ? Tr(", mirrored") : Tr(", flipped")) : "");
+		Row(Tr("Rotation"), aBuf);
+	}
+	// the numbers of the special layers
+	if(pLayer->m_HasTele && pMap->m_pTeleLayer)
+	{
+		const CTeleTile &Tele = pMap->m_pTeleLayer->m_pTeleTile[m_InspectY * pMap->m_pTeleLayer->m_Width + m_InspectX];
+		str_format(aBuf, sizeof(aBuf), "%d", Tele.m_Number);
+		Row(Tr("Teleporter number"), aBuf);
+	}
+	else if(pLayer->m_HasSwitch && pMap->m_pSwitchLayer)
+	{
+		const CSwitchTile &Switch = pMap->m_pSwitchLayer->m_pSwitchTile[m_InspectY * pMap->m_pSwitchLayer->m_Width + m_InspectX];
+		str_format(aBuf, sizeof(aBuf), "%d", Switch.m_Number);
+		Row(Tr("Switch number"), aBuf);
+		str_format(aBuf, sizeof(aBuf), "%d", Switch.m_Delay);
+		Row(Tr("Delay"), aBuf);
+	}
+	else if(pLayer->m_HasSpeedup && pMap->m_pSpeedupLayer)
+	{
+		const CSpeedupTile &Speedup = pMap->m_pSpeedupLayer->m_pSpeedupTile[m_InspectY * pMap->m_pSpeedupLayer->m_Width + m_InspectX];
+		str_format(aBuf, sizeof(aBuf), "%d", Speedup.m_Force);
+		Row(Tr("Force"), aBuf);
+		str_format(aBuf, sizeof(aBuf), "%d", Speedup.m_MaxSpeed);
+		Row(Tr("Max speed"), aBuf);
+		str_format(aBuf, sizeof(aBuf), "%d°", Speedup.m_Angle);
+		Row(Tr("Angle"), aBuf);
+	}
+	else if(pLayer->m_HasTune && pMap->m_pTuneLayer)
+	{
+		const CTuneTile &Tune = pMap->m_pTuneLayer->m_pTuneTile[m_InspectY * pMap->m_pTuneLayer->m_Width + m_InspectX];
+		str_format(aBuf, sizeof(aBuf), "%d", Tune.m_Number);
+		Row(Tr("Tune zone"), aBuf);
+	}
+	// what the tile does in the game
+	int Layer = NUM_LAYERS;
+	if(pLayer == pMap->m_pGameLayer)
+		Layer = LAYER_GAME;
+	else if(pLayer == pMap->m_pFrontLayer)
+		Layer = LAYER_FRONT;
+	else if(pLayer == pMap->m_pSwitchLayer)
+		Layer = LAYER_SWITCH;
+	else if(pLayer == pMap->m_pTeleLayer)
+		Layer = LAYER_TELE;
+	else if(pLayer == pMap->m_pSpeedupLayer)
+		Layer = LAYER_SPEEDUP;
+	else if(pLayer == pMap->m_pTuneLayer)
+		Layer = LAYER_TUNE;
+	if(Layer != NUM_LAYERS && Tile.m_Index)
+	{
+		const char *pExplanation = CExplanations::Explain(CExplanations::EGametype::DDNET, Tile.m_Index, Layer);
+		if(pExplanation)
+		{
+			ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+			ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + Width - Pad * 2.0f);
+			ImGui::TextColored(t.m_TextMuted, "%s", pExplanation);
+			ImGui::PopTextWrapPos();
+		}
+	}
+	ImGui::PopFont();
+	ImGui::EndGroup();
+	const ImVec2 CardMax(CardMin.x + Width, ImGui::GetItemRectMax().y + Pad);
+	pDraw->ChannelsSetCurrent(0);
+	pDraw->AddRectFilled(CardMin, CardMax, Col(t.m_Card), S(12.0f));
+	pDraw->AddRect(CardMin, CardMax, Col(t.m_Border), S(12.0f));
+	pDraw->ChannelsMerge();
+	ImGui::SetCursorScreenPos(ImVec2(CardMin.x, CardMax.y + S(10.0f)));
+	ImGui::Dummy(ImVec2(Width, 0.0f));
 }
