@@ -18,7 +18,7 @@ A new menu, a new HUD, glow and effects on almost everything — and still plain
 > [TClient](https://github.com/sjrc6/TaterClient-ddnet), which is based on [DDNet](https://github.com/ddnet/ddnet).
 > It is not the original TClient or DDNet software (zlib license, clause 2).
 
-![The game with the new HUD, a cape and a halo](docs/xclient/screenshots/game.jpg)
+![The game with the new HUD, a cape and a halo](docs/xclient/screenshots/en/game.jpg)
 
 ---
 
@@ -51,8 +51,8 @@ The menu fully replaces the default one and opens with <kbd>Esc</kbd>.
 - **TClient:** all TClient settings in one section.
 
 <p align="center">
-  <img src="docs/xclient/screenshots/visuals.jpg" width="49%" alt="The Visuals tab">
-  <img src="docs/xclient/screenshots/player.jpg" width="49%" alt="Player and dummy">
+  <img src="docs/xclient/screenshots/en/visuals.jpg" width="49%" alt="The Visuals tab">
+  <img src="docs/xclient/screenshots/en/player.jpg" width="49%" alt="Player and dummy">
 </p>
 
 ### ✨ Visuals
@@ -80,7 +80,7 @@ Default DDNet effects (smoke, splashes, lasers) can be replaced with our own. Pe
 - **Music player:** shows and controls what plays in your browser (YouTube, SoundCloud, Yandex Music) or Spotify.
 
 <p align="center">
-  <img src="docs/xclient/screenshots/votes.jpg" width="70%" alt="The Votes tab">
+  <img src="docs/xclient/screenshots/en/votes.jpg" width="70%" alt="The Votes tab">
 </p>
 
 ### 🗺 Map editor
