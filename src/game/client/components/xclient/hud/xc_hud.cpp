@@ -226,7 +226,7 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const float IconGap = 7.0f * U;
 	const float Height = 42.0f * U;
 	const float LogoRadius = 5.5f * U;
-	const char *pName = "XClient";
+	const char *pName = "Exora Client";
 	float Width = Pad + LogoRadius * 2.0f + 8.0f * U + pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
 	for(int i = 0; i < 4; i++)
 		Width += Gap * 2.0f + 1.0f + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apTexts[i]).x;

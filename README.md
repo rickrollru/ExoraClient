@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✦ XClient
+# ✦ Exora Client
 
 **Красивый клиент для DDNet**
 
@@ -10,7 +10,7 @@
 
 </div>
 
-> **Изменённая версия / Altered version.** XClient — неофициальный модифицированный форк
+> **Изменённая версия / Altered version.** Exora Client — неофициальный модифицированный форк
 > [TClient](https://github.com/sjrc6/TaterClient-ddnet), который основан на [DDNet](https://github.com/ddnet/ddnet).
 > Это не оригинальный TClient и не DDNet. Название проекта рабочее.
 > This is an unofficial altered fork of TClient/DDNet and is not the original software (zlib license, clause 2).
@@ -21,11 +21,11 @@
 
 ## Что это
 
-XClient — клиент для [DDraceNetwork](https://ddnet.org) с современным оформлением. Игра, физика и сеть
-остались как в DDNet: XClient играет на любых серверах DDNet. Поверх добавлены новое меню, новый HUD и визуальные эффекты.
+Exora Client — клиент для [DDraceNetwork](https://ddnet.org) с современным оформлением. Игра, физика и сеть
+остались как в DDNet: Exora Client играет на любых серверах DDNet. Поверх добавлены новое меню, новый HUD и визуальные эффекты.
 
 **Главное правило: никаких читов.** Ни ботов, ни автохука, ни авто-фейза, ни ESP. Только внешний вид, HUD и
-удобство. Всё, что делает XClient, видишь только ты.
+удобство. Всё, что делает Exora Client, видишь только ты.
 
 ## Возможности
 
@@ -40,7 +40,7 @@ XClient — клиент для [DDraceNetwork](https://ddnet.org) с совре
   Меню запоминает, где ты его закрыл.
 - **Главная:** профиль со статистикой с ddnet.org, друзья онлайн, новости, информация о карте (маппер, сложность, топ).
 - **Серверы:** карточки серверов с фильтрами Novice / Moderate / Brutal / Insane, избранное и поиск.
-- **Конфиги:** сохранение настроек и обмен ими коротким кодом. Чужой код меняет только настройки XClient.
+- **Конфиги:** сохранение настроек и обмен ими коротким кодом. Чужой код меняет только настройки Exora Client.
 - **Демки:** просмотр, переименование и удаление.
 - **Игрок:** скины и цвета для себя и для дамми; дамми подключается и переключается прямо из меню.
 - **Голосование:** голосовать за/против, запускать голосования сервера, кик и перенос в зрители.
@@ -111,7 +111,7 @@ git clone --recursive https://github.com/rickrollru/KeyClient
 ```
 
 1. Открой папку проекта в Visual Studio (**Файл → Открыть → Папка**).
-2. Вверху выбери конфигурацию **XClient Release** (для игры) или **XClient Debug** (для поиска ошибок).
+2. Вверху выбери конфигурацию **Exora Client Release** (для игры) или **Exora Client Debug** (для поиска ошибок).
 3. Дождись в окне «Вывод» строки «Создание CMake завершено».
 4. **Сборка → Собрать всё** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>). Игра появится в папке `build-release`.
 5. Запуск — зелёная кнопка **▶ DDNet.exe**.
@@ -130,13 +130,13 @@ cmake .. -G Ninja && ninja game-client game-server
 
 ## Настройки и команды
 
-Настройки XClient начинаются с `xc_` и хранятся в `settings_xclient.cfg` в папке DDNet
+Настройки Exora Client начинаются с `xc_` и хранятся в `settings_xclient.cfg` в папке DDNet
 (`%APPDATA%\DDNet` на Windows). Обычно всё настраивается через меню, но есть и консоль (<kbd>F1</kbd>):
 
 | Команда | Что делает |
 |---|---|
 | `xc_menu` | открыть / закрыть новое меню |
-| `xc_new_menu 0` / `1` | старое / новое меню (в старом меню есть кнопка **XClient**, чтобы вернуться) |
+| `xc_new_menu 0` / `1` | старое / новое меню (в старом меню есть кнопка **Exora Client**, чтобы вернуться) |
 | `xc_hud_edit` | редактор HUD |
 | `xc_focus` | режим фокуса |
 | `xc_music_play_pause`, `xc_music_next`, `xc_music_prev` | управление музыкой |
@@ -146,7 +146,7 @@ cmake .. -G Ninja && ninja game-client game-server
 
 | Где | Что |
 |---|---|
-| `src/game/client/components/xclient/` | весь код XClient: эффекты, HUD, музыка |
+| `src/game/client/components/xclient/` | весь код Exora Client: эффекты, HUD, музыка |
 | `…/xclient/ui/` | новое меню на Dear ImGui |
 | `…/xclient/hud/` | HUD, таблица игроков, редактор HUD |
 | `…/xclient/editor/` | редактор карт «как Фотошоп» |
@@ -155,7 +155,7 @@ cmake .. -G Ninja && ninja game-client game-server
 | `data/xclient/` | шрифты, звуки, текстуры эффектов, шапки |
 | `CLAUDE.md` | ТЗ и журнал разработки |
 
-Вставки XClient в файлы DDNet / TClient помечены комментарием `// XClient`.
+Вставки Exora Client в файлы DDNet / TClient помечены комментарием `// Exora Client`.
 Документация оригинального TClient: [docs/tclient/README_TClient.md](docs/tclient/README_TClient.md).
 
 ## Спасибо и лицензии
