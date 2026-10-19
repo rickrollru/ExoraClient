@@ -15,6 +15,8 @@
 
 class CFileBrowser : public CEditorComponent
 {
+	friend class CXcEditorUi; // XClient: the new interface draws the dialog
+
 public:
 	enum class EFileType
 	{
@@ -33,6 +35,7 @@ public:
 	bool IsValidSaveFilename() const;
 
 	void OnEditorClose();
+	void XcOpenSelected(); // XClient
 	void OnDialogClose();
 
 private:
