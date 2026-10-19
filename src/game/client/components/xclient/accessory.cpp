@@ -1,6 +1,7 @@
 #include "accessory.h"
 
 #include "fx_renderer.h"
+#include "sprite_fx.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -164,7 +165,32 @@ void CAccessory::RenderHalo(vec2 Head, float Scale, float Tilt, float Squash, fl
 {
 	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
 	const vec2 Center = Rotate(Head + vec2(0.0f, -14.0f * Scale * Squash), Head, Tilt);
-	GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Ring(Center, vec2(15.0f, 15.0f * 0.32f * Squash) * Scale, 3.0f * Scale, BaseColor(0.0f, Alpha)).Rotate(Tilt), 7.0f * Scale, 0.5f);
+	const vec2 Radius = vec2(15.0f, 15.0f * 0.32f * Squash) * Scale;
+	const ColorRGBA Color = BaseColor(0.0f, Alpha);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	Fx.AddWorld(FxShape::Ring(Center, Radius, 3.0f * Scale, Color).Rotate(Tilt));
+	// the glow is built from soft lights along the ring, so it is equally wide all around;
+	// the glow of the flattened ring itself would be flattened too: thin on top, thick at the sides
+	const FxGlow::SScale Glow = FxGlow::g_Current;
+	if(Glow.m_Strength <= 0.0f || Glow.m_Radius <= 0.0f)
+		return;
+	const int NumLights = 18;
+	const float c = std::cos(Tilt), s = std::sin(Tilt);
+	CXcSprites &Sprites = GameClient()->m_XcSprites;
+	for(int i = 0; i < NumLights; i++)
+	{
+		const float a = 2.0f * pi * i / NumLights;
+		const vec2 Local(std::cos(a) * Radius.x, std::sin(a) * Radius.y);
+		const vec2 Pos = Center + vec2(Local.x * c - Local.y * s, Local.x * s + Local.y * c);
+		if(Sprites.Enabled())
+		{
+			// a colored layer keeps the glow visible on bright maps, the light is added on top
+			Sprites.Queue(CXcSprites::SPRITE_GLOW, false, Pos, 13.0f * Scale * Glow.m_Radius, 0.0f, Color.WithMultipliedAlpha(std::min(0.16f * Glow.m_Strength, 0.5f)));
+			Sprites.Queue(CXcSprites::SPRITE_GLOW, true, Pos, 18.0f * Scale * Glow.m_Radius, 0.0f, Color.WithMultipliedAlpha(0.4f * Glow.m_Strength));
+		}
+		else
+			Fx.AddWorld(FxShape::Circle(Pos, 1.0f * Scale, Color).GlowOnly(5.0f * Scale, 0.18f).Additive()); // Glow() applies the scope
+	}
 }
 
 void CAccessory::RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
