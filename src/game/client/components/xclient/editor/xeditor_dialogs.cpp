@@ -16,11 +16,11 @@
 
 using namespace XcUi;
 
-void CXcEditorUi::ShowMessage(const char *pMessage)
+void CXcEditorUi::ShowMessage(const char *pMessage, const char *pTitle)
 {
 	// the same message twice is shown once, like the classic popups
-	if(std::find(m_vMessages.begin(), m_vMessages.end(), pMessage) == m_vMessages.end())
-		m_vMessages.emplace_back(pMessage);
+	if(std::none_of(m_vMessages.begin(), m_vMessages.end(), [&](const SMessage &Message) { return Message.m_Text == pMessage; }))
+		m_vMessages.push_back({pMessage, pTitle ? pTitle : ""});
 }
 
 // the card of a dialog in the middle of the screen over a dark veil
@@ -140,9 +140,10 @@ void CXcEditorUi::RenderMessages()
 	bool Close = false;
 	if(BeginDialog("##xe_message", Width))
 	{
-		Header(Tr("Something went wrong"));
+		const SMessage &Message = m_vMessages.front();
+		Header(Message.m_Title.empty() ? Tr("Something went wrong") : Tr(Message.m_Title.c_str()));
 		ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
-		Description(Tr(m_vMessages.front().c_str()), Inner);
+		Description(Tr(Message.m_Text.c_str()), Inner);
 		ImGui::Dummy(ImVec2(0.0f, S(10.0f)));
 		if(Button(Tr("OK"), true, Inner) || ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter) || ImGui::IsKeyPressed(ImGuiKey_Escape))
 			Close = true;

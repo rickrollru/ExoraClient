@@ -12,6 +12,8 @@
 #include <engine/graphics.h>
 #include <engine/input.h>
 
+#include "xeditor_coop.h"
+
 #include <game/client/components/xclient/ui/imgui_backend.h>
 #include <game/client/lineinput.h>
 #include <game/client/ui.h>
@@ -67,7 +69,7 @@ public:
 	void OnInput(const IInput::CEvent &Event);
 	void OpenMapDetails() { m_MapDetailsRequest = true; }
 	// an error or a notice of the editor, shown in a dialog of the new interface
-	void ShowMessage(const char *pMessage);
+	void ShowMessage(const char *pMessage, const char *pTitle = nullptr); // the title: "Something went wrong" when not given
 	// true while the mouse is over a panel, a menu or the capsule: the map must not react then
 	bool WantsMouse() const { return m_WantsMouse; }
 
@@ -225,7 +227,12 @@ private:
 	// questions and warnings of the editor (unsaved changes, remove a used image...) and error messages
 	bool m_EventOpen = false;
 	bool m_EventCloseAfterPress = false;
-	std::vector<std::string> m_vMessages;
+	struct SMessage
+	{
+		std::string m_Text;
+		std::string m_Title;
+	};
+	std::vector<SMessage> m_vMessages;
 	void RenderEventDialog();
 	void RenderMessages();
 	bool DialogOpen() const { return m_EventOpen || !m_vMessages.empty(); }
@@ -264,6 +271,16 @@ private:
 	void AdjustPixels(uint8_t *pData, size_t NumPixels) const;
 	void UpdateImagePreview(const class CEditorImage *pImage);
 	void ReloadImageTexture(class CEditorImage *pImage);
+
+	// editing one map together (xeditor_coop.cpp, the window in xeditor_coop_ui.cpp)
+	CXcCoop m_Coop;
+	bool m_CoopRequest = false;
+	char m_aCoopPort[8] = {};
+	char m_aCoopAddress[128] = {};
+	char m_aCoopError[160] = {};
+	void RenderCoop();
+	void RenderCoopCursors();
+	void UpdateCoop();
 
 	// map themes: a background group with a gradient (xeditor_images.cpp)
 	bool m_ThemesRequest = false;
