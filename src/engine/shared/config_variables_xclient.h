@@ -126,6 +126,7 @@ MACRO_CONFIG_INT(XcJumpFxAir, xc_jump_fx_air, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_
 MACRO_CONFIG_INT(XcLandFx, xc_land_fx, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ring when landing after a fall")
 MACRO_CONFIG_INT(XcRunDust, xc_run_dust, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dust under the feet when running")
 MACRO_CONFIG_INT(XcJumpFxSize, xc_jump_fx_size, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of jump and run effects in percent")
+MACRO_CONFIG_INT(XcJumpFxDuration, xc_jump_fx_duration, 900, 200, 3000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long the jump circles stay, in milliseconds (soft light look)")
 MACRO_CONFIG_COL(XcJumpFxColor, xc_jump_fx_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of jump effects") // #4F8CFF
 MACRO_CONFIG_INT(XcJumpFxColorMode, xc_jump_fx_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Jump effect color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_INT(XcJumpFxSelf, xc_jump_fx_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for yourself")
