@@ -2979,6 +2979,7 @@ if(CLIENT)
     components/xclient/hud/xc_hud.cpp
     components/xclient/editor/editor_guide.cpp
     components/xclient/editor/editor_style.cpp
+    components/xclient/editor/gif_import.cpp
     components/xclient/editor/editor_style.h
     components/xclient/editor/image_tools.cpp
     components/xclient/editor/image_tools.h
