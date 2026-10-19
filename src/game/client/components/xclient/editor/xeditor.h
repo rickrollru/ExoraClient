@@ -15,6 +15,7 @@
 #include <game/client/ui.h>
 #include <game/client/ui_rect.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -125,6 +126,10 @@ private:
 	void SetPending(int Kind, int Call, int Prop, int Value, EEditState State);
 	void RenderCaptureCard(int Kind, const char *pId, const char *pTitle, const char *pSubtitle, int SkipButtons = 0);
 	void RenderProp(int Kind, int Call, int Index, const SXcCapturedProp &Prop, float LabelWidth);
+	// the tile under the mouse (stays on the last tile while the mouse is over the panels)
+	int m_InspectX = -1;
+	int m_InspectY = -1;
+	void RenderInspector(const std::shared_ptr<class CLayerTiles> &pLayer);
 
 	// layers panel state
 	int m_RenameGroup = -1;
