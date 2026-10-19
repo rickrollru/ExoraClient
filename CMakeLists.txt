@@ -3017,6 +3017,7 @@ if(CLIENT)
     components/xclient/editor/xeditor.h
     components/xclient/editor/xeditor_props.cpp
     components/xclient/editor/xeditor_files.cpp
+    components/xclient/editor/xeditor_dialogs.cpp
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/item_fx.cpp

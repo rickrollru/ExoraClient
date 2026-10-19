@@ -3470,6 +3470,12 @@ void CEditor::ShowFileDialogError(const char *pFormat, ...)
 	str_format_v(aMessage, sizeof(aMessage), pFormat, VarArgs);
 	va_end(VarArgs);
 
+	if(XcNewUi()) // XClient
+	{
+		m_XcUi.ShowMessage(aMessage);
+		return;
+	}
+
 	auto ContextIterator = m_PopupMessageContexts.find(aMessage);
 	CUi::SMessagePopupContext *pContext;
 	if(ContextIterator != m_PopupMessageContexts.end())

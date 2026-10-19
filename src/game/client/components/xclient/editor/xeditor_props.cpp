@@ -40,7 +40,7 @@ void CXcEditorUi::SetPending(int Kind, int Call, int Prop, int Value, EEditState
 	Capture.m_PendingState = State;
 }
 
-void CXcEditorUi::RunCapture(int Kind, CUi::FPopupMenuFunction pfnPopup, void *pContext)
+CUi::EPopupMenuFunctionResult CXcEditorUi::RunCapture(int Kind, CUi::FPopupMenuFunction pfnPopup, void *pContext, bool Active)
 {
 	CEditor &E = *m_pEditor;
 	SCaptureState &Capture = m_aCaptures[Kind];
@@ -55,10 +55,10 @@ void CXcEditorUi::RunCapture(int Kind, CUi::FPopupMenuFunction pfnPopup, void *p
 	Capture.m_pPendingButton = nullptr;
 	// out of sight: the popup draws its labels and edit boxes there, nothing can be clicked
 	const CUIRect Hidden = {-10000.0f, -10000.0f, 200.0f, 1000.0f};
-	const auto Result = pfnPopup(pContext, Hidden, true);
-	(void)Result;
+	const CUi::EPopupMenuFunctionResult Result = pfnPopup(pContext, Hidden, Active);
 	E.m_XcCapture.m_Active = false;
 	Capture.m_Result = E.m_XcCapture;
+	return Result;
 }
 
 void CXcEditorUi::RenderProp(int Kind, int Call, int Index, const SXcCapturedProp &Prop, float LabelWidth)
