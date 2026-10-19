@@ -19,7 +19,7 @@
 > Это не оригинальный TClient и не DDNet.
 > This is an unofficial altered fork of TClient/DDNet and is not the original software (zlib license, clause 2).
 
-![Игра с новым HUD, плащом и нимбом](docs/xclient/screenshots/game.jpg)
+![Игра с новым HUD, плащом и нимбом](docs/xclient/screenshots/ru/game.jpg)
 
 ---
 
@@ -51,8 +51,8 @@ Exora Client — клиент для [DDraceNetwork](https://ddnet.org) с со�
 - **TClient:** все настройки TClient собраны в одном разделе.
 
 <p align="center">
-  <img src="docs/xclient/screenshots/visuals.jpg" width="49%" alt="Вкладка «Визуалы»">
-  <img src="docs/xclient/screenshots/player.jpg" width="49%" alt="Игрок и дамми">
+  <img src="docs/xclient/screenshots/ru/visuals.jpg" width="49%" alt="Вкладка «Визуалы»">
+  <img src="docs/xclient/screenshots/ru/player.jpg" width="49%" alt="Игрок и дамми">
 </p>
 
 ### ✨ Визуалы
@@ -81,7 +81,7 @@ Exora Client — клиент для [DDraceNetwork](https://ddnet.org) с со�
   или в Spotify.
 
 <p align="center">
-  <img src="docs/xclient/screenshots/votes.jpg" width="70%" alt="Вкладка «Голосование»">
+  <img src="docs/xclient/screenshots/ru/votes.jpg" width="70%" alt="Вкладка «Голосование»">
 </p>
 
 ### 🗺 Редактор карт
