@@ -582,9 +582,7 @@ void CXcEditorUi::RenderRightPanel()
 			RenderInspector(std::static_pointer_cast<CLayerTiles>(pLayer));
 
 		if(E.m_Mode == MODE_IMAGES)
-		{
-			Description(Tr("Click a picture on the left to see it here. Right click it to replace, embed, export or delete it."));
-		}
+			RenderImageCard();
 		else if(E.m_Mode == MODE_SOUNDS)
 		{
 			Description(Tr("Right click a sound on the left to replace, export or delete it."));
