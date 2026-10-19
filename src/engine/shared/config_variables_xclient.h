@@ -15,6 +15,7 @@ MACRO_CONFIG_INT(XcRender, xc_render, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "U
 MACRO_CONFIG_INT(XcBloom, xc_bloom, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bloom strength of glowing effects in percent")
 MACRO_CONFIG_INT(XcBloomThreshold, xc_bloom_threshold, 10, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only parts brighter than this (percent) glow")
 MACRO_CONFIG_INT(XcFxQuality, xc_fx_quality, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect quality (0 = low, no bloom, 1 = medium, 2 = high)")
+MACRO_CONFIG_INT(XcFxStyle, xc_fx_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look of the effects (0 = classic shapes, 1 = soft textured light like the Minecraft clients)")
 MACRO_CONFIG_INT(XcFxOverTiles, xc_fx_over_tiles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the effects over the map blocks instead of under them")
 MACRO_CONFIG_INT(XcHatsOverTiles, xc_hats_over_tiles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the hats over the map blocks instead of under them")
 // Fine glow settings: strength and size of the glow of every effect group, multiplied with "all"
@@ -128,7 +129,8 @@ MACRO_CONFIG_INT(XcJumpFxDummy, xc_jump_fx_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_INT(XcJumpFxOthers, xc_jump_fx_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for other players")
 
 // Trail behind the tee
-MACRO_CONFIG_INT(XcTrail, xc_trail, 1, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots)")
+MACRO_CONFIG_INT(XcTrail, xc_trail, 1, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots, 5 = animated dashes)")
+MACRO_CONFIG_INT(XcTrailDash, xc_trail_dash, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Animation of the dashes trail (0 = stretch, 1 = pop, 2 = spin, 3 = blink, 4 = spark)")
 MACRO_CONFIG_INT(XcTrailLength, xc_trail_length, 450, 100, 2000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long the trail stays, in milliseconds")
 MACRO_CONFIG_INT(XcTrailWidth, xc_trail_width, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail width in percent")
 MACRO_CONFIG_INT(XcTrailGlow, xc_trail_glow, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail glow in percent")

@@ -152,6 +152,11 @@ void CFxRenderer::AppendGlowing(std::vector<SFxShape> &vShapes, const SFxShape &
 	vShapes.push_back(Light.GlowOnly(GlowRadius, GlowStrength).Additive());
 }
 
+CXcSprites &CFxRenderer::Sprites()
+{
+	return GameClient()->m_XcSprites;
+}
+
 bool CFxRenderer::ModuleActive() const
 {
 	return g_Config.m_XcRender && Graphics()->XcRenderAvailable();
@@ -166,9 +171,13 @@ void CFxRenderer::OnRender()
 
 void CFxRenderer::FlushWorld()
 {
+	const bool InGame = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
+	// textured sprites of the new effect style go under the shapes
+	if(InGame)
+		GameClient()->m_XcSprites.FlushQueue();
 	if(m_vWorld.empty())
 		return;
-	if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+	if(InGame)
 		Draw(m_vWorld, true);
 	m_vWorld.clear();
 }

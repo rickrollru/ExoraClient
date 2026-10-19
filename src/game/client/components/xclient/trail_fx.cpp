@@ -1,6 +1,7 @@
 #include "trail_fx.h"
 
 #include "fx_renderer.h"
+#include "sprite_fx.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -10,6 +11,7 @@
 
 #include <game/client/gameclient.h>
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -89,11 +91,97 @@ void CTrailFx::DrawRibbon(const std::vector<SRibbonPoint> &vPoints, float Glow, 
 	DrawBands(vPoints, vNormals, 0.4f, s_aCore, 3, 0.95f, true);
 }
 
+void CTrailFx::DrawLightRibbon(const std::vector<SRibbonPoint> &vPoints, float Glow)
+{
+	// light sprites at even steps along the strip, three passes from the widest to the core
+	struct SSample
+	{
+		vec2 m_Pos;
+		float m_Width;
+		ColorRGBA m_Color;
+	};
+	std::vector<SSample> vSamples;
+	float Carry = 0.0f;
+	for(size_t i = 0; i + 1 < vPoints.size(); i++)
+	{
+		const SRibbonPoint &A = vPoints[i];
+		const SRibbonPoint &B = vPoints[i + 1];
+		const float Segment = distance(A.m_Pos, B.m_Pos);
+		const float Step = std::max(A.m_HalfWidth * 0.45f, 1.5f);
+		float d = Carry;
+		for(; d < Segment; d += Step)
+		{
+			const float u = d / std::max(Segment, 0.001f);
+			const ColorRGBA Color(mix(A.m_Color.r, B.m_Color.r, u), mix(A.m_Color.g, B.m_Color.g, u), mix(A.m_Color.b, B.m_Color.b, u), mix(A.m_Color.a, B.m_Color.a, u));
+			vSamples.push_back({mix(A.m_Pos, B.m_Pos, u), 2.0f * mix(A.m_HalfWidth, B.m_HalfWidth, u), Color});
+		}
+		Carry = d - Segment;
+	}
+	if(vSamples.empty())
+		return;
+	CXcSprites &Sprites = GameClient()->m_XcSprites;
+	const float Reach = FxGlow::g_Current.m_Radius;
+	const float Bright = FxGlow::g_Current.m_Strength * Glow;
+	if(Bright > 0.0f)
+	{
+		Sprites.Begin(CXcSprites::SPRITE_BLOOM, true);
+		for(const SSample &Sample : vSamples)
+			Sprites.Draw(Sample.m_Pos, Sample.m_Width * 3.2f * Reach, 0.0f, Sample.m_Color.WithMultipliedAlpha(0.07f * Bright));
+		Sprites.End();
+	}
+	// soft light over the smooth body: a glow and a hot whitish center made of the same soft texture
+	Sprites.Begin(CXcSprites::SPRITE_GLOW, true);
+	for(const SSample &Sample : vSamples)
+		Sprites.Draw(Sample.m_Pos, Sample.m_Width * 1.6f * Reach, 0.0f, Sample.m_Color.WithMultipliedAlpha(0.14f * std::min(Bright, 1.5f)));
+	for(const SSample &Sample : vSamples)
+	{
+		const ColorRGBA &c = Sample.m_Color;
+		Sprites.Draw(Sample.m_Pos, Sample.m_Width * 0.55f, 0.0f, ColorRGBA(mix(c.r, 1.0f, 0.6f), mix(c.g, 1.0f, 0.6f), mix(c.b, 1.0f, 0.6f), c.a * 0.22f));
+	}
+	Sprites.End();
+}
+
+void CTrailFx::RenderDashes(float Length)
+{
+	CXcSprites &Sprites = GameClient()->m_XcSprites;
+	m_vDashes.erase(std::remove_if(m_vDashes.begin(), m_vDashes.end(), [&](const SDash &Dash) { return m_Time - Dash.m_Born >= Length; }), m_vDashes.end());
+	if(m_vDashes.empty())
+		return;
+	const int Sprite = CXcSprites::SPRITE_DASH_STRETCH + std::clamp(g_Config.m_XcTrailDash, 0, 4);
+	const float Aspect = CXcSprites::Aspect(Sprite);
+	const float Bright = FxGlow::g_Current.m_Strength * g_Config.m_XcTrailGlow / 100.0f;
+	// a soft light under every dash, then the dash itself playing its frames
+	if(Bright > 0.0f)
+	{
+		Sprites.Begin(CXcSprites::SPRITE_DASH_BLOOM, true);
+		for(const SDash &Dash : m_vDashes)
+		{
+			const float t = (m_Time - Dash.m_Born) / Length;
+			Sprites.Draw(Dash.m_Pos, 40.0f * Dash.m_Scale * FxGlow::g_Current.m_Radius, 0.0f, Dash.m_Color.WithMultipliedAlpha(0.35f * Bright * (1.0f - t)));
+		}
+		Sprites.End();
+	}
+	// the dash in its color, then the same frame added on top as light
+	for(int Pass = 0; Pass < 2; Pass++)
+	{
+		Sprites.Begin(Sprite, Pass == 1);
+		for(const SDash &Dash : m_vDashes)
+		{
+			const float t = (m_Time - Dash.m_Born) / Length;
+			const ColorRGBA &c = Dash.m_Color;
+			const ColorRGBA Color = Pass == 0 ? c : ColorRGBA(mix(c.r, 1.0f, 0.5f), mix(c.g, 1.0f, 0.5f), mix(c.b, 1.0f, 0.5f), c.a * 0.45f * std::min(Bright, 1.5f));
+			Sprites.Draw(Dash.m_Pos, 16.0f * Aspect * Dash.m_Scale, Dash.m_Angle, Color, t);
+		}
+		Sprites.End();
+	}
+}
+
 void CTrailFx::OnReset()
 {
 	for(STrail &Trail : m_aTrails)
 		Trail = STrail();
 	m_Particles.Clear();
+	m_vDashes.clear();
 }
 
 void CTrailFx::OnMapLoad()
@@ -185,9 +273,27 @@ void CTrailFx::OnRender()
 			Trail.m_EmitDistance = std::min(Trail.m_EmitDistance, Spacing);
 		}
 
+		if(Style == TRAIL_DASHES && GameClient()->m_XcSprites.Enabled())
+		{
+			// a dash every few units walked, lying along the way
+			const float Walked = distance(OldHead, Pos);
+			Trail.m_EmitDistance += Walked;
+			const float Spacing = 17.0f * Scale;
+			const vec2 Dir = Walked > 0.001f ? (Pos - OldHead) / Walked : vec2(1.0f, 0.0f);
+			int Budget = 8;
+			while(Trail.m_EmitDistance > Spacing && Budget-- > 0)
+			{
+				Trail.m_EmitDistance -= Spacing;
+				const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcTrailColorMode, g_Config.m_XcTrailColor, ClientId, random_float(0.0f, 0.2f), PlayerFade);
+				m_vDashes.push_back({Pos - Dir * Trail.m_EmitDistance, angle(Dir), m_Time, Color, Scale});
+			}
+			Trail.m_EmitDistance = std::min(Trail.m_EmitDistance, Spacing);
+			continue;
+		}
+
 		// age 0 at the tee, 1 at the end of the trail
 		const auto Age = [&](size_t i) { return std::clamp((m_Time - Trail.m_vPoints[i].m_Time) / Length, 0.0f, 1.0f); };
-		if(Style == TRAIL_DOTS)
+		if(Style == TRAIL_DOTS || Style == TRAIL_DASHES)
 		{
 			// comet: round dots at even distances, shrinking towards the end
 			float Carry = 0.0f;
@@ -235,9 +341,22 @@ void CTrailFx::OnRender()
 			}
 		}
 		if(vRibbon.size() >= 2)
-			DrawRibbon(vRibbon, Glow, Style == TRAIL_RIBBON ? 0.95f : 0.7f);
+		{
+			if(GameClient()->m_XcSprites.Enabled())
+			{
+				// the smooth body of the classic ribbon with soft textured light over it
+				DrawRibbon(vRibbon, 0.0f, Style == TRAIL_RIBBON ? 0.85f : 0.6f);
+				DrawLightRibbon(vRibbon, Glow);
+			}
+			else
+				DrawRibbon(vRibbon, Glow, Style == TRAIL_RIBBON ? 0.95f : 0.7f);
+		}
 	}
 	GameClient()->m_FxRenderer.Draw(vShapes, true);
+	if(GameClient()->m_XcSprites.Enabled())
+		RenderDashes(Length);
+	else
+		m_vDashes.clear();
 
 	m_Particles.Update(Dt);
 	m_Particles.Render(GameClient()->m_FxRenderer);
