@@ -97,7 +97,9 @@ namespace XcUi
 
 	ImU32 Col(const ImVec4 &Color, float AlphaMul)
 	{
-		return ImGui::ColorConvertFloat4ToU32(ImVec4(Color.x, Color.y, Color.z, Color.w * AlphaMul));
+		// the style alpha fades everything drawn by hand together with the widgets (opening, dimmed cards)
+		const float StyleAlpha = ImGui::GetCurrentContext() ? ImGui::GetStyle().Alpha : 1.0f;
+		return ImGui::ColorConvertFloat4ToU32(ImVec4(Color.x, Color.y, Color.z, Color.w * AlphaMul * StyleAlpha));
 	}
 
 	ImVec4 Mix(const ImVec4 &a, const ImVec4 &b, float t)

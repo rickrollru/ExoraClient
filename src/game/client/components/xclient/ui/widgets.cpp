@@ -58,9 +58,18 @@ namespace XcUi
 		bool m_InCard;
 		bool m_Dimmed;
 		bool m_Highlighted;
+		float m_Rise; // how far the current card is still below its place while it appears
+		int m_NumCards;
 		ImDrawListSplitter m_Splitter;
 	};
 	static std::vector<SCardGrid> s_vGrids;
+
+	// cards appear one after another when a page opens
+	static double s_PageEnterTime = -10.0;
+	static constexpr double CARD_APPEAR_TIME = 0.32;
+	static constexpr double CARD_APPEAR_STAGGER = 0.045;
+
+	void PageEntered() { s_PageEnterTime = ImGui::GetTime(); }
 
 	static std::string s_HighlightCard;
 	static double s_HighlightStart = -10.0;
@@ -610,6 +619,8 @@ namespace XcUi
 		for(float &y : Grid.m_aColumnY)
 			y = Grid.m_Start.y;
 		Grid.m_InCard = false;
+		Grid.m_NumCards = 0;
+		Grid.m_Rise = 0.0f;
 		ImGui::PushID(pId);
 	}
 
@@ -637,6 +648,18 @@ namespace XcUi
 		Grid.m_Column = Column;
 		Grid.m_CardWidth = (Grid.m_Width - Gap() * (Grid.m_Columns - 1)) / Grid.m_Columns;
 		Grid.m_CardPos = ImVec2(Grid.m_Start.x + Column * (Grid.m_CardWidth + Gap()), Grid.m_aColumnY[Column]);
+		// fades in and rises into its place, a little later than the card before it
+		float Appear = 1.0f;
+		if(AnimationSpeed() > 0.0f)
+		{
+			const double Age = (ImGui::GetTime() - s_PageEnterTime) * AnimationSpeed() - std::min(Grid.m_NumCards, 12) * CARD_APPEAR_STAGGER;
+			const float x = std::clamp((float)(Age / CARD_APPEAR_TIME), 0.0f, 1.0f);
+			Appear = 1.0f - (1.0f - x) * (1.0f - x) * (1.0f - x); // ease out
+		}
+		Grid.m_NumCards++;
+		Grid.m_Rise = (1.0f - Appear) * S(16.0f);
+		Grid.m_CardPos.y += Grid.m_Rise;
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * Appear);
 		Grid.m_CardId = ImGui::GetID(pId);
 		Grid.m_InCard = true;
 		Grid.m_Highlighted = ImGui::GetTime() - s_HighlightStart < HIGHLIGHT_TIME && s_HighlightCard == pId;
@@ -708,7 +731,8 @@ namespace XcUi
 		}
 
 		ImGui::PopID();
-		Grid.m_aColumnY[Grid.m_Column] = Bottom + Gap();
+		ImGui::PopStyleVar(); // the appear alpha
+		Grid.m_aColumnY[Grid.m_Column] = Bottom - Grid.m_Rise + Gap();
 		Grid.m_InCard = false;
 	}
 } // namespace XcUi

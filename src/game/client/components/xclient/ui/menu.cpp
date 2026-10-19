@@ -486,6 +486,14 @@ void CXcMenu::RenderFrame()
 	const ImVec2 PanelMax(Io.DisplaySize.x - Margin, Io.DisplaySize.y - Margin + Slide);
 	PanelRect(ImGui::GetWindowDrawList(), PanelMin, PanelMax, S(18.0f), t.m_Panel);
 	ImGui::SetCursorScreenPos(ImVec2(PanelMin.x + S(20.0f), PanelMin.y + S(20.0f)));
+	// a new page or section: its cards appear one after another
+	const int PageKey = m_Page * 1000 + (m_Page == PAGE_SETTINGS ? m_SettingsSection : m_Page == PAGE_VISUALS ? m_VisualsSection : 0);
+	if(PageKey != m_LastPageKey || m_OpenAnimation < m_LastOpenAnimation - 0.5f || (m_LastOpenAnimation <= 0.0f && m_OpenAnimation > 0.0f))
+	{
+		m_LastPageKey = PageKey;
+		PageEntered();
+	}
+	m_LastOpenAnimation = m_OpenAnimation;
 	ImGui::BeginChild("##page", ImVec2(PanelMax.x - PanelMin.x - S(40.0f), PanelMax.y - PanelMin.y - S(40.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 	switch(m_Page)
 	{

@@ -22,6 +22,8 @@ namespace XcUi
 	// Smoothly moves a stored value towards Target. Returns the current value.
 	float Animate(ImGuiID Id, float Target, float Speed = 14.0f);
 	void ResetAnimations();
+	// call when a page or section opens: its cards appear one after another
+	void PageEntered();
 
 	// --- text
 	void Header(const char *pText);
