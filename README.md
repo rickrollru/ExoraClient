@@ -165,7 +165,7 @@ cmake .. -G Ninja && ninja game-client game-server
 - [Dear ImGui](https://github.com/ocornut/imgui) — MIT; [stb_image](https://github.com/nothings/stb) — public domain / MIT.
 - Шрифты [Manrope](https://fonts.google.com/specimen/Manrope), [Onest](https://fonts.google.com/specimen/Onest),
   [Unbounded](https://fonts.google.com/specimen/Unbounded) — SIL OFL; иконки [Font Awesome](https://fontawesome.com) Free.
-- Текстуры эффектов «мягкий свет» — из клиента Flower, с разрешения автора (Кент)
+- Текстуры эффектов «мягкий свет» — из клиента Flower, с разрешения автора (друг)
   ([CREDITS](data/xclient/fx/CREDITS.txt)).
 
 <div align="center">
