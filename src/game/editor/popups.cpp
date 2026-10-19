@@ -183,6 +183,16 @@ CUi::EPopupMenuFunctionResult CEditor::PopupMenuTools(void *pContext, CUIRect Vi
 		return CUi::POPUP_CLOSE_CURRENT;
 	}
 
+	// XClient: an animated gif as quads that play on every client
+	static int s_XcGifButton = 0;
+	View.HSplitTop(2.0f, nullptr, &View);
+	View.HSplitTop(12.0f, &Slot, &View);
+	if(pEditor->DoButton_MenuItem(&s_XcGifButton, "Add GIF animation", 0, &Slot, BUTTONFLAG_LEFT, "Put an animated gif on the map. It plays for every player, also in other clients."))
+	{
+		pEditor->m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Open", "mapres", "", XcCallbackAddGif, pEditor);
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
 	return CUi::POPUP_KEEP_OPEN;
 }
 
