@@ -194,10 +194,14 @@ void CTrailFx::Update(int ClientId, vec2 Pos, float Length)
 	STrail &Trail = m_aTrails[ClientId];
 	if(!Trail.m_vPoints.empty() && distance(Trail.m_vPoints.front().m_Pos, Pos) > TELEPORT_DISTANCE)
 		Trail.m_vPoints.clear();
-	if(!Trail.m_vPoints.empty() && distance(Trail.m_vPoints.front().m_Pos, Pos) < MIN_POINT_DISTANCE && Trail.m_vPoints.size() > 1)
+	// The first point is a moving head that always sits on the tee; a new fixed point is only left
+	// behind once the head got far enough away from the last fixed one. Comparing with the head itself
+	// (as before) never added points at a high frame rate, where a tee moves less than the minimum
+	// distance per frame: the trail turned into one straight stretched line that jumped now and then.
+	if(Trail.m_vPoints.size() > 1 && distance(Trail.m_vPoints[1].m_Pos, Pos) < MIN_POINT_DISTANCE)
 	{
-		// standing still: the head follows the tee, the old part fades away by itself
 		Trail.m_vPoints.front().m_Pos = Pos;
+		Trail.m_vPoints.front().m_Time = m_Time;
 	}
 	else
 		Trail.m_vPoints.push_front({Pos, m_Time});

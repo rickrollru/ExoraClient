@@ -207,6 +207,7 @@ void CXcMenu::RenderSettingsInterface()
 		const char *apScales[] = {Tr("Auto"), "1080p", "2K", "4K"};
 		static const int s_aScales[] = {0, 100, 133, 200};
 		ConfigSegmented("##scale_mode", "xc_ui_scale", &g_Config.m_XcUiScale, apScales, 4, s_aScales);
+		ConfigSlider(Tr("Size"), "xc_ui_size", &g_Config.m_XcUiSize, 70, 200, "%d%%");
 		EndCard();
 	}
 

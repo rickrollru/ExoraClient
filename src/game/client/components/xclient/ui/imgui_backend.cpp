@@ -169,7 +169,8 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 			return pAtlas->AddFontDefault();
 		ImFontConfig Config;
 		Config.FontDataOwnedByAtlas = false;
-		Config.OversampleH = 2;
+		// more samples per pixel: crisper small text
+		Config.OversampleH = 3;
 		Config.OversampleV = 2;
 		ImFont *pFont = pAtlas->AddFontFromMemoryTTF((void *)pData, Size, Pixels * Scale, &Config, pTextRanges);
 		if(pIcons)
