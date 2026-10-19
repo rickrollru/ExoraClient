@@ -724,6 +724,7 @@ public:
 		XC_TOOL_BRUSH = 0, // the classic editor behavior: select a brush and paint
 		XC_TOOL_ERASER,
 		XC_TOOL_FILL,
+		XC_TOOL_SMART, // smart fill: a rectangle of blocks, the automapper makes the edges
 		XC_TOOL_REPLACE, // replaces every same tile of the layer
 		XC_TOOL_WAND, // magic wand: the connected same tiles become the brush
 		XC_TOOL_PICKER,

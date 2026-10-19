@@ -16,6 +16,7 @@
 #include <game/client/ui.h>
 #include <game/editor/editor.h>
 #include <game/editor/editor_actions.h>
+#include <game/editor/mapitems/image.h>
 #include <game/editor/mapitems/layer_group.h>
 #include <game/editor/mapitems/layer_tiles.h>
 
@@ -36,6 +37,7 @@ const STool s_aTools[CEditor::XC_NUM_TOOLS] = {
 	{"\xef\x87\xbc", "Brush", KEY_B, "[B] Brush: drag to grab tiles as a brush, then paint with it. The classic editor tool."},
 	{"\xef\x84\xad", "Eraser", KEY_E, "[E] Eraser: removes tiles under the mouse on the selected tile layers. Wheel with Shift changes the size."},
 	{"\xef\x95\xb6", "Fill", KEY_G, "[G] Bucket fill: fills the connected area of the same tile with the first tile of the brush (an empty brush clears it)."},
+	{"\xef\x83\x88", "Smart fill", KEY_U, "[U] Smart fill: drag a rectangle, it fills with blocks and the automapper of the layer makes the edges and corners. Shift erases the rectangle."},
 	{"\xef\x8d\xa2", "Replace", KEY_J, "[J] Replace: every tile like the clicked one on the whole layer becomes the first tile of the brush (an empty brush removes them)."},
 	{"\xee\x8b\x8a", "Magic wand", KEY_X, "[X] Magic wand: the connected area of the same tile becomes the brush. Shift takes every such tile of the layer, Alt erases the area."},
 	{"\xef\x87\xbb", "Eyedropper", KEY_I, "[I] Eyedropper: takes the tile under the mouse as the brush and goes back to the brush tool."},
@@ -322,6 +324,70 @@ bool CEditor::XcDoMapTool(vec2 WorldPos, bool Inside)
 			}
 			if(Filled > 0)
 				s_Painting = true;
+		}
+		if(s_Painting)
+			Map()->OnModify();
+		FinishStroke();
+		return true;
+	}
+	if(m_XcTool == XC_TOOL_SMART)
+	{
+		// drag a rectangle; on release it is filled (or erased with Shift) and the automapper runs over it
+		static bool s_Dragging = false;
+		static ivec2 s_Start;
+		str_copy(m_aTooltip, XcUi::Tr("Smart fill: drag a rectangle. The automapper of the layer makes the edges. Shift erases"));
+		const bool Erase = Input()->ShiftIsPressed();
+		if(!s_Dragging)
+		{
+			CUIRect Outline = {TileX * 32.0f, TileY * 32.0f, 32.0f, 32.0f};
+			Outline.DrawOutline(XcEditorStyle::Accent(0.9f));
+			if(Inside && Ui()->MouseButtonClicked(0))
+			{
+				s_Dragging = true;
+				s_Start = ivec2(TileX, TileY);
+			}
+			return true;
+		}
+		const ivec2 Min(std::min(s_Start.x, TileX), std::min(s_Start.y, TileY));
+		const ivec2 Max(std::max(s_Start.x, TileX), std::max(s_Start.y, TileY));
+		CUIRect Area = {Min.x * 32.0f, Min.y * 32.0f, (Max.x - Min.x + 1) * 32.0f, (Max.y - Min.y + 1) * 32.0f};
+		Area.Draw(Erase ? ColorRGBA(1.0f, 0.35f, 0.35f, 0.18f) : XcEditorStyle::Accent(0.18f), IGraphics::CORNER_NONE, 0.0f);
+		Area.DrawOutline(Erase ? ColorRGBA(1.0f, 0.4f, 0.4f, 0.9f) : XcEditorStyle::Accent(0.9f));
+		char aSize[32];
+		str_format(aSize, sizeof(aSize), "%d × %d", Max.x - Min.x + 1, Max.y - Min.y + 1);
+		str_append(m_aTooltip, " · ");
+		str_append(m_aTooltip, aSize);
+		if(Ui()->MouseButton(0))
+			return true;
+		s_Dragging = false;
+
+		CTile FillTile = CTile{1};
+		if(!m_pBrush->IsEmpty() && m_pBrush->m_vpLayers[0]->m_Type == LAYERTYPE_TILES)
+		{
+			const CTile BrushTile = std::static_pointer_cast<CLayerTiles>(m_pBrush->m_vpLayers[0])->GetTile(0, 0);
+			if(BrushTile.m_Index != 0)
+				FillTile = BrushTile;
+		}
+		if(Erase)
+			FillTile = CTile{0};
+		for(const auto &pLayer : vLayers)
+		{
+			const int x0 = std::max(Min.x, 0), y0 = std::max(Min.y, 0);
+			const int x1 = std::min(Max.x, pLayer->m_Width - 1), y1 = std::min(Max.y, pLayer->m_Height - 1);
+			if(x0 > x1 || y0 > y1)
+				continue;
+			for(int y = y0; y <= y1; y++)
+				for(int x = x0; x <= x1; x++)
+					pLayer->SetTile(x, y, FillTile);
+			s_Painting = true;
+			// the automapper of the layer (or the first rule set of its picture) makes the borders
+			if(pLayer->m_Image >= 0 && pLayer->m_Image < (int)Map()->m_vpImages.size() && !pLayer->m_HasGame && !pLayer->m_HasTele && !pLayer->m_HasSpeedup && !pLayer->m_HasSwitch && !pLayer->m_HasTune && !pLayer->m_HasFront)
+			{
+				CAutomapper &Automapper = Map()->m_vpImages[pLayer->m_Image]->m_Automapper;
+				const int Config = pLayer->m_AutomapperConfig >= 0 ? pLayer->m_AutomapperConfig : (Automapper.ConfigNamesNum() > 0 ? 0 : -1);
+				if(Config >= 0)
+					Automapper.ProceedLocalized(pLayer.get(), Map()->m_pGameLayer.get(), pLayer->m_AutomapperReference, Config, pLayer->m_Seed, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+			}
 		}
 		if(s_Painting)
 			Map()->OnModify();
