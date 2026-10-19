@@ -673,24 +673,32 @@ void CXcMenu::TeePreviewCallback(const ImDrawList *pList, const ImDrawCmd *pCmd)
 {
 	(void)pList;
 	const STeeDraw *pData = static_cast<const STeeDraw *>(pCmd->UserCallbackData);
-	pData->m_pMenu->DrawTeePreview(pData->m_aRect, pData->m_Still);
+	pData->m_pMenu->DrawTeePreview(*pData);
 }
 
-void CXcMenu::AddTeePreview(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still)
+void CXcMenu::AddTeePreview(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still, int Who, const char *pSkin)
 {
-	const STeeDraw Data = {this, {Min.x, Min.y, Max.x, Max.y}, Still};
+	STeeDraw Data = {this, {Min.x, Min.y, Max.x, Max.y}, Still, Who, ""};
+	if(pSkin)
+		str_copy(Data.m_aSkin, pSkin);
 	pDraw->AddCallback(TeePreviewCallback, (void *)&Data, sizeof(Data));
 	pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 
-void CXcMenu::DrawTeePreview(const float *pRect, bool Still)
+void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 {
+	const float *pRect = Data.m_aRect;
+	const bool Still = Data.m_Still;
 	const vec2 Min(pRect[0], pRect[1]);
 	const vec2 Max(pRect[2], pRect[3]);
 	const vec2 Center = (Min + Max) * 0.5f;
+	const bool Dummy = Data.m_Who == 1;
 	CTeeRenderInfo Info;
-	Info.Apply(GameClient()->m_Skins.Find(g_Config.m_ClPlayerSkin));
-	Info.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
+	Info.Apply(GameClient()->m_Skins.Find(Data.m_aSkin[0] ? Data.m_aSkin : (Dummy ? g_Config.m_ClDummySkin : g_Config.m_ClPlayerSkin)));
+	if(Dummy)
+		Info.ApplyColors(g_Config.m_ClDummyUseCustomColor, g_Config.m_ClDummyColorBody, g_Config.m_ClDummyColorFeet);
+	else
+		Info.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
 	Info.m_Size = (Max.y - Min.y) * 0.62f;
 	// the eyes follow the cursor
 	const ImVec2 Mouse = ImGui::GetIO().MousePos;
@@ -698,8 +706,9 @@ void CXcMenu::DrawTeePreview(const float *pRect, bool Still)
 	Dir = length(Dir) > 1.0f && !Still ? normalize(Dir) : vec2(1.0f, 0.0f);
 	const float Bob = Still ? 0.0f : std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
 	// the tiny avatar in the top bar stays without the hat, it would stick out of the bar
-	const bool Hat = g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
-	if(g_Config.m_XcCapeSelf && Max.y - Min.y > 64.0f)
+	const bool Extras = !Dummy && !Data.m_aSkin[0];
+	const bool Hat = Extras && g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
+	if(Extras && g_Config.m_XcCapeSelf && Max.y - Min.y > 64.0f)
 		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, ImGui::GetStyle().Alpha, Client()->GlobalTime());
 	if(Hat && g_Config.m_XcHatBehind)
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
