@@ -183,6 +183,15 @@ private:
 	void RenderEventDialog();
 	void RenderMessages();
 	bool DialogOpen() const { return m_EventOpen || !m_vMessages.empty(); }
+
+	// the docks under the map: server settings and history (the envelopes stay classic until the timeline)
+	char m_aSettingInput[256] = {};
+	bool m_SettingFocus = false;
+	bool m_SettingTyping = false;
+	bool m_SettingsDockOpen = false; // the field gets the keyboard when the dock opens
+	bool BeginDock(const char *pId, int ExtraEditor, ImVec2 &Min, ImVec2 &Max);
+	void RenderServerSettingsDock();
+	void RenderHistoryDock();
 	bool m_PaletteOpen = false;
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};
