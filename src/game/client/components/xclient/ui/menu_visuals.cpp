@@ -1,4 +1,5 @@
 // Visuals page: every effect is a card with its style, color, sizes and "mine / dummy / others".
+#include "feedback.h"
 #include "icons.h"
 #include "lang.h"
 #include "menu.h"
@@ -185,6 +186,64 @@ void CXcMenu::RenderVisualsWeapons()
 void CXcMenu::RenderVisualsWorld()
 {
 	BeginCardGrid("##vis_world", 2);
+	if(BeginCard("##fx_glow_tune", Tr("Glow"), Tr("How bright and how wide every effect glows")))
+	{
+		ConfigSlider(Tr("Bloom halo"), "xc_bloom", &g_Config.m_XcBloom, 0, 200, "%d%%");
+		ConfigSlider(Tr("Bloom threshold"), "xc_bloom_threshold", &g_Config.m_XcBloomThreshold, 0, 100, "%d%%");
+		ConfigSlider(Tr("All effects: strength"), "xc_fxglow_all", &g_Config.m_XcFxglowAll, 0, 300, "%d%%");
+		ConfigSlider(Tr("All effects: size"), "xc_fxglow_all_size", &g_Config.m_XcFxglowAllSize, 25, 300, "%d%%");
+
+		// one effect at a time: its chip, then its two sliders; a dot marks effects that differ from 100 %
+		struct SGroup
+		{
+			const char *m_pName;
+			const char *m_pStrength;
+			int *m_pStrengthValue;
+			const char *m_pSize;
+			int *m_pSizeValue;
+		};
+		const SGroup aGroups[] = {
+			{Tr("Trail"), "xc_fxglow_trail", &g_Config.m_XcFxglowTrail, "xc_fxglow_trail_size", &g_Config.m_XcFxglowTrailSize},
+			{Tr("Hook"), "xc_fxglow_hook", &g_Config.m_XcFxglowHook, "xc_fxglow_hook_size", &g_Config.m_XcFxglowHookSize},
+			{Tr("Particles"), "xc_fxglow_particles", &g_Config.m_XcFxglowParticles, "xc_fxglow_particles_size", &g_Config.m_XcFxglowParticlesSize},
+			{Tr("Pickups and shots"), "xc_fxglow_items", &g_Config.m_XcFxglowItems, "xc_fxglow_items_size", &g_Config.m_XcFxglowItemsSize},
+			{Tr("Lasers"), "xc_fxglow_lasers", &g_Config.m_XcFxglowLasers, "xc_fxglow_lasers_size", &g_Config.m_XcFxglowLasersSize},
+			{Tr("Accessory"), "xc_fxglow_accessory", &g_Config.m_XcFxglowAccessory, "xc_fxglow_accessory_size", &g_Config.m_XcFxglowAccessorySize},
+			{Tr("Freeze"), "xc_fxglow_freeze", &g_Config.m_XcFxglowFreeze, "xc_fxglow_freeze_size", &g_Config.m_XcFxglowFreezeSize},
+			{Tr("Crosshair"), "xc_fxglow_crosshair", &g_Config.m_XcFxglowCrosshair, "xc_fxglow_crosshair_size", &g_Config.m_XcFxglowCrosshairSize},
+			{Tr("Weather"), "xc_fxglow_weather", &g_Config.m_XcFxglowWeather, "xc_fxglow_weather_size", &g_Config.m_XcFxglowWeatherSize},
+			{Tr("Floating lights"), "xc_fxglow_floaters", &g_Config.m_XcFxglowFloaters, "xc_fxglow_floaters_size", &g_Config.m_XcFxglowFloatersSize},
+			{Tr("Dummy arrow"), "xc_fxglow_arrow", &g_Config.m_XcFxglowArrow, "xc_fxglow_arrow_size", &g_Config.m_XcFxglowArrowSize},
+		};
+		constexpr int NUM_GROUPS = (int)std::size(aGroups);
+		const char *apNames[NUM_GROUPS];
+		bool aChanged[NUM_GROUPS];
+		bool AnyChanged = g_Config.m_XcFxglowAll != 100 || g_Config.m_XcFxglowAllSize != 100;
+		for(int i = 0; i < NUM_GROUPS; i++)
+		{
+			apNames[i] = aGroups[i].m_pName;
+			aChanged[i] = *aGroups[i].m_pStrengthValue != 100 || *aGroups[i].m_pSizeValue != 100;
+			AnyChanged |= aChanged[i];
+		}
+		static int s_Group = 0;
+		ParamLabel(Tr("Effect"));
+		ChoiceChips("##glow_groups", &s_Group, apNames, NUM_GROUPS, aChanged);
+		const SGroup &Group = aGroups[std::clamp(s_Group, 0, NUM_GROUPS - 1)];
+		ConfigSlider(Tr("Strength"), Group.m_pStrength, Group.m_pStrengthValue, 0, 300, "%d%%");
+		ConfigSlider(Tr("Size"), Group.m_pSize, Group.m_pSizeValue, 25, 300, "%d%%");
+		if(AnyChanged && Button(Tr("Reset all glow")))
+		{
+			SetConfigInt("xc_fxglow_all", 100);
+			SetConfigInt("xc_fxglow_all_size", 100);
+			for(const SGroup &Reset : aGroups)
+			{
+				SetConfigInt(Reset.m_pStrength, 100);
+				SetConfigInt(Reset.m_pSize, 100);
+			}
+			Toast(Tr("Glow reset"), TOAST_INFO);
+		}
+		EndCard();
+	}
 	if(BeginCard("##fx_items", Tr("Pickups"), Tr("Hearts, armor, weapons and ninja softly glow"), &g_Config.m_XcItemsGlow))
 	{
 		ParamLabel(Tr("Color"));

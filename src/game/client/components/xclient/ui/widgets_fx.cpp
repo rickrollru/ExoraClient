@@ -171,4 +171,54 @@ namespace XcUi
 		ImGui::PopID();
 		return Changed;
 	}
+	bool ChoiceChips(const char *pId, int *pCurrent, const char *const *ppItems, int NumItems, const bool *pMarked)
+	{
+		ImGuiWindow *pWindow = ImGui::GetCurrentWindow();
+		if(pWindow->SkipItems)
+			return false;
+		ImGui::PushID(pId);
+		const STheme &t = Theme();
+		ImFont *pFont = Fonts().m_pLabel ? Fonts().m_pLabel : ImGui::GetFont();
+		const float Gap = S(6.0f);
+		const float Height = S(28.0f);
+		const float PadX = S(12.0f);
+		const float Avail = AvailWidth();
+		const ImVec2 Start = ImGui::GetCursorScreenPos();
+		float x = 0.0f, y = 0.0f;
+		bool Changed = false;
+		for(int i = 0; i < NumItems; i++)
+		{
+			const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, ppItems[i]);
+			const float Width = std::min(TextSize.x + PadX * 2.0f, Avail);
+			// the chips flow like words and wrap to the next line
+			if(x > 0.0f && x + Width > Avail)
+			{
+				x = 0.0f;
+				y += Height + Gap;
+			}
+			const ImRect Rect(ImVec2(Start.x + x, Start.y + y), ImVec2(Start.x + x + Width, Start.y + y + Height));
+			x += Width + Gap;
+			const ImGuiID Id = pWindow->GetID(i + 1);
+			if(!ImGui::ItemAdd(Rect, Id))
+				continue;
+			bool Hovered, Held;
+			if(ImGui::ButtonBehavior(Rect, Id, &Hovered, &Held) && *pCurrent != i)
+			{
+				*pCurrent = i;
+				PlayUiSound(SOUND_CLICK);
+				Changed = true;
+			}
+			const float On = Animate(Id, *pCurrent == i ? 1.0f : 0.0f, 16.0f);
+			const float Hover = Animate(Id + 1000, Hovered ? 1.0f : 0.0f, 18.0f);
+			ImDrawList *pDraw = pWindow->DrawList;
+			pDraw->AddRectFilled(Rect.Min, Rect.Max, Col(Mix(t.m_Track, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.22f), On), 1.0f + Hover * 0.3f), Height * 0.5f);
+			pDraw->AddRect(Rect.Min, Rect.Max, Col(t.m_Accent, On * 0.8f), Height * 0.5f, 0, 1.0f);
+			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Rect.GetCenter().x - TextSize.x * 0.5f, Rect.GetCenter().y - TextSize.y * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, std::max(On, Hover))), ppItems[i]);
+			if(pMarked && pMarked[i])
+				pDraw->AddCircleFilled(ImVec2(Rect.Max.x - S(7.0f), Rect.Min.y + S(7.0f)), S(2.5f), Col(t.m_Accent));
+		}
+		ImGui::ItemSize(ImRect(Start, ImVec2(Start.x + Avail, Start.y + y + Height)));
+		ImGui::PopID();
+		return Changed;
+	}
 } // namespace XcUi

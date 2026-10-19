@@ -105,11 +105,49 @@ namespace FxShape
 
 } // namespace FxShape
 
+namespace FxGlow
+{
+SScale g_Current;
+
+SScale For(int Group)
+{
+	struct SSetting
+	{
+		const int *m_pStrength;
+		const int *m_pSize;
+	};
+	const SSetting aSettings[NUM_GROUPS] = {
+		{&g_Config.m_XcFxglowTrail, &g_Config.m_XcFxglowTrailSize},
+		{&g_Config.m_XcFxglowHook, &g_Config.m_XcFxglowHookSize},
+		{&g_Config.m_XcFxglowParticles, &g_Config.m_XcFxglowParticlesSize},
+		{&g_Config.m_XcFxglowItems, &g_Config.m_XcFxglowItemsSize},
+		{&g_Config.m_XcFxglowLasers, &g_Config.m_XcFxglowLasersSize},
+		{&g_Config.m_XcFxglowAccessory, &g_Config.m_XcFxglowAccessorySize},
+		{&g_Config.m_XcFxglowFreeze, &g_Config.m_XcFxglowFreezeSize},
+		{&g_Config.m_XcFxglowCrosshair, &g_Config.m_XcFxglowCrosshairSize},
+		{&g_Config.m_XcFxglowWeather, &g_Config.m_XcFxglowWeatherSize},
+		{&g_Config.m_XcFxglowFloaters, &g_Config.m_XcFxglowFloatersSize},
+		{&g_Config.m_XcFxglowArrow, &g_Config.m_XcFxglowArrowSize},
+	};
+	SScale Scale;
+	Scale.m_Strength = g_Config.m_XcFxglowAll / 100.0f;
+	Scale.m_Radius = g_Config.m_XcFxglowAllSize / 100.0f;
+	if(Group >= 0 && Group < NUM_GROUPS)
+	{
+		Scale.m_Strength *= *aSettings[Group].m_pStrength / 100.0f;
+		Scale.m_Radius *= *aSettings[Group].m_pSize / 100.0f;
+	}
+	return Scale;
+}
+} // namespace FxGlow
+
 void CFxRenderer::AppendGlowing(std::vector<SFxShape> &vShapes, const SFxShape &Shape, float GlowRadius, float GlowStrength)
 {
 	SFxShape Body = Shape;
 	Body.m_Additive = false;
 	vShapes.push_back(Body);
+	if(GlowStrength * FxGlow::g_Current.m_Strength <= 0.0f)
+		return; // the glow of this effect is turned off
 	SFxShape Light = Shape;
 	vShapes.push_back(Light.GlowOnly(GlowRadius, GlowStrength).Additive());
 }

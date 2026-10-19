@@ -334,6 +334,7 @@ void CXcEventFx::TeleportFlash(vec2 From, vec2 To, int ClientId)
 
 void CXcEventFx::RenderDummyArrow()
 {
+	const FxGlow::CScope GlowScope(FxGlow::ARROW);
 	if(!g_Config.m_XcDummyArrow || !Client()->DummyConnected() || Client()->State() != IClient::STATE_ONLINE)
 		return;
 	const int Other = GameClient()->m_aLocalIds[!g_Config.m_ClDummy];

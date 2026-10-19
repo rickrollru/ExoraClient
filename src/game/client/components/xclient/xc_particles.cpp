@@ -38,6 +38,7 @@ static float Progress(const CXcParticles::SParticle &Particle)
 
 void CXcParticles::Render(CFxRenderer &Renderer) const
 {
+	const FxGlow::CScope GlowScope(FxGlow::PARTICLES);
 	for(const SParticle &Particle : m_vParticles)
 	{
 		if(Particle.m_Life < 0.0f)

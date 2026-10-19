@@ -10,6 +10,48 @@
 
 #include <vector>
 
+// Fine glow settings. Every effect builds its shapes inside a scope of its group; Glow() scales the glow
+// radius and strength of those shapes by the group's "xc_fxglow_<group>" settings and by "xc_fxglow_all".
+namespace FxGlow
+{
+enum EGroup
+{
+	TRAIL,
+	HOOK,
+	PARTICLES,
+	ITEMS,
+	LASERS,
+	ACCESSORY,
+	FREEZE,
+	CROSSHAIR,
+	WEATHER,
+	FLOATERS,
+	ARROW,
+	NUM_GROUPS,
+};
+struct SScale
+{
+	float m_Radius = 1.0f;
+	float m_Strength = 1.0f;
+};
+// the settings of a group with "all" applied
+// Group -1: only "all"
+SScale For(int Group);
+// the scale of the scope that is open now, 1 outside of scopes
+extern SScale g_Current;
+class CScope
+{
+	SScale m_Old;
+
+public:
+	explicit CScope(int Group) :
+		m_Old(g_Current) { g_Current = For(Group); }
+	~CScope() { g_Current = m_Old; }
+	CScope(const CScope &) = delete;
+	CScope &operator=(const CScope &) = delete;
+};
+} // namespace FxGlow
+
 // One SDF shape for the render module. Build it with the factory functions below
 // and the chainable modifiers, e.g. FxShape::Ring(...).Glow(8.0f, 0.6f).Additive().
 struct SFxShape
@@ -24,8 +66,8 @@ struct SFxShape
 	}
 	SFxShape &Glow(float Radius, float Strength)
 	{
-		m_Gpu.m_GlowRadius = Radius;
-		m_Gpu.m_GlowStrength = Strength;
+		m_Gpu.m_GlowRadius = Radius * FxGlow::g_Current.m_Radius;
+		m_Gpu.m_GlowStrength = Strength * FxGlow::g_Current.m_Strength;
 		return *this;
 	}
 	SFxShape &Gradient(ColorRGBA Bottom);

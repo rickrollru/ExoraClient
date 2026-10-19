@@ -230,6 +230,7 @@ void CWorldFx::Explosion(vec2 Pos)
 
 void CWorldFx::OnRender()
 {
+	const FxGlow::CScope GlowScope(FxGlow::FREEZE);
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
@@ -286,6 +287,7 @@ void CWorldFx::OnRender()
 
 bool CWorldFx::RenderCrosshair(vec2 Pos, float Alpha, float Scale)
 {
+	const FxGlow::CScope GlowScope(FxGlow::CROSSHAIR);
 	const int Style = g_Config.m_XcCrosshair;
 	if(Style == CROSSHAIR_DEFAULT)
 		return false;
