@@ -140,6 +140,8 @@ void CXcMenu::RenderVisualsMovement()
 	{
 		EffectColorPicker("##jump_color", &g_Config.m_XcJumpFxColorMode, &g_Config.m_XcJumpFxColor);
 		ConfigSlider(Tr("Size"), "xc_jump_fx_size", &g_Config.m_XcJumpFxSize, 25, 300, "%d%%");
+		if(g_Config.m_XcJumpFx == 1 && g_Config.m_XcFxStyle)
+			ConfigSlider(Tr("Duration"), "xc_jump_fx_duration", &g_Config.m_XcJumpFxDuration, 200, 3000, "%d ms");
 		ToggleRow(Tr("Also on double jumps"), "xc_jump_fx_air", &g_Config.m_XcJumpFxAir);
 		ToggleRow(Tr("Ring on landing"), "xc_land_fx", &g_Config.m_XcLandFx);
 		ToggleRow(Tr("Dust when running"), "xc_run_dust", &g_Config.m_XcRunDust);

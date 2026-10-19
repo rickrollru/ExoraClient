@@ -100,6 +100,13 @@ void CXcParticles::Render(CFxRenderer &Renderer) const
 						  .Rotate(Particle.m_Rot));
 			break;
 		}
+		case EType::JUMP_CIRCLE:
+		{
+			const float Ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+			const float Radius = mix(Particle.m_StartSize, Particle.m_EndSize, Ease) * 0.42f;
+			Renderer.AddWorldGlowing(FxShape::Ring(Particle.m_Pos, vec2(Radius, Radius * Particle.m_Squash), 2.5f, Particle.m_Color.WithMultipliedAlpha(1.0f - t)), 7.5f, 0.5f);
+			break;
+		}
 		case EType::ICON:
 		{
 			// without the textures an icon is a soft star
@@ -133,7 +140,7 @@ bool CXcParticles::RenderSprites(CXcSprites &Sprites) const
 		{
 			// a glowing ring texture, flat rings are squashed
 			const float Radius = mix(Particle.m_StartSize, Particle.m_EndSize, EaseOut);
-			const float Width = Radius * 2.4f;
+			const float Width = Radius * 4.0f; // the ring of the texture is half of its size, the rest is its glow
 			// the ring in its color, then the same ring added on top as light
 			Sprites.Queue(CXcSprites::SPRITE_JUMP_RING, false, Particle.m_Pos, Width, 0.0f, Color.WithMultipliedAlpha(1.0f - t), 0.0f, Width * Particle.m_Squash);
 			Sprites.Queue(CXcSprites::SPRITE_JUMP_RING, true, Particle.m_Pos, Width, 0.0f, Color.WithMultipliedAlpha((1.0f - t) * 0.7f * std::min(Glow, 1.5f)), 0.0f, Width * Particle.m_Squash);
@@ -163,6 +170,24 @@ bool CXcParticles::RenderSprites(CXcSprites &Sprites) const
 				Sprites.Queue(Particle.m_Sprite, true, Particle.m_Pos, Size, Particle.m_Rot, Color.WithMultipliedAlpha(Fade));
 			}
 			break;
+		case EType::JUMP_CIRCLE:
+		{
+			// like the jump circles of the Minecraft clients: opens from a fifth of its size with an ease out,
+			// stays bright and fades in the second part of its life
+			const float Size = mix(Particle.m_StartSize, Particle.m_EndSize, EaseOut);
+			const float x = std::clamp((t - 0.2f) / 0.8f, 0.0f, 1.0f);
+			const float Alpha = 1.0f - x * x * (3.0f - 2.0f * x);
+			const int Sprite = Particle.m_Sprite >= 0 ? Particle.m_Sprite : CXcSprites::SPRITE_JUMP_RING;
+			if(Sprite == CXcSprites::SPRITE_JUMP_RING)
+			{
+				// a soft wide band under the thin bright line, so the circle reads well from the side too
+				const float Band = Size * 0.62f * Reach;
+				Sprites.Queue(CXcSprites::SPRITE_JUMP_CIRCLE, true, Particle.m_Pos, Band, 0.0f, Color.WithMultipliedAlpha(Alpha * 0.35f * std::min(Glow, 1.5f)), 0.0f, Band * Particle.m_Squash);
+			}
+			Sprites.Queue(Sprite, false, Particle.m_Pos, Size, 0.0f, Color.WithMultipliedAlpha(Alpha), 0.0f, Size * Particle.m_Squash);
+			Sprites.Queue(Sprite, true, Particle.m_Pos, Size, 0.0f, Color.WithMultipliedAlpha(Alpha * std::min(Glow, 1.5f)), 0.0f, Size * Particle.m_Squash);
+			break;
+		}
 		case EType::CONFETTI:
 		case EType::SHARD:
 			break; // solid pieces keep their shapes, see Render()

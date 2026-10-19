@@ -24,6 +24,7 @@ public:
 		SHARD, // triangle splinter
 		FLASH, // bright soft disc that grows and fades quickly
 		ICON, // a picture particle of the new style (m_Sprite), e.g. a heart or a snowflake
+		JUMP_CIRCLE, // a flat circle on the ground that opens fast and fades softly (m_Sprite: its texture)
 	};
 
 	struct SParticle

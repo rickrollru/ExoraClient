@@ -1,5 +1,7 @@
 #include "jump_fx.h"
 
+#include "sprite_fx.h"
+
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -131,6 +133,22 @@ void CJumpFx::EmitJump(vec2 Feet, bool AirJump)
 	{
 	case JUMP_FX_RINGS:
 	{
+		if(GameClient()->m_XcSprites.Enabled())
+		{
+			// one glowing circle lying on the ground, like the jump circles of the Minecraft clients
+			CXcParticles::SParticle Fx;
+			Fx.m_Type = CXcParticles::EType::JUMP_CIRCLE;
+			Fx.m_Sprite = CXcSprites::SPRITE_JUMP_RING;
+			Fx.m_Squash = RING_SQUASH;
+			Fx.m_Pos = Feet;
+			Fx.m_LifeSpan = g_Config.m_XcJumpFxDuration / 1000.0f;
+			const float Diameter = (AirJump ? 190.0f : 240.0f) * Scale; // the visible ring is half of the texture
+			Fx.m_StartSize = Diameter * 0.2f;
+			Fx.m_EndSize = Diameter;
+			Fx.m_Color = Color;
+			m_Particles.Add(Fx);
+			break;
+		}
 		CXcParticles::SParticle Fx;
 		Fx.m_Type = CXcParticles::EType::RING;
 		Fx.m_Squash = RING_SQUASH;
@@ -184,6 +202,22 @@ void CJumpFx::EmitLanding(vec2 Feet, float FallSpeed)
 	const float Strength = std::clamp((FallSpeed - 700.0f) / 1500.0f, 0.0f, 1.0f);
 
 	CXcParticles::SParticle Fx;
+	if(GameClient()->m_XcSprites.Enabled())
+	{
+		// a soft thick ring that spreads over the ground, stronger after a long fall
+		Fx.m_Type = CXcParticles::EType::JUMP_CIRCLE;
+		Fx.m_Sprite = CXcSprites::SPRITE_JUMP_CIRCLE;
+		Fx.m_Squash = RING_SQUASH;
+		Fx.m_Pos = Feet;
+		Fx.m_LifeSpan = 0.5f + 0.3f * Strength;
+		Fx.m_EndSize = mix(110.0f, 190.0f, Strength) * Scale;
+		Fx.m_StartSize = Fx.m_EndSize * 0.2f;
+		Fx.m_Color = FxColor().WithMultipliedAlpha(mix(0.5f, 0.9f, Strength));
+		m_Particles.Add(Fx);
+		for(int i = 0; i < 4; i++)
+			EmitDust(Feet, i % 2 == 0 ? 1.0f : -1.0f);
+		return;
+	}
 	Fx.m_Type = CXcParticles::EType::RING;
 	Fx.m_Squash = RING_SQUASH;
 	Fx.m_Thickness = 6.0f * Scale;
