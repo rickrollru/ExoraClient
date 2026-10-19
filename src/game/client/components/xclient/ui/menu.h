@@ -34,6 +34,7 @@ public:
 		PAGE_VISUALS,
 		PAGE_CONFIGS,
 		PAGE_DEMOS,
+		PAGE_VOTES,
 		PAGE_SETTINGS,
 		NUM_PAGES,
 	};
@@ -319,6 +320,14 @@ private:
 	void RenderDemoDetails(SDemoEntry *pEntry, float Height);
 	void PlayDemo(const SDemoEntry &Entry);
 	void RenderDemos();
+
+	// menu_votes.cpp: the current vote, the vote options of the server and votes on players
+	int m_VoteOption = -1;
+	int m_VotePlayer = -1;
+	char m_aVoteReason[16] = {};
+	char m_aVoteFilter[64] = {};
+	void RenderVotes();
+
 	void RefreshConfigList();
 	void ConfigPath(const char *pName, char *pBuf, int BufSize) const;
 	std::string CurrentConfigText() const;
