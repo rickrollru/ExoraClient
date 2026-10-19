@@ -3685,7 +3685,7 @@ void CEditor::RenderMenubar(CUIRect MenuBar)
 	if(DoButton_Ex(&s_SettingsButton, "Settings", XcEditorStyle::Enabled() ? 11 : 0, &SettingsButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_T, EditorFontSizes::MENU, TEXTALIGN_ML))
 	{
 		static SPopupMenuId s_PopupMenuSettingsId;
-		Ui()->DoPopupMenu(&s_PopupMenuSettingsId, SettingsButton.x, SettingsButton.y + SettingsButton.h - 1.0f, 280.0f, 148.0f, this, PopupMenuSettings, PopupProperties);
+		Ui()->DoPopupMenu(&s_PopupMenuSettingsId, SettingsButton.x, SettingsButton.y + SettingsButton.h - 1.0f, 280.0f, XcEditorStyle::Enabled() ? 162.0f : 148.0f, this, PopupMenuSettings, PopupProperties); // XClient: +1 row
 	}
 
 	CUIRect Info, Help, Close;
@@ -3765,7 +3765,7 @@ void CEditor::Render()
 	str_copy(m_aTooltip, "");
 
 	// render checker
-	RenderBackground(View, m_CheckerTexture, 32.0f, XcEditorStyle::Enabled() ? 0.38f : 1.0f); // XClient: darker like Photoshop
+	RenderBackground(View, m_CheckerTexture, XcEditorStyle::CheckerSize(), XcEditorStyle::CheckerBrightness()); // XClient: like the Photoshop transparency grid
 
 	UpdateBrushPicker();
 
@@ -3978,6 +3978,9 @@ void CEditor::Render()
 	}
 
 	Ui()->MapScreen();
+
+	if(m_GuiActive)
+		XcRenderRulers(View); // XClient
 
 	CUIRect TooltipRect;
 	if(m_GuiActive)

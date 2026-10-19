@@ -2,6 +2,8 @@
 
 #include <engine/shared/config.h>
 
+#include <algorithm>
+
 #include <game/client/components/xclient/ui/theme.h>
 
 namespace XcEditorStyle
@@ -17,14 +19,43 @@ ColorRGBA Accent(float Alpha)
 	return ColorRGBA(Color.x, Color.y, Color.z, Alpha);
 }
 
+// interface brightness like in Photoshop: darkest, dark, medium gray
+static float Lift()
+{
+	switch(g_Config.m_XcEditorBrightness)
+	{
+	case 0: return -0.035f;
+	case 2: return 0.09f;
+	default: return 0.0f;
+	}
+}
+
 ColorRGBA Window()
 {
-	return ColorRGBA(0.106f, 0.110f, 0.122f, 1.0f); // #1B1C1F
+	const float l = Lift();
+	return ColorRGBA(0.106f + l, 0.110f + l, 0.122f + l, 1.0f); // #1B1C1F
 }
 
 ColorRGBA Panel()
 {
-	return ColorRGBA(0.137f, 0.145f, 0.161f, 1.0f); // #232529
+	const float l = Lift();
+	return ColorRGBA(0.137f + l, 0.145f + l, 0.161f + l, 1.0f); // #232529
+}
+
+float CheckerSize()
+{
+	if(!Enabled())
+		return 32.0f;
+	static const float s_aSizes[] = {16.0f, 32.0f, 64.0f};
+	return s_aSizes[std::clamp(g_Config.m_XcEditorCheckerSize, 0, 2)];
+}
+
+float CheckerBrightness()
+{
+	if(!Enabled())
+		return 1.0f;
+	static const float s_aShades[] = {0.25f, 0.38f, 0.62f};
+	return s_aShades[std::clamp(g_Config.m_XcEditorCheckerShade, 0, 2)];
 }
 
 ColorRGBA PanelLine()
@@ -34,6 +65,7 @@ ColorRGBA PanelLine()
 
 static ColorRGBA Gray(float Value, float Alpha = 1.0f)
 {
+	Value += Lift();
 	return ColorRGBA(Value, Value * 1.02f, Value * 1.08f, Alpha);
 }
 

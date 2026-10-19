@@ -14,6 +14,9 @@ ColorRGBA Panel(); // layer list, tool bar, status bar
 ColorRGBA PanelLine(); // 1px separators between the panels
 // button color for the editor's "Checked" states, see CEditor::GetButtonColor
 ColorRGBA ButtonColor(int Checked, bool Hot);
+// the transparency grid around and under the map
+float CheckerSize();
+float CheckerBrightness();
 // the font of the editor (Manrope from the menu), empty when the classic font stays
 const char *FontFace();
 } // namespace XcEditorStyle

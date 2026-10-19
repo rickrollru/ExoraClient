@@ -2978,6 +2978,7 @@ if(CLIENT)
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
     components/xclient/editor/editor_guide.cpp
+    components/xclient/editor/editor_prefs.cpp
     components/xclient/editor/editor_style.cpp
     components/xclient/editor/gif_import.cpp
     components/xclient/editor/editor_style.h
