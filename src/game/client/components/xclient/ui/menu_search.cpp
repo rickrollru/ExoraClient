@@ -70,6 +70,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_EVENTS, "##fx_dummy_arrow", "Arrows to players", "Glowing arrows at the screen edge show where the dummy, team mates and friends are", "стрелка дамми напарник друзья команда за экраном arrow dummy partner team friends"},
 		{CXcMenu::PAGE_CONFIGS, -1, nullptr, "Configs", "Save, load and share your settings", "конфиги конфиг config import export импорт экспорт код code"},
 		{CXcMenu::PAGE_DEMOS, -1, nullptr, "Demos", "Watch, rename and delete recorded demos", "демки демо demo replay запись повтор"},
+		{CXcMenu::PAGE_VOTES, -1, nullptr, "Votes", "Vote yes or no, start server votes, kick or move players to the spectators", "голосование голос голосовать кик зрители vote votes kick spectate"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##theme", "Theme", "Look of the menu: dark or light, and the accent color", "тема тёмная светлая dark light акцент accent цвет color"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##presets", "Theme presets", "Save theme, accent, font and background together", "пресеты темы сохранённые saved presets стиль style"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##font", "Font", "Main font of the menu", "шрифт font manrope onest unbounded"},
@@ -222,8 +223,9 @@ void CXcMenu::RenderSearch()
 	if(NumShown > 0 && (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter)))
 		Chosen = m_SearchSelected;
 
-	static const char *const s_apPageIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_GEAR};
-	static const char *const s_apPageNames[NUM_PAGES] = {"Home", "Servers", "Visuals", "Configs", "Demos", "Settings"};
+	static const char *const s_apPageIcons[] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_CHECK, XC_ICON_GEAR};
+	static const char *const s_apPageNames[] = {"Home", "Servers", "Visuals", "Configs", "Demos", "Votes", "Settings"};
+	static_assert(std::size(s_apPageIcons) == NUM_PAGES && std::size(s_apPageNames) == NUM_PAGES);
 	// one name per section: a missing one would be a null string and crash the search
 	static const char *const s_apSectionNames[] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD", "Textures", "TClient"};
 	static_assert(std::size(s_apSectionNames) == NUM_SETTINGS, "every settings section needs a name");
