@@ -61,6 +61,7 @@ public:
 	// input from the editor, before the editor UI gets it
 	void OnMouseMove(vec2 MousePos);
 	void OnInput(const IInput::CEvent &Event);
+	void OpenMapDetails() { m_MapDetailsRequest = true; }
 	// true while the mouse is over a panel, a menu or the capsule: the map must not react then
 	bool WantsMouse() const { return m_WantsMouse; }
 
@@ -94,6 +95,7 @@ private:
 		CAPTURE_QUAD = 0,
 		CAPTURE_POINT,
 		CAPTURE_SOURCE,
+		CAPTURE_BRUSH, // the numbers of the teleporter, switch, speedup and tune brushes
 		CAPTURE_LAYER,
 		CAPTURE_GROUP,
 		NUM_CAPTURES,
@@ -113,7 +115,8 @@ private:
 	};
 	SCaptureState m_aCaptures[NUM_CAPTURES];
 	float m_CardInnerWidth = 0.0f; // the width inside the card that is drawn
-	const void *m_pLastQuads = nullptr; // the quad popup color is taken from the quad when the selection changes
+	const void *m_pLastQuads = nullptr;
+	const void *m_pLastBrushLayer = nullptr; // the quad popup color is taken from the quad when the selection changes
 	void RunCapture(int Kind, CUi::FPopupMenuFunction pfnPopup, void *pContext);
 	void SetPending(int Kind, int Call, int Prop, int Value, EEditState State);
 	void RenderCaptureCard(int Kind, const char *pId, const char *pTitle, const char *pSubtitle, int SkipButtons = 0);
@@ -145,6 +148,9 @@ private:
 	void RenderDockFrame();
 	// Ctrl+K: every command of the editor by its name, like in Figma
 	void RenderPalette();
+	// map details: author, version, credits, license
+	void RenderMapDetails();
+	bool m_MapDetailsRequest = false;
 	bool m_PaletteOpen = false;
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};
