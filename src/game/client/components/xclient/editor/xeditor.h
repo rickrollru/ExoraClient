@@ -143,6 +143,12 @@ private:
 	void RenderCapsule();
 	void RenderStatusBar();
 	void RenderDockFrame();
+	// Ctrl+K: every command of the editor by its name, like in Figma
+	void RenderPalette();
+	bool m_PaletteOpen = false;
+	bool m_PaletteFocus = false;
+	char m_aPaletteSearch[64] = {};
+	int m_PaletteSelected = 0;
 
 	// small widgets in the editor style
 	bool IconButton(const char *pId, const char *pIcon, const char *pTooltip, bool Active = false, bool Enabled = true, float Size = 0.0f);

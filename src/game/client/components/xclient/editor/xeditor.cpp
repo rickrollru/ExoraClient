@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <functional>
 #include <optional>
 
 using namespace XcUi;
@@ -173,6 +174,8 @@ void CXcEditorUi::HandleTyping()
 		m_TypingInput.Activate(EInputPriority::UI);
 	else if(!Typing && m_TypingInput.IsActive())
 		m_TypingInput.Deactivate();
+	if(Typing)
+		m_TypingInput.XcMarkRendered(); // DDNet deactivates inputs that were not drawn this frame
 	m_Typing = Typing;
 }
 
@@ -325,6 +328,14 @@ void CXcEditorUi::Render()
 
 	if(Gui && E.m_Mode == MODE_LAYERS)
 		E.XcRenderRulers(m_View);
+	// Ctrl+K: the command palette
+	if(E.m_Dialog == DIALOG_NONE && CLineInput::GetActiveInput() == nullptr && E.Input()->ModifierIsPressed() && E.Input()->KeyPress(KEY_K))
+	{
+		m_PaletteOpen = true;
+		m_PaletteFocus = true;
+		m_aPaletteSearch[0] = '\0';
+		m_PaletteSelected = 0;
+	}
 
 	// ---- the new panels
 	if(m_Gui.IsReady())
@@ -350,6 +361,8 @@ void CXcEditorUi::Render()
 		}
 		if(Gui && E.m_Mode == MODE_LAYERS && !E.m_ShowPicker)
 			RenderCapsule();
+		if(m_PaletteOpen)
+			RenderPalette();
 
 		const ImGuiIO &Io = ImGui::GetIO();
 		m_WantsMouse = Io.WantCaptureMouse && !ClassicBusy;
@@ -593,10 +606,15 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 				QuickActionItem(E.m_QuickActionHistory, Tr("History"));
 				ImGui::Separator();
 				QuickActionItem(E.m_QuickActionPipette, Tr("Color pipette"), "Ctrl+Shift+C");
-				if(ImGui::MenuItem(Tr("Search for a command..."), "Ctrl+Shift+P"))
-					E.m_Prompt.SetActive();
+				if(ImGui::MenuItem(Tr("Search for a command..."), "Ctrl+K"))
+				{
+					m_PaletteOpen = true;
+					m_PaletteFocus = true;
+					m_aPaletteSearch[0] = '\0';
+					m_PaletteSelected = 0;
+				}
 				ImGui::Separator();
-				if(ImGui::MenuItem(Tr("Preferences..."), "Ctrl+K"))
+				if(ImGui::MenuItem(Tr("Preferences..."), "Ctrl+,"))
 					E.XcOpenPreferences();
 				break;
 			case 2: // view
@@ -1573,4 +1591,137 @@ void CXcEditorUi::RenderStatusBar()
 		pDraw->AddText(pFont, FontSize, ImVec2(S(12.0f), TextY), Col(t.m_TextSecondary), aHint);
 	}
 	ImGui::End();
+}
+
+// ------------------------------------------------------------------------------------------------
+// Ctrl+K command palette
+
+void CXcEditorUi::RenderPalette()
+{
+	CEditor &E = *m_pEditor;
+	const STheme &t = Theme();
+	struct SEntry
+	{
+		const char *m_pLabel;
+		const char *m_pEnglish; // the search also finds the english name
+		const char *m_pHint;
+		bool m_Disabled;
+		bool m_Active;
+		std::function<void()> m_Action;
+	};
+	std::vector<SEntry> vEntries;
+	// the own commands first, then every quick action of the editor
+	vEntries.push_back({Tr("Preferences..."), "Preferences", Tr("Look of the editor: interface brightness, transparency grid, rulers, cursor."), false, false, [&]() { E.XcOpenPreferences(); }});
+	vEntries.push_back({Tr("Animation presets..."), "Animation presets", Tr("Animation presets for the selected quads"), false, false, [&]() { E.XcOpenAnimate(); }});
+	vEntries.push_back({Tr("Add a GIF animation..."), "Add gif", Tr("Put an animated gif on the map. It plays for every player, also in other clients."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Add", "mapres", "", CEditor::XcCallbackAddGif, &E); }});
+	vEntries.push_back({Tr("Add a sound..."), "Add sound", nullptr, false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::SOUND, "Add sound", "Add", "mapres", "", CEditor::AddSound, &E); }});
+	vEntries.push_back({Tr("Properties panel"), "Properties panel", nullptr, false, m_ShowProperties, [&]() { m_ShowProperties = !m_ShowProperties; }});
+	vEntries.push_back({Tr("Hide the interface"), "Hide interface", nullptr, false, false, [&]() { E.m_GuiActive = false; }});
+	vEntries.push_back({Tr("Editor guide"), "Guide", nullptr, false, false, [&]() {
+				    E.m_XcGuideOpen = true;
+				    E.m_XcGuideStep = 0;
+			    }});
+	for(int Tool = 0; Tool < CEditor::XC_NUM_TOOLS; Tool++)
+	{
+		const char *pIcon, *pName, *pHint;
+		CEditor::XcToolInfo(Tool, &pIcon, &pName, &pHint);
+		vEntries.push_back({Tr(pName), pName, Tr(pHint), false, E.m_XcTool == Tool, [&E, Tool]() { E.m_XcTool = Tool; }});
+	}
+#define REGISTER_QUICK_ACTION(name, text, callback, disabled, active, button_color, description) \
+	vEntries.push_back({Tr(E.m_QuickAction##name.Label()), E.m_QuickAction##name.Label(), Tr(E.m_QuickAction##name.Description()), E.m_QuickAction##name.Disabled(), E.m_QuickAction##name.Active(), [&E]() { E.m_QuickAction##name.Call(); }});
+#include <game/editor/quick_actions.h>
+#undef REGISTER_QUICK_ACTION
+
+	std::vector<const SEntry *> vShown;
+	for(const SEntry &Entry : vEntries)
+	{
+		if(Entry.m_Disabled)
+			continue;
+		if(m_aPaletteSearch[0] && !str_utf8_find_nocase(Entry.m_pLabel, m_aPaletteSearch) && !str_utf8_find_nocase(Entry.m_pEnglish, m_aPaletteSearch))
+			continue;
+		vShown.push_back(&Entry);
+	}
+	m_PaletteSelected = std::clamp(m_PaletteSelected, 0, std::max((int)vShown.size() - 1, 0));
+
+	// at the top of the screen, like Spotlight
+	const ImVec2 Display = ImGui::GetIO().DisplaySize;
+	const float Width = std::min(S(620.0f), Display.x - S(40.0f));
+	ImGui::SetNextWindowPos(ImVec2((Display.x - Width) * 0.5f, m_TopHeight + S(60.0f)));
+	ImGui::SetNextWindowSize(ImVec2(Width, 0.0f));
+	ImGui::SetNextWindowFocus();
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_Border, t.m_Border);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, S(14.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(12.0f), S(12.0f)));
+	if(ImGui::Begin("##xe_palette", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		if(m_PaletteFocus)
+		{
+			ImGui::SetKeyboardFocusHere();
+			m_PaletteFocus = false;
+		}
+		ImGui::SetNextItemWidth(Width - S(24.0f));
+		ImGui::PushFont(Fonts().m_pLabel);
+		if(ImGui::InputTextWithHint("##search", Tr("Type a command: save, layer, grid, zoom..."), m_aPaletteSearch, sizeof(m_aPaletteSearch)))
+			m_PaletteSelected = 0;
+		ImGui::PopFont();
+		if(ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+			m_PaletteSelected = std::min(m_PaletteSelected + 1, (int)vShown.size() - 1);
+		if(ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+			m_PaletteSelected = std::max(m_PaletteSelected - 1, 0);
+		const bool Enter = ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter);
+		const bool Escape = ImGui::IsKeyPressed(ImGuiKey_Escape);
+		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+
+		std::function<void()> Run;
+		ImGui::BeginChild("##list", ImVec2(Width - S(24.0f), std::min(S(380.0f), vShown.size() * S(40.0f) + S(4.0f))), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		ImFont *pLabel = Fonts().m_pLabel;
+		ImFont *pSmall = Fonts().m_pSmall;
+		for(int i = 0; i < (int)vShown.size(); i++)
+		{
+			const SEntry &Entry = *vShown[i];
+			ImGui::PushID(i);
+			const ImVec2 Min = ImGui::GetCursorScreenPos();
+			const float RowWidth = ImGui::GetContentRegionAvail().x;
+			const ImVec2 Max(Min.x + RowWidth, Min.y + S(38.0f));
+			if(ImGui::InvisibleButton("##entry", ImVec2(RowWidth, S(38.0f))))
+				Run = Entry.m_Action;
+			if(ImGui::IsItemHovered() && ImGui::GetIO().MouseDelta.x * ImGui::GetIO().MouseDelta.x + ImGui::GetIO().MouseDelta.y * ImGui::GetIO().MouseDelta.y > 0.0f)
+				m_PaletteSelected = i;
+			const bool Selected = i == m_PaletteSelected;
+			if(Selected)
+			{
+				pDraw->AddRectFilled(Min, Max, Col(t.m_Accent, 0.2f), S(8.0f));
+				ImGui::SetScrollHereY(0.5f);
+			}
+			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(12.0f), Min.y + S(4.0f)), Col(Selected ? t.m_Text : t.m_TextSecondary), Entry.m_pLabel);
+			if(Entry.m_pHint && Entry.m_pHint[0])
+			{
+				char aHint[256];
+				XcFitText(pSmall, pSmall->FontSize * 0.9f, Entry.m_pHint, RowWidth - S(24.0f), aHint, sizeof(aHint));
+				pDraw->AddText(pSmall, pSmall->FontSize * 0.9f, ImVec2(Min.x + S(12.0f), Min.y + S(4.0f) + pLabel->FontSize), Col(t.m_TextMuted), aHint);
+			}
+			if(Entry.m_Active)
+				pDraw->AddCircleFilled(ImVec2(Max.x - S(14.0f), (Min.y + Max.y) * 0.5f), S(3.5f), Col(t.m_Accent), 12);
+			if(Selected && Enter)
+				Run = Entry.m_Action;
+			ImGui::PopID();
+		}
+		if(vShown.empty())
+			Description(Tr("Nothing found"));
+		ImGui::EndChild();
+
+		const bool ClickedOutside = ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+		if(Run || Escape || ClickedOutside)
+			m_PaletteOpen = false;
+		ImGui::End();
+		if(Run)
+			Run();
+	}
+	else
+		ImGui::End();
+	ImGui::PopStyleVar(3);
+	ImGui::PopStyleColor(2);
 }
