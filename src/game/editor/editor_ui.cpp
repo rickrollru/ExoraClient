@@ -85,6 +85,17 @@ int CEditor::DoButtonLogic(const void *pId, int Checked, const CUIRect *pRect, i
 
 int CEditor::DoButton_Editor(const void *pId, const char *pText, int Checked, const CUIRect *pRect, int Flags, const char *pToolTip)
 {
+	// XClient: buttons of the property popups become buttons of the new properties panel
+	if(m_XcCapture.m_Active)
+	{
+		m_XcCapture.m_vButtons.push_back({pId, pText, pToolTip ? pToolTip : "", Checked});
+		if(m_XcCapture.m_pPendingButton == pId)
+		{
+			m_XcCapture.m_pPendingButton = nullptr;
+			return 1;
+		}
+		return 0;
+	}
 	pRect->Draw(GetButtonColor(pId, Checked), IGraphics::CORNER_ALL, 3.0f);
 	CUIRect NewRect = *pRect;
 	Ui()->DoLabel(&NewRect, pText, 10.0f, TEXTALIGN_MC);

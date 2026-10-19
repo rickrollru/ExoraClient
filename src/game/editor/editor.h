@@ -38,6 +38,8 @@
 #include <game/editor/mapitems/map.h>
 #include <game/editor/prompt.h>
 #include <game/editor/quick_action.h>
+
+#include <game/client/components/xclient/editor/xeditor.h> // XClient
 #include <game/mapitems.h>
 
 #include <deque>
@@ -106,6 +108,8 @@ enum
 
 class CEditor : public IEditor
 {
+	friend class CXcEditorUi; // XClient: the new interface drives the editor
+
 	class IInput *m_pInput = nullptr;
 	class IClient *m_pClient = nullptr;
 	class IConfigManager *m_pConfigManager = nullptr;
@@ -753,6 +757,13 @@ public:
 	bool XcMouseOverFloatingTools();
 	void XcDoPanelGrip(CUIRect Grip, int Panel);
 	void XcRenderPanelDrag();
+	// XClient: the new interface (xclient/editor/xeditor.cpp)
+	CXcEditorUi m_XcUi;
+	// XClient: while a capture is active, DoPropertiesWithState and DoButton_Editor draw nothing: they record
+	// the properties and buttons for the new properties panel and hand back the change it made last frame
+	SXcCapture m_XcCapture;
+	bool XcNewUi() const;
+	static void XcToolInfo(int Tool, const char **ppIcon, const char **ppName, const char **ppHint);
 	void ShowHelp();
 	void Exit();
 
