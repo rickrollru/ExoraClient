@@ -246,7 +246,8 @@ void CMapView::Render(CUIRect View)
 		MapGrid()->Render();
 	}
 
-	const bool ShouldPan = Ui()->HotItem() == Editor()->MapView() && ((Input()->ModifierIsPressed() && Ui()->MouseButton(0)) || Ui()->MouseButton(2));
+	const bool XcHandTool = Editor()->XcPhotoshopLayout() && Editor()->m_XcTool == CEditor::XC_TOOL_HAND; // XClient
+	const bool ShouldPan = Ui()->HotItem() == Editor()->MapView() && ((Input()->ModifierIsPressed() && Ui()->MouseButton(0)) || Ui()->MouseButton(2) || (XcHandTool && Ui()->MouseButton(0)));
 	if(Editor()->m_pContainerPanned == Editor()->MapView())
 	{
 		// do panning
@@ -284,8 +285,12 @@ void CMapView::Render(CUIRect View)
 				Editor()->m_pContainerPanned = Editor()->MapView();
 		}
 
+		// XClient: the Photoshop tools (eraser, fill, eyedropper, hand, zoom) take the mouse instead of the brush
+		if(Ui()->HotItem() == Editor()->MapView() && !Editor()->m_ShowPicker && Editor()->XcDoMapTool(vec2(wx, wy), Inside))
+		{
+		}
 		// brush editing
-		if(Ui()->HotItem() == Editor()->MapView())
+		else if(Ui()->HotItem() == Editor()->MapView())
 		{
 			if(Editor()->m_ShowPicker)
 			{

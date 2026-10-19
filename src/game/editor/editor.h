@@ -704,6 +704,7 @@ public:
 		XC_ZONE_TOOLBOX,
 		XC_ZONE_VIEW,
 		XC_ZONE_STATUS,
+		XC_ZONE_TOOLS,
 		XC_NUM_ZONES,
 	};
 	CUIRect m_aXcZones[XC_NUM_ZONES] = {};
@@ -711,6 +712,23 @@ public:
 	int m_XcGuideStep = 0;
 	float m_XcGuideAnim = 0.0f;
 	void XcRenderGuide();
+	// XClient: Photoshop like tools (xclient/editor/editor_tools.cpp)
+	enum
+	{
+		XC_TOOL_BRUSH = 0, // the classic editor behavior: select a brush and paint
+		XC_TOOL_ERASER,
+		XC_TOOL_FILL,
+		XC_TOOL_PICKER,
+		XC_TOOL_HAND,
+		XC_TOOL_ZOOM,
+		XC_NUM_TOOLS,
+	};
+	int m_XcTool = XC_TOOL_BRUSH;
+	bool XcPhotoshopLayout() const;
+	void XcRenderToolStrip(CUIRect Strip);
+	void XcHandleToolHotkeys();
+	// true when the tool used the mouse on the map this frame and the brush must not
+	bool XcDoMapTool(vec2 WorldPos, bool Inside);
 	void ShowHelp();
 	void Exit();
 
