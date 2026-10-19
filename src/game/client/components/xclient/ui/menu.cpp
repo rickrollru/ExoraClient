@@ -26,7 +26,7 @@
 
 using namespace XcUi;
 
-static const char *const XC_CLIENT_NAME = "XClient"; // working name, the final one comes later
+static const char *const XC_CLIENT_NAME = "Exora Client";
 
 void CXcMenu::OnConsoleInit()
 {

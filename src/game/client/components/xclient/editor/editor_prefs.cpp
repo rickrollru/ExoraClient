@@ -55,7 +55,7 @@ CUi::EPopupMenuFunctionResult CEditor::XcPopupPreferences(void *pContext, CUIRec
 	View.HSplitTop(4.0f, nullptr, &View);
 
 	static char s_aIds[8][8];
-	const char *apStyle[] = {"Classic", "XClient"};
+	const char *apStyle[] = {"Classic", "Exora Client"};
 	SegmentRow(pEditor, &View, Tr("Look"), &g_Config.m_XcEditorStyle, apStyle, 2, s_aIds[0]);
 	const char *apLayout[] = {"Classic", "Photoshop"};
 	SegmentRow(pEditor, &View, Tr("Layout"), &g_Config.m_XcEditorLayout, apLayout, 2, s_aIds[1]);
