@@ -78,7 +78,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_XcMenuButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_XcMenuButton, "XClient", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.31f, 0.55f, 1.0f, 0.45f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_XcMenuButton, "Exora Client", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.31f, 0.55f, 1.0f, 0.45f)))
 	{
 		g_Config.m_XcNewMenu = 1;
 		GameClient()->m_XcMenu.SetActive(true);

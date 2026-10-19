@@ -89,7 +89,7 @@ const STcSetting gs_aTcSettings[] = {
 		{"Tile outlines", "Lines around freeze, hook, kill and teleporters"},
 		{"Player indicator", "Circles around you that point to the other tees"},
 		{"Rainbow", "Rainbow tees, hook and weapons"},
-		{"TClient trails", "The trail from TClient (the XClient trail is in Visuals)"},
+		{"TClient trails", "The trail from TClient (the Exora Client trail is in Visuals)"},
 		{"HUD and status bar", "Status bar, last notice and dummy info"},
 		{"Chat", "Filter, auto replies and translation"},
 		{"War list", "Colors for enemies and friends"},

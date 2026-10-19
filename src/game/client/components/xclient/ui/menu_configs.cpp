@@ -37,7 +37,7 @@ void CXcMenu::ConfigPath(const char *pName, char *pBuf, int BufSize) const
 std::string CXcMenu::CurrentConfigText() const
 {
 	// every XClient setting, written as console commands
-	std::string Text = "# XClient config\n";
+	std::string Text = "# Exora Client config\n";
 	char aLine[1024];
 	char aEscaped[512];
 #define MACRO_CONFIG_INT(Name, ScriptName, Def, Min, Max, Save, Desc) \
@@ -195,7 +195,7 @@ void CXcMenu::RenderConfigs()
 
 	ImGui::BeginChild("##config_list", ImVec2(ListWidth, Area.y), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
 	Header(Tr("Configs"));
-	Description(Tr("Your XClient settings, saved locally. Share a config with a short code."));
+	Description(Tr("Your Exora Client settings, saved locally. Share a config with a short code."));
 	ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
 
 	BeginCardGrid("##config_actions", 2);
@@ -227,7 +227,7 @@ void CXcMenu::RenderConfigs()
 			{
 				char aName[32];
 				str_format(aName, sizeof(aName), "imported_%d", (int)m_vConfigs.size() + 1);
-				WriteConfig(aName, "# XClient config (imported)\n" + FilterConfig(Text));
+				WriteConfig(aName, "# Exora Client config (imported)\n" + FilterConfig(Text));
 				m_SelectedConfig = aName;
 				m_SelectedCode.clear();
 				m_aImportCode[0] = '\0';

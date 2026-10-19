@@ -35,7 +35,7 @@ const SGuideStep s_aSteps[] = {
 	{CEditor::XC_ZONE_TOOLBOX, "Layers", "Like layers in Photoshop: groups hold layers, the eye hides a layer, a click selects it, a right click opens its settings. The Game layer is where the physics are: walls, freeze, death. The icons on top switch to images and sounds."},
 	{CEditor::XC_ZONE_VIEW, "Canvas", "Left mouse: select tiles and make them a brush, then paint with it. Right mouse: drop the brush. Wheel: zoom. Middle mouse or space: move around. Ctrl+Z undoes, Ctrl+S saves."},
 	{CEditor::XC_ZONE_STATUS, "Hints and panels", "The line at the bottom explains what is under the mouse. On the right: History (every change, click to go back), Server settings of the map and Envelopes (animations for quads and colors)."},
-	{-1, "XClient extras", "Images in other formats (jpg, bmp, gif, tga) turn into png by themselves. Tools > Add GIF animation puts an animated gif on the map that plays for every player. In the image settings you can upscale an image x2 or x4. This guide is always behind the Guide button on top."},
+	{-1, "Exora Client extras", "Images in other formats (jpg, bmp, gif, tga) turn into png by themselves. Tools > Add GIF animation puts an animated gif on the map that plays for every player. In the image settings you can upscale an image x2 or x4. This guide is always behind the Guide button on top."},
 };
 constexpr int NUM_STEPS = (int)std::size(s_aSteps);
 } // namespace

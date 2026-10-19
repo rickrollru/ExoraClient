@@ -11,7 +11,7 @@
 #endif
 
 // Render module
-MACRO_CONFIG_INT(XcRender, xc_render, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the XClient render module for effects (needs OpenGL 3.3)")
+MACRO_CONFIG_INT(XcRender, xc_render, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the Exora Client render module for effects (needs OpenGL 3.3)")
 MACRO_CONFIG_INT(XcBloom, xc_bloom, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bloom strength of glowing effects in percent")
 MACRO_CONFIG_INT(XcBloomThreshold, xc_bloom_threshold, 10, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only parts brighter than this (percent) glow")
 MACRO_CONFIG_INT(XcFxQuality, xc_fx_quality, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect quality (0 = low, no bloom, 1 = medium, 2 = high)")
@@ -46,7 +46,7 @@ MACRO_CONFIG_INT(XcFxglowArrowSize, xc_fxglow_arrow_size, 100, 25, 300, CFGFLAG_
 MACRO_CONFIG_INT(XcMenuBlur, xc_menu_blur, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Blur the game behind the menu")
 
 // New menu (ImGui)
-MACRO_CONFIG_INT(XcNewMenu, xc_new_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the new XClient menu instead of the classic one")
+MACRO_CONFIG_INT(XcNewMenu, xc_new_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the new Exora Client menu instead of the classic one")
 MACRO_CONFIG_INT(XcUiTheme, xc_ui_theme, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Menu theme (0 = dark, 1 = light)")
 MACRO_CONFIG_INT(XcUiAccent, xc_ui_accent, 0, 0, 6, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Menu accent color (0 blue, 1 mint, 2 orange, 3 pink, 4 lime, 5 red, 6 white)")
 MACRO_CONFIG_INT(XcUiFont, xc_ui_font, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Menu font (0 = Manrope, 1 = Onest, 2 = Unbounded)")
@@ -68,7 +68,7 @@ MACRO_CONFIG_INT(XcMenuBgBlur, xc_menu_bg_blur, 0, 0, 1, CFGFLAG_CLIENT | CFGFLA
 MACRO_CONFIG_INT(XcMenuBgGifSpeed, xc_menu_bg_gif_speed, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of gif backgrounds in percent")
 
 // New HUD (positions are the element centers in 1/1000 of the screen, scale in percent)
-MACRO_CONFIG_INT(XcHud, xc_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the XClient HUD")
+MACRO_CONFIG_INT(XcHud, xc_hud, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the Exora Client HUD")
 MACRO_CONFIG_INT(XcHudWatermark, xc_hud_watermark, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: watermark with name, FPS, ping and time")
 MACRO_CONFIG_INT(XcHudWatermarkX, xc_hud_watermark_x, 110, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: watermark position x")
 MACRO_CONFIG_INT(XcHudWatermarkY, xc_hud_watermark_y, 32, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: watermark position y")
@@ -261,7 +261,7 @@ MACRO_CONFIG_INT(XcCameraShake, xc_camera_shake, 0, 0, 1, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(XcCameraShakeStrength, xc_camera_shake_strength, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the camera shake in percent")
 
 // Event sounds (only for your own tee and dummy)
-MACRO_CONFIG_INT(XcEventSounds, xc_event_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "XClient sounds on game events of your own tees")
+MACRO_CONFIG_INT(XcEventSounds, xc_event_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Exora Client sounds on game events of your own tees")
 MACRO_CONFIG_INT(XcEventSoundVolume, xc_event_sound_volume, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Volume of the event sounds in percent")
 MACRO_CONFIG_INT(XcEventSoundFreeze, xc_event_sound_freeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you freeze and unfreeze")
 MACRO_CONFIG_INT(XcEventSoundFinish, xc_event_sound_finish, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound at the finish and for a new record")
@@ -339,9 +339,9 @@ MACRO_CONFIG_INT(XcMusic, xc_music, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mus
 MACRO_CONFIG_INT(XcMusicToasts, xc_music_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player: a short note when the next track starts")
 
 // Map editor
-MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the XClient style: flat dark panels, accent selection, the menu font")
+MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the Exora Client style: flat dark panels, accent selection, the menu font")
 MACRO_CONFIG_INT(XcEditorGuideSeen, xc_editor_guide_seen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The map editor guide was shown once")
-MACRO_CONFIG_INT(XcEditorUi, xc_editor_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The new map editor interface in the XClient style (0 = the classic editor)")
+MACRO_CONFIG_INT(XcEditorUi, xc_editor_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The new map editor interface in the Exora Client style (0 = the classic editor)")
 MACRO_CONFIG_INT(XcEditorLayout, xc_editor_layout, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor layout like Photoshop: tools on the left, layers on the right")
 MACRO_CONFIG_INT(XcEditorEraserSize, xc_editor_eraser_size, 1, 1, 16, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the map editor eraser in tiles")
 MACRO_CONFIG_INT(XcEditorBrightness, xc_editor_brightness, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor interface brightness (0 = darkest, 1 = dark, 2 = medium)")
