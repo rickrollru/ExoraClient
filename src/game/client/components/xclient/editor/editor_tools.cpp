@@ -56,7 +56,20 @@ std::vector<std::shared_ptr<CLayerTiles>> SelectedTileLayers(CEditorMap *pMap)
 
 bool CEditor::XcPhotoshopLayout() const
 {
-	return XcEditorStyle::Enabled() && g_Config.m_XcEditorLayout;
+	// the new interface always has the tools
+	return XcNewUi() || (XcEditorStyle::Enabled() && g_Config.m_XcEditorLayout);
+}
+
+bool CEditor::XcNewUi() const
+{
+	return g_Config.m_XcEditorUi && m_XcUi.IsReady();
+}
+
+void CEditor::XcToolInfo(int Tool, const char **ppIcon, const char **ppName, const char **ppHint)
+{
+	*ppIcon = s_aTools[Tool].m_pIcon;
+	*ppName = s_aTools[Tool].m_pName;
+	*ppHint = s_aTools[Tool].m_pHint;
 }
 
 void CEditor::XcHandleToolHotkeys()

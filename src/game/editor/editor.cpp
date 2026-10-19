@@ -3752,6 +3752,13 @@ void CEditor::Exit()
 
 void CEditor::Render()
 {
+	// XClient: the new interface draws the whole frame itself
+	if(XcNewUi())
+	{
+		m_XcUi.Render();
+		return;
+	}
+
 	// basic start
 	Graphics()->Clear(0.0f, 0.0f, 0.0f);
 	CUIRect View = *Ui()->Screen();
@@ -4733,6 +4740,8 @@ void CEditor::Init()
 	m_pQuadsetPicker->m_Readonly = true;
 
 	m_pBrush = std::make_shared<CLayerGroup>(m_pToolsMap.get());
+
+	m_XcUi.Init(this); // XClient
 }
 
 bool CEditor::HasUnsavedData() const
@@ -4943,6 +4952,8 @@ void CEditor::OnUpdate()
 		Ui()->ConvertMouseMove(&CursorRel.x, &CursorRel.y, CursorType);
 		MouseAxisLock(CursorRel);
 		Ui()->OnCursorMove(CursorRel.x, CursorRel.y);
+		if(XcNewUi()) // XClient
+			m_XcUi.OnMouseMove(Ui()->UpdatedMousePos());
 	}
 
 	// handle key presses
@@ -4961,6 +4972,8 @@ void CEditor::OnUpdate()
 
 void CEditor::OnInput(const IInput::CEvent &Event)
 {
+	if(XcNewUi()) // XClient: the new panels see every event, the editor too
+		m_XcUi.OnInput(Event);
 	if(m_Dialog == DIALOG_NONE && CLineInput::GetActiveInput() == nullptr && Event.m_Key == KEY_F1)
 	{
 		if((Event.m_Flags & IInput::FLAG_PRESS) != 0 && (Event.m_Flags & IInput::FLAG_REPEAT) == 0)
