@@ -1,0 +1,3 @@
+The textures in this folder (trail_*, dash_*, jump_*, soft_*, particles/*) come from the Flower client
+by Kent, used in XClient with the author's permission (docs/xclient/third_party/flower_permission.png).
+The dash_group*.png strips are the original animation frames placed side by side.

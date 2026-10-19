@@ -54,9 +54,16 @@ void CXcMenu::RenderVisualsTee()
 		EndCard();
 	}
 
-	const char *apTrails[] = {Tr("Ribbon"), Tr("Sparks"), Tr("Stars"), Tr("Comet")};
-	if(StyleCard("##fx_trail", Tr("Trail"), Tr("A glowing ribbon behind the tee"), "xc_trail", &g_Config.m_XcTrail, apTrails, 4))
+	const char *apTrails[] = {Tr("Ribbon"), Tr("Sparks"), Tr("Stars"), Tr("Comet"), Tr("Dashes")};
+	if(StyleCard("##fx_trail", Tr("Trail"), Tr("A glowing ribbon behind the tee"), "xc_trail", &g_Config.m_XcTrail, apTrails, 5))
 	{
+		if(g_Config.m_XcTrail == 5)
+		{
+			const char *apDashes[] = {Tr("Stretch"), Tr("Pop"), Tr("Spin"), Tr("Blink"), Tr("Spark")};
+			ConfigSegmented("##trail_dash", "xc_trail_dash", &g_Config.m_XcTrailDash, apDashes, 5);
+			if(!g_Config.m_XcFxStyle)
+				Description(Tr("Dashes need the new effect look (Visuals > World > Glow)"));
+		}
 		EffectColorPicker("##trail_color", &g_Config.m_XcTrailColorMode, &g_Config.m_XcTrailColor);
 		ConfigSlider(Tr("Length"), "xc_trail_length", &g_Config.m_XcTrailLength, 100, 2000, "%d ms");
 		ConfigSlider(Tr("Width"), "xc_trail_width", &g_Config.m_XcTrailWidth, 25, 300, "%d%%");
@@ -200,6 +207,9 @@ void CXcMenu::RenderVisualsWorld()
 	BeginCardGrid("##vis_world", 2);
 	if(BeginCard("##fx_glow_tune", Tr("Glow"), Tr("How bright and how wide every effect glows")))
 	{
+		ParamLabel(Tr("Effect look"));
+		const char *apLooks[] = {Tr("Classic"), Tr("Soft light")};
+		ConfigSegmented("##fx_style", "xc_fx_style", &g_Config.m_XcFxStyle, apLooks, 2);
 		ConfigSlider(Tr("Bloom halo"), "xc_bloom", &g_Config.m_XcBloom, 0, 200, "%d%%");
 		ConfigSlider(Tr("Bloom threshold"), "xc_bloom_threshold", &g_Config.m_XcBloomThreshold, 0, 100, "%d%%");
 		ConfigSlider(Tr("All effects: strength"), "xc_fxglow_all", &g_Config.m_XcFxglowAll, 0, 300, "%d%%");

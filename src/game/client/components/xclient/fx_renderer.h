@@ -127,6 +127,9 @@ public:
 	// draws and clears the queued world effects (called by OnRender, or later by CXcOverTiles)
 	void FlushWorld();
 
+	// textured sprites of the new effect style
+	class CXcSprites &Sprites();
+
 	// true when shapes are drawn by the render module
 	bool ModuleActive() const;
 

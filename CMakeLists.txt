@@ -2192,6 +2192,30 @@ set(EXPECTED_DATA
   xclient/fonts/Unbounded-Bold.ttf
   xclient/fonts/Unbounded-Regular.ttf
   xclient/fonts/Unbounded-SemiBold.ttf
+  xclient/fx/CREDITS.txt
+  xclient/fx/dash_bloom.png
+  xclient/fx/dash_group1.png
+  xclient/fx/dash_group2.png
+  xclient/fx/dash_group3.png
+  xclient/fx/dash_group4.png
+  xclient/fx/dash_group5.png
+  xclient/fx/jump_circle.png
+  xclient/fx/jump_ring.png
+  xclient/fx/particles/crown.png
+  xclient/fx/particles/dollar.png
+  xclient/fx/particles/firefly.png
+  xclient/fx/particles/firepart.png
+  xclient/fx/particles/ghost.png
+  xclient/fx/particles/heart.png
+  xclient/fx/particles/pumpkin.png
+  xclient/fx/particles/rhombus.png
+  xclient/fx/particles/snowflake.png
+  xclient/fx/particles/star.png
+  xclient/fx/soft_bloom.png
+  xclient/fx/soft_glow.png
+  xclient/fx/trail_bloom.png
+  xclient/fx/trail_core.png
+  xclient/fx/trail_glow.png
   xclient/hats/bat_wings.png
   xclient/hats/cat_ears.png
   xclient/hats/party_hat.png
@@ -3005,6 +3029,8 @@ if(CLIENT)
     components/xclient/music/music.h
     components/xclient/tee_glow.cpp
     components/xclient/tee_glow.h
+    components/xclient/sprite_fx.cpp
+    components/xclient/sprite_fx.h
     components/xclient/trail_fx.cpp
     components/xclient/trail_fx.h
     components/xclient/ui/backgrounds.cpp
