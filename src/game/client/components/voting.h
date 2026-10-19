@@ -61,6 +61,11 @@ public:
 	int SecondsLeft() const;
 	bool IsVoting() const { return m_Closetime != 0; }
 	int TakenChoice() const { return m_Voted; }
+	// XClient: vote counts for the new menu
+	int XcYes() const { return m_Yes; }
+	int XcNo() const { return m_No; }
+	int XcPass() const { return m_Pass; }
+	int XcTotal() const { return m_Total; }
 	const char *VoteDescription() const { return m_aDescription; }
 	const char *VoteReason() const { return m_aReason; }
 	bool IsReceivingOptions() const { return m_ReceivingOptions; }

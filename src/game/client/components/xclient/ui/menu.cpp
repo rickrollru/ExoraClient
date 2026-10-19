@@ -518,6 +518,7 @@ void CXcMenu::RenderFrame()
 	case PAGE_VISUALS: RenderVisuals(); break;
 	case PAGE_CONFIGS: RenderConfigs(); break;
 	case PAGE_DEMOS: RenderDemos(); break;
+	case PAGE_VOTES: RenderVotes(); break;
 	default: RenderSettings(); break;
 	}
 	ImGui::EndChild();
@@ -546,8 +547,8 @@ void CXcMenu::RenderTopBar(float Width)
 	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(Start.x + DotRadius * 2.0f + S(14.0f), Start.y + BarHeight * 0.5f - pTitle->FontSize * 0.5f), Col(t.m_Text), XC_CLIENT_NAME);
 
 	// tabs in a capsule in the middle
-	const char *apIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_GEAR};
-	const char *apLabels[NUM_PAGES] = {Tr("Home"), Tr("Servers"), Tr("Visuals"), Tr("Configs"), Tr("Demos"), Tr("Settings")};
+	const char *apIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_CHECK, XC_ICON_GEAR};
+	const char *apLabels[NUM_PAGES] = {Tr("Home"), Tr("Servers"), Tr("Visuals"), Tr("Configs"), Tr("Demos"), Tr("Votes"), Tr("Settings")};
 	ImFont *pLabel = Fonts().m_pLabel;
 	float CapsuleWidth = S(8.0f);
 	for(int i = 0; i < NUM_PAGES; i++)
