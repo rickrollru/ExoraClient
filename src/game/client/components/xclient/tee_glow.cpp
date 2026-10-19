@@ -35,7 +35,7 @@ bool CTeeGlow::Begin(int ClientId)
 
 	// the tee, its weapon and room for the glow
 	const vec2 Pos = GameClient()->m_aClients[ClientId].m_RenderPos;
-	const float Extent = 80.0f + GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f;
+	const float Extent = 80.0f + GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius;
 	const float aWorldRect[4] = {Pos.x - Extent, Pos.y - Extent, Pos.x + Extent, Pos.y + Extent};
 	Graphics()->XcCaptureBegin(aWorldRect);
 	return true;
@@ -58,8 +58,8 @@ void CTeeGlow::End(int ClientId)
 	Settings.m_Color = Color.WithAlpha(Alpha);
 	// the outline is a lighter version of the glow, like the hot core of a neon tube
 	Settings.m_RimColor = ColorRGBA(mix(Color.r, 1.0f, 0.2f), mix(Color.g, 1.0f, 0.2f), mix(Color.b, 1.0f, 0.2f), Alpha);
-	Settings.m_Radius = GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * PixelsPerUnit;
-	Settings.m_Strength = 2.4f * g_Config.m_XcGlowStrength / 100.0f * Pulse;
+	Settings.m_Radius = GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius * PixelsPerUnit;
+	Settings.m_Strength = 2.4f * g_Config.m_XcGlowStrength / 100.0f * FxGlow::For(-1).m_Strength * Pulse;
 	Settings.m_RimWidth = OUTLINE_WIDTH * g_Config.m_XcGlowOutline / 100.0f * PixelsPerUnit;
 	Graphics()->XcCaptureEnd(Settings);
 }

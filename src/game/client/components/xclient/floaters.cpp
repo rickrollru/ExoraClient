@@ -1,4 +1,5 @@
 #include "floaters.h"
+#include "fx_renderer.h"
 
 #include "xc_helpers.h"
 
@@ -64,6 +65,11 @@ void CXcFloaters::Spawn(SFloater &Floater, float X0, float Y0, float X1, float Y
 // soft round light, additive: bright middle, nothing at the edge
 void CXcFloaters::DrawGlow(vec2 Pos, float Radius, ColorRGBA Color) const
 {
+	const FxGlow::SScale Glow = FxGlow::For(FxGlow::FLOATERS);
+	if(Glow.m_Strength <= 0.0f)
+		return;
+	Radius *= Glow.m_Radius;
+	Color.a = std::min(Color.a * Glow.m_Strength, 1.0f);
 	constexpr int SEGMENTS = 20;
 	const ColorRGBA Clear = Color.WithAlpha(0.0f);
 	for(int i = 0; i < SEGMENTS; i++)

@@ -142,6 +142,7 @@ static ColorRGBA Shade(ColorRGBA Color, float Factor)
 
 void CAccessory::RenderCone(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
 	CFxRenderer &Fx = GameClient()->m_FxRenderer;
 	constexpr float BRIM_SQUASH = 0.3f;
 	const float Radius = 30.0f * Scale;
@@ -160,12 +161,14 @@ void CAccessory::RenderCone(vec2 Head, float Scale, float Tilt, float Squash, fl
 
 void CAccessory::RenderHalo(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
 	const vec2 Center = Rotate(Head + vec2(0.0f, -14.0f * Scale * Squash), Head, Tilt);
 	GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Ring(Center, vec2(15.0f, 15.0f * 0.32f * Squash) * Scale, 3.0f * Scale, BaseColor(0.0f, Alpha)).Rotate(Tilt), 7.0f * Scale, 0.5f);
 }
 
 void CAccessory::RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
 	CFxRenderer &Fx = GameClient()->m_FxRenderer;
 	// the crown is drawn a bit bigger than the other accessories to match their visual weight
 	Scale *= 1.3f;

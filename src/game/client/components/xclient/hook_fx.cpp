@@ -51,6 +51,7 @@ ColorRGBA CHookFx::SpriteColor(float Alpha) const
 
 void CHookFx::RenderLine(vec2 PlayerPos, vec2 HookPos, float Alpha) const
 {
+	const FxGlow::CScope GlowScope(FxGlow::HOOK);
 	const float Length = distance(PlayerPos, HookPos);
 	if(Length < 1.0f)
 		return;
