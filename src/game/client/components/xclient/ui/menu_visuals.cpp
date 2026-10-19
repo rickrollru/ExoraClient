@@ -355,6 +355,11 @@ void CXcMenu::RenderVisualsEvents()
 		EffectColorPicker("##teleport_color", &g_Config.m_XcTeleportColorMode, &g_Config.m_XcTeleportColor);
 		EndCard();
 	}
+	if(BeginCard("##fx_checkpoint", Tr("Checkpoints"), Tr("A ring and rising sparks when your tee passes a time checkpoint"), &g_Config.m_XcCheckpointFx))
+	{
+		EffectColorPicker("##checkpoint_color", &g_Config.m_XcCheckpointColorMode, &g_Config.m_XcCheckpointColor);
+		EndCard();
+	}
 	if(BeginCard("##fx_juice", Tr("Juice"), Tr("Screen flashes and camera shake on freeze, death, finish and explosions")))
 	{
 		ToggleRow(Tr("Screen flash"), "xc_screen_flash", &g_Config.m_XcScreenFlash);
