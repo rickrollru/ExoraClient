@@ -694,6 +694,22 @@ public:
 	void DoEditorDragBar(CUIRect View, CUIRect *pDragBar, EDragSide Side, float *pValue, float MinValue = 100.0f, float MaxValue = 400.0f);
 
 	void RenderMenubar(CUIRect Menubar);
+	// XClient: step by step guide over the editor (xclient/editor/editor_guide.cpp)
+	enum
+	{
+		XC_ZONE_MENU = 0,
+		XC_ZONE_TABS,
+		XC_ZONE_TOOLBAR,
+		XC_ZONE_TOOLBOX,
+		XC_ZONE_VIEW,
+		XC_ZONE_STATUS,
+		XC_NUM_ZONES,
+	};
+	CUIRect m_aXcZones[XC_NUM_ZONES] = {};
+	bool m_XcGuideOpen = false;
+	int m_XcGuideStep = 0;
+	float m_XcGuideAnim = 0.0f;
+	void XcRenderGuide();
 	void ShowHelp();
 	void Exit();
 
