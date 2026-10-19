@@ -163,6 +163,7 @@ void CGameClient::OnConsoleInit()
 					      &m_TeeGlow, // XClient
 					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
+					      &m_XcOverTiles, // XClient: effects and hats over the blocks (xc_fx_over_tiles, xc_hats_over_tiles)
 					      &m_XcFloaters, // XClient: floating cubes and orbs, over the map
 					      &m_MovingTilesForeground, // TClient
 					      &m_Outlines, // TClient
