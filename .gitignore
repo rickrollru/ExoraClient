@@ -160,3 +160,5 @@ tags
 
 # TClient
 !steam_api.dll
+build-release/
+build-debug/
