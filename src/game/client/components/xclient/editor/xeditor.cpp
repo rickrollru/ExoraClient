@@ -169,7 +169,8 @@ void CXcEditorUi::UpdateFonts()
 void CXcEditorUi::HandleTyping()
 {
 	// typing into an ImGui field: the editor sees an active line input and leaves the keys alone
-	const bool Typing = ImGui::GetIO().WantTextInput;
+	// a dialog keeps the editor hotkeys quiet too
+	const bool Typing = ImGui::GetIO().WantTextInput || DialogOpen();
 	if(Typing && !m_TypingInput.IsActive())
 		m_TypingInput.Activate(EInputPriority::UI);
 	else if(!Typing && m_TypingInput.IsActive())
@@ -365,6 +366,8 @@ void CXcEditorUi::Render()
 			RenderPalette();
 		RenderMapDetails();
 		RenderFileDialog();
+		RenderEventDialog();
+		RenderMessages();
 
 		const ImGuiIO &Io = ImGui::GetIO();
 		m_WantsMouse = Io.WantCaptureMouse && !ClassicBusy;
@@ -404,10 +407,8 @@ void CXcEditorUi::Render()
 	}
 	if(E.m_PopupEventActivated)
 	{
-		static SPopupMenuId s_PopupEventId;
-		constexpr float PopupWidth = 400.0f;
-		constexpr float PopupHeight = 150.0f;
-		E.Ui()->DoPopupMenu(&s_PopupEventId, Screen.w / 2.0f - PopupWidth / 2.0f, Screen.h / 2.0f - PopupHeight / 2.0f, PopupWidth, PopupHeight, &E, CEditor::PopupEvent);
+		// the question opens in a dialog of the new interface
+		m_EventOpen = true;
 		E.m_PopupEventActivated = false;
 		E.m_PopupEventWasActivated = true;
 	}
@@ -474,7 +475,7 @@ void CXcEditorUi::Render()
 	E.FreeDynamicPopupMenus();
 	E.UpdateColorPipette();
 
-	if(E.m_Dialog == DIALOG_NONE && !E.m_PopupEventActivated && E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+	if(E.m_Dialog == DIALOG_NONE && !E.m_PopupEventActivated && !DialogOpen() && E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
 	{
 		E.OnClose();
 		g_Config.m_ClEditor = 0;

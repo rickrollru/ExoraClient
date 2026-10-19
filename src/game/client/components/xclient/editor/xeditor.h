@@ -63,6 +63,8 @@ public:
 	void OnMouseMove(vec2 MousePos);
 	void OnInput(const IInput::CEvent &Event);
 	void OpenMapDetails() { m_MapDetailsRequest = true; }
+	// an error or a notice of the editor, shown in a dialog of the new interface
+	void ShowMessage(const char *pMessage);
 	// true while the mouse is over a panel, a menu or the capsule: the map must not react then
 	bool WantsMouse() const { return m_WantsMouse; }
 
@@ -99,6 +101,7 @@ private:
 		CAPTURE_BRUSH, // the numbers of the teleporter, switch, speedup and tune brushes
 		CAPTURE_LAYER,
 		CAPTURE_GROUP,
+		CAPTURE_EVENT, // the buttons of the event popup (unsaved changes, warnings)
 		NUM_CAPTURES,
 	};
 	struct SCaptureState
@@ -118,7 +121,7 @@ private:
 	float m_CardInnerWidth = 0.0f; // the width inside the card that is drawn
 	const void *m_pLastQuads = nullptr;
 	const void *m_pLastBrushLayer = nullptr; // the quad popup color is taken from the quad when the selection changes
-	void RunCapture(int Kind, CUi::FPopupMenuFunction pfnPopup, void *pContext);
+	CUi::EPopupMenuFunctionResult RunCapture(int Kind, CUi::FPopupMenuFunction pfnPopup, void *pContext, bool Active = true);
 	void SetPending(int Kind, int Call, int Prop, int Value, EEditState State);
 	void RenderCaptureCard(int Kind, const char *pId, const char *pTitle, const char *pSubtitle, int SkipButtons = 0);
 	void RenderProp(int Kind, int Call, int Index, const SXcCapturedProp &Prop, float LabelWidth);
@@ -164,6 +167,7 @@ private:
 		FILESUB_NONE = 0,
 		FILESUB_NEW_FOLDER,
 		FILESUB_DELETE,
+		FILESUB_OVERWRITE,
 	};
 	int m_FileSub = FILESUB_NONE;
 	bool m_FileSubFocus = false;
@@ -171,6 +175,14 @@ private:
 	char m_aFileDelete[IO_MAX_PATH_LENGTH] = {};
 	bool m_FileDeleteIsDir = false;
 	void RenderFileSubDialog();
+
+	// questions and warnings of the editor (unsaved changes, remove a used image...) and error messages
+	bool m_EventOpen = false;
+	bool m_EventCloseAfterPress = false;
+	std::vector<std::string> m_vMessages;
+	void RenderEventDialog();
+	void RenderMessages();
+	bool DialogOpen() const { return m_EventOpen || !m_vMessages.empty(); }
 	bool m_PaletteOpen = false;
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};

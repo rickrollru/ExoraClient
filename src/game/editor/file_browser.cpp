@@ -470,6 +470,11 @@ void CFileBrowser::XcOpenSelected()
 		{
 			m_PopupConfirmOverwrite.m_pFileBrowser = this;
 			str_copy(m_PopupConfirmOverwrite.m_aOverwritePath, aSaveFilePath);
+			if(Editor()->XcNewUi()) // XClient: the new file dialog asks with its own card
+			{
+				m_XcAskOverwrite = true;
+				return;
+			}
 			constexpr float PopupWidth = 400.0f;
 			constexpr float PopupHeight = 150.0f;
 			Ui()->DoPopupMenu(&m_PopupConfirmOverwrite,

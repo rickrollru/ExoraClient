@@ -38,6 +38,12 @@ void CXcEditorUi::RenderFileDialog()
 		m_FileDialogShown = false;
 		return;
 	}
+	if(B.m_XcAskOverwrite)
+	{
+		// the file to save exists: ask first
+		B.m_XcAskOverwrite = false;
+		m_FileSub = FILESUB_OVERWRITE;
+	}
 	if(!m_FileDialogShown)
 	{
 		// a new dialog: the fields start from the classic state
@@ -400,6 +406,27 @@ void CXcEditorUi::RenderFileSubDialog()
 				B.UpdateSelectedIndex(aFolderDisplayName);
 				Close = true;
 			}
+		}
+	}
+	else if(m_FileSub == FILESUB_OVERWRITE)
+	{
+		Header(Tr("Overwrite the file?"));
+		Description(B.m_PopupConfirmOverwrite.m_aOverwritePath, Inner);
+		Description(Tr("A file with this name already exists"), Inner);
+		ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
+		if(Button(Tr("Cancel"), false, ButtonWidth))
+			Close = true;
+		ImGui::SameLine(0.0f, S(8.0f));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.55f, 0.55f, 1.0f));
+		const bool Overwrite = Button(Tr("Overwrite"), false, ButtonWidth) || Enter;
+		ImGui::PopStyleColor();
+		if(Overwrite)
+		{
+			// the same as the classic popup
+			m_FileSub = FILESUB_NONE;
+			ImGui::End();
+			B.m_pfnOpenCallback(B.m_PopupConfirmOverwrite.m_aOverwritePath, IStorage::TYPE_SAVE, B.m_pOpenCallbackUser);
+			return;
 		}
 	}
 	else
