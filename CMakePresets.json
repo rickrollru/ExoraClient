@@ -23,7 +23,7 @@
     }
   ],
   "buildPresets": [
-    { "name": "windows-release", "displayName": "XClient Release", "configurePreset": "windows-release", "targets": ["game-client"] },
-    { "name": "windows-debug", "displayName": "XClient Debug", "configurePreset": "windows-debug", "targets": ["game-client"] }
+    { "name": "windows-release", "displayName": "XClient Release", "configurePreset": "windows-release", "targets": ["game-client", "game-server"] },
+    { "name": "windows-debug", "displayName": "XClient Debug", "configurePreset": "windows-debug", "targets": ["game-client", "game-server"] }
   ]
 }
