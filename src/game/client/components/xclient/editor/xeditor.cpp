@@ -106,6 +106,7 @@ bool BeginPanel(const char *pId, ImVec2 Pos, ImVec2 Size, ImVec4 Background, ImG
 void CXcEditorUi::Init(CEditor *pEditor)
 {
 	m_pEditor = pEditor;
+	m_Coop.Init(pEditor);
 	m_Gui.Init(pEditor->Graphics(), pEditor->Input(), pEditor->Storage());
 }
 
@@ -129,6 +130,7 @@ void CXcEditorUi::OnMouseMove(vec2 MousePos)
 
 void CXcEditorUi::OnInput(const IInput::CEvent &Event)
 {
+	m_Coop.OnActivity();
 	if(m_Gui.IsReady())
 		m_Gui.OnInput(Event);
 }
@@ -223,6 +225,9 @@ void CXcEditorUi::Render()
 {
 	CEditor &E = *m_pEditor;
 	const float k = UiToPixels(); // pixels per editor UI unit
+
+	// ---- the shared editing: blocks and maps from the others before anything is drawn
+	UpdateCoop();
 
 	// ---- the start of the classic frame
 	E.Graphics()->Clear(0.0f, 0.0f, 0.0f);
@@ -374,10 +379,13 @@ void CXcEditorUi::Render()
 		}
 		if(Gui && E.m_Mode == MODE_LAYERS && !E.m_ShowPicker)
 			RenderCapsule();
+		if(Gui)
+			RenderCoopCursors();
 		if(m_PaletteOpen)
 			RenderPalette();
 		RenderMapDetails();
 		RenderThemes();
+		RenderCoop();
 		RenderFileDialog();
 		RenderEventDialog();
 		RenderMessages();
@@ -535,6 +543,27 @@ void CXcEditorUi::RenderTopBar()
 	ImGui::SetCursorScreenPos(ImVec2(Right, Mid - ButtonSize * 0.5f));
 	if(IconButton("##test", FontIcon::PLAY, Tr("Play the map on a local server"), false, !E.m_QuickActionTestMapLocally.Disabled(), ButtonSize))
 		E.m_QuickActionTestMapLocally.Call();
+	// editing together: the button lights up in a session, the colors of the others next to it
+	Right -= S(8.0f) + ButtonSize;
+	ImGui::SetCursorScreenPos(ImVec2(Right, Mid - ButtonSize * 0.5f));
+	if(IconButton("##coop", "\xef\x83\x80", Tr("Edit together"), m_Coop.Role() != CXcCoop::ROLE_NONE, true, ButtonSize))
+		m_CoopRequest = true;
+	if(m_Coop.Role() != CXcCoop::ROLE_NONE)
+	{
+		int Others = 0;
+		for(const CXcCoop::SMember &Member : m_Coop.Members())
+		{
+			if(Member.m_Id == m_Coop.SelfId())
+				continue;
+			const unsigned Rgb = CXcCoop::MemberColor(Member.m_Id);
+			const ImVec2 Center(Right - S(10.0f) - Others * S(11.0f), Mid);
+			pDraw->AddCircleFilled(Center, S(7.0f), Col(t.m_Panel));
+			pDraw->AddCircleFilled(Center, S(5.5f), IM_COL32((Rgb >> 16) & 0xff, (Rgb >> 8) & 0xff, Rgb & 0xff, 255));
+			if(++Others >= 5)
+				break;
+		}
+		Right -= Others * S(11.0f) + (Others ? S(8.0f) : 0.0f);
+	}
 	Right -= S(14.0f) + ButtonSize;
 	ImGui::SetCursorScreenPos(ImVec2(Right, Mid - ButtonSize * 0.5f));
 	if(IconButton("##redo", FontIcon::REDO, Tr("Redo (Ctrl+Y)"), false, E.ActiveHistory().CanRedo(), ButtonSize))
@@ -593,6 +622,8 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 				QuickActionItem(E.m_QuickActionSaveCopy, Tr("Save a copy..."), "Ctrl+Shift+Alt+S");
 				ImGui::Separator();
 				QuickActionItem(E.m_QuickActionTestMapLocally, Tr("Play on a local server"));
+				if(ImGui::MenuItem(Tr("Edit together..."), nullptr, m_Coop.Role() != CXcCoop::ROLE_NONE))
+					m_CoopRequest = true;
 				QuickActionItem(E.m_QuickActionCloseMap, Tr("Close the map"), "Ctrl+F4");
 				ImGui::Separator();
 				QuickActionItem(E.m_QuickActionShowHelp, Tr("Help (DDNet wiki)"), "F1");
@@ -1642,6 +1673,7 @@ void CXcEditorUi::RenderPalette()
 	vEntries.push_back({Tr("Animation presets..."), "Animation presets", Tr("Animation presets for the selected quads"), false, false, [&]() { E.XcOpenAnimate(); }});
 	vEntries.push_back({Tr("Add a GIF animation..."), "Add gif", Tr("Put an animated gif on the map. It plays for every player, also in other clients."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Add", "mapres", "", CEditor::XcCallbackAddGif, &E); }});
 	vEntries.push_back({Tr("Add a sound..."), "Add sound", nullptr, false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::SOUND, "Add sound", "Add", "mapres", "", CEditor::AddSound, &E); }});
+	vEntries.push_back({Tr("Edit together..."), "Edit together coop", Tr("One map with friends over LAN or Radmin VPN"), false, m_Coop.Role() != CXcCoop::ROLE_NONE, [&]() { m_CoopRequest = true; }});
 	vEntries.push_back({Tr("Properties panel"), "Properties panel", nullptr, false, m_ShowProperties, [&]() { m_ShowProperties = !m_ShowProperties; }});
 	vEntries.push_back({Tr("Hide the interface"), "Hide interface", nullptr, false, false, [&]() { E.m_GuiActive = false; }});
 	vEntries.push_back({Tr("Editor guide"), "Guide", nullptr, false, false, [&]() {

@@ -109,6 +109,7 @@ enum
 class CEditor : public IEditor
 {
 	friend class CXcEditorUi; // XClient: the new interface drives the editor
+	friend class CXcCoop; // XClient: editing one map together
 
 	class IInput *m_pInput = nullptr;
 	class IClient *m_pClient = nullptr;
