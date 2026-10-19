@@ -515,6 +515,8 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
   сплющивалось вместе с ним (сверху тонкое, по бокам толстое) — теперь кольцо без свечения + 18 мягких огоньков по
   контуру (спрайты GLOW: цветной слой + свет), свечение одинаковое со всех сторон. В пресетах VS собирается и
   `game-server` (локальному серверу нужен `DDNet-Server.exe` рядом с игрой).
+- 19.10.2026: Новый README.md про XClient (возможности, скриншоты `docs/xclient/screenshots`, запуск, сборка в VS,
+  команды, структура, лицензии). Старый README TClient перенесён в `docs/tclient/README_TClient.md`.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`). Короткие эффекты — видео `ffmpeg -f x11grab`.
   Звук — `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=...` (48 кГц, стерео, s16). Окно ищется по имени «XClient».
