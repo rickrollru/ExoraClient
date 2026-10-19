@@ -134,8 +134,9 @@ MACRO_CONFIG_INT(XcJumpFxDummy, xc_jump_fx_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_INT(XcJumpFxOthers, xc_jump_fx_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show jump and run effects for other players")
 
 // Trail behind the tee
-MACRO_CONFIG_INT(XcTrail, xc_trail, 1, 0, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots, 5 = animated dashes)")
+MACRO_CONFIG_INT(XcTrail, xc_trail, 1, 0, 6, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail (0 = off, 1 = ribbon, 2 = sparks, 3 = stars, 4 = comet dots, 5 = animated dashes, 6 = ghosts)")
 MACRO_CONFIG_INT(XcTrailDash, xc_trail_dash, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Animation of the dashes trail (0 = stretch, 1 = pop, 2 = spin, 3 = blink, 4 = spark)")
+MACRO_CONFIG_INT(XcTrailDensity, xc_trail_density, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How dense the dashes, sparks and ghosts of the trail are, in percent")
 MACRO_CONFIG_INT(XcTrailLength, xc_trail_length, 450, 100, 2000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long the trail stays, in milliseconds")
 MACRO_CONFIG_INT(XcTrailWidth, xc_trail_width, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail width in percent")
 MACRO_CONFIG_INT(XcTrailGlow, xc_trail_glow, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Trail glow in percent")

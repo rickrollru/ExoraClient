@@ -491,6 +491,16 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
     слева внизу кнопка «XClient» — вернуться к новому (`menus_start.cpp`, `// XClient`).
   - `CMakePresets.json`: «XClient Release/Debug» для Visual Studio (Ninja, без видеозаписи FFmpeg — не нужны её DLL).
     Запускать `out\build\...\DDNet.exe`, а не `out\install\...` (там нет DLL и data).
+- 19.10.2026: По исходникам Flower (в архиве есть код только JumpCircles и Hands; шлейфы и ChinaHat — только список
+  настроек в `descriptions.json`):
+  - Круги прыжка как у них: их текстура `Jumps/circle.png` (тонкое кольцо + ореол) → `data/xclient/fx/jump_ring.png`,
+    частица `JUMP_CIRCLE`: лежит на земле (сплющена), размер 20%→100% с ease-out, гаснет smoothstep(0.2..1), под тонким
+    кольцом мягкая широкая полоса. Приземление — толстое мягкое кольцо. `xc_jump_fx_duration` (по умолч. 900 мс).
+    Прежняя `jump_ring.png` (косой полумесяц) была ошибкой — заменена.
+  - Конус (China Hat): высота `xc_accessory_height`, свечение (те же `xc_fxglow_accessory*`), «Ещё на друзьях»
+    `xc_accessory_friends`.
+  - Шлейф «Призраки» (`xc_trail 6`): полупрозрачные копии ти (RenderTee) в цвете шлейфа или скина, гаснут и уменьшаются;
+    «Плотность» `xc_trail_density` для призраков, штрихов и искр.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`). Короткие эффекты — видео `ffmpeg -f x11grab`.
   Звук — `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=...` (48 кГц, стерео, s16). Окно ищется по имени «XClient».
