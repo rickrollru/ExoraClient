@@ -238,6 +238,18 @@ private:
 	bool BeginDock(const char *pId, int ExtraEditor, ImVec2 &Min, ImVec2 &Max);
 	void RenderServerSettingsDock();
 	void RenderHistoryDock();
+	// the envelopes as a timeline (xeditor_envelopes.cpp)
+	std::shared_ptr<class CEnvelope> m_pEnvLast;
+	int m_EnvSelPoint = -1;
+	float m_EnvScroll = 0.0f; // the first second shown
+	float m_EnvView = 5.0f; // how many seconds are shown
+	bool m_EnvDragging = false;
+	CFixedTime m_EnvDragOld;
+	int m_EnvValueOld = 0;
+	int m_EnvRename = -1;
+	bool m_EnvRenameFocus = false;
+	char m_aEnvRename[32] = {};
+	void RenderEnvelopesDock();
 	bool m_PaletteOpen = false;
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};

@@ -367,6 +367,8 @@ void CXcEditorUi::Render()
 					m_SettingsDockOpen = false;
 				if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_HISTORY)
 					RenderHistoryDock();
+				if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_ENVELOPES)
+					RenderEnvelopesDock();
 			}
 			RenderStatusBar();
 		}
@@ -393,13 +395,6 @@ void CXcEditorUi::Render()
 	E.Ui()->MapScreen();
 
 	// ---- the classic extra editors in the dock under the map
-	if(Dock)
-	{
-		if(E.m_ActiveExtraEditor == CEditor::EXTRAEDITOR_ENVELOPES)
-			E.m_EnvelopeEditor.Render(m_Dock);
-		// the server settings and the history are ImGui panels (RenderServerSettingsDock, RenderHistoryDock)
-	}
-
 	E.RenderPressedKeys(m_View);
 	E.RenderSavingIndicator(m_View);
 
