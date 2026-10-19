@@ -547,6 +547,7 @@ public:
 	static bool CallbackSaveCopyMap(const char *pFilename, int StorageType, void *pUser);
 	static bool CallbackAddTileArt(const char *pFilepath, int StorageType, void *pUser);
 	static bool CallbackAddQuadArt(const char *pFilepath, int StorageType, void *pUser);
+	static bool XcCallbackAddGif(const char *pFilename, int StorageType, void *pUser); // XClient: xclient/editor/gif_import.cpp
 	static bool CallbackSaveImage(const char *pFilename, int StorageType, void *pUser);
 	static bool CallbackSaveSound(const char *pFilename, int StorageType, void *pUser);
 	static bool CallbackCustomEntities(const char *pFilename, int StorageType, void *pUser);
