@@ -83,6 +83,8 @@ private:
 	float m_OpenAnimation = 0.0f;
 	int m_Page = PAGE_HOME;
 	int m_SettingsSection = SETTINGS_INTERFACE;
+	int m_LastPageKey = -1;
+	float m_LastOpenAnimation = 0.0f;
 	int m_BindWaiting = -1; // index of the bind that waits for a key
 	float m_ScrollTarget = 0.0f;
 	bool m_WantClassic = false;
