@@ -6,6 +6,7 @@
 #define GAME_CLIENT_COMPONENTS_XCLIENT_EDITOR_XEDITOR_H
 
 #include <base/types.h>
+#include <game/mapitems.h>
 #include <base/vmath.h>
 
 #include <engine/input.h>
@@ -131,6 +132,44 @@ private:
 	int m_InspectY = -1;
 	void RenderInspector(const std::shared_ptr<class CLayerTiles> &pLayer);
 
+public:
+	// prefabs: tile layers of the brush saved in xclient/prefabs (xeditor_prefabs.cpp)
+	struct SPrefabTile
+	{
+		int m_Index = 0;
+		int m_Flags = 0;
+		int m_aExtra[4] = {}; // the data of the tele, switch, speedup or tune tile
+	};
+	struct SPrefabLayer
+	{
+		std::string m_Kind; // tiles, game, front, tele, switch, speedup, tune
+		int m_Width = 0;
+		int m_Height = 0;
+		CColor m_Color;
+		std::string m_Image; // the name of the picture, found again by name in the map
+		std::vector<SPrefabTile> m_vTiles;
+	};
+	struct SPrefab
+	{
+		std::string m_Name;
+		std::vector<SPrefabLayer> m_vLayers;
+		// a small picture made once when the prefab is read: the tile index of each block, 0 is empty
+		int m_PreviewWidth = 0;
+		int m_PreviewHeight = 0;
+		std::vector<int> m_vPreview;
+		std::vector<bool> m_vPreviewGame;
+	};
+
+private:
+	std::vector<SPrefab> m_vPrefabs;
+	bool m_PrefabsScanned = false;
+	bool m_ShowPrefabs = false;
+	char m_aPrefabName[64] = {};
+	void ScanPrefabs();
+	bool ReadPrefab(SPrefab &Prefab);
+	bool SavePrefab(const char *pName);
+	void UsePrefab(const SPrefab &Prefab);
+
 	// layers panel state
 	int m_RenameGroup = -1;
 	int m_RenameLayer = -1;
@@ -149,6 +188,7 @@ private:
 	void RenderMapTabs(float x0, float x1, float y);
 	void RenderLeftPanel();
 	void RenderLayersTree();
+	void RenderPrefabsPanel();
 	void RenderImagesPanel();
 	void RenderSoundsPanel();
 	void RenderRightPanel();
