@@ -338,7 +338,12 @@ void CImGuiBackend::RenderDrawData(ImDrawData *pDrawData)
 
 			const size_t TextureIndex = (size_t)Cmd.GetTexID();
 			if(TextureIndex >= 1 && TextureIndex <= m_vTextures.size())
+			{
+				// a picture (cover, preview, skin) can be unloaded after it was put into this frame: skip it
+				if(!pGraphics->XcTextureAlive(m_vTextures[TextureIndex - 1]))
+					continue;
 				pGraphics->TextureSet(m_vTextures[TextureIndex - 1]);
+			}
 			else
 				pGraphics->TextureClear();
 

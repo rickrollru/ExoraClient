@@ -17,6 +17,7 @@ namespace XcUi
 		SOUND_TOGGLE_OFF,
 		SOUND_NOTIFY,
 		SOUND_ERROR,
+		SOUND_TICK, // a slider moved one step
 		NUM_SOUNDS,
 	};
 	typedef void (*FSoundPlayer)(void *pUser, int Sound);

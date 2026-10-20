@@ -15,6 +15,7 @@
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
+#include <game/client/components/xclient/ambience.h>
 #include <game/client/components/xclient/xc_particles.h>
 #include <game/client/gameclient.h>
 
@@ -36,7 +37,8 @@ bool CXcMenu::StyleCard(const char *pId, const char *pTitle, const char *pDescri
 	if(Enabled != WasEnabled)
 		SetConfigInt(pConfig, Enabled ? LastStyle : 0);
 	int Style = std::clamp((Enabled ? *pValue : LastStyle) - 1, 0, NumStyles - 1);
-	if(Segmented("##style", &Style, ppStyles, NumStyles))
+	// many styles do not fit one segmented row, they wrap as chips
+	if(NumStyles > 4 ? ChoiceChips("##style", &Style, ppStyles, NumStyles) : Segmented("##style", &Style, ppStyles, NumStyles))
 	{
 		LastStyle = Style + 1;
 		SetConfigInt(pConfig, LastStyle);
@@ -317,6 +319,20 @@ void CXcMenu::RenderVisualsGeneral()
 		}
 		EndCard();
 	}
+	if(BeginCard("##fx_particles_all", Tr("Particles of all effects"), Tr("One look for the sparks of every effect, and physics: they fall and bounce off the blocks")))
+	{
+		ParamLabel(Tr("Shape"));
+		const char *apShapes[] = {Tr("As the effect"), Tr("Dots"), Tr("Stars"), Tr("Hearts"), Tr("Rhombi"), Tr("Snowflakes"), Tr("Fireflies")};
+		ChoiceChips("##particles_shape", &g_Config.m_XcParticlesShape, apShapes, 7);
+		ToggleRow(Tr("Physics: fall and bounce off the blocks"), "xc_particles_physics", &g_Config.m_XcParticlesPhysics);
+		if(g_Config.m_XcParticlesPhysics)
+		{
+			ConfigSlider(Tr("Gravity"), "xc_particles_gravity", &g_Config.m_XcParticlesGravity, 0, 200, "%d%%");
+			ConfigSlider(Tr("Bounce"), "xc_particles_bounce", &g_Config.m_XcParticlesBounce, 0, 100, "%d%%");
+		}
+		Description(Tr("Amount, life, speed and size are set in the card of each effect"));
+		EndCard();
+	}
 	if(BeginCard("##fx_over_tiles", Tr("Over the blocks"), Tr("Effects and hats can be drawn over the map blocks, they stay visible behind walls")))
 	{
 		ToggleRow(Tr("Effects over the blocks"), "xc_fx_over_tiles", &g_Config.m_XcFxOverTiles);
@@ -330,6 +346,8 @@ void CXcMenu::RenderVisualsGeneral()
 		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
 		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
 		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ToggleRow(Tr("Muzzle flash of the gun, shotgun and ninja"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
+		ToggleRow(Tr("Bullet sprites of the gun and shotgun"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
 		ToggleRow(Tr("Double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
 		ToggleRow(Tr("Skid smoke when turning"), "xc_replace_skid", &g_Config.m_XcReplaceSkid);
 		ToggleRow(Tr("Purple spawn smoke"), "xc_replace_spawn", &g_Config.m_XcReplaceSpawn);
@@ -354,6 +372,24 @@ void CXcMenu::RenderVisualsTee()
 		ConfigSlider(Tr("Outline"), "xc_glow_outline", &g_Config.m_XcGlowOutline, 0, 300, "%d%%");
 		ToggleRow(Tr("Pulse"), "xc_glow_pulse", &g_Config.m_XcGlowPulse);
 		TargetChips("##glow_targets", &g_Config.m_XcGlowSelf, &g_Config.m_XcGlowDummy, &g_Config.m_XcGlowOthers);
+		EndCard();
+	}
+	const char *apShaders[] = {Tr("Gradient"), Tr("Rainbow"), Tr("Galaxy"), Tr("Waves"), Tr("Chrome")};
+	if(StyleCard("##fx_tee_shader", Tr("Tee shader"), Tr("A moving pattern painted over the skin: gradient, rainbow, galaxy with stars, waves or chrome"), "xc_tee_shader", &g_Config.m_XcTeeShader, apShaders, 5))
+	{
+		if(!Graphics()->XcRenderAvailable())
+			Description(Tr("Needs OpenGL 3.3, see Settings > Graphics"));
+		if(g_Config.m_XcTeeShader != 2)
+		{
+			EffectColorPicker("##tee_shader_color", &g_Config.m_XcTeeShaderColorMode, &g_Config.m_XcTeeShaderColor);
+			if(g_Config.m_XcTeeShader != 5)
+				ConfigColorRow(Tr("Second color"), &g_Config.m_XcTeeShaderColor2, false);
+		}
+		ConfigSlider(Tr("Strength"), "xc_tee_shader_alpha", &g_Config.m_XcTeeShaderAlpha, 0, 100, "%d%%");
+		ConfigSlider(Tr("Pattern size"), "xc_tee_shader_scale", &g_Config.m_XcTeeShaderScale, 25, 400, "%d%%");
+		ConfigSlider(Tr("Speed"), "xc_tee_shader_speed", &g_Config.m_XcTeeShaderSpeed, 0, 400, "%d%%");
+		ConfigSlider(Tr("Keep the skin shading"), "xc_tee_shader_shade", &g_Config.m_XcTeeShaderShade, 0, 100, "%d%%");
+		TargetChips("##tee_shader_targets", &g_Config.m_XcTeeShaderSelf, &g_Config.m_XcTeeShaderDummy, &g_Config.m_XcTeeShaderOthers);
 		EndCard();
 	}
 	if(BeginCard("##fx_jelly", Tr("Jelly tee"), Tr("Squashes when landing, stretches when jumping and wobbles back"), &g_Config.m_XcJelly))
@@ -392,7 +428,11 @@ void CXcMenu::RenderVisualsMovement()
 		ConfigSlider(Tr("Length"), "xc_trail_length", &g_Config.m_XcTrailLength, 100, 2000, "%d ms");
 		ConfigSlider(Tr("Width"), "xc_trail_width", &g_Config.m_XcTrailWidth, 25, 300, "%d%%");
 		ConfigSlider(Tr("Glow"), "xc_trail_glow", &g_Config.m_XcTrailGlow, 0, 200, "%d%%");
+		if(g_Config.m_XcTrail == 1)
+			ToggleRow(Tr("In pieces with gaps"), "xc_trail_segments", &g_Config.m_XcTrailSegments);
 		TargetChips("##trail_targets", &g_Config.m_XcTrailSelf, &g_Config.m_XcTrailDummy, &g_Config.m_XcTrailOthers);
+		if(g_Config.m_XcTrailOthers)
+			ConfigSlider(Tr("Others: up to blocks away"), "xc_trail_max_distance", &g_Config.m_XcTrailMaxDistance, 0, 200, g_Config.m_XcTrailMaxDistance ? "%d" : Tr("No limit"));
 		ParticleTuning(FxTune::TRAIL);
 		EndCard();
 	}
@@ -472,6 +512,31 @@ void CXcMenu::RenderVisualsWeapons()
 		ConfigSegmented("##hook_hit", "xc_hook_hit_fx", &g_Config.m_XcHookHitFx, apHits, 4);
 		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
 		ParticleTuning(FxTune::HOOK);
+		EndCard();
+	}
+	if(BeginCard("##stock_weapons", Tr("Standard weapon effects"), Tr("Hide what the game draws for shots, so only our effects stay")))
+	{
+		ToggleRow(Tr("Muzzle flash of the gun, shotgun and ninja"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
+		ToggleRow(Tr("Bullet sprites of the gun and shotgun"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
+		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
+		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		ToggleRow(Tr("Hammer hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		Description(Tr("Our bullet glow, hits on blocks and explosions are in the cards next to it"));
+		EndCard();
+	}
+	if(BeginCard("##weapon_view", Tr("Weapon in the hand"), Tr("Where the weapon sits, its size and how the hammer swings. Only the picture"), &g_Config.m_XcWeaponView))
+	{
+		ParamLabel(Tr("Hammer swing"));
+		const char *apSwings[] = {Tr("Standard"), Tr("Wide"), Tr("Spin"), Tr("Smooth"), Tr("Stab"), Tr("Bounce")};
+		ChoiceChips("##swing_style", &g_Config.m_XcSwingStyle, apSwings, 6);
+		ConfigSlider(Tr("Swing width"), "xc_swing_strength", &g_Config.m_XcSwingStrength, 20, 200, "%d%%");
+		ConfigSlider(Tr("Swing speed"), "xc_swing_speed", &g_Config.m_XcSwingSpeed, 50, 200, "%d%%");
+		ConfigSlider(Tr("Hammer lean"), "xc_swing_tilt", &g_Config.m_XcSwingTilt, -45, 45, "%d°");
+		ConfigSlider(Tr("Forward / back"), "xc_weapon_x", &g_Config.m_XcWeaponX, -20, 20);
+		ConfigSlider(Tr("Up / down"), "xc_weapon_y", &g_Config.m_XcWeaponY, -20, 20);
+		ConfigSlider(Tr("Weapon size"), "xc_weapon_size", &g_Config.m_XcWeaponSize, 50, 160, "%d%%");
+		ToggleRow(Tr("Also for other players"), "xc_weapon_view_others", &g_Config.m_XcWeaponViewOthers);
 		EndCard();
 	}
 	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
@@ -557,6 +622,24 @@ void CXcMenu::RenderVisualsCrosshair()
 			ConfigSlider(Tr("Kick strength"), "xc_crosshair_kick_strength", &g_Config.m_XcCrosshairKickStrength, 10, 100, "%d%%");
 		EndCard();
 	}
+	if(BeginCard("##fx_block_outline", Tr("Block under the crosshair"), Tr("A soft frame around the block you aim at, with its name: freeze, unfreeze, teleport..."), &g_Config.m_XcBlockOutline))
+	{
+		ParamLabel(Tr("Look"));
+		const char *apModes[] = {Tr("Frame"), Tr("Corners"), Tr("Fill")};
+		ConfigSegmented("##block_outline_mode", "xc_block_outline_mode", &g_Config.m_XcBlockOutlineMode, apModes, 3);
+		ToggleRow(Tr("Color of the kind of block"), "xc_block_outline_tile_color", &g_Config.m_XcBlockOutlineTileColor);
+		if(!g_Config.m_XcBlockOutlineTileColor)
+			EffectColorPicker("##block_outline_color", &g_Config.m_XcBlockOutlineColorMode, &g_Config.m_XcBlockOutlineColor);
+		ConfigSlider(Tr("Line width"), "xc_block_outline_width", &g_Config.m_XcBlockOutlineWidth, 1, 8);
+		ConfigSlider(Tr("Fill"), "xc_block_outline_fill", &g_Config.m_XcBlockOutlineFill, 0, 100, "%d%%");
+		ToggleRow(Tr("Glow"), "xc_block_outline_glow", &g_Config.m_XcBlockOutlineGlow);
+		ToggleRow(Tr("Name of the block"), "xc_block_outline_label", &g_Config.m_XcBlockOutlineLabel);
+		ToggleRow(Tr("Glide from block to block"), "xc_block_outline_smooth", &g_Config.m_XcBlockOutlineSmooth);
+		if(g_Config.m_XcBlockOutlineSmooth)
+			ConfigSlider(Tr("Speed"), "xc_block_outline_speed", &g_Config.m_XcBlockOutlineSpeed, 1, 100, "%d%%");
+		ToggleRow(Tr("Also over empty air"), "xc_block_outline_air", &g_Config.m_XcBlockOutlineAir);
+		EndCard();
+	}
 	EndCardGrid();
 }
 
@@ -581,6 +664,24 @@ void CXcMenu::RenderVisualsWorld()
 		EndCard();
 	}
 	RenderWeatherCard();
+	if(BeginCard("##fx_ambience", Tr("Atmosphere"), Tr("The light of the time of day, sun or moon rays, fog and drifting mist over the map"), &g_Config.m_XcAmbience))
+	{
+		ParamLabel(Tr("Time of day"));
+		const char *apTimes[] = {Tr("Clock"), Tr("Dawn"), Tr("Day"), Tr("Sunset"), Tr("Night"), Tr("Own")};
+		ConfigSegmented("##ambience_time", "xc_ambience_time", &g_Config.m_XcAmbienceTime, apTimes, 6);
+		if(g_Config.m_XcAmbienceTime == CXcAmbience::TIME_HOUR)
+			ConfigSlider(Tr("Hour"), "xc_ambience_hour", &g_Config.m_XcAmbienceHour, 0, 23, "%d:00");
+		ConfigSlider(Tr("Light color"), "xc_ambience_strength", &g_Config.m_XcAmbienceStrength, 0, 100, "%d%%");
+		ConfigSlider(Tr("Rays"), "xc_ambience_rays", &g_Config.m_XcAmbienceRays, 0, 100, "%d%%");
+		ConfigSlider(Tr("Fog"), "xc_ambience_fog", &g_Config.m_XcAmbienceFog, 0, 100, "%d%%");
+		if(g_Config.m_XcAmbienceFog > 0)
+			ConfigSlider(Tr("Fog height"), "xc_ambience_fog_height", &g_Config.m_XcAmbienceFogHeight, 5, 100, "%d%%");
+		ConfigSlider(Tr("Humidity"), "xc_ambience_mist", &g_Config.m_XcAmbienceMist, 0, 100, "%d%%");
+		ToggleRow(Tr("Own fog color"), "xc_ambience_fog_own", &g_Config.m_XcAmbienceFogOwn);
+		if(g_Config.m_XcAmbienceFogOwn)
+			EffectColorPicker("##ambience_fog_color", &g_Config.m_XcAmbienceFogColorMode, &g_Config.m_XcAmbienceFogColor);
+		EndCard();
+	}
 	const char *apFloaters[] = {Tr("Cubes"), Tr("Orbs"), Tr("Both")};
 	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes and orbs drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
 	{
@@ -634,11 +735,14 @@ void CXcMenu::RenderVisualsEvents()
 		ParticleTuning(FxTune::FINISH);
 		EndCard();
 	}
-	const char *apDeath[] = {Tr("Shards"), Tr("Sparks"), Tr("Ash")};
-	if(StyleCard("##fx_death", Tr("Death and spawn"), Tr("A tee bursts into pieces, rings close in where it appears again"), "xc_death_fx", &g_Config.m_XcDeathFx, apDeath, 3))
+	const char *apDeath[] = {Tr("Shards"), Tr("Sparks"), Tr("Ash"), Tr("Lightning"), Tr("Soul"), Tr("Hearts"), Tr("Pixels")};
+	if(StyleCard("##fx_death", Tr("Death and spawn"), Tr("A tee bursts into pieces, rings close in where it appears again"), "xc_death_fx", &g_Config.m_XcDeathFx, apDeath, 7))
 	{
 		EffectColorPicker("##death_color", &g_Config.m_XcDeathColorMode, &g_Config.m_XcDeathColor);
 		ToggleRow(Tr("Rings on spawn"), "xc_spawn_fx", &g_Config.m_XcSpawnFx);
+		ToggleRow(Tr("Mark where you died last"), "xc_death_marker", &g_Config.m_XcDeathMarker);
+		if(g_Config.m_XcDeathMarker)
+			ConfigSlider(Tr("Mark stays"), "xc_death_marker_time", &g_Config.m_XcDeathMarkerTime, 2, 60, "%d s");
 		TargetChips("##death_targets", &g_Config.m_XcDeathSelf, &g_Config.m_XcDeathDummy, &g_Config.m_XcDeathOthers);
 		ParticleTuning(FxTune::DEATH);
 		EndCard();

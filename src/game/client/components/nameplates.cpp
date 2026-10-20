@@ -12,6 +12,7 @@
 
 #include <game/client/animstate.h>
 #include <game/client/components/xclient/xc_helpers.h>
+#include <game/client/components/xclient/streamer.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
 
@@ -948,7 +949,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	Data.m_InGame = true;
 
 	Data.m_ShowName = pPlayerInfo->m_Local ? g_Config.m_ClNamePlatesOwn : g_Config.m_ClNamePlates;
-	str_copy(Data.m_aName, GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_aName);
+	str_copy(Data.m_aName, XcStreamer::Name(GameClient(), pPlayerInfo->m_ClientId, GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_aName)); // XClient: streamer mode
 	Data.m_ShowFriendMark = Data.m_ShowName && g_Config.m_ClNamePlatesFriendMark && GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_Friend;
 	Data.m_ShowClientId = Data.m_ShowName && (g_Config.m_Debug || g_Config.m_ClNamePlatesIds);
 	Data.m_FontSize = 18.0f + 20.0f * g_Config.m_ClNamePlatesSize / 100.0f;

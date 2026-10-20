@@ -88,8 +88,13 @@ public:
 
 private:
 	CImGuiBackend m_Backend;
-	int m_aUiSounds[6] = {-1, -1, -1, -1, -1, -1}; // XcUi::NUM_SOUNDS
-	float m_aUiSoundTime[6] = {};
+	// our own sounds and the Flower set (xc_ui_sound_pack), XcUi::NUM_SOUNDS each
+	enum
+	{
+		NUM_UI_SOUND_PACKS = 2,
+	};
+	int m_aaUiSounds[NUM_UI_SOUND_PACKS][7] = {{-1, -1, -1, -1, -1, -1, -1}, {-1, -1, -1, -1, -1, -1, -1}};
+	float m_aUiSoundTime[7] = {};
 	static void PlayUiSoundCallback(void *pUser, int Sound);
 	bool m_Active = false;
 	float m_OpenAnimation = 0.0f;

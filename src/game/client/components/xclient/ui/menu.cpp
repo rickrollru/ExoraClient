@@ -48,13 +48,19 @@ void CXcMenu::OnInit()
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
 
-	// interface sounds, generated for XClient (data/xclient/sounds)
-	static const char *const s_apSounds[XcUi::NUM_SOUNDS] = {"click", "tab", "toggle_on", "toggle_off", "notify", "error"};
-	for(int i = 0; i < XcUi::NUM_SOUNDS; i++)
+	// interface sounds: our own set generated for XClient and the Flower set (data/xclient/sounds)
+	static const char *const s_aapSounds[NUM_UI_SOUND_PACKS][XcUi::NUM_SOUNDS] = {
+		{"click", "tab", "toggle_on", "toggle_off", "notify", "error", "flower_tick"},
+		{"flower_click", "flower_click", "flower_enable", "flower_disable", "notify", "error", "flower_tick"},
+	};
+	for(int Pack = 0; Pack < NUM_UI_SOUND_PACKS; Pack++)
 	{
-		char aPath[IO_MAX_PATH_LENGTH];
-		str_format(aPath, sizeof(aPath), "xclient/sounds/%s.opus", s_apSounds[i]);
-		m_aUiSounds[i] = Sound()->IsSoundEnabled() ? Sound()->LoadOpus(aPath) : -1;
+		for(int i = 0; i < XcUi::NUM_SOUNDS; i++)
+		{
+			char aPath[IO_MAX_PATH_LENGTH];
+			str_format(aPath, sizeof(aPath), "xclient/sounds/%s.opus", s_aapSounds[Pack][i]);
+			m_aaUiSounds[Pack][i] = Sound()->IsSoundEnabled() ? Sound()->LoadOpus(aPath) : -1;
+		}
 	}
 	SetSoundPlayer(PlayUiSoundCallback, this);
 	m_Active = g_Config.m_XcNewMenu && !IsOnline();
@@ -64,14 +70,19 @@ void CXcMenu::OnInit()
 void CXcMenu::PlayUiSoundCallback(void *pUser, int Sound)
 {
 	CXcMenu *pSelf = static_cast<CXcMenu *>(pUser);
-	if(!g_Config.m_XcUiSounds || Sound < 0 || Sound >= XcUi::NUM_SOUNDS || pSelf->m_aUiSounds[Sound] < 0)
+	if(!g_Config.m_XcUiSounds || Sound < 0 || Sound >= XcUi::NUM_SOUNDS)
+		return;
+	if(Sound == XcUi::SOUND_TICK && !g_Config.m_XcUiSoundTicks)
+		return;
+	const int Sample = pSelf->m_aaUiSounds[std::clamp(g_Config.m_XcUiSoundPack, 0, NUM_UI_SOUND_PACKS - 1)][Sound];
+	if(Sample < 0)
 		return;
 	// one widget can report a change several frames in a row, play each sound at most every 40 ms
 	const float Now = pSelf->Client()->GlobalTime();
 	if(Now - pSelf->m_aUiSoundTime[Sound] < 0.04f)
 		return;
 	pSelf->m_aUiSoundTime[Sound] = Now;
-	pSelf->Sound()->Play(CSounds::CHN_GUI, pSelf->m_aUiSounds[Sound], 0, g_Config.m_XcUiSoundVolume / 100.0f);
+	pSelf->Sound()->Play(CSounds::CHN_GUI, Sample, 0, g_Config.m_XcUiSoundVolume / 100.0f * (Sound == XcUi::SOUND_TICK ? 0.6f : 1.0f));
 }
 
 void CXcMenu::OnShutdown()
@@ -80,11 +91,14 @@ void CXcMenu::OnShutdown()
 		m_pStatsTask->Abort();
 	m_pStatsTask = nullptr;
 	SetSoundPlayer(nullptr, nullptr);
-	for(int &Sample : m_aUiSounds)
+	for(auto &aSamples : m_aaUiSounds)
 	{
-		if(Sample >= 0)
-			Sound()->UnloadSample(Sample);
-		Sample = -1;
+		for(int &Sample : aSamples)
+		{
+			if(Sample >= 0)
+				Sound()->UnloadSample(Sample);
+			Sample = -1;
+		}
 	}
 	Client()->XcSetDropCapture(false);
 	m_Backgrounds.Shutdown();

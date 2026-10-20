@@ -84,6 +84,13 @@ private:
 	int m_LocGlowStrength = -1;
 	int m_LocGlowRimWidth = -1;
 	int m_LocGlowTexel = -1;
+	int m_LocGlowFillMode = -1;
+	int m_LocGlowFillColor = -1;
+	int m_LocGlowFillColor2 = -1;
+	int m_LocGlowFillAlpha = -1;
+	int m_LocGlowFillScale = -1;
+	int m_LocGlowFillTime = -1;
+	int m_LocGlowKeepShade = -1;
 
 	// sprite capture for the neon outline
 	STarget m_Capture;

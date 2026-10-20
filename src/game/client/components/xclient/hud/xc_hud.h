@@ -26,6 +26,7 @@ public:
 		ELEMENT_MUSIC,
 		ELEMENT_KEYS,
 		ELEMENT_MINITOP,
+		ELEMENT_EFFECTS,
 		NUM_ELEMENTS,
 	};
 
@@ -42,6 +43,8 @@ public:
 	void SetEditing(bool Editing);
 	// the classic HUD hides what the new one shows
 	bool HidesClassicTimer() const;
+	// the classic weapons, jumps and player state in the corner are hidden (xc_hud_hide_classic)
+	bool HidesClassicState() const;
 	// interface units the classic top left HUD (ammo, player state) moves down to make room for the watermark
 	float ClassicTopLeftShift(float InterfaceHeight) const;
 
@@ -84,6 +87,7 @@ private:
 
 	static void ConEditHud(IConsole::IResult *pResult, void *pUserData);
 	static void ConFocus(IConsole::IResult *pResult, void *pUserData);
+	static void ConFriendAim(IConsole::IResult *pResult, void *pUserData);
 
 	SElementConfig Element(int Index) const;
 	bool Visible() const;
@@ -122,6 +126,34 @@ private:
 	float m_BannerStart = -100.0f;
 	float m_MusicAlpha = 0.0f;
 	void RenderEditor(ImDrawList *pDraw);
+	// xc_effects.cpp: active states of the tee (freeze, jetpack, endless hook...) like potion effects
+	enum
+	{
+		EFFECT_FREEZE = 0,
+		EFFECT_DEEP_FREEZE,
+		EFFECT_LIVE_FREEZE,
+		EFFECT_NINJA,
+		EFFECT_JETPACK,
+		EFFECT_ENDLESS_HOOK,
+		EFFECT_ENDLESS_JUMP,
+		EFFECT_SUPER,
+		EFFECT_INVINCIBLE,
+		EFFECT_SOLO,
+		EFFECT_NO_COLLISION,
+		EFFECT_NO_HOOK,
+		EFFECT_NO_HAMMER,
+		EFFECT_NO_SHOOTING,
+		EFFECT_TELEGUN,
+		EFFECT_PRACTICE,
+		EFFECT_LOCK,
+		EFFECT_TEAM0,
+		NUM_EFFECTS,
+	};
+	float m_aEffectShown[NUM_EFFECTS] = {};
+	bool m_aEffectWasActive[NUM_EFFECTS] = {};
+	int m_EffectsClientId = -1;
+	void RenderEffects(ImDrawList *pDraw, float Alpha, float Dt);
+	void DrawEffectIcon(ImDrawList *pDraw, int Effect, ImVec2 Min, float Size, float Alpha);
 
 	// helpers
 	int LocalClientId() const;

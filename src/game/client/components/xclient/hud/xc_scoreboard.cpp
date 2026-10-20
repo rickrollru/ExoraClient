@@ -18,6 +18,7 @@
 #include <game/client/components/xclient/ui/icons.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
+#include <game/client/components/xclient/streamer.h>
 #include <game/client/gameclient.h>
 
 #include <algorithm>
@@ -319,8 +320,9 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 			const float NameSize = std::min(15.0f * U, RowHeight * 0.45f) * S;
 			const ImVec4 NameColor = Own ? t.m_Accent : (ClientData.m_Afk ? t.m_TextMuted : t.m_Text);
 			const float NameEnd = RowMax.x - 190.0f * U * S;
-			const ImVec2 NameDim = pLabel->CalcTextSizeA(NameSize, FLT_MAX, 0.0f, ClientData.m_aName);
-			DrawFit(pDraw, pLabel, NameSize, ImVec2(NameX, MidY - NameDim.y * 0.5f), NameEnd, Col(NameColor, RowAlpha), ClientData.m_aName);
+			const char *pShownName = XcStreamer::Name(GameClient(), pInfo->m_ClientId, ClientData.m_aName);
+			const ImVec2 NameDim = pLabel->CalcTextSizeA(NameSize, FLT_MAX, 0.0f, pShownName);
+			DrawFit(pDraw, pLabel, NameSize, ImVec2(NameX, MidY - NameDim.y * 0.5f), NameEnd, Col(NameColor, RowAlpha), pShownName);
 			NameX += std::min(NameDim.x, NameEnd - NameX) + 8.0f * U * S;
 			if(ClientData.m_Friend)
 			{
@@ -375,7 +377,7 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 		{
 			if(i > 0)
 				str_append(aSpecs, ", ");
-			str_append(aSpecs, GameClient()->m_aClients[vSpectators[i]->m_ClientId].m_aName);
+			str_append(aSpecs, XcStreamer::Name(GameClient(), vSpectators[i]->m_ClientId, GameClient()->m_aClients[vSpectators[i]->m_ClientId].m_aName));
 		}
 		const float SpecY = Height - Pad - 22.0f * U;
 		const float SpecEnd = Max.x - Pad * S;
@@ -434,7 +436,8 @@ void CXcHud::RenderScoreboardPopup(ImDrawList *pDraw, float U, float Alpha)
 	const float Pad = 10.0f * U;
 	const float RowHeight = 30.0f * U;
 	const float TitleHeight = 28.0f * U;
-	float Width = pLabel->CalcTextSizeA(15.0f * U, FLT_MAX, 0.0f, Player.m_aName).x + Pad * 2.0f;
+	const char *pShownName = XcStreamer::Name(GameClient(), m_ScoreboardPopupId, Player.m_aName);
+	float Width = pLabel->CalcTextSizeA(15.0f * U, FLT_MAX, 0.0f, pShownName).x + Pad * 2.0f;
 	for(const SAction &Action : vActions)
 		Width = std::max(Width, pSmall->CalcTextSizeA(13.5f * U, FLT_MAX, 0.0f, Action.m_pLabel).x + 46.0f * U);
 	const float Height = Pad + TitleHeight + vActions.size() * RowHeight + Pad * 0.6f;
@@ -453,7 +456,7 @@ void CXcHud::RenderScoreboardPopup(ImDrawList *pDraw, float U, float Alpha)
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f), Alpha), 12.0f * U);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), 12.0f * U);
 	char aName[64];
-	XcFitText(pLabel, 15.0f * U, Player.m_aName, Width - Pad * 2.0f, aName, sizeof(aName));
+	XcFitText(pLabel, 15.0f * U, pShownName, Width - Pad * 2.0f, aName, sizeof(aName));
 	pDraw->AddText(pLabel, 15.0f * U, ImVec2(Min.x + Pad, Min.y + Pad), Col(t.m_Text, Alpha), aName);
 
 	const ImVec2 MousePos = ImGui::GetIO().MousePos;
@@ -584,7 +587,7 @@ void CXcHud::RenderMiniTop(ImDrawList *pDraw, float Alpha)
 		pDraw->AddText(pSmall, 13.5f * U, ImVec2(Max.x - Pad - ValueDim.x, y + (RowHeight - ValueDim.y) * 0.5f - 1.0f * U), Col(Place < 3 ? s_aMedals[Place] : t.m_TextSecondary, Alpha), aValue);
 		const float NameX = Min.x + Pad + 22.0f * U;
 		const float NameEnd = Max.x - Pad - ValueDim.x - 8.0f * U;
-		DrawFit(pDraw, pLabel, 13.5f * U, ImVec2(NameX, y + (RowHeight - 13.5f * U) * 0.5f - 1.0f * U), NameEnd, Col(Own ? t.m_Accent : t.m_Text, Alpha), GameClient()->m_aClients[Id].m_aName);
+		DrawFit(pDraw, pLabel, 13.5f * U, ImVec2(NameX, y + (RowHeight - 13.5f * U) * 0.5f - 1.0f * U), NameEnd, Col(Own ? t.m_Accent : t.m_Text, Alpha), XcStreamer::Name(GameClient(), Id, GameClient()->m_aClients[Id].m_aName));
 		y += RowHeight;
 	};
 	for(int i = 0; i < Count; i++)

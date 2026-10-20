@@ -984,6 +984,10 @@ public:
 	void SetColor2(ColorRGBA First, ColorRGBA Second) override;
 	void SetColor4(ColorRGBA TopLeft, ColorRGBA TopRight, ColorRGBA BottomLeft, ColorRGBA BottomRight) override;
 	void XcDrawTriangles(const SXcTriVertex *pVertices, const unsigned short *pIndices, int NumIndices) override; // XClient
+	bool XcTextureAlive(const CTextureHandle &Texture) const override // XClient
+	{
+		return Texture.IsValid() && (size_t)Texture.Id() < m_vTextureIndices.size() && m_vTextureIndices[Texture.Id()] == -1;
+	}
 
 	void ChangeColorOfQuadVertices(size_t QuadOffset, unsigned char r, unsigned char g, unsigned char b, unsigned char a) override;
 

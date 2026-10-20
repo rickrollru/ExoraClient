@@ -19,6 +19,7 @@
 #include <game/client/components/countryflags.h>
 #include <game/client/components/motd.h>
 #include <game/client/components/statboard.h>
+#include <game/client/components/xclient/streamer.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
 #include <game/localization.h>
@@ -403,7 +404,7 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 			TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClAuthedPlayerColor)));
 		}
 
-		TextRender()->TextEx(&Cursor, GameClient()->m_aClients[pInfo->m_ClientId].m_aName);
+		TextRender()->TextEx(&Cursor, XcStreamer::Name(GameClient(), pInfo->m_ClientId, GameClient()->m_aClients[pInfo->m_ClientId].m_aName)); // XClient: streamer mode
 		TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 		CommaNeeded = true;

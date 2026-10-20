@@ -2276,6 +2276,10 @@ set(EXPECTED_DATA
   xclient/sounds/death.opus
   xclient/sounds/error.opus
   xclient/sounds/finish.opus
+  xclient/sounds/flower_click.opus
+  xclient/sounds/flower_disable.opus
+  xclient/sounds/flower_enable.opus
+  xclient/sounds/flower_tick.opus
   xclient/sounds/freeze.opus
   xclient/sounds/notify.opus
   xclient/sounds/record.opus
@@ -3049,6 +3053,10 @@ if(CLIENT)
     components/xclient/hook_fx.cpp
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
+    components/xclient/ambience.cpp
+    components/xclient/ambience.h
+    components/xclient/block_outline.cpp
+    components/xclient/block_outline.h
     components/xclient/cape.cpp
     components/xclient/cosmetics.cpp
     components/xclient/cosmetics.h
@@ -3078,6 +3086,7 @@ if(CLIENT)
     components/xclient/editor/xeditor_coop.h
     components/xclient/editor/xeditor_coop_ui.cpp
     components/xclient/editor/xeditor_tune.cpp
+    components/xclient/hud/xc_effects.cpp
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/impact_fx.cpp
@@ -3094,6 +3103,8 @@ if(CLIENT)
     components/xclient/music/media_session_windows.cpp
     components/xclient/music/music.cpp
     components/xclient/music/music.h
+    components/xclient/streamer.cpp
+    components/xclient/streamer.h
     components/xclient/tee_glow.cpp
     components/xclient/tee_glow.h
     components/xclient/sprite_fx.cpp
@@ -3139,6 +3150,8 @@ if(CLIENT)
     components/xclient/ui/widgets.cpp
     components/xclient/ui/widgets.h
     components/xclient/ui/widgets_fx.cpp
+    components/xclient/weapon_view.cpp
+    components/xclient/weapon_view.h
     components/xclient/weather.cpp
     components/xclient/weather.h
     components/xclient/world_fx.cpp

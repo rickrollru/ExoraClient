@@ -16,7 +16,9 @@
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
 #include <game/client/components/xclient/ui/widgets.h>
+#include <game/client/components/xclient/streamer.h>
 #include <game/client/gameclient.h>
+#include <game/collision.h>
 
 #include <algorithm>
 #include <cmath>
@@ -32,6 +34,7 @@ void CXcHud::OnConsoleInit()
 {
 	Console()->Register("xc_hud_edit", "", CFGFLAG_CLIENT, ConEditHud, this, "Open or close the HUD editor");
 	Console()->Register("xc_focus", "", CFGFLAG_CLIENT, ConFocus, this, "Turn the focus mode on or off");
+	Console()->Register("xc_friend_aim", "", CFGFLAG_CLIENT, ConFriendAim, this, "Add the player under the crosshair to friends, or remove them");
 }
 
 void CXcHud::ConEditHud(IConsole::IResult *pResult, void *pUserData)
@@ -44,6 +47,45 @@ void CXcHud::ConFocus(IConsole::IResult *pResult, void *pUserData)
 {
 	g_Config.m_XcFocusMode ^= 1;
 	Toast(g_Config.m_XcFocusMode ? Tr("Focus mode on") : Tr("Focus mode off"), TOAST_INFO);
+}
+
+void CXcHud::ConFriendAim(IConsole::IResult *pResult, void *pUserData)
+{
+	// the player closest to the crosshair, like Flower's click friend
+	CXcHud *pSelf = static_cast<CXcHud *>(pUserData);
+	CGameClient *pGameClient = pSelf->GameClient();
+	const vec2 Target = pGameClient->m_Controls.m_aTargetPos[g_Config.m_ClDummy];
+	int Best = -1;
+	float BestDistance = 56.0f;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(!pGameClient->m_Snap.m_aCharacters[i].m_Active || i == pGameClient->m_aLocalIds[0] || i == pGameClient->m_aLocalIds[1])
+			continue;
+		const float Distance = distance(pGameClient->m_aClients[i].m_RenderPos, Target);
+		if(Distance < BestDistance)
+		{
+			BestDistance = Distance;
+			Best = i;
+		}
+	}
+	if(Best < 0)
+	{
+		Toast(Tr("Aim at a player first"), TOAST_INFO);
+		return;
+	}
+	const CGameClient::CClientData &Player = pGameClient->m_aClients[Best];
+	char aBuf[128];
+	if(Player.m_Friend)
+	{
+		pGameClient->Friends()->RemoveFriend(Player.m_aName, Player.m_aClan);
+		str_format(aBuf, sizeof(aBuf), Tr("%s is no longer a friend"), XcStreamer::Name(pGameClient, Best, Player.m_aName));
+	}
+	else
+	{
+		pGameClient->Friends()->AddFriend(Player.m_aName, Player.m_aClan);
+		str_format(aBuf, sizeof(aBuf), Tr("%s added to friends"), XcStreamer::Name(pGameClient, Best, Player.m_aName));
+	}
+	Toast(aBuf, TOAST_SUCCESS);
 }
 
 void CXcHud::OnInit()
@@ -90,6 +132,7 @@ CXcHud::SElementConfig CXcHud::Element(int Index) const
 	case ELEMENT_WEAPON: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
 	case ELEMENT_MUSIC: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
 	case ELEMENT_KEYS: return {"Keystrokes", &g_Config.m_XcHudKeys, &g_Config.m_XcHudKeysX, &g_Config.m_XcHudKeysY, &g_Config.m_XcHudKeysScale, 120, 640};
+	case ELEMENT_EFFECTS: return {"Effects", &g_Config.m_XcHudEffects, &g_Config.m_XcHudEffectsX, &g_Config.m_XcHudEffectsY, &g_Config.m_XcHudEffectsScale, 940, 330};
 	default: return {"Top of the server", &g_Config.m_XcHudMinitop, &g_Config.m_XcHudMinitopX, &g_Config.m_XcHudMinitopY, &g_Config.m_XcHudMinitopScale, 920, 830};
 	}
 }
@@ -99,6 +142,11 @@ bool CXcHud::Visible() const
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return false;
 	return m_Editing || (g_Config.m_XcHud && g_Config.m_ClShowhud);
+}
+
+bool CXcHud::HidesClassicState() const
+{
+	return g_Config.m_XcHud && g_Config.m_XcHudHideClassic;
 }
 
 bool CXcHud::HidesClassicTimer() const
@@ -229,7 +277,7 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const struct tm *pTm = localtime(&Now);
 	str_format(aTime, sizeof(aTime), "%02d:%02d", pTm ? pTm->tm_hour : 0, pTm ? pTm->tm_min : 0);
 	const char *apIcons[] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_SIGNAL, XC_ICON_CLOCK};
-	const char *apTexts[] = {Client()->PlayerName(), aFps, aPing, aTime};
+	const char *apTexts[] = {XcStreamer::OwnName(Client()->PlayerName()), aFps, aPing, aTime};
 	// numbers get a fixed place (as wide as zeros, at least a few digits), so the plate does not wobble
 	const auto Slot = [&](const char *pText, int MinDigits) {
 		char aWidth[32] = "";
@@ -392,21 +440,103 @@ void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
 	const int Dots = (Ammo > 0 && Ammo <= 10 && Weapon != WEAPON_HAMMER && Weapon != WEAPON_NINJA) ? Ammo : 0;
 	const float NameWidth = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pName).x;
 	const float DotsWidth = Dots * 8.0f * U;
-	const float Width = 14.0f * U + IconWidth + 12.0f * U + std::max(NameWidth, DotsWidth) + 16.0f * U;
-	const float Height = 48.0f * U;
+
+	// all weapons the tee has and its jumps, instead of the classic HUD in the corner (xc_hud_weapon_list)
+	bool aGot[NUM_WEAPONS] = {};
+	int NumGot = 0;
+	int TotalJumps = 0, FreeJumps = 0;
+	const bool List = g_Config.m_XcHudWeaponList && ClientId >= 0 && GameClient()->m_Snap.m_aCharacters[ClientId].m_Active;
+	if(List)
+	{
+		const CCharacterCore &Core = GameClient()->m_aClients[ClientId].m_Predicted;
+		for(int i = 0; i < NUM_WEAPONS; i++)
+		{
+			aGot[i] = Core.m_aWeapons[i].m_Got;
+			NumGot += aGot[i];
+		}
+		const auto &Snap = GameClient()->m_Snap.m_aCharacters[ClientId];
+		if(Snap.m_HasExtendedDisplayInfo)
+		{
+			// the same count as the classic jump indicator (CHud::RenderPlayerState)
+			const CNetObj_Character &Player = GameClient()->m_aClients[ClientId].m_RenderCur;
+			const bool Grounded = Collision()->IsOnGround(vec2(Player.m_X, Player.m_Y), CCharacterCore::PhysicalSize());
+			int Used = Core.m_JumpedTotal;
+			if(Core.m_Jumps > 1)
+				Used += !Grounded;
+			else if(Core.m_Jumps == 1)
+				Used = Player.m_Jumped & 2;
+			else if(Core.m_Jumps == -1)
+				Used = !Grounded;
+			if(Core.m_EndlessJump && Used >= absolute(Core.m_Jumps))
+				Used = absolute(Core.m_Jumps) - 1;
+			int Unused = absolute(Core.m_Jumps) - Used;
+			if(!(Player.m_Jumped & 2) && Unused <= 0)
+				Unused = 1;
+			TotalJumps = std::clamp(absolute(Core.m_Jumps), 0, 10);
+			FreeJumps = std::clamp(Unused, 0, TotalJumps);
+		}
+		else if(Snap.m_HasExtendedData)
+			TotalJumps = FreeJumps = std::clamp(absolute(Snap.m_ExtendedData.m_Jumps), 0, 10);
+	}
+	const float SmallIcon = 24.0f * U;
+	const float ListHeight = List && NumGot > 1 ? SmallIcon + 8.0f * U : 0.0f;
+	const float JumpsHeight = List && TotalJumps > 0 ? 12.0f * U : 0.0f;
+	const float ListWidth = NumGot * (SmallIcon * 2.0f + 8.0f * U);
+	const float JumpsWidth = TotalJumps * 11.0f * U + 40.0f * U;
+
+	const float Width = std::max(14.0f * U + IconWidth + 12.0f * U + std::max(NameWidth, DotsWidth) + 16.0f * U, std::max(ListHeight > 0.0f ? ListWidth : 0.0f, JumpsHeight > 0.0f ? JumpsWidth : 0.0f) + 28.0f * U);
+	const float TopHeight = 48.0f * U;
+	const float Height = TopHeight + ListHeight + JumpsHeight + (ListHeight + JumpsHeight > 0.0f ? 6.0f * U : 0.0f);
 	const ImVec2 Min = PlaceRect(ELEMENT_WEAPON, ImVec2(Width, Height));
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	RenderPlate(pDraw, Min, Max, U, Alpha);
+	float RowY = Min.y + TopHeight;
+	if(ListHeight > 0.0f)
+	{
+		// the weapon in the hand bright, the others dimmed
+		float x = Min.x + 14.0f * U;
+		for(int i = 0; i < NUM_WEAPONS; i++)
+		{
+			if(!aGot[i])
+				continue;
+			const CDataSprite *pSmall = g_pData->m_Weapons.m_aId[i].m_pSpriteBody;
+			const float SmallAspect = pSmall && pSmall->m_H > 0 ? (float)pSmall->m_W / pSmall->m_H : 2.0f;
+			const float W = std::min(SmallIcon * SmallAspect, SmallIcon * 2.0f);
+			const IGraphics::CTextureHandle SmallTexture = GameClient()->m_GameSkin.m_aSpriteWeapons[i];
+			const bool Current = i == Weapon;
+			if(Current)
+				pDraw->AddRectFilled(ImVec2(x - 3.0f * U, RowY - 2.0f * U), ImVec2(x + W + 3.0f * U, RowY + SmallIcon + 2.0f * U), Col(t.m_Accent, 0.22f * Alpha), 6.0f * U);
+			if(SmallTexture.IsValid())
+				pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(SmallTexture), ImVec2(x, RowY + (SmallIcon - W / SmallAspect) * 0.5f), ImVec2(x + W, RowY + (SmallIcon + W / SmallAspect) * 0.5f), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), (Current ? 1.0f : 0.45f) * Alpha));
+			x += W + 8.0f * U;
+		}
+		RowY += ListHeight;
+	}
+	if(JumpsHeight > 0.0f)
+	{
+		ImFont *pSmallFont = m_Backend.Fonts().m_pSmall;
+		const char *pJumps = Tr("Jumps");
+		pDraw->AddText(pSmallFont, 11.0f * U, ImVec2(Min.x + 14.0f * U, RowY - 1.0f * U), Col(t.m_TextMuted, Alpha), pJumps);
+		const float DotsX = Min.x + 14.0f * U + pSmallFont->CalcTextSizeA(11.0f * U, FLT_MAX, 0.0f, pJumps).x + 8.0f * U;
+		for(int i = 0; i < TotalJumps; i++)
+		{
+			const ImVec2 C(DotsX + i * 11.0f * U + 4.0f * U, RowY + 5.5f * U);
+			if(i < FreeJumps)
+				pDraw->AddCircleFilled(C, 3.6f * U, Col(t.m_Accent, Alpha), 14);
+			else
+				pDraw->AddCircle(C, 3.4f * U, Col(t.m_TextMuted, 0.8f * Alpha), 14, 1.2f * U);
+		}
+	}
 
 	const IGraphics::CTextureHandle Texture = GameClient()->m_GameSkin.m_aSpriteWeapons[Weapon];
 	const float IconX = Min.x + 14.0f * U;
-	const float IconY = Min.y + (Height - IconWidth / Aspect) * 0.5f;
+	const float IconY = Min.y + (TopHeight - IconWidth / Aspect) * 0.5f;
 	if(Texture.IsValid())
 		pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), ImVec2(IconX, IconY), ImVec2(IconX + IconWidth, IconY + IconWidth / Aspect), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), Alpha));
 	const float TextX = IconX + IconWidth + 12.0f * U;
 	pDraw->AddText(pLabel, TextSize, ImVec2(TextX, Min.y + (Dots ? 9.0f : 17.0f) * U), Col(t.m_Text, Alpha), pName);
 	for(int i = 0; i < Dots; i++)
-		pDraw->AddCircleFilled(ImVec2(TextX + 3.0f * U + i * 8.0f * U, Max.y - 14.0f * U), 2.6f * U, Col(t.m_Accent, Alpha), 12);
+		pDraw->AddCircleFilled(ImVec2(TextX + 3.0f * U + i * 8.0f * U, Min.y + TopHeight - 14.0f * U), 2.6f * U, Col(t.m_Accent, Alpha), 12);
 }
 
 void CXcHud::RenderKeys(ImDrawList *pDraw, float Alpha)
@@ -908,6 +1038,7 @@ void CXcHud::OnRender()
 		g_Config.m_XcHudMusic && !Focus,
 		g_Config.m_XcHudKeys && !Focus,
 		g_Config.m_XcHudMinitop && !Focus && (m_Editing || m_ScoreboardOpen < 1.0f),
+		g_Config.m_XcHudEffects && !Focus,
 	};
 	for(int i = 0; i < NUM_ELEMENTS; i++)
 		Approach(m_aShown[i], aWanted[i] ? 1.0f : 0.0f);
@@ -932,6 +1063,8 @@ void CXcHud::OnRender()
 		// the top list steps aside while the full scoreboard is open
 		if(Shown(ELEMENT_MINITOP) > 0.0f)
 			RenderMiniTop(pDraw, a * Shown(ELEMENT_MINITOP) * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen));
+		if(Shown(ELEMENT_EFFECTS) > 0.0f)
+			RenderEffects(pDraw, a * Shown(ELEMENT_EFFECTS), Dt);
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
