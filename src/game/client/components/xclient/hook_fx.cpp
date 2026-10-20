@@ -171,6 +171,7 @@ void CHookFx::RenderLine(vec2 PlayerPos, vec2 HookPos, float Alpha) const
 
 void CHookFx::EmitHit(vec2 Pos, vec2 AwayDir)
 {
+	const FxTune::CScope TuneScope(FxTune::HOOK);
 	const ColorRGBA Main = Color(1.0f);
 	switch(g_Config.m_XcHookHitFx)
 	{

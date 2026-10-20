@@ -5,16 +5,80 @@
 
 #include <base/math.h>
 
+#include <engine/shared/config.h>
+
 #include <algorithm>
 #include <cmath>
 
-static constexpr size_t MAX_PARTICLES = 2048;
+static constexpr size_t MAX_PARTICLES = 6000;
+
+namespace FxTune
+{
+const char *const g_apNames[NUM_GROUPS] = {"jump", "dust", "trail", "hook", "hammer", "explosion", "freeze", "death", "finish", "teleport", "checkpoint", "items"};
+SScale g_Current;
+
+int *Setting(int Group, int Which)
+{
+#define XC_TUNE(Name) {&g_Config.m_XcFxtune##Name##Amount, &g_Config.m_XcFxtune##Name##Life, &g_Config.m_XcFxtune##Name##Speed, &g_Config.m_XcFxtune##Name##Size}
+	static int *const s_aapSettings[NUM_GROUPS][4] = {XC_TUNE(Jump), XC_TUNE(Dust), XC_TUNE(Trail), XC_TUNE(Hook), XC_TUNE(Hammer), XC_TUNE(Explosion), XC_TUNE(Freeze), XC_TUNE(Death), XC_TUNE(Finish), XC_TUNE(Teleport), XC_TUNE(Checkpoint), XC_TUNE(Items)};
+#undef XC_TUNE
+	return s_aapSettings[std::clamp(Group, 0, NUM_GROUPS - 1)][std::clamp(Which, 0, 3)];
+}
+
+SScale For(int Group)
+{
+	SScale Scale;
+	if(Group < 0 || Group >= NUM_GROUPS)
+		return Scale;
+	Scale.m_Amount = *Setting(Group, 0) / 100.0f;
+	Scale.m_Life = *Setting(Group, 1) / 100.0f;
+	Scale.m_Speed = *Setting(Group, 2) / 100.0f;
+	Scale.m_Size = *Setting(Group, 3) / 100.0f;
+	return Scale;
+}
+} // namespace FxTune
 
 void CXcParticles::Add(const SParticle &Particle)
 {
-	if(m_vParticles.size() >= MAX_PARTICLES)
-		return;
-	m_vParticles.push_back(Particle);
+	const FxTune::SScale &Tune = FxTune::g_Current;
+	SParticle Scaled = Particle;
+	Scaled.m_LifeSpan *= Tune.m_Life;
+	Scaled.m_Life *= Tune.m_Life; // delays stretch too
+	Scaled.m_Vel *= Tune.m_Speed;
+	Scaled.m_RotSpeed *= std::max(Tune.m_Speed, 0.25f);
+	Scaled.m_StartSize *= Tune.m_Size;
+	Scaled.m_EndSize *= Tune.m_Size;
+	Scaled.m_Thickness *= Tune.m_Size;
+
+	// rings, flashes and circles are one piece of an effect, more of them would only make it brighter
+	const bool Countable = Particle.m_Type == EType::SPARK || Particle.m_Type == EType::STAR || Particle.m_Type == EType::DUST ||
+			       Particle.m_Type == EType::CONFETTI || Particle.m_Type == EType::SHARD || Particle.m_Type == EType::ICON;
+	int Copies = 1;
+	if(Countable)
+	{
+		// 2.5 = two copies and a half chance of a third
+		Copies = (int)Tune.m_Amount;
+		if(random_float() < Tune.m_Amount - Copies)
+			Copies++;
+	}
+	for(int i = 0; i < Copies; i++)
+	{
+		if(m_vParticles.size() >= MAX_PARTICLES)
+			return;
+		SParticle Copy = Scaled;
+		if(i > 0)
+		{
+			// extra copies spread a little, so they do not sit on top of each other
+			const float Speed = length(Copy.m_Vel);
+			if(Speed > 0.001f)
+				Copy.m_Vel = direction(angle(Copy.m_Vel) + random_float(-0.35f, 0.35f)) * Speed * random_float(0.8f, 1.15f);
+			else
+				Copy.m_Pos += vec2(random_float(-6.0f, 6.0f), random_float(-6.0f, 6.0f)) * Tune.m_Size;
+			Copy.m_LifeSpan *= random_float(0.85f, 1.1f);
+			Copy.m_Rot += random_float(0.0f, 2.0f * pi);
+		}
+		m_vParticles.push_back(Copy);
+	}
 }
 
 void CXcParticles::Update(float Dt)

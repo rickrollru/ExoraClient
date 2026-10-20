@@ -9,6 +9,52 @@
 class CFxRenderer;
 class CXcSprites;
 
+// Fine settings of the particles of each effect: amount, life time, speed and size ("xc_fxtune_<group>_*").
+// An effect emits its particles inside a scope of its group; CXcParticles::Add applies the scale.
+namespace FxTune
+{
+enum EGroup
+{
+	JUMP,
+	DUST,
+	TRAIL,
+	HOOK,
+	HAMMER,
+	EXPLOSION,
+	FREEZE,
+	DEATH,
+	FINISH,
+	TELEPORT,
+	CHECKPOINT,
+	ITEMS,
+	NUM_GROUPS,
+};
+// config names of the groups, "xc_fxtune_<name>_amount" etc.
+extern const char *const g_apNames[NUM_GROUPS];
+struct SScale
+{
+	float m_Amount = 1.0f;
+	float m_Life = 1.0f;
+	float m_Speed = 1.0f;
+	float m_Size = 1.0f;
+};
+SScale For(int Group);
+// the settings of the group array: amount, life, speed, size
+int *Setting(int Group, int Which);
+extern SScale g_Current;
+class CScope
+{
+	SScale m_Old;
+
+public:
+	explicit CScope(int Group) :
+		m_Old(g_Current) { g_Current = For(Group); }
+	~CScope() { g_Current = m_Old; }
+	CScope(const CScope &) = delete;
+	CScope &operator=(const CScope &) = delete;
+};
+} // namespace FxTune
+
 // Small world-space particle system shared by all XClient effects.
 // Separate from the game's own particles so our effects never steal their slots.
 class CXcParticles

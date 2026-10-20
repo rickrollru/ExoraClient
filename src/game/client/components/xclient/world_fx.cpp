@@ -37,6 +37,7 @@ ColorRGBA CWorldFx::FreezeColor(int ClientId, float Alpha) const
 
 void CWorldFx::FreezeBurst(vec2 Pos, int ClientId, bool Unfreeze)
 {
+	const FxTune::CScope TuneScope(FxTune::FREEZE);
 	const ColorRGBA Color = FreezeColor(ClientId);
 	// ice shards fly out, more and faster when the ice breaks
 	const int Count = Unfreeze ? 14 : 9;
@@ -71,6 +72,7 @@ void CWorldFx::FreezeBurst(vec2 Pos, int ClientId, bool Unfreeze)
 
 void CWorldFx::HammerHit(vec2 Pos)
 {
+	const FxTune::CScope TuneScope(FxTune::HAMMER);
 	const int Style = g_Config.m_XcHammerFx;
 	if(Style == HAMMER_OFF)
 		return;
@@ -115,6 +117,7 @@ void CWorldFx::HammerHit(vec2 Pos)
 
 void CWorldFx::Explosion(vec2 Pos)
 {
+	const FxTune::CScope TuneScope(FxTune::EXPLOSION);
 	const int Style = g_Config.m_XcExplosionFx;
 	if(Style == EXPLOSION_OFF)
 		return;
@@ -288,6 +291,7 @@ void CWorldFx::OnRender()
 		if(State.m_SnowTimer <= 0.0f)
 		{
 			State.m_SnowTimer = random_float(0.12f, 0.25f);
+			const FxTune::CScope TuneScope(FxTune::FREEZE);
 			CXcParticles::SParticle Flake;
 			Flake.m_Type = CXcParticles::EType::STAR;
 			if(Fx.Sprites().Enabled())
