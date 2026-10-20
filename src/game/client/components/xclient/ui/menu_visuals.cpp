@@ -280,6 +280,21 @@ void CXcMenu::RenderVisualsWeapons()
 		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
 		EndCard();
 	}
+	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
+	{
+		const char *apModes[] = {Tr("Off"), Tr("When aiming"), Tr("Always")};
+		ParamLabel(Tr("My line"));
+		ConfigSegmented("##hook_coll_own", "cl_show_hook_coll_own", &g_Config.m_ClShowHookCollOwn, apModes, 3);
+		ParamLabel(Tr("Other players"));
+		ConfigSegmented("##hook_coll_other", "cl_show_hook_coll_other", &g_Config.m_ClShowHookCollOther, apModes, 3);
+		ConfigSlider(Tr("My line width"), "cl_hook_coll_size", &g_Config.m_ClHookCollSize, 0, 20);
+		ConfigSlider(Tr("Others' line width"), "cl_hook_coll_size_other", &g_Config.m_ClHookCollSizeOther, 0, 20);
+		ConfigSlider(Tr("Visibility"), "cl_hook_coll_alpha", &g_Config.m_ClHookCollAlpha, 0, 100, "%d%%");
+		ConfigColorRow(Tr("Catches nothing"), &g_Config.m_ClHookCollColorNoColl, false);
+		ConfigColorRow(Tr("Catches a wall"), &g_Config.m_ClHookCollColorHookableColl, false);
+		ConfigColorRow(Tr("Catches a player"), &g_Config.m_ClHookCollColorTeeColl, false);
+		EndCard();
+	}
 	EndCardGrid();
 }
 
@@ -437,6 +452,20 @@ void CXcMenu::RenderVisualsEvents()
 void CXcMenu::RenderVisualsNames()
 {
 	BeginCardGrid("##vis_names", 2);
+	if(BeginCard("##names_ddnet", Tr("Names above the tees"), Tr("What the name plates show and how big they are"), &g_Config.m_ClNamePlates))
+	{
+		ToggleRow(Tr("Always, at any distance"), "cl_nameplates_always", &g_Config.m_ClNamePlatesAlways);
+		ToggleRow(Tr("My own name too"), "cl_nameplates_own", &g_Config.m_ClNamePlatesOwn);
+		ToggleRow(Tr("Team colors"), "cl_nameplates_teamcolors", &g_Config.m_ClNamePlatesTeamcolors);
+		ToggleRow(Tr("Heart for friends"), "cl_nameplates_friendmark", &g_Config.m_ClNamePlatesFriendMark);
+		ConfigSlider(Tr("Name size"), "cl_nameplates_size", &g_Config.m_ClNamePlatesSize, -50, 100);
+		ConfigSlider(Tr("Gap above the tee"), "cl_nameplates_offset", &g_Config.m_ClNamePlatesOffset, 10, 50);
+		ToggleRow(Tr("Clan"), "cl_nameplates_clan", &g_Config.m_ClNamePlatesClan);
+		if(g_Config.m_ClNamePlatesClan)
+			ConfigSlider(Tr("Clan size"), "cl_nameplates_clan_size", &g_Config.m_ClNamePlatesClanSize, -50, 100);
+		ToggleRow(Tr("Player numbers"), "cl_nameplates_ids", &g_Config.m_ClNamePlatesIds);
+		EndCard();
+	}
 	if(BeginCard("##hud_plates", Tr("Name plates"), Tr("Names above the tees on dark rounded plates"), &g_Config.m_XcHudPlates))
 	{
 		Description(Tr("The text stays readable on bright maps"));

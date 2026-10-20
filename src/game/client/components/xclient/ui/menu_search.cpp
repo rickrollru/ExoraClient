@@ -104,6 +104,10 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_scoreboard", "Own scoreboard", "Tab shows players by teams with medals, times and pings in the style of the menu", "таблица игроков таб скорборд топ мини-топ scoreboard tab top minitop"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CHAT, "##chat_style", "Chat in the HUD style", "Plates in the theme colors, marks for mentions, team chat and whispers, a framed input", "чат стиль плашки упоминание шёпот команда chat style mention whisper"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_NAMES, "##hud_plates", "Name plates", "Names above the tees on dark rounded plates", "ники ники-плашки плашки nameplates names"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_NAMES, "##names_ddnet", "Names above the tees", "What the name plates show and how big they are", "ники ник плашки клан размер номера id nameplates names clan"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##hook_line", "Hook aim line", "The line that shows where your hook would catch", "линия хука прицел хука коллизия hook line collision aim"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##zoom", "Camera zoom", "How far the camera sees and how smooth it moves", "зум приближение камера плавность zoom camera"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##prediction", "Prediction and ping", "How the client shows the game ahead of the server, so it feels without lag", "предсказание антипинг пинг лаг prediction antiping ping lag"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_wheels", "Wheels", "Emote wheel and spectator menu in the colors of the menu", "колесо эмоции эмоций спектатор наблюдение wheel emote spectator"},
 	};
 	// clang-format on
