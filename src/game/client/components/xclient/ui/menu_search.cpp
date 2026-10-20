@@ -32,7 +32,7 @@ namespace
 	// clang-format off
 	const SSearchEntry gs_aSearchEntries[] = {
 		{CXcMenu::PAGE_HOME, -1, nullptr, "Home", "Profile, friends online and DDNet news", "главная профиль друзья новости play играть"},
-		{CXcMenu::PAGE_SERVERS, -1, nullptr, "Servers", "Server cards with filters", "серверы сервер браузер join войти избранное favorites lan ddrace"},
+		{CXcMenu::PAGE_SERVERS, -1, nullptr, "Servers", "Server cards, communities, filters, friends", "серверы сервер браузер join войти избранное favorites lan ddrace сообщества communities фильтры filters друзья friends сортировка sort kog страны"},
 		{CXcMenu::PAGE_VISUALS, -1, nullptr, "Visuals", "Visual effects", "визуалы эффекты effects"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_glow", "Neon glow", "Soft light and a crisp outline around the tee", "свечение неон обводка контур подсветка glow neon outline"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_trail", "Trail", "A glowing ribbon behind the tee", "шлейф хвост след trail ribbon"},

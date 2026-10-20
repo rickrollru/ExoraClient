@@ -41,6 +41,14 @@
 #define XC_ICON_TRASH "\xef\x87\xb8" // U+F1F8
 #define XC_ICON_PLUS "\xef\x81\xa7" // U+F067
 #define XC_ICON_FILM "\xef\x80\x88" // U+F008
+#define XC_ICON_LOCK "\xef\x80\xa3" // U+F023
+#define XC_ICON_FILTER "\xef\x82\xb0" // U+F0B0
+#define XC_ICON_HEART "\xef\x80\x84" // U+F004
+#define XC_ICON_COPY "\xef\x83\x85" // U+F0C5
+#define XC_ICON_USER_PLUS "\xef\x88\xb4" // U+F234
+#define XC_ICON_USER_XMARK "\xef\x88\xb5" // U+F235
+#define XC_ICON_FLAG_CHECK "\xef\x84\x9e" // U+F11E flag-checkered
+#define XC_ICON_INFO "\xef\x81\x9a" // U+F05A circle-info
 #define XC_ICON_CHECK "\xef\x80\x8c" // U+F00C
 #define XC_ICON_MUSIC "\xef\x80\x81" // U+F001
 #define XC_ICON_PAUSE "\xef\x81\x8c" // U+F04C
