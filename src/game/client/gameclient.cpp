@@ -151,6 +151,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Ghost,
 					      &m_TClient, // TClient (Must be before chat and players)
 					      &m_XcJelly, // XClient: squash and stretch of the tees (drawn by CPlayers)
+					      &m_XcMotion, // XClient: motion blur and speed lines behind the tees
 					      &m_XcCape, // XClient: cape with cloth physics behind the tees
 					      &m_XcHatsBehind, // XClient: wings and capes behind the tees
 					      &m_Players,

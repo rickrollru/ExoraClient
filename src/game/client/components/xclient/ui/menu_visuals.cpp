@@ -101,6 +101,18 @@ void CXcMenu::RenderVisualsTee()
 		TargetChips("##jelly_targets", &g_Config.m_XcJellySelf, &g_Config.m_XcJellyDummy, &g_Config.m_XcJellyOthers);
 		EndCard();
 	}
+	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Fast tees leave a soft smear of copies behind them"), &g_Config.m_XcMotionBlur))
+	{
+		ConfigSlider(Tr("Blur length"), "xc_motion_blur_strength", &g_Config.m_XcMotionBlurStrength, 10, 100, "%d%%");
+		TargetChips("##motion_blur_targets", &g_Config.m_XcMotionBlurSelf, &g_Config.m_XcMotionBlurDummy, &g_Config.m_XcMotionBlurOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_speed_lines", Tr("Speed lines"), Tr("Thin streaks behind the tee at high speed, like in anime"), &g_Config.m_XcSpeedLines))
+	{
+		ConfigSlider(Tr("Brightness"), "xc_speed_lines_alpha", &g_Config.m_XcSpeedLinesAlpha, 10, 100, "%d%%");
+		Description(Tr("Shown for the same tees as the motion blur"));
+		EndCard();
+	}
 
 	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown")};
 	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 3))
@@ -207,6 +219,19 @@ void CXcMenu::RenderVisualsWeapons()
 		ConfigSlider(Tr("Gap"), "xc_crosshair_gap", &g_Config.m_XcCrosshairGap, 0, 300, "%d%%");
 		ToggleRow(Tr("Glow"), "xc_crosshair_glow", &g_Config.m_XcCrosshairGlow);
 		ToggleRow(Tr("Dark outline"), "xc_crosshair_outline", &g_Config.m_XcCrosshairOutline);
+		EndCard();
+	}
+	if(BeginCard("##fx_crosshair_motion", Tr("Crosshair motion"), Tr("Blur and a trail when you move the mouse, a kick on every shot. Works with any crosshair"), &g_Config.m_XcCrosshairMotion))
+	{
+		ToggleRow(Tr("Motion blur"), "xc_crosshair_blur", &g_Config.m_XcCrosshairBlur);
+		if(g_Config.m_XcCrosshairBlur)
+			ConfigSlider(Tr("Blur length"), "xc_crosshair_blur_strength", &g_Config.m_XcCrosshairBlurStrength, 10, 100, "%d%%");
+		ToggleRow(Tr("Glowing trail"), "xc_crosshair_trail", &g_Config.m_XcCrosshairTrail);
+		if(g_Config.m_XcCrosshairTrail)
+			ConfigSlider(Tr("Trail length"), "xc_crosshair_trail_length", &g_Config.m_XcCrosshairTrailLength, 10, 100, "%d%%");
+		ToggleRow(Tr("Kick on a shot"), "xc_crosshair_kick", &g_Config.m_XcCrosshairKick);
+		if(g_Config.m_XcCrosshairKick)
+			ConfigSlider(Tr("Kick strength"), "xc_crosshair_kick_strength", &g_Config.m_XcCrosshairKickStrength, 10, 100, "%d%%");
 		EndCard();
 	}
 	EndCardGrid();
