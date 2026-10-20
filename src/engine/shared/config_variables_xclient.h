@@ -562,3 +562,11 @@ MACRO_CONFIG_INT(XcTeeShaderShade, xc_tee_shader_shade, 70, 0, 100, CFGFLAG_CLIE
 MACRO_CONFIG_INT(XcTeeShaderSelf, xc_tee_shader_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader on yourself")
 MACRO_CONFIG_INT(XcTeeShaderDummy, xc_tee_shader_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader on your dummy")
 MACRO_CONFIG_INT(XcTeeShaderOthers, xc_tee_shader_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader on other players")
+// Mouse cursor of the menus
+MACRO_CONFIG_INT(XcCursor, xc_cursor, 1, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mouse cursor in the menus (0 = standard, 1 = arrow, 2 = dot, 3 = triangle, 4 = own picture)")
+MACRO_CONFIG_INT(XcCursorColorMode, xc_cursor_color_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cursor color (0 = accent, 1 = own, 2 = rainbow)")
+MACRO_CONFIG_COL(XcCursorColor, xc_cursor_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cursor own color")
+MACRO_CONFIG_INT(XcCursorSize, xc_cursor_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cursor size in percent")
+MACRO_CONFIG_INT(XcCursorOutline, xc_cursor_outline, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dark outline around the cursor")
+MACRO_CONFIG_INT(XcCursorGlow, xc_cursor_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Soft light around the cursor")
+MACRO_CONFIG_STR(XcCursorFile, xc_cursor_file, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own cursor picture: a PNG in xclient/cursors (the top left corner points)")
