@@ -290,6 +290,12 @@ private:
 	void RenderHatEditor(float Size);
 	void HandleHatFile(const char *pPath);
 	bool m_HatsScanned = false;
+	bool m_WeatherScanned = false;
+	char m_aWeatherPath[512] = {};
+	std::string m_WeatherPendingAdd;
+	std::string m_WeatherPendingRemove;
+	void RenderWeatherCard();
+	void HandleWeatherFile(const char *pPath);
 	char m_aHatPath[512] = {};
 	std::string m_HatPendingAdd;
 	std::string m_HatPendingRemove;
