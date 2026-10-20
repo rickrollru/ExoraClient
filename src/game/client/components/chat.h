@@ -170,6 +170,7 @@ class CChat : public CComponent
 	void StoreSave(const char *pText);
 
 	friend class CBindChat;
+	friend class CXcHud; // XClient: the new chat draws the lines and the input itself
 	friend class CTranslate;
 	friend class CTClient;
 
@@ -180,6 +181,9 @@ public:
 	static constexpr float MESSAGE_TEE_PADDING_RIGHT = 0.5f;
 
 	bool IsActive() const { return m_Mode != MODE_NONE; }
+	// XClient: colors of a line for the new chat, the same rules as the classic one
+	ColorRGBA XcNameColor(int LineIndex) const;
+	ColorRGBA XcTextColor(int LineIndex) const;
 	void AddLine(int ClientId, int Team, const char *pLine);
 	void EnableMode(int Team);
 	void DisableMode();

@@ -1305,6 +1305,18 @@ void CChat::OnRender()
 	if(g_Config.m_XcFocusMode && !IsActive())
 		return;
 
+	// XClient: the new chat (xc_chat_new) draws the lines and the input in the HUD, here only the input stays active
+	if(GameClient()->m_XcHud.DrawsChat())
+	{
+		if(m_Mode != MODE_NONE)
+		{
+			m_Input.Activate(EInputPriority::CHAT);
+			m_Input.XcMarkRendered();
+		}
+		m_PrevShowChat = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
+		return;
+	}
+
 	const float Height = 300.0f;
 	const float Width = Height * Graphics()->ScreenAspect();
 	Graphics()->MapScreenToSize(Width, Height);
@@ -1564,4 +1576,45 @@ void CChat::SendChatQueued(const char *pLine)
 		pEntry->m_Team = m_Mode == MODE_ALL ? 0 : 1;
 		str_copy(pEntry->m_aText, pLine, Length + 1);
 	}
+}
+
+// XClient: colors for the new chat (CXcHud::RenderChat), the same rules as OnPrepareLines
+ColorRGBA CChat::XcNameColor(int LineIndex) const
+{
+	const CLine &Line = m_aLines[LineIndex];
+	if(Line.m_CustomColor)
+		return *Line.m_CustomColor;
+	if(Line.m_ClientId == SERVER_MSG)
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageSystemColor));
+	if(Line.m_ClientId == CLIENT_MSG)
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
+	if(Line.m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListChat && GameClient()->m_WarList.GetAnyWar(Line.m_ClientId))
+		return GameClient()->m_WarList.GetPriorityColor(Line.m_ClientId);
+	if(Line.m_Team)
+		return CalculateNameColor(ColorHSLA(g_Config.m_ClMessageTeamColor));
+	if(Line.m_NameColor == TEAM_RED)
+		return ColorRGBA(1.0f, 0.5f, 0.5f, 1.0f);
+	if(Line.m_NameColor == TEAM_BLUE)
+		return ColorRGBA(0.7f, 0.7f, 1.0f, 1.0f);
+	if(Line.m_NameColor == TEAM_SPECTATORS)
+		return ColorRGBA(0.75f, 0.5f, 0.75f, 1.0f);
+	if(Line.m_ClientId >= 0 && g_Config.m_ClChatTeamColors && GameClient()->m_Teams.Team(Line.m_ClientId))
+		return GameClient()->GetDDTeamColor(GameClient()->m_Teams.Team(Line.m_ClientId), 0.75f);
+	return ColorRGBA(0.8f, 0.8f, 0.8f, 1.0f);
+}
+
+ColorRGBA CChat::XcTextColor(int LineIndex) const
+{
+	const CLine &Line = m_aLines[LineIndex];
+	if(Line.m_CustomColor)
+		return *Line.m_CustomColor;
+	if(Line.m_ClientId == SERVER_MSG)
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageSystemColor));
+	if(Line.m_ClientId == CLIENT_MSG)
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
+	if(Line.m_Highlighted)
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageHighlightColor));
+	if(Line.m_Team)
+		return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageTeamColor));
+	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageColor));
 }

@@ -996,7 +996,24 @@ void CXcRenderer::BlurScreen(const XcRender::SCommand_BlurScreen *pCommand)
 	glUniform1f(m_LocCompStrength, 1.0f);
 	const ColorRGBA &Tint = pCommand->m_Settings.m_Tint;
 	glUniform4f(m_LocCompTint, Tint.r, Tint.g, Tint.b, Tint.a);
-	DrawFullscreen(m_CompositeProgram, m_aBlur[0].m_Texture);
+	const XcRender::SBlurSettings &Settings = pCommand->m_Settings;
+	if(Settings.m_NumRects <= 0)
+	{
+		DrawFullscreen(m_CompositeProgram, m_aBlur[0].m_Texture);
+		return;
+	}
+	// only behind some panels (the glass chat): the same blurred frame, cut by a scissor per rect
+	glEnable(GL_SCISSOR_TEST);
+	for(int i = 0; i < std::min(Settings.m_NumRects, (int)XcRender::SBlurSettings::MAX_RECTS); i++)
+	{
+		const float *pRect = Settings.m_aaRects[i];
+		const int x0 = (int)std::floor(pRect[0] * Width), x1 = (int)std::ceil(pRect[2] * Width);
+		const int y0 = (int)std::floor((1.0f - pRect[3]) * Height), y1 = (int)std::ceil((1.0f - pRect[1]) * Height);
+		if(x1 <= x0 || y1 <= y0)
+			continue;
+		glScissor(pViewport[0] + x0, pViewport[1] + y0, x1 - x0, y1 - y0);
+		DrawFullscreen(m_CompositeProgram, m_aBlur[0].m_Texture);
+	}
 }
 
 void CXcRenderer::CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand)
