@@ -1,6 +1,7 @@
 #include "world_fx.h"
 
 #include "fx_renderer.h"
+#include "sprite_fx.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -255,12 +256,33 @@ void CWorldFx::OnRender()
 		// ice aura: cold light, a slowly turning frost ring and snow drifting down
 		const ColorRGBA Color = FreezeColor(ClientId, Alpha);
 		const float Breath = 0.85f + 0.15f * std::sin(Time * 2.0f + ClientId);
-		Fx.AddWorld(FxShape::Circle(Pos, 40.0f, Color.WithAlpha(0.0f)).RadialGradient(Color.WithAlpha(0.32f * Breath * Alpha), 1.3f));
-		Fx.AddWorldGlowing(FxShape::Ring(Pos, vec2(34.0f, 34.0f), 2.0f, Color.WithAlpha(0.7f * Alpha)), 8.0f, 0.4f * Breath);
-		for(int i = 0; i < 6; i++)
+		CXcSprites &Sprites = Fx.Sprites();
+		if(Sprites.Enabled())
 		{
-			const float Angle = Time * 0.6f + i * pi / 3.0f;
-			Fx.AddWorldGlowing(FxShape::Star(Pos + direction(Angle) * 34.0f, 4.5f, 6, 0.45f, Color.WithAlpha(0.9f * Alpha)).Rotate(-Angle * 2.0f), 4.0f, 0.4f);
+			// soft light: cold glow, a glowing frost ring and real snowflakes going around
+			const float Reach = FxGlow::g_Current.m_Radius;
+			const float Light = std::min(FxGlow::g_Current.m_Strength, 2.0f);
+			Sprites.Queue(CXcSprites::SPRITE_SOFT_BLOOM, true, Pos, 150.0f * Reach, 0.0f, Color.WithAlpha(0.2f * Breath * Alpha * Light));
+			Sprites.Queue(CXcSprites::SPRITE_GLOW, false, Pos, 80.0f, 0.0f, Color.WithAlpha(0.22f * Breath * Alpha));
+			Sprites.Queue(CXcSprites::SPRITE_JUMP_RING, false, Pos, 34.0f * 4.0f, 0.0f, Color.WithAlpha(0.55f * Alpha));
+			Sprites.Queue(CXcSprites::SPRITE_JUMP_RING, true, Pos, 34.0f * 4.0f, 0.0f, Color.WithAlpha(0.45f * Breath * Alpha * Light));
+			for(int i = 0; i < 6; i++)
+			{
+				const float Angle = Time * 0.6f + i * pi / 3.0f;
+				const vec2 FlakePos = Pos + direction(Angle) * 34.0f;
+				Sprites.Queue(CXcSprites::SPRITE_GLOW, true, FlakePos, 22.0f * Reach, 0.0f, Color.WithAlpha(0.4f * Alpha * Light));
+				Sprites.Queue(CXcSprites::SPRITE_SNOWFLAKE, true, FlakePos, 13.0f, -Angle * 2.0f, Color.WithAlpha(0.95f * Alpha));
+			}
+		}
+		else
+		{
+			Fx.AddWorld(FxShape::Circle(Pos, 40.0f, Color.WithAlpha(0.0f)).RadialGradient(Color.WithAlpha(0.32f * Breath * Alpha), 1.3f));
+			Fx.AddWorldGlowing(FxShape::Ring(Pos, vec2(34.0f, 34.0f), 2.0f, Color.WithAlpha(0.7f * Alpha)), 8.0f, 0.4f * Breath);
+			for(int i = 0; i < 6; i++)
+			{
+				const float Angle = Time * 0.6f + i * pi / 3.0f;
+				Fx.AddWorldGlowing(FxShape::Star(Pos + direction(Angle) * 34.0f, 4.5f, 6, 0.45f, Color.WithAlpha(0.9f * Alpha)).Rotate(-Angle * 2.0f), 4.0f, 0.4f);
+			}
 		}
 		State.m_SnowTimer -= Dt;
 		if(State.m_SnowTimer <= 0.0f)
@@ -268,12 +290,20 @@ void CWorldFx::OnRender()
 			State.m_SnowTimer = random_float(0.12f, 0.25f);
 			CXcParticles::SParticle Flake;
 			Flake.m_Type = CXcParticles::EType::STAR;
+			if(Fx.Sprites().Enabled())
+			{
+				// the soft light style has a real snowflake picture
+				Flake.m_Type = CXcParticles::EType::ICON;
+				Flake.m_Sprite = CXcSprites::SPRITE_SNOWFLAKE;
+			}
 			Flake.m_Pos = Pos + vec2(random_float(-30.0f, 30.0f), random_float(-34.0f, -10.0f));
 			Flake.m_Vel = vec2(random_float(-8.0f, 8.0f), random_float(18.0f, 36.0f));
 			Flake.m_Friction = 0.8f;
 			Flake.m_LifeSpan = random_float(0.8f, 1.3f);
 			Flake.m_StartSize = random_float(6.0f, 9.0f);
 			Flake.m_EndSize = 2.0f;
+			if(Flake.m_Type == CXcParticles::EType::ICON)
+				Flake.m_StartSize *= 1.7f; // the picture has a margin around the flake
 			Flake.m_Rot = random_float(0.0f, pi);
 			Flake.m_RotSpeed = random_float(-1.5f, 1.5f);
 			Flake.m_Color = Color;

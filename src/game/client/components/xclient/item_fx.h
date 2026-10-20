@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_XCLIENT_ITEM_FX_H
 
 #include "fx_renderer.h"
+#include "sprite_fx.h"
 #include "xc_particles.h"
 
 #include <base/color.h>
@@ -36,6 +37,8 @@ public:
 
 private:
 	std::vector<SFxShape> m_vShapes;
+	std::vector<CXcSprites::SSprite> m_vSprites; // soft light style
+	bool Soft() const;
 	CXcParticles m_Particles;
 
 	ColorRGBA ItemColor(ColorRGBA ByType, float HueOffset) const;

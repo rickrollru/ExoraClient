@@ -1,6 +1,7 @@
 #include "floaters.h"
-#include "fx_renderer.h"
 
+#include "fx_renderer.h"
+#include "sprite_fx.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -223,7 +224,25 @@ void CXcFloaters::OnRender()
 	const float Time = Client()->GlobalTime();
 	Graphics()->TextureClear();
 	// the glow under everything, added on top of the map
-	if(g_Config.m_XcFloatersGlow)
+	CXcSprites &Sprites = GameClient()->m_XcSprites;
+	const bool Soft = Sprites.Enabled();
+	const FxGlow::SScale GlowScale = FxGlow::For(FxGlow::FLOATERS);
+	if(g_Config.m_XcFloatersGlow && Soft && GlowScale.m_Strength > 0.0f)
+	{
+		// soft light style: a wide bloom texture instead of the drawn gradient
+		Sprites.Begin(CXcSprites::SPRITE_SOFT_BLOOM, true);
+		for(const SFloater *pFloater : vOrder)
+		{
+			const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
+			const float Twinkle = 0.8f + 0.2f * std::sin(Time * 2.0f + pFloater->m_Hue * 40.0f);
+			const float a = Alpha * pFloater->m_Life * pFloater->m_Depth * Twinkle;
+			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * (pFloater->m_Cube ? 2.6f : 3.2f) * GlowScale.m_Radius;
+			Sprites.Draw(pFloater->m_Pos, Radius * 2.4f, 0.0f, Color.WithAlpha(std::min(0.3f * a * GlowScale.m_Strength, 1.0f)));
+		}
+		Sprites.End();
+		Graphics()->TextureClear();
+	}
+	else if(g_Config.m_XcFloatersGlow)
 	{
 		Graphics()->BlendAdditive();
 		Graphics()->QuadsBegin();
@@ -249,6 +268,27 @@ void CXcFloaters::OnRender()
 	}
 	Graphics()->QuadsEnd();
 	// orbs: a bright core that is almost white in the middle
+	if(Soft)
+	{
+		for(int Pass = 0; Pass < 2; Pass++)
+		{
+			Sprites.Begin(Pass == 0 ? CXcSprites::SPRITE_GLOW : CXcSprites::SPRITE_CORE, true);
+			for(const SFloater *pFloater : vOrder)
+			{
+				if(pFloater->m_Cube)
+					continue;
+				const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
+				const float a = Alpha * pFloater->m_Life * (0.45f + 0.55f * pFloater->m_Depth);
+				const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * 0.55f;
+				if(Pass == 0)
+					Sprites.Draw(pFloater->m_Pos, Radius * 4.2f, 0.0f, Color.WithAlpha(0.85f * a));
+				else
+					Sprites.Draw(pFloater->m_Pos, Radius * 1.5f, 0.0f, ColorRGBA(mix(Color.r, 1.0f, 0.7f), mix(Color.g, 1.0f, 0.7f), mix(Color.b, 1.0f, 0.7f), 0.9f * a));
+			}
+			Sprites.End();
+		}
+		return;
+	}
 	Graphics()->BlendAdditive();
 	Graphics()->QuadsBegin();
 	for(const SFloater *pFloater : vOrder)
