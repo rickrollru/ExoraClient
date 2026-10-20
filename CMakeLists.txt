@@ -3028,6 +3028,7 @@ if(CLIENT)
     components/xclient/editor/xeditor_coop.cpp
     components/xclient/editor/xeditor_coop.h
     components/xclient/editor/xeditor_coop_ui.cpp
+    components/xclient/editor/xeditor_tune.cpp
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/item_fx.cpp
