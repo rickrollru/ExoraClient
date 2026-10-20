@@ -779,7 +779,7 @@ void CXcMenu::RenderHome()
 	// profile with the tee
 	if(BeginCard("##hero", Client()->PlayerName(), g_Config.m_PlayerClan[0] ? g_Config.m_PlayerClan : Tr("Profile")))
 	{
-		const float PreviewSize = S(150.0f);
+		const float PreviewSize = S(112.0f);
 		const ImVec2 Pos = ImGui::GetCursorScreenPos();
 		ImDrawList *pDraw = ImGui::GetWindowDrawList();
 		const ImVec2 Center(Pos.x + PreviewSize * 0.5f, Pos.y + PreviewSize * 0.5f);
@@ -790,7 +790,7 @@ void CXcMenu::RenderHome()
 
 		ImGui::SameLine(0.0f, S(16.0f));
 		ImGui::BeginGroup();
-		ImGui::Dummy(ImVec2(0.0f, S(14.0f)));
+		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 		ImGui::PushFont(Fonts().m_pHeader);
 		ImGui::TextColored(t.m_Text, "%s", Client()->PlayerName());
 		ImGui::PopFont();
@@ -819,6 +819,9 @@ void CXcMenu::RenderHome()
 		}
 		EndCard();
 	}
+
+	// the music right after the profile: the top of the second column, always in sight
+	RenderMusicCard();
 
 	// friends that are on a server right now
 	if(BeginCard("##friends", Tr("Friends online"), nullptr))
@@ -849,13 +852,112 @@ void CXcMenu::RenderHome()
 		EndCard();
 	}
 
+	// map editor and the local server
+	if(BeginCard("##tools", Tr("Tools"), Tr("Make your own maps and play them on a server right on your computer")))
+	{
+		const bool Running = GameClient()->m_LocalServer.IsServerRunning();
+		const bool OnLocal = Running && IsOnline() && (str_startswith(Client()->ConnectAddressString(), "localhost") || str_startswith(Client()->ConnectAddressString(), "127.0.0.1"));
+		const float Gap = S(10.0f);
+		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
+		const float TileHeight = S(78.0f);
+		const float RunGlow = Animate(ImGui::GetID("##server_glow"), Running ? 1.0f : 0.0f, 8.0f);
+		if(HomeTile("##editor", XC_ICON_MAP, Tr("Map editor"), GameClient()->Editor()->HasUnsavedData() ? Tr("Unsaved changes") : Tr("Open"), TileWidth, TileHeight))
+		{
+			g_Config.m_ClEditor = 1;
+			Input()->MouseModeRelative();
+		}
+		ImGui::SameLine(0.0f, Gap);
+		if(HomeTile("##server", XC_ICON_SERVER, Tr("Local server"), Running ? Tr("Running, click to stop") : Tr("Start"), TileWidth, TileHeight, RunGlow))
+		{
+			if(Running)
+			{
+				GameClient()->m_LocalServer.KillServer();
+				Toast(Tr("Local server stopped"), TOAST_INFO);
+			}
+			else if(GameClient()->m_LocalServer.RunServer({}))
+				Toast(Tr("Local server started"));
+			else
+				Toast(Tr("Could not start the server"), TOAST_ERROR);
+		}
+		ImGui::SameLine(0.0f, Gap);
+		ImGui::BeginDisabled(!Running || OnLocal);
+		if(HomeTile("##join", XC_ICON_PLAY, Tr("Join"), OnLocal ? Tr("You are here") : (Running ? Tr("Your local server") : Tr("Start the server first")), TileWidth, TileHeight))
+			Client()->Connect("localhost:8303");
+		ImGui::EndDisabled();
+		EndCard();
+	}
+
+	// versions and the way back to the classic menu
+	if(BeginCard("##client", XC_CLIENT_NAME, Tr("Based on TClient and DDNet. The developer on Discord: rickroll.ru")))
+	{
+		// links of the project; empty links are placeholders for now
+		{
+			struct SLink
+			{
+				const char *m_pIcon;
+				const char *m_pLabel;
+				const char *m_pUrl;
+				const char *m_pCopy; // copied to the clipboard instead of opened
+			};
+			const SLink aLinks[] = {
+				{XC_ICON_CODE, "GitHub", g_Config.m_XcLinkGithub, nullptr},
+				{XC_ICON_COMMENTS, "Discord", g_Config.m_XcLinkDiscord, nullptr},
+				{XC_ICON_USER, "rickroll.ru", "", "rickroll.ru"},
+			};
+			const float Gap = S(10.0f);
+			const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
+			for(int i = 0; i < 3; i++)
+			{
+				const SLink &Link = aLinks[i];
+				if(i > 0)
+					ImGui::SameLine(0.0f, Gap);
+				char aId[16];
+				str_format(aId, sizeof(aId), "##link%d", i);
+				if(HomeTile(aId, Link.m_pIcon, Link.m_pLabel, nullptr, TileWidth, S(64.0f)))
+				{
+					if(Link.m_pCopy)
+					{
+						Input()->SetClipboardText(Link.m_pCopy);
+						Toast(Tr("Discord name copied"));
+					}
+					else if(Link.m_pUrl[0])
+						Client()->ViewLink(Link.m_pUrl);
+					else
+						Toast(Tr("Coming soon"), TOAST_INFO);
+				}
+			}
+			ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+		}
+		char aBuf[128];
+		const auto VersionRow = [&](const char *pName, const char *pVersion) {
+			const float StartX = ImGui::GetCursorPosX();
+			const float Width = AvailWidth();
+			ImGui::AlignTextToFramePadding();
+			ParamLabel(pName);
+			ImGui::SameLine();
+			ImGui::SetCursorPosX(StartX + Width - ImGui::CalcTextSize(pVersion).x);
+			ImGui::AlignTextToFramePadding();
+			ImGui::TextColored(t.m_Text, "%s", pVersion);
+		};
+		VersionRow("DDNet", GAME_RELEASE_VERSION);
+		VersionRow("TClient", TCLIENT_VERSION);
+		const char *pLatest = Client()->LatestVersion();
+		if(pLatest[0] && str_comp(pLatest, "0") != 0 && str_comp(pLatest, GAME_RELEASE_VERSION) != 0)
+		{
+			str_format(aBuf, sizeof(aBuf), "%s: DDNet %s", Tr("Update available"), pLatest);
+			Description(aBuf);
+		}
+		if(Button(Tr("Classic menu"), false, -1.0f))
+			m_WantClassic = true;
+		EndCard();
+	}
 	// DDNet news: lines between | are headlines
 	if(BeginCard("##news", Tr("DDNet news"), nullptr))
 	{
 		const char *pNews = Client()->News();
 		if(!pNews[0])
 			Description(Tr("No news loaded"));
-		ImGui::BeginChild("##news_text", ImVec2(0.0f, S(220.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		ImGui::BeginChild("##news_text", ImVec2(0.0f, S(140.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
 		char aLine[256];
 		const char *pStr = pNews;
 		while((pStr = str_next_token(pStr, "\n", aLine, sizeof(aLine))))
@@ -882,110 +984,6 @@ void CXcMenu::RenderHome()
 		EndCard();
 	}
 
-	// map editor and the local server
-	if(BeginCard("##tools", Tr("Tools"), Tr("Make your own maps and play them on a server right on your computer")))
-	{
-		const bool Running = GameClient()->m_LocalServer.IsServerRunning();
-		const bool OnLocal = Running && IsOnline() && (str_startswith(Client()->ConnectAddressString(), "localhost") || str_startswith(Client()->ConnectAddressString(), "127.0.0.1"));
-		const float Gap = S(10.0f);
-		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
-		const float TileHeight = S(104.0f);
-		const float RunGlow = Animate(ImGui::GetID("##server_glow"), Running ? 1.0f : 0.0f, 8.0f);
-		if(HomeTile("##editor", XC_ICON_MAP, Tr("Map editor"), GameClient()->Editor()->HasUnsavedData() ? Tr("Unsaved changes") : Tr("Open"), TileWidth, TileHeight))
-		{
-			g_Config.m_ClEditor = 1;
-			Input()->MouseModeRelative();
-		}
-		ImGui::SameLine(0.0f, Gap);
-		if(HomeTile("##server", XC_ICON_SERVER, Tr("Local server"), Running ? Tr("Running, click to stop") : Tr("Start"), TileWidth, TileHeight, RunGlow))
-		{
-			if(Running)
-			{
-				GameClient()->m_LocalServer.KillServer();
-				Toast(Tr("Local server stopped"), TOAST_INFO);
-			}
-			else if(GameClient()->m_LocalServer.RunServer({}))
-				Toast(Tr("Local server started"));
-			else
-				Toast(Tr("Could not start the server"), TOAST_ERROR);
-		}
-		ImGui::SameLine(0.0f, Gap);
-		ImGui::BeginDisabled(!Running || OnLocal);
-		if(HomeTile("##join", XC_ICON_PLAY, Tr("Join"), OnLocal ? Tr("You are here") : (Running ? Tr("Your local server") : Tr("Start the server first")), TileWidth, TileHeight))
-			Client()->Connect("localhost:8303");
-		ImGui::EndDisabled();
-		Description(Tr("The server uses the settings from autoexec_server.cfg, you are admin on it automatically"));
-		EndCard();
-	}
-
-	RenderMusicCard();
-
-	// links of the project; empty links are placeholders for now
-	if(BeginCard("##links", Tr("Community"), Tr("GitHub and Discord of the client, the developer on Discord: rickroll.ru")))
-	{
-		struct SLink
-		{
-			const char *m_pIcon;
-			const char *m_pLabel;
-			const char *m_pUrl;
-			const char *m_pCopy; // copied to the clipboard instead of opened
-		};
-		const SLink aLinks[] = {
-			{XC_ICON_CODE, "GitHub", g_Config.m_XcLinkGithub, nullptr},
-			{XC_ICON_COMMENTS, "Discord", g_Config.m_XcLinkDiscord, nullptr},
-			{XC_ICON_USER, "rickroll.ru", "", "rickroll.ru"},
-		};
-		const float Gap = S(10.0f);
-		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
-		for(int i = 0; i < 3; i++)
-		{
-			const SLink &Link = aLinks[i];
-			if(i > 0)
-				ImGui::SameLine(0.0f, Gap);
-			char aId[16];
-			str_format(aId, sizeof(aId), "##link%d", i);
-			if(HomeTile(aId, Link.m_pIcon, Link.m_pLabel, nullptr, TileWidth, S(92.0f)))
-			{
-				if(Link.m_pCopy)
-				{
-					Input()->SetClipboardText(Link.m_pCopy);
-					Toast(Tr("Discord name copied"));
-				}
-				else if(Link.m_pUrl[0])
-					Client()->ViewLink(Link.m_pUrl);
-				else
-					Toast(Tr("Coming soon"), TOAST_INFO);
-			}
-		}
-		EndCard();
-	}
-
-	// versions and the way back to the classic menu
-	if(BeginCard("##client", XC_CLIENT_NAME, Tr("Based on TClient and DDNet")))
-	{
-		char aBuf[128];
-		const auto VersionRow = [&](const char *pName, const char *pVersion) {
-			const float StartX = ImGui::GetCursorPosX();
-			const float Width = AvailWidth();
-			ImGui::AlignTextToFramePadding();
-			ParamLabel(pName);
-			ImGui::SameLine();
-			ImGui::SetCursorPosX(StartX + Width - ImGui::CalcTextSize(pVersion).x);
-			ImGui::AlignTextToFramePadding();
-			ImGui::TextColored(t.m_Text, "%s", pVersion);
-		};
-		VersionRow("DDNet", GAME_RELEASE_VERSION);
-		VersionRow("TClient", TCLIENT_VERSION);
-		const char *pLatest = Client()->LatestVersion();
-		if(pLatest[0] && str_comp(pLatest, "0") != 0 && str_comp(pLatest, GAME_RELEASE_VERSION) != 0)
-		{
-			str_format(aBuf, sizeof(aBuf), "%s: DDNet %s", Tr("Update available"), pLatest);
-			Description(aBuf);
-		}
-		if(Button(Tr("Classic menu"), false, -1.0f))
-			m_WantClassic = true;
-		EndCard();
-	}
 	EndCardGrid();
 
 	if(m_WantClassic)
