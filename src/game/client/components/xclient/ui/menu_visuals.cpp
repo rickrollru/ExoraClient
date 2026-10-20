@@ -785,6 +785,7 @@ void CXcMenu::RenderVisuals()
 	case VISUALS_MOVEMENT: RenderVisualsMovement(); break;
 	case VISUALS_COSMETICS:
 		RenderVisualsCosmetics();
+		RenderCosmetics3d();
 		RenderVisualsCosmeticsExtra();
 		break;
 	case VISUALS_WEAPONS: RenderVisualsWeapons(); break;
