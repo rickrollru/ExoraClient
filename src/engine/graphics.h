@@ -264,6 +264,7 @@ public:
 		TEXLOAD_TO_3D_TEXTURE = 1 << 0,
 		TEXLOAD_TO_2D_ARRAY_TEXTURE = 1 << 1,
 		TEXLOAD_NO_2D_TEXTURE = 1 << 2,
+		TEXLOAD_NO_MIPMAPS = 1 << 3, // XClient: crisp interface text (no blurring when drawn a bit smaller)
 	};
 
 	class CTextureHandle

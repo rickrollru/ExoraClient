@@ -1014,7 +1014,10 @@ add_library(md5 EXCLUDE_FROM_ALL OBJECT ${DEP_MD5_SRC})
 
 # XClient: Dear ImGui for the new menu
 set_src(DEP_IMGUI_SRC GLOB src/engine/external/imgui imconfig.h imgui.cpp imgui.h imgui_draw.cpp imgui_internal.h imgui_tables.cpp imgui_widgets.cpp imstb_rectpack.h imstb_textedit.h imstb_truetype.h)
-add_library(imgui EXCLUDE_FROM_ALL OBJECT ${DEP_IMGUI_SRC})
+set_src(DEP_IMGUI_FT_SRC GLOB src/engine/external/imgui/misc/freetype imgui_freetype.cpp imgui_freetype.h)
+add_library(imgui EXCLUDE_FROM_ALL OBJECT ${DEP_IMGUI_SRC} ${DEP_IMGUI_FT_SRC})
+# crisp hinted text with FreeType (DDNet already links it)
+target_include_directories(imgui PRIVATE ${FREETYPE_INCLUDE_DIRS} src/engine/external/imgui)
 # XClient: stb_image for custom menu backgrounds (jpg, gif)
 set_src(DEP_STB_SRC GLOB src/engine/external/stb stb_image.cpp stb_image.h stb_image_xc.h)
 add_library(stb EXCLUDE_FROM_ALL OBJECT ${DEP_STB_SRC})
