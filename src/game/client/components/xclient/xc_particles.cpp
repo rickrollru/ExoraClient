@@ -14,13 +14,13 @@ static constexpr size_t MAX_PARTICLES = 6000;
 
 namespace FxTune
 {
-const char *const g_apNames[NUM_GROUPS] = {"jump", "dust", "trail", "hook", "hammer", "explosion", "freeze", "death", "finish", "teleport", "checkpoint", "items"};
+const char *const g_apNames[NUM_GROUPS] = {"jump", "dust", "trail", "hook", "hammer", "explosion", "freeze", "death", "finish", "teleport", "checkpoint", "items", "impact"};
 SScale g_Current;
 
 int *Setting(int Group, int Which)
 {
 #define XC_TUNE(Name) {&g_Config.m_XcFxtune##Name##Amount, &g_Config.m_XcFxtune##Name##Life, &g_Config.m_XcFxtune##Name##Speed, &g_Config.m_XcFxtune##Name##Size}
-	static int *const s_aapSettings[NUM_GROUPS][4] = {XC_TUNE(Jump), XC_TUNE(Dust), XC_TUNE(Trail), XC_TUNE(Hook), XC_TUNE(Hammer), XC_TUNE(Explosion), XC_TUNE(Freeze), XC_TUNE(Death), XC_TUNE(Finish), XC_TUNE(Teleport), XC_TUNE(Checkpoint), XC_TUNE(Items)};
+	static int *const s_aapSettings[NUM_GROUPS][4] = {XC_TUNE(Jump), XC_TUNE(Dust), XC_TUNE(Trail), XC_TUNE(Hook), XC_TUNE(Hammer), XC_TUNE(Explosion), XC_TUNE(Freeze), XC_TUNE(Death), XC_TUNE(Finish), XC_TUNE(Teleport), XC_TUNE(Checkpoint), XC_TUNE(Items), XC_TUNE(Impact)};
 #undef XC_TUNE
 	return s_aapSettings[std::clamp(Group, 0, NUM_GROUPS - 1)][std::clamp(Which, 0, 3)];
 }

@@ -95,6 +95,7 @@
 #include "components/xclient/fx_renderer.h"
 #include "components/xclient/hats.h"
 #include "components/xclient/hook_fx.h"
+#include "components/xclient/impact_fx.h"
 #include "components/xclient/item_fx.h"
 #include "components/xclient/jelly.h"
 #include "components/xclient/hud/xc_hud.h"
@@ -283,6 +284,7 @@ public:
 	CTeeGlow m_TeeGlow;
 	CTrailFx m_TrailFx;
 	CItemFx m_ItemFx;
+	CXcImpactFx m_ImpactFx;
 	CWorldFx m_WorldFx;
 	CScreenFx m_ScreenFx;
 	CWeather m_Weather;

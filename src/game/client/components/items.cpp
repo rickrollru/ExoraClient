@@ -125,6 +125,7 @@ void CItems::RenderProjectile(const CProjectileData *pCurrent, int ItemId, const
 		Graphics()->RenderQuadContainerAsSprite(m_ItemsQuadContainerIndex, m_aProjectileOffset[CurWeapon], Pos.x, Pos.y);
 	}
 	GameClient()->m_ItemFx.Projectile(Pos, Vel, CurWeapon, Alpha); // XClient
+	GameClient()->m_ImpactFx.Projectile(ItemId, Pos, Vel, CurWeapon, pCurrent->m_Owner, Ct, Speed); // XClient
 }
 
 void CItems::RenderPickup(const CNetObj_Pickup *pPrev, const CNetObj_Pickup *pCurrent, bool IsPredicted, int Flags)
@@ -335,6 +336,9 @@ void CItems::RenderLaser(const CLaserData *pCurrent, bool IsPredicted)
 		TicksHead *= (((pCurrent->m_Subtype >> 1) % 3) * 4.0f) + 1;
 		TicksHead *= (pCurrent->m_Subtype & 1) ? -1 : 1;
 	}
+	// XClient: hits of rifle and shotgun lasers on blocks
+	if(Type == LASERTYPE_RIFLE || Type == LASERTYPE_SHOTGUN)
+		GameClient()->m_ImpactFx.Laser(pCurrent->m_From, pCurrent->m_To, pCurrent->m_StartTick, pCurrent->m_Owner, Type);
 	// XClient: own glowing beam for rifle and shotgun lasers
 	if(g_Config.m_XcReplaceLaser && (Type == LASERTYPE_RIFLE || Type == LASERTYPE_SHOTGUN))
 	{
