@@ -55,6 +55,11 @@ ColorRGBA CItemFx::ItemColor(ColorRGBA ByType, float HueOffset) const
 	}
 }
 
+bool CItemFx::Soft() const
+{
+	return GameClient()->m_XcSprites.Enabled();
+}
+
 void CItemFx::Pickup(vec2 Pos, int Type, int Subtype)
 {
 	if(!g_Config.m_XcItemsGlow)
@@ -78,11 +83,21 @@ void CItemFx::Pickup(vec2 Pos, int Type, int Subtype)
 	const float Breath = 0.8f + 0.2f * std::sin(Time * 2.2f + Phase);
 	const ColorRGBA Color = ItemColor(ByType, Phase * 0.1f);
 	const float Radius = 26.0f * Size * (0.95f + 0.05f * Breath);
+	if(Soft())
+	{
+		// soft light: a wide faint bloom, a colored glow and a small hot center
+		CXcSprites::Push(m_vSprites, CXcSprites::SPRITE_SOFT_BLOOM, true, Pos, Radius * 3.4f, 0.0f, Color.WithAlpha(0.22f * Strength * Breath));
+		CXcSprites::Push(m_vSprites, CXcSprites::SPRITE_GLOW, false, Pos, Radius * 1.6f, 0.0f, Color.WithAlpha(0.3f * std::min(Strength, 1.0f) * Breath));
+		CXcSprites::Push(m_vSprites, CXcSprites::SPRITE_GLOW, true, Pos, Radius * 1.3f, 0.0f, Color.WithAlpha(0.3f * Strength * Breath));
+	}
+	else
+	{
 	// halo: colored light in the middle fading to nothing; normal blending, so pickups standing
 	// close together do not add up to white
 	m_vShapes.push_back(FxShape::Circle(Pos, Radius, Color.WithAlpha(0.0f)).RadialGradient(Color.WithAlpha(0.38f * Strength * Breath), 1.4f));
 	// a small additive center makes the item shine (and feeds the bloom)
 	m_vShapes.push_back(FxShape::Circle(Pos, Radius * 0.3f, Color.WithAlpha(0.0f)).RadialGradient(Color.WithAlpha(0.22f * Strength * Breath), 2.0f).Additive());
+	}
 
 	// a sparkle now and then rises from the pickup
 	if(g_Config.m_XcItemsSparkles && random_float() < Client()->RenderFrameTime() * 1.6f)
@@ -111,8 +126,26 @@ void CItemFx::Projectile(vec2 Pos, vec2 Vel, int Weapon, float Alpha)
 	const ColorRGBA Color = ItemColor(WeaponColor(Weapon), 0.0f);
 	const bool Grenade = Weapon == WEAPON_GRENADE;
 	const float Radius = Grenade ? 14.0f : 9.0f;
-	m_vShapes.push_back(FxShape::Circle(Pos, Radius, Color).GlowOnly(Radius * 2.2f, 0.55f * Alpha).Additive());
-	if(g_Config.m_XcProjectileTrail && length(Vel) > 0.0001f)
+	const bool SoftLight = Soft();
+	if(SoftLight)
+		CXcSprites::PushLight(m_vSprites, Pos, Radius * 1.1f * FxGlow::g_Current.m_Radius, Color.WithAlpha(Alpha), std::min(FxGlow::g_Current.m_Strength, 2.0f) * 0.8f);
+	else
+		m_vShapes.push_back(FxShape::Circle(Pos, Radius, Color).GlowOnly(Radius * 2.2f, 0.55f * Alpha).Additive());
+	if(g_Config.m_XcProjectileTrail && length(Vel) > 0.0001f && SoftLight)
+	{
+		// a tail of light that thins and fades against the flight direction
+		const vec2 Dir = normalize(Vel);
+		const float Length = Grenade ? 80.0f : 60.0f;
+		const int Pieces = 10;
+		for(int i = 1; i <= Pieces; i++)
+		{
+			const float a = (float)i / Pieces;
+			const float Fade = (1.0f - a) * (1.0f - a);
+			const float Width = (Grenade ? 26.0f : 18.0f) * (1.0f - a * 0.7f) * FxGlow::g_Current.m_Radius;
+			CXcSprites::Push(m_vSprites, CXcSprites::SPRITE_GLOW, true, Pos - Dir * Length * a, Width, 0.0f, Color.WithAlpha(0.45f * Fade * Alpha));
+		}
+	}
+	else if(g_Config.m_XcProjectileTrail && length(Vel) > 0.0001f)
 	{
 		// comet tail against the flight direction, thin and fading
 		const vec2 Dir = normalize(Vel);
@@ -135,7 +168,10 @@ void CItemFx::Laser(vec2 From, vec2 To, ColorRGBA LaserColor, float Alpha)
 		return;
 	const ColorRGBA Color = ItemColor(LaserColor, 0.0f);
 	const float Strength = g_Config.m_XcLaserGlowStrength / 100.0f;
-	m_vShapes.push_back(FxShape::Line(From, To, 7.0f, Color).GlowOnly(22.0f, 0.5f * Strength * Alpha).Additive());
+	if(Soft())
+		CXcSprites::PushLightLine(m_vSprites, From, To, 34.0f * FxGlow::g_Current.m_Radius, Color.WithAlpha(Alpha), std::min(Strength * FxGlow::g_Current.m_Strength, 2.0f));
+	else
+		m_vShapes.push_back(FxShape::Line(From, To, 7.0f, Color).GlowOnly(22.0f, 0.5f * Strength * Alpha).Additive());
 }
 
 void CItemFx::LaserBeam(vec2 From, vec2 To, ColorRGBA OuterColor, ColorRGBA InnerColor, float Fade, float Alpha)
@@ -148,6 +184,20 @@ void CItemFx::LaserBeam(vec2 From, vec2 To, ColorRGBA OuterColor, ColorRGBA Inne
 	// smooth thinning instead of the stock linear one, the beam stays bright until the end
 	const float Width = 1.0f - (1.0f - Fade) * (1.0f - Fade);
 	const ColorRGBA Core(mix(InnerColor.r, 1.0f, 0.55f), mix(InnerColor.g, 1.0f, 0.55f), mix(InnerColor.b, 1.0f, 0.55f), Alpha);
+	if(Soft())
+	{
+		// the beam is a clean line, its light and the hot spot are soft textures
+		const float Reach = FxGlow::g_Current.m_Radius;
+		const float Light = std::min(Strength * FxGlow::g_Current.m_Strength, 2.0f);
+		if(distance(From, To) >= 1.0f)
+		{
+			CXcSprites::PushLightLine(m_vSprites, From, To, 40.0f * Width * Reach, Color.WithAlpha(Alpha), Light);
+			m_vShapes.push_back(FxShape::Line(From, To, 9.0f * Width, Color.WithAlpha(0.9f * Alpha)).Additive());
+			m_vShapes.push_back(FxShape::Line(From, To, 4.0f * Width, Core).Additive());
+		}
+		CXcSprites::PushLight(m_vSprites, To, 12.0f * Width * Reach, Color.WithAlpha(Alpha), Light);
+		return;
+	}
 	if(distance(From, To) >= 1.0f)
 	{
 		m_vShapes.push_back(FxShape::Line(From, To, 11.0f * Width, Color.WithAlpha(0.9f * Alpha)).Glow(18.0f * Width, 0.55f * Strength).Additive());
@@ -162,8 +212,11 @@ void CItemFx::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 	{
 		m_vShapes.clear();
+		m_vSprites.clear();
 		return;
 	}
+	// the soft light goes under the shapes
+	GameClient()->m_XcSprites.DrawList(m_vSprites);
 	GameClient()->m_FxRenderer.Draw(m_vShapes, true);
 	m_vShapes.clear();
 	m_Particles.Update(std::min(Client()->RenderFrameTime(), 0.1f));

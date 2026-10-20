@@ -70,6 +70,34 @@ void CHookFx::RenderLine(vec2 PlayerPos, vec2 HookPos, float Alpha) const
 	const auto PulseFade = [&](float f) { return std::min(std::min(f, Length - f) / 24.0f, 1.0f); };
 
 	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	// soft light style: the glow and the pulses are textured light, the line itself stays a clean shape
+	CXcSprites &Sprites = Fx.Sprites();
+	if(Sprites.Enabled() && (Style == STYLE_GLOW || Style == STYLE_CHAIN))
+	{
+		const float Reach = FxGlow::g_Current.m_Radius;
+		const float Strength = std::min(FxGlow::g_Current.m_Strength, 2.0f);
+		m_vLineShapes.clear();
+		m_vLineSprites.clear();
+		if(Strength > 0.0f)
+			CXcSprites::PushLightLine(m_vLineSprites, PlayerPos, HookPos, Width * (Style == STYLE_CHAIN ? 6.0f : 7.0f) * Reach, Main, Strength * 1.8f);
+		if(Style == STYLE_GLOW)
+		{
+			m_vLineShapes.push_back(FxShape::Line(PlayerPos, HookPos, Width, Main));
+			m_vLineShapes.push_back(FxShape::Line(PlayerPos, HookPos, Width * 0.3f, ColorRGBA(mix(Main.r, 1.0f, 0.35f), mix(Main.g, 1.0f, 0.35f), mix(Main.b, 1.0f, 0.35f), Alpha)));
+			for(float f = PulseOffset; f < Length; f += PulseSpacing)
+			{
+				const float Fade = PulseFade(f);
+				if(Fade > 0.0f)
+					CXcSprites::PushLight(m_vLineSprites, HookPos - Dir * f, Width * 1.1f * Reach, Main.WithMultipliedAlpha(Fade), Strength);
+			}
+			// the tip shines a bit more
+			CXcSprites::PushLight(m_vLineSprites, HookPos, Width * 1.4f * Reach, Main, Strength * 0.8f);
+		}
+		// the light goes under the line, so the line keeps its color on top
+		Sprites.DrawList(m_vLineSprites);
+		Fx.Draw(m_vLineShapes, false);
+		return;
+	}
 	if(Fx.ModuleActive())
 	{
 		// render module: smooth capsules, the glow also feeds the bloom
