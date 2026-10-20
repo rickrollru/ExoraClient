@@ -417,7 +417,7 @@ namespace XcUi
 			{"Height", "Высота"},
 			{"Soft light", "Мягкий свет"},
 			{"Effect look", "Вид эффектов"},
-			{"Dashes need the new effect look (Visuals > World > Glow)", "Штрихи работают с новым видом эффектов (Визуалы → Мир → Свечение)"},
+			{"Dashes need the new effect look (Visuals > General > Glow)", "Штрихи работают с новым видом эффектов (Визуалы → Общее → Свечение)"},
 			{"Spark", "Искра"},
 			{"Pop", "Кольцо"},
 			{"Stretch", "Штрих"},
