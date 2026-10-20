@@ -129,6 +129,7 @@ ColorRGBA CJumpFx::FxColor() const
 
 void CJumpFx::EmitJump(vec2 Feet, bool AirJump)
 {
+	const FxTune::CScope TuneScope(FxTune::JUMP);
 	const float Scale = g_Config.m_XcJumpFxSize / 100.0f;
 	const ColorRGBA Color = FxColor();
 
@@ -201,6 +202,7 @@ void CJumpFx::EmitJump(vec2 Feet, bool AirJump)
 
 void CJumpFx::EmitLanding(vec2 Feet, float FallSpeed)
 {
+	const FxTune::CScope TuneScope(FxTune::JUMP);
 	const float Scale = g_Config.m_XcJumpFxSize / 100.0f;
 	const float Strength = std::clamp((FallSpeed - 700.0f) / 1500.0f, 0.0f, 1.0f);
 
@@ -238,6 +240,7 @@ void CJumpFx::EmitLanding(vec2 Feet, float FallSpeed)
 
 void CJumpFx::EmitDust(vec2 Feet, float Direction)
 {
+	const FxTune::CScope TuneScope(FxTune::DUST);
 	const float Scale = g_Config.m_XcJumpFxSize / 100.0f;
 	CXcParticles::SParticle Fx;
 	Fx.m_Type = CXcParticles::EType::DUST;

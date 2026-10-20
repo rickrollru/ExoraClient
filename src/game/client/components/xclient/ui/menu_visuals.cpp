@@ -10,6 +10,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 
+#include <game/client/components/xclient/xc_particles.h>
 #include <game/client/gameclient.h>
 
 using namespace XcUi;
@@ -36,6 +37,67 @@ bool CXcMenu::StyleCard(const char *pId, const char *pTitle, const char *pDescri
 		SetConfigInt(pConfig, LastStyle);
 	}
 	return true;
+}
+
+// "Fine particle settings" folded under the effect: amount, life time, speed and size of its particles
+void CXcMenu::ParticleTuning(int Group)
+{
+	static const char *const s_apTitles[FxTune::NUM_GROUPS] = {"Particles: jumps", "Particles: run dust", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles: sparkles"};
+	ImGui::PushID("##particle_tuning");
+	ImGui::PushID(Group);
+	ImGuiStorage *pStorage = ImGui::GetStateStorage();
+	const ImGuiID OpenId = ImGui::GetID("##open");
+	bool Open = pStorage->GetBool(OpenId, false);
+	// marked when something is not at 100 %
+	bool Changed = false;
+	for(int i = 0; i < 4; i++)
+		Changed |= *FxTune::Setting(Group, i) != 100;
+	const STheme &t = Theme();
+	const ImVec2 Pos = ImGui::GetCursorScreenPos();
+	const float Width = AvailWidth();
+	ImFont *pFont = Fonts().m_pLabel;
+	const float Height = S(26.0f);
+	if(ImGui::InvisibleButton("##toggle", ImVec2(Width, Height)))
+	{
+		Open = !Open;
+		pStorage->SetBool(OpenId, Open);
+		PlayUiSound(SOUND_CLICK);
+	}
+	const bool Hovered = ImGui::IsItemHovered();
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	pDraw->AddRectFilled(Pos, ImVec2(Pos.x + Width, Pos.y + Height), Col(t.m_Track, Hovered ? 1.0f : 0.6f), S(6.0f));
+	// a small arrow: right when folded, down when open
+	const ImVec2 Arrow(Pos.x + S(12.0f), Pos.y + Height * 0.5f);
+	const float a = S(4.0f);
+	if(Open)
+		pDraw->AddTriangleFilled(ImVec2(Arrow.x - a, Arrow.y - a * 0.5f), ImVec2(Arrow.x + a, Arrow.y - a * 0.5f), ImVec2(Arrow.x, Arrow.y + a * 0.7f), Col(t.m_TextSecondary));
+	else
+		pDraw->AddTriangleFilled(ImVec2(Arrow.x - a * 0.5f, Arrow.y - a), ImVec2(Arrow.x - a * 0.5f, Arrow.y + a), ImVec2(Arrow.x + a * 0.7f, Arrow.y), Col(t.m_TextSecondary));
+	char aTitle[96];
+	str_format(aTitle, sizeof(aTitle), "%s%s", Tr(s_apTitles[Group]), Changed ? Tr(" (changed)") : "");
+	pDraw->AddText(pFont, pFont->FontSize, ImVec2(Pos.x + S(24.0f), Pos.y + (Height - pFont->FontSize) * 0.5f), Col(Changed ? t.m_Accent : t.m_TextSecondary), aTitle);
+	if(Open)
+	{
+		const char *pName = FxTune::g_apNames[Group];
+		char aConfig[64];
+		static const char *const s_apSuffix[4] = {"amount", "life", "speed", "size"};
+		static const char *const s_apLabels[4] = {"Amount", "How long they live", "Speed", "Size"};
+		static const int s_aMin[4] = {0, 25, 0, 25};
+		static const int s_aMax[4] = {500, 400, 400, 400};
+		for(int i = 0; i < 4; i++)
+		{
+			str_format(aConfig, sizeof(aConfig), "xc_fxtune_%s_%s", pName, s_apSuffix[i]);
+			ConfigSlider(Tr(s_apLabels[i]), aConfig, FxTune::Setting(Group, i), s_aMin[i], s_aMax[i], "%d%%");
+		}
+		if(Changed && Button(Tr("Reset"), false, -1.0f))
+			for(int i = 0; i < 4; i++)
+			{
+				str_format(aConfig, sizeof(aConfig), "xc_fxtune_%s_%s", pName, s_apSuffix[i]);
+				SetConfigInt(aConfig, 100);
+			}
+	}
+	ImGui::PopID();
+	ImGui::PopID();
 }
 
 void CXcMenu::RenderVisualsGeneral()
@@ -152,6 +214,7 @@ void CXcMenu::RenderVisualsTee()
 		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);
 		ToggleRow(Tr("Shards on freeze and unfreeze"), "xc_freeze_burst", &g_Config.m_XcFreezeBurst);
 		TargetChips("##freeze_targets", &g_Config.m_XcFreezeSelf, &g_Config.m_XcFreezeDummy, &g_Config.m_XcFreezeOthers);
+		ParticleTuning(FxTune::FREEZE);
 		EndCard();
 	}
 	EndCardGrid();
@@ -177,6 +240,7 @@ void CXcMenu::RenderVisualsMovement()
 		ConfigSlider(Tr("Width"), "xc_trail_width", &g_Config.m_XcTrailWidth, 25, 300, "%d%%");
 		ConfigSlider(Tr("Glow"), "xc_trail_glow", &g_Config.m_XcTrailGlow, 0, 200, "%d%%");
 		TargetChips("##trail_targets", &g_Config.m_XcTrailSelf, &g_Config.m_XcTrailDummy, &g_Config.m_XcTrailOthers);
+		ParticleTuning(FxTune::TRAIL);
 		EndCard();
 	}
 	const char *apJumps[] = {Tr("Rings"), Tr("Sparks"), Tr("Stars")};
@@ -190,6 +254,8 @@ void CXcMenu::RenderVisualsMovement()
 		ToggleRow(Tr("Ring on landing"), "xc_land_fx", &g_Config.m_XcLandFx);
 		ToggleRow(Tr("Dust when running"), "xc_run_dust", &g_Config.m_XcRunDust);
 		TargetChips("##jump_targets", &g_Config.m_XcJumpFxSelf, &g_Config.m_XcJumpFxDummy, &g_Config.m_XcJumpFxOthers);
+		ParticleTuning(FxTune::JUMP);
+		ParticleTuning(FxTune::DUST);
 		EndCard();
 	}
 	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Fast tees leave a soft smear of copies behind them"), &g_Config.m_XcMotionBlur))
@@ -252,6 +318,7 @@ void CXcMenu::RenderVisualsWeapons()
 		const char *apHits[] = {Tr("Nothing"), Tr("Ring"), Tr("Sparks"), Tr("Stars")};
 		ConfigSegmented("##hook_hit", "xc_hook_hit_fx", &g_Config.m_XcHookHitFx, apHits, 4);
 		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
+		ParticleTuning(FxTune::HOOK);
 		EndCard();
 	}
 	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
@@ -285,6 +352,7 @@ void CXcMenu::RenderVisualsWeapons()
 	{
 		EffectColorPicker("##hammer_color", &g_Config.m_XcHammerColorMode, &g_Config.m_XcHammerColor);
 		ToggleRow(Tr("Hide the stock hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		ParticleTuning(FxTune::HAMMER);
 		EndCard();
 	}
 	const char *apExplosions[] = {Tr("Shockwave"), Tr("Neon"), Tr("Sparks")};
@@ -293,6 +361,7 @@ void CXcMenu::RenderVisualsWeapons()
 		EffectColorPicker("##explosion_color", &g_Config.m_XcExplosionColorMode, &g_Config.m_XcExplosionColor);
 		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
 		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		ParticleTuning(FxTune::EXPLOSION);
 		EndCard();
 	}
 	EndCardGrid();
@@ -344,6 +413,7 @@ void CXcMenu::RenderVisualsWorld()
 		ConfigSlider(Tr("Brightness"), "xc_items_glow_strength", &g_Config.m_XcItemsGlowStrength, 10, 250, "%d%%");
 		ToggleRow(Tr("Sparkles"), "xc_items_sparkles", &g_Config.m_XcItemsSparkles);
 		Description(Tr("Bullets, grenades and lasers use the same colors"));
+		ParticleTuning(FxTune::ITEMS);
 		EndCard();
 	}
 	const char *apWeather[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash")};
@@ -407,6 +477,7 @@ void CXcMenu::RenderVisualsEvents()
 		}
 		else
 			Description(Tr("Join a server to try it"));
+		ParticleTuning(FxTune::FINISH);
 		EndCard();
 	}
 	const char *apDeath[] = {Tr("Shards"), Tr("Sparks"), Tr("Ash")};
@@ -415,16 +486,19 @@ void CXcMenu::RenderVisualsEvents()
 		EffectColorPicker("##death_color", &g_Config.m_XcDeathColorMode, &g_Config.m_XcDeathColor);
 		ToggleRow(Tr("Rings on spawn"), "xc_spawn_fx", &g_Config.m_XcSpawnFx);
 		TargetChips("##death_targets", &g_Config.m_XcDeathSelf, &g_Config.m_XcDeathDummy, &g_Config.m_XcDeathOthers);
+		ParticleTuning(FxTune::DEATH);
 		EndCard();
 	}
 	if(BeginCard("##fx_teleport", Tr("Teleports"), Tr("A flash where your tee or dummy leaves and arrives"), &g_Config.m_XcTeleportFx))
 	{
 		EffectColorPicker("##teleport_color", &g_Config.m_XcTeleportColorMode, &g_Config.m_XcTeleportColor);
+		ParticleTuning(FxTune::TELEPORT);
 		EndCard();
 	}
 	if(BeginCard("##fx_checkpoint", Tr("Checkpoints"), Tr("A ring and rising sparks when your tee passes a time checkpoint"), &g_Config.m_XcCheckpointFx))
 	{
 		EffectColorPicker("##checkpoint_color", &g_Config.m_XcCheckpointColorMode, &g_Config.m_XcCheckpointColor);
+		ParticleTuning(FxTune::CHECKPOINT);
 		EndCard();
 	}
 	if(BeginCard("##fx_juice", Tr("Juice"), Tr("Screen flashes and camera shake on freeze, death, finish and explosions")))

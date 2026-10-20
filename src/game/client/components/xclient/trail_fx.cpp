@@ -237,6 +237,7 @@ void CTrailFx::Update(int ClientId, vec2 Pos, float Length)
 
 void CTrailFx::Emit(int ClientId, vec2 Pos, vec2 Dir, float Scale)
 {
+	const FxTune::CScope TuneScope(FxTune::TRAIL);
 	const int Style = g_Config.m_XcTrail;
 	CXcParticles::SParticle Particle;
 	Particle.m_Type = Style == TRAIL_STARS ? CXcParticles::EType::STAR : CXcParticles::EType::SPARK;

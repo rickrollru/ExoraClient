@@ -62,6 +62,7 @@ bool CItemFx::Soft() const
 
 void CItemFx::Pickup(vec2 Pos, int Type, int Subtype)
 {
+	const FxTune::CScope TuneScope(FxTune::ITEMS);
 	if(!g_Config.m_XcItemsGlow)
 		return;
 	ColorRGBA ByType;
