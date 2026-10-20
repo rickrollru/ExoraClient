@@ -293,14 +293,28 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 		const bool Bubble = Look == XC_CHAT_BUBBLES;
 		const bool RightSide = Bubble && Item.m_Own;
 		const ImVec4 Mark = ToImVec(ChatMarkColor(Item.m_Kind == 0 ? 1 : Item.m_Kind));
-		ImVec4 NameColor = ToImVec(Chat.XcNameColor(Item.m_Index));
-		if(g_Config.m_XcChatNameColor == 1 && Line.m_ClientId >= 0)
-			NameColor = t.m_Accent;
-		else if(g_Config.m_XcChatNameColor == 2 && Line.m_ClientId >= 0 && Line.m_pManagedTeeRenderInfo)
-			NameColor = ToImVec(Line.m_pManagedTeeRenderInfo->TeeRenderInfo().m_ColorBody.WithAlpha(1.0f));
-		ImVec4 TextColor = ToImVec(Chat.XcTextColor(Item.m_Index));
-		if(Look != XC_CHAT_MINIMAL && Item.m_Kind == 0 && !Line.m_CustomColor)
-			TextColor = t.m_TextSecondary;
+		// colors of the client (design system) or of the game (xc_chat_name_color 3)
+		ImVec4 NameColor, TextColor;
+		if(g_Config.m_XcChatNameColor == XC_CHAT_COLORS_GAME)
+		{
+			NameColor = ToImVec(Chat.XcNameColor(Item.m_Index));
+			TextColor = ToImVec(Chat.XcTextColor(Item.m_Index));
+		}
+		else
+		{
+			// the minimal look has no plate: always light text over the game
+			const ImVec4 Bright = Look == XC_CHAT_MINIMAL ? ImVec4(0.949f, 0.953f, 0.961f, 1.0f) : t.m_Text;
+			const ImVec4 Secondary = Look == XC_CHAT_MINIMAL ? ImVec4(0.85f, 0.86f, 0.88f, 1.0f) : t.m_TextSecondary;
+			const ImVec4 Muted = Look == XC_CHAT_MINIMAL ? ImVec4(0.66f, 0.68f, 0.72f, 1.0f) : t.m_TextMuted;
+			NameColor = Item.m_Own ? t.m_Accent : Bright;
+			if(Item.m_Kind == 2 || Item.m_Kind == 3)
+				NameColor = Mark;
+			if(g_Config.m_XcChatNameColor == XC_CHAT_COLORS_ACCENT && Line.m_ClientId >= 0)
+				NameColor = t.m_Accent;
+			else if(g_Config.m_XcChatNameColor == XC_CHAT_COLORS_SKIN && Line.m_ClientId >= 0 && Line.m_pManagedTeeRenderInfo)
+				NameColor = ToImVec(Line.m_pManagedTeeRenderInfo->TeeRenderInfo().m_ColorBody.WithAlpha(1.0f));
+			TextColor = Item.m_Kind == 4 || Line.m_ClientId == CChat::CLIENT_MSG ? Muted : (Item.m_Kind == 1 ? Bright : Secondary);
+		}
 		if(RightSide)
 			TextColor = NameColor = t.m_OnAccent;
 
@@ -311,13 +325,15 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 			BoxX = Left + Width - BoxWidth - Item.m_Slide;
 		const ImVec2 BoxMin(BoxX, Item.m_Y);
 		const ImVec2 BoxMax(BoxX + (Look == XC_CHAT_PANEL || Look == XC_CHAT_MINIMAL ? Width - Column : BoxWidth), Item.m_Y + Item.m_Height);
-		const float Rounding = (Bubble ? 14.0f : 10.0f) * U;
+		const float Rounding = (Bubble ? 14.0f : 12.0f) * U; // cards of the design system: 10-14 px
 
 		// the background of the message
 		switch(Look)
 		{
 		case XC_CHAT_PLATES:
-			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f), a), Rounding);
+			// a card of the menu: card color, 1 px border, a soft shadow
+			pDraw->AddRectFilled(ImVec2(BoxMin.x, BoxMin.y + 2.0f * U), ImVec2(BoxMax.x, BoxMax.y + 2.0f * U), Col(ImVec4(0, 0, 0, 1), 0.12f * a), Rounding);
+			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, g_Config.m_XcChatOpacity / 100.0f), a), Rounding);
 			pDraw->AddRect(BoxMin, BoxMax, Col(t.m_Border, a), Rounding, 0, 1.0f);
 			break;
 		case XC_CHAT_GLASS:
@@ -326,8 +342,8 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 			if(a > 0.25f)
 				m_vChatBlurRects.push_back({BoxMin.x, BoxMin.y, BoxMax.x, BoxMax.y});
 			pDraw->AddRectFilled(ImVec2(BoxMin.x, BoxMin.y + 3.0f * U), ImVec2(BoxMax.x, BoxMax.y + 3.0f * U), Col(ImVec4(0, 0, 0, 1), 0.14f * a), Rounding);
-			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f * 0.6f), a), Rounding);
-			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(1, 1, 1, 1), 0.05f * a), Rounding);
+			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f * 0.55f), a), Rounding);
+			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(1, 1, 1, 1), 0.04f * a), Rounding);
 			pDraw->AddRectFilledMultiColor(ImVec2(BoxMin.x + Rounding * 0.5f, BoxMin.y + 1.0f), ImVec2(BoxMax.x - Rounding * 0.5f, BoxMin.y + (BoxMax.y - BoxMin.y) * 0.45f),
 				Col(ImVec4(1, 1, 1, 1), 0.07f * a), Col(ImVec4(1, 1, 1, 1), 0.07f * a), Col(ImVec4(1, 1, 1, 1), 0.0f), Col(ImVec4(1, 1, 1, 1), 0.0f));
 			pDraw->AddRect(BoxMin, BoxMax, Col(ImVec4(1, 1, 1, 1), 0.16f * a), Rounding, 0, 1.0f);
@@ -471,16 +487,18 @@ void CXcHud::RenderChatInput(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float U,
 	else
 	{
 		pDraw->AddRectFilled(ImVec2(Min.x, Min.y + 3.0f * U), ImVec2(Max.x, Max.y + 3.0f * U), Col(ImVec4(0, 0, 0, 1), 0.14f * Alpha), Rounding);
-		pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.94f), Alpha), Rounding);
+		pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.92f), Alpha), Rounding);
 	}
-	pDraw->AddRect(Min, Max, Col(ModeColor, 0.55f * Alpha), Rounding, 0, 1.2f * U);
+	// the border of the menu panels, the accent glows softly around it while typing
+	pDraw->AddRect(ImVec2(Min.x - 1.5f * U, Min.y - 1.5f * U), ImVec2(Max.x + 1.5f * U, Max.y + 1.5f * U), Col(ModeColor, 0.18f * Alpha), Rounding + 1.5f * U, 0, 2.0f * U);
+	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), Rounding, 0, 1.0f);
 
 	// the chip of the channel: all or team
 	const char *pMode = Team ? Tr("Team") : Tr("All");
 	const float ChipText = pName->CalcTextSizeA(12.0f * U, FLT_MAX, 0.0f, pMode).x;
 	const ImVec2 ChipMin(Min.x + 6.0f * U, Min.y + 6.0f * U);
 	const ImVec2 ChipMax(ChipMin.x + ChipText + 18.0f * U, Max.y - 6.0f * U);
-	pDraw->AddRectFilled(ChipMin, ChipMax, Col(ModeColor, 0.2f * Alpha), (ChipMax.y - ChipMin.y) * 0.5f);
+	pDraw->AddRectFilled(ChipMin, ChipMax, Col(ModeColor, 0.2f * Alpha), Look == XC_CHAT_MINIMAL ? 6.0f * U : (ChipMax.y - ChipMin.y) * 0.5f);
 	pDraw->AddText(pName, 12.0f * U, ImVec2(ChipMin.x + 9.0f * U, (ChipMin.y + ChipMax.y - 12.0f * U) * 0.5f), Col(ModeColor, Alpha), pMode);
 
 	// the text, scrolled so the caret stays visible

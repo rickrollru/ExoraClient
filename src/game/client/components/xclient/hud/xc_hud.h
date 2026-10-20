@@ -73,6 +73,13 @@ public:
 		XC_CHAT_BUBBLES,
 		XC_CHAT_PANEL,
 	};
+	enum
+	{
+		XC_CHAT_COLORS_CLIENT = 0, // the colors of the menu
+		XC_CHAT_COLORS_ACCENT,
+		XC_CHAT_COLORS_SKIN,
+		XC_CHAT_COLORS_GAME, // the classic chat colors
+	};
 
 	// the own scoreboard replaces the classic one (xc_scoreboard)
 	bool DrawsScoreboard() const;
