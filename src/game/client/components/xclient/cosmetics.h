@@ -53,6 +53,14 @@ public:
 	// faces of a model for previews: Yaw in degrees (0 = front), Time plays the idle animation
 	void BuildFaces(int Model, float Yaw, float Pitch, bool Perspective, float Time, bool Moving, std::vector<SFace> &vFaces) const;
 	ColorRGBA Color(int Slot, int ClientId) const;
+	struct SOutline
+	{
+		bool m_Enabled;
+		bool m_Auto; // a darker shade of the model
+		float m_Width; // 1 = normal
+		ColorRGBA m_Color;
+	};
+	SOutline Outline(int Slot, ColorRGBA Color) const;
 
 private:
 	struct SCube
@@ -120,7 +128,7 @@ private:
 	int Selected(int Slot) const;
 	void RenderSlot(int Slot, int ClientId, float Alpha);
 	// Cartoon: our 2D look, a thick outline around the shape and soft flat tones
-	void DrawFaces(vec2 Pos, float Scale, ColorRGBA Color, float Alpha, bool Cartoon) const;
+	void DrawFaces(vec2 Pos, float Scale, ColorRGBA Color, float Alpha, bool Cartoon, const SOutline &Line) const;
 };
 
 // The pass behind the tees, registered before the players

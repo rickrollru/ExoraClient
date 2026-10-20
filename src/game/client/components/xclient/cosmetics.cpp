@@ -509,17 +509,32 @@ int CXcCosmetics::Selected(int Slot) const
 	}
 }
 
-void CXcCosmetics::DrawFaces(vec2 Pos, float Scale, ColorRGBA Color, float Alpha, bool Cartoon) const
+CXcCosmetics::SOutline CXcCosmetics::Outline(int Slot, ColorRGBA Color) const
+{
+	int *apOn[NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutline, &g_Config.m_XcCosmeticHatOutline, &g_Config.m_XcCosmeticPetOutline};
+	int *apWidth[NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutlineWidth, &g_Config.m_XcCosmeticHatOutlineWidth, &g_Config.m_XcCosmeticPetOutlineWidth};
+	int *apAuto[NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutlineAuto, &g_Config.m_XcCosmeticHatOutlineAuto, &g_Config.m_XcCosmeticPetOutlineAuto};
+	unsigned *apColor[NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutlineColor, &g_Config.m_XcCosmeticHatOutlineColor, &g_Config.m_XcCosmeticPetOutlineColor};
+	const int s = std::clamp(Slot, 0, NUM_SLOTS - 1);
+	SOutline Out;
+	Out.m_Enabled = *apOn[s] != 0;
+	Out.m_Width = *apWidth[s] / 100.0f;
+	Out.m_Auto = *apAuto[s] != 0;
+	// automatic: a much darker shade of the model
+	Out.m_Color = Out.m_Auto ? ColorRGBA(Color.r * 0.22f, Color.g * 0.22f, Color.b * 0.25f, 1.0f) : HslConfigColor(*apColor[s]);
+	return Out;
+}
+
+void CXcCosmetics::DrawFaces(vec2 Pos, float Scale, ColorRGBA Color, float Alpha, bool Cartoon, const SOutline &Line) const
 {
 	const auto ToWorld = [&](vec2 p) { return Pos + vec2(p.x, -p.y) * Scale; };
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
-	if(Cartoon)
+	if(Cartoon && Line.m_Enabled)
 	{
-		// our 2D look, like the tees: one thick dark outline around the whole shape first...
-		const float Outline = std::max(Scale * 0.035f, 2.0f);
-		const ColorRGBA Dark(Color.r * 0.22f, Color.g * 0.22f, Color.b * 0.25f, Alpha);
-		Graphics()->SetColor(Dark);
+		// our 2D look, like the tees: one thick outline around the whole shape first...
+		const float Outline = std::max(Scale * 0.035f, 2.0f) * Line.m_Width;
+		Graphics()->SetColor(Line.m_Color.WithAlpha(Alpha));
 		for(const SFace &Face : m_vFaces)
 		{
 			vec2 Center(0.0f, 0.0f);
@@ -575,14 +590,17 @@ void CXcCosmetics::DrawFaces(vec2 Pos, float Scale, ColorRGBA Color, float Alpha
 		Graphics()->QuadsDrawFreeform(&Item, 1);
 	}
 	Graphics()->QuadsEnd();
-	if(Cartoon || !g_Config.m_XcCosmeticOutline)
+	if(Cartoon || !Line.m_Enabled)
 		return;
-	// 3D: thin darker edges keep the cubes apart
+	// 3D: thin edges keep the cubes apart; automatic ones are a darker shade of each face
 	Graphics()->LinesBegin();
 	for(const SFace &Face : m_vFaces)
 	{
 		const float l = Face.m_Light * 0.55f;
-		Graphics()->SetColor(Color.r * l, Color.g * l, Color.b * l, Alpha * 0.9f);
+		if(Line.m_Auto)
+			Graphics()->SetColor(Color.r * l, Color.g * l, Color.b * l, Alpha * 0.9f);
+		else
+			Graphics()->SetColor(Line.m_Color.WithAlpha(Alpha * 0.9f));
 		IGraphics::CLineItem aLines[4];
 		for(int i = 0; i < 4; i++)
 		{
@@ -659,7 +677,7 @@ void CXcCosmetics::RenderSlot(int Slot, int ClientId, float Alpha)
 		Sprites.Draw(Pos, Scale * 1.8f, 0.0f, Main.WithAlpha(0.35f * Alpha));
 		Sprites.End();
 	}
-	DrawFaces(Pos, Scale, Main, Alpha, !View3D);
+	DrawFaces(Pos, Scale, Main, Alpha, !View3D, Outline(Slot, Main));
 }
 
 void CXcCosmetics::RenderBehind()
