@@ -247,6 +247,8 @@ public:
 
 class IGraphics : public IInterface
 {
+	float m_XcWorldAspect = 0.0f; // XClient
+
 	MACRO_INTERFACE("graphics")
 protected:
 	int m_ScreenWidth;
@@ -339,6 +341,9 @@ public:
 
 	// helper functions
 	void CalcScreenParams(float Aspect, float Zoom, float *pWidth, float *pHeight) const;
+	// XClient: the world is computed with this aspect ratio and stretched over the screen (0: the aspect of the screen)
+	void XcSetWorldAspect(float Aspect) { m_XcWorldAspect = Aspect; }
+	float XcWorldAspect() const { return m_XcWorldAspect; }
 	CScreenRect MapScreenToWorld(float CenterX, float CenterY, float ParallaxX, float ParallaxY,
 		float ParallaxZoom, float OffsetX, float OffsetY, float Aspect, float Zoom) const;
 	void MapScreenToInterface(float CenterX, float CenterY, float Zoom = 1.0f);

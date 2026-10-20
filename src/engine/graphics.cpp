@@ -7,6 +7,10 @@ void IGraphics::CalcScreenParams(float Aspect, float Zoom, float *pWidth, float 
 	const float WMax = 1500;
 	const float HMax = 1050;
 
+	// XClient: another aspect ratio for the world, the picture is stretched to the screen
+	if(m_XcWorldAspect > 0.0f)
+		Aspect = m_XcWorldAspect;
+
 	const float f = std::sqrt(Amount) / std::sqrt(Aspect);
 	*pWidth = f * Aspect;
 	*pHeight = f;
