@@ -289,6 +289,26 @@ void CImGuiBackend::NewFrame(float Dt, vec2 MousePos)
 	const float ScaleY = Height / std::max((float)m_pGraphics->WindowHeight(), 1.0f);
 	Io.AddMousePosEvent(MousePos.x * ScaleX, MousePos.y * ScaleY);
 
+	// a key released while the events went elsewhere (the editor closed on Esc, alt-tab)
+	// would stay held here and repeat forever: release what the engine sees released
+	bool aEngineDown[ImGuiKey_NamedKey_COUNT] = {};
+	for(int Key = 0; Key < KEY_LAST; Key++)
+	{
+		const ImGuiKey ImKey = TranslateKey(Key);
+		if(ImKey != ImGuiKey_None && m_pInput->KeyIsPressed(Key))
+			aEngineDown[ImKey - ImGuiKey_NamedKey_BEGIN] = true;
+	}
+	for(int ImKey = ImGuiKey_NamedKey_BEGIN; ImKey < ImGuiKey_GamepadStart; ImKey++) // the keyboard only
+	{
+		if(ImGui::IsKeyDown((ImGuiKey)ImKey) && !aEngineDown[ImKey - ImGuiKey_NamedKey_BEGIN])
+			Io.AddKeyEvent((ImGuiKey)ImKey, false);
+	}
+	for(int Button = 0; Button < 3; Button++)
+	{
+		if(ImGui::IsMouseDown(Button) && !m_pInput->KeyIsPressed(KEY_MOUSE_1 + Button))
+			Io.AddMouseButtonEvent(Button, false);
+	}
+
 	ImGui::NewFrame();
 }
 
