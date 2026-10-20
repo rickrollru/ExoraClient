@@ -234,12 +234,6 @@ void CXcMenu::RenderSettingsInterface()
 		EndCard();
 	}
 
-	if(BeginCard("##ui_sounds", Tr("Interface sounds"), Tr("Clicks, switches and notifications"), &g_Config.m_XcUiSounds))
-	{
-		ConfigSlider(Tr("Volume"), "xc_ui_sound_volume", &g_Config.m_XcUiSoundVolume, 0, 100, "%d%%");
-		EndCard();
-	}
-
 	if(BeginCard("##classic", Tr("Classic menu"), Tr("The old DDNet menu, for settings that are not here yet")))
 	{
 		if(Button(Tr("Open"), false, -1.0f))
@@ -463,6 +457,12 @@ void CXcMenu::RenderSettingsSound()
 		ToggleRow(Tr("Mute when not active"), "snd_nonactive_mute", &g_Config.m_SndNonactiveMute);
 		EndCard();
 	}
+	if(BeginCard("##ui_sounds", Tr("Interface sounds"), Tr("Clicks, switches and notifications"), &g_Config.m_XcUiSounds))
+	{
+		ConfigSlider(Tr("Volume"), "xc_ui_sound_volume", &g_Config.m_XcUiSoundVolume, 0, 100, "%d%%");
+		EndCard();
+	}
+	RenderEventSoundsCard();
 	EndCardGrid();
 }
 
@@ -740,19 +740,17 @@ void CXcMenu::RenderSettingsGraphics()
 		EndCard();
 	}
 
-	if(BeginCard("##performance", Tr("Performance"), Tr("Low, medium or high in one click")))
+	if(BeginCard("##performance", Tr("Performance"), Tr("Low, medium or high in one click, then each effect by hand")))
 	{
 		RenderPerformance();
-		EndCard();
-	}
-	if(BeginCard("##effects", Tr("Effects"), Tr("Quality of the render module (OpenGL 3.3)"), &g_Config.m_XcRender))
-	{
+		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+		// the render module draws the glow, the blur and the neon outline
+		ToggleRow(Tr("Effects module (OpenGL 3.3)"), "xc_render", &g_Config.m_XcRender);
 		if(!Graphics()->XcRenderAvailable())
 			Description(Tr("Not available: needs OpenGL 3.3"));
-		ParamLabel(Tr("Quality"));
+		ParamLabel(Tr("Effect quality"));
 		const char *apQuality[] = {Tr("Low"), Tr("Medium"), Tr("High")};
 		ConfigSegmented("##quality", "xc_fx_quality", &g_Config.m_XcFxQuality, apQuality, 3);
-		ConfigSlider(Tr("Bloom"), "xc_bloom", &g_Config.m_XcBloom, 0, 200, "%d%%");
 		EndCard();
 	}
 	EndCardGrid();
@@ -795,23 +793,20 @@ void CXcMenu::RenderSettingsHud()
 		Description(Tr("Keys for play, next and previous are in Controls > Key binds"));
 		EndCard();
 	}
-	if(BeginCard("##hud_plates", Tr("Name plates"), Tr("Names above the tees on dark rounded plates"), &g_Config.m_XcHudPlates))
+	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list on Tab and the top of the server in the HUD")))
 	{
-		Description(Tr("The text stays readable on bright maps"));
-		EndCard();
-	}
-	if(BeginCard("##hud_own_scoreboard", Tr("Own scoreboard"), Tr("Tab shows players by teams with medals, times and pings in the style of the menu"), &g_Config.m_XcScoreboard))
-	{
-		ToggleRow(Tr("Show clans"), "xc_scoreboard_clan", &g_Config.m_XcScoreboardClan);
-		ConfigSlider(Tr("Size"), "xc_scoreboard_scale", &g_Config.m_XcScoreboardScale, 60, 150, "%d%%");
-		ToggleRow(Tr("Top of the server in the HUD"), "xc_hud_minitop", &g_Config.m_XcHudMinitop);
-		ConfigSlider(Tr("Players in the list"), "xc_hud_minitop_count", &g_Config.m_XcHudMinitopCount, 1, 5);
-		EndCard();
-	}
-	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list in the colors of the menu, your row in the accent color"), &g_Config.m_XcHudScoreboard))
-	{
-		Description(Tr("Press Tab in game to see it"));
+		ToggleRow(Tr("Own scoreboard: teams, medals, times and pings"), "xc_scoreboard", &g_Config.m_XcScoreboard);
+		if(g_Config.m_XcScoreboard)
+		{
+			ToggleRow(Tr("Show clans"), "xc_scoreboard_clan", &g_Config.m_XcScoreboardClan);
+			ConfigSlider(Tr("Size"), "xc_scoreboard_scale", &g_Config.m_XcScoreboardScale, 60, 150, "%d%%");
+		}
+		else
+			ToggleRow(Tr("Standard scoreboard in the colors of the menu"), "xc_hud_scoreboard", &g_Config.m_XcHudScoreboard);
 		ToggleRow(Tr("Vote panel in the same style"), "xc_hud_votes", &g_Config.m_XcHudVotes);
+		ToggleRow(Tr("Top of the server in the HUD"), "xc_hud_minitop", &g_Config.m_XcHudMinitop);
+		if(g_Config.m_XcHudMinitop)
+			ConfigSlider(Tr("Players in the list"), "xc_hud_minitop_count", &g_Config.m_XcHudMinitopCount, 1, 5);
 		EndCard();
 	}
 	if(BeginCard("##hud_wheels", Tr("Wheels"), Tr("Emote wheel and spectator menu in the colors of the menu"), &g_Config.m_XcHudWheels))

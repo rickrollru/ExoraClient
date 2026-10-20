@@ -62,12 +62,15 @@ public:
 
 	enum
 	{
-		VISUALS_TEE = 0,
+		VISUALS_GENERAL = 0,
+		VISUALS_TEE,
 		VISUALS_MOVEMENT,
+		VISUALS_COSMETICS,
 		VISUALS_WEAPONS,
+		VISUALS_CROSSHAIR,
 		VISUALS_WORLD,
 		VISUALS_EVENTS,
-		VISUALS_COSMETICS,
+		VISUALS_NAMES,
 		NUM_VISUALS,
 	};
 
@@ -266,14 +269,19 @@ private:
 	bool RenderServerCard(const CServerInfo *pInfo, float Width, float Height);
 	void RenderServerDetails(const CServerInfo *pInfo, float Height);
 	// visuals page (menu_visuals.cpp)
-	int m_VisualsSection = VISUALS_TEE;
+	int m_VisualsSection = VISUALS_GENERAL;
 	int m_aLastFxStyle[32] = {}; // last chosen style of each style card, to turn it back on
 	bool StyleCard(const char *pId, const char *pTitle, const char *pDescription, const char *pConfig, int *pValue, const char *const *ppStyles, int NumStyles);
+	void RenderVisualsGeneral();
 	void RenderVisualsTee();
 	void RenderVisualsMovement();
+	void RenderVisualsCosmeticsExtra(); // accessory and cape under the hats
 	void RenderVisualsWeapons();
+	void RenderVisualsCrosshair();
 	void RenderVisualsWorld();
 	void RenderVisualsEvents();
+	void RenderVisualsNames();
+	void RenderEventSoundsCard();
 	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
 	void RenderVisualsCosmetics();
 	void RenderHatEditor(float Size);
