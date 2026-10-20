@@ -365,15 +365,16 @@ bool CXcMenu::CosmeticTile(int Model, int Slot, bool Selected, float Width)
 	static std::vector<CXcCosmetics::SFace> s_vFaces;
 	Cosmetics.BuildFaces(Model, Yaw, View3D ? 12.0f : 0.0f, View3D, g_Config.m_XcCosmeticAnim ? Time : -1.0f, false, s_vFaces);
 	const ColorRGBA Base = Cosmetics.Color(Slot, -1);
+	const CXcCosmetics::SOutline Line = Cosmetics.Outline(Slot, Base);
 	const float Scale = Width * 0.4f;
 	const ImVec2 Center(Min.x + Width * 0.5f, Min.y + Width * 0.5f);
 	const auto ToScreen = [&](vec2 p) { return ImVec2(Center.x + p.x * Scale, Center.y - p.y * Scale); };
 	pDraw->PushClipRect(Min, Max, true);
-	if(!View3D)
+	if(!View3D && Line.m_Enabled)
 	{
 		// our 2D look: the outline of the whole shape first
-		const float Outline = std::max(Scale * 0.035f, 1.5f);
-		const ImU32 Dark = Col(ImVec4(Base.r * 0.22f, Base.g * 0.22f, Base.b * 0.25f, 1.0f));
+		const float Outline = std::max(Scale * 0.035f, 1.5f) * Line.m_Width;
+		const ImU32 Dark = Col(ImVec4(Line.m_Color.r, Line.m_Color.g, Line.m_Color.b, 1.0f));
 		for(const CXcCosmetics::SFace &Face : s_vFaces)
 		{
 			ImVec2 aP[4];
@@ -403,8 +404,8 @@ bool CXcMenu::CosmeticTile(int Model, int Slot, bool Selected, float Width)
 		const ImU32 Fill = Col(ImVec4(std::min(Base.r * l, 1.0f), std::min(Base.g * l, 1.0f), std::min(Base.b * l, 1.0f), 1.0f));
 		const ImVec2 a = ToScreen(Face.m_aPoints[0]), b = ToScreen(Face.m_aPoints[1]), c = ToScreen(Face.m_aPoints[2]), d = ToScreen(Face.m_aPoints[3]);
 		pDraw->AddQuadFilled(a, b, c, d, Fill);
-		if(View3D && g_Config.m_XcCosmeticOutline)
-			pDraw->AddQuad(a, b, c, d, Col(ImVec4(Base.r * l * 0.55f, Base.g * l * 0.55f, Base.b * l * 0.55f, 0.9f)), 1.0f);
+		if(View3D && Line.m_Enabled)
+			pDraw->AddQuad(a, b, c, d, Line.m_Auto ? Col(ImVec4(Base.r * l * 0.55f, Base.g * l * 0.55f, Base.b * l * 0.55f, 0.9f)) : Col(ImVec4(Line.m_Color.r, Line.m_Color.g, Line.m_Color.b, 0.9f)), std::max(Line.m_Width, 0.5f));
 	}
 	pDraw->PopClipRect();
 
@@ -450,13 +451,28 @@ void CXcMenu::RenderCosmetics3d()
 			}
 			ImGui::PushID(Slot);
 			EffectColorPicker("##cosmetic_color", apModes[Slot], apColors[Slot]);
+			// the outline of this slot: on or off, how thick, automatic or an own color
+			static const char *const s_apOutline[CXcCosmetics::NUM_SLOTS] = {"xc_cosmetic_back_outline", "xc_cosmetic_hat_outline", "xc_cosmetic_pet_outline"};
+			int *apOutline[CXcCosmetics::NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutline, &g_Config.m_XcCosmeticHatOutline, &g_Config.m_XcCosmeticPetOutline};
+			int *apWidth[CXcCosmetics::NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutlineWidth, &g_Config.m_XcCosmeticHatOutlineWidth, &g_Config.m_XcCosmeticPetOutlineWidth};
+			int *apAuto[CXcCosmetics::NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutlineAuto, &g_Config.m_XcCosmeticHatOutlineAuto, &g_Config.m_XcCosmeticPetOutlineAuto};
+			unsigned *apOutlineColor[CXcCosmetics::NUM_SLOTS] = {&g_Config.m_XcCosmeticBackOutlineColor, &g_Config.m_XcCosmeticHatOutlineColor, &g_Config.m_XcCosmeticPetOutlineColor};
+			char aName[64];
+			ToggleRow(Tr("Outline"), s_apOutline[Slot], apOutline[Slot]);
+			if(*apOutline[Slot])
+			{
+				str_format(aName, sizeof(aName), "%s_width", s_apOutline[Slot]);
+				ConfigSlider(Tr("Outline width"), aName, apWidth[Slot], 25, 300, "%d%%");
+				str_format(aName, sizeof(aName), "%s_auto", s_apOutline[Slot]);
+				ToggleRow(Tr("Outline color from the model"), aName, apAuto[Slot]);
+				if(!*apAuto[Slot])
+					ConfigColorRow(Tr("Outline color"), apOutlineColor[Slot], false);
+			}
 			ImGui::PopID();
 		}
 		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
 		ConfigSlider(Tr("Size"), "xc_cosmetic_size", &g_Config.m_XcCosmeticSize, 40, 250, "%d%%");
 		ToggleRow(Tr("Animations"), "xc_cosmetic_anim", &g_Config.m_XcCosmeticAnim);
-		if(g_Config.m_XcCosmetic3d)
-			ToggleRow(Tr("Thin edges"), "xc_cosmetic_outline", &g_Config.m_XcCosmeticOutline);
 		ToggleRow(Tr("Glow"), "xc_cosmetic_glow", &g_Config.m_XcCosmeticGlow);
 		TargetChips("##cosmetic_targets", &g_Config.m_XcCosmeticSelf, &g_Config.m_XcCosmeticDummy, &g_Config.m_XcCosmeticOthers);
 		Description(Tr("Only you see them: other players do not have this client"));
