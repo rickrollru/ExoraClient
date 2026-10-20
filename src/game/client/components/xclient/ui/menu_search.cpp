@@ -81,6 +81,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##animations", "Animations", "How smooth the menu moves", "анимации плавность animations smooth"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##language", "Game language", "Language of the menu and the game", "язык language русский english"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_SOUND, "##ui_sounds", "Interface sounds", "Clicks, switches and notifications", "звуки звук клик sounds click"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##topbar", "Top bar", "Turn tabs and buttons on or off and move them. The ones you turn off are in the ... menu of the bar", "верхний бар вкладки кнопки порядок панель скрыть top bar tabs buttons order"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_INTERFACE, "##classic", "Classic menu", "The old DDNet menu, for settings that are not here yet", "классическое старое меню classic old"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_kind", "Menu background", "What is behind the menu", "фон меню background блюр blur анимация animated"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_look", "Look", "Darkening, blur and gif speed", "затемнение блюр гифка скорость dim blur gif speed"},
