@@ -505,9 +505,9 @@ void CXcMenu::RenderSettingsChat()
 		ConfigSlider(Tr("Height above the bottom"), "xc_chat_y", &g_Config.m_XcChatY, 0, 500, "%d px");
 		if(g_Config.m_XcChatLook != 0)
 			ConfigSlider(Tr("Plate opacity"), "xc_chat_opacity", &g_Config.m_XcChatOpacity, 0, 100, "%d%%");
-		ParamLabel(Tr("Name color"));
-		const char *apNames[] = {Tr("Game colors"), Tr("Accent"), Tr("Skin")};
-		ConfigSegmented("##chat_name_color", "xc_chat_name_color", &g_Config.m_XcChatNameColor, apNames, 3);
+		ParamLabel(Tr("Colors"));
+		const char *apNames[] = {Tr("Client style"), Tr("Accent names"), Tr("Skin names"), Tr("Game colors")};
+		ConfigSegmented("##chat_name_color", "xc_chat_name_color", &g_Config.m_XcChatNameColor, apNames, 4);
 		ToggleRow(Tr("Avatars (the tee of the player)"), "xc_chat_avatars", &g_Config.m_XcChatAvatars);
 		ToggleRow(Tr("Time of messages"), "xc_chat_time", &g_Config.m_XcChatTime);
 		ToggleRow(Tr("Group messages of one player"), "xc_chat_group", &g_Config.m_XcChatGroup);
