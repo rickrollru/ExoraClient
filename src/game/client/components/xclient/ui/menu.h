@@ -284,6 +284,7 @@ private:
 	void RenderVisualsEvents();
 	void RenderVisualsNames();
 	void RenderEventSoundsCard();
+	void ParticleTuning(int Group); // FxTune::EGroup
 	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
 	void RenderVisualsCosmetics();
 	void RenderHatEditor(float Size);

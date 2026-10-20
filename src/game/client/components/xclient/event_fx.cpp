@@ -127,6 +127,7 @@ void CXcEventFx::Finish(vec2 Pos, int ClientId)
 
 void CXcEventFx::Confetti(vec2 Pos, int ClientId)
 {
+	const FxTune::CScope TuneScope(FxTune::FINISH);
 	const float Amount = g_Config.m_XcFinishAmount / 100.0f;
 	const int Count = (int)(110 * Amount);
 	for(int i = 0; i < Count; i++)
@@ -187,6 +188,7 @@ void CXcEventFx::Burst(vec2 Pos, ColorRGBA Color, int Count, float Speed, float 
 
 void CXcEventFx::Fireworks(vec2 Pos, int ClientId)
 {
+	const FxTune::CScope TuneScope(FxTune::FINISH);
 	const float Amount = g_Config.m_XcFinishAmount / 100.0f;
 	const int Shots = std::max(1, (int)std::round(4 * Amount));
 	for(int i = 0; i < Shots; i++)
@@ -212,6 +214,7 @@ void CXcEventFx::Fireworks(vec2 Pos, int ClientId)
 
 void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 {
+	const FxTune::CScope TuneScope(FxTune::DEATH);
 	if(ClientId >= 0 && ClientId == GameClient()->m_aLocalIds[g_Config.m_ClDummy])
 	{
 		GameClient()->m_ScreenFx.Flash(ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f), 0.8f);
@@ -286,6 +289,7 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 
 void CXcEventFx::PlayerSpawn(vec2 Pos)
 {
+	const FxTune::CScope TuneScope(FxTune::DEATH);
 	if(!g_Config.m_XcSpawnFx)
 		return;
 	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcDeathColorMode == 3 ? 0 : g_Config.m_XcDeathColorMode, g_Config.m_XcDeathColor, -1);
@@ -306,6 +310,7 @@ void CXcEventFx::PlayerSpawn(vec2 Pos)
 
 void CXcEventFx::CheckpointFlash(vec2 Pos, int ClientId, bool Controlled)
 {
+	const FxTune::CScope TuneScope(FxTune::CHECKPOINT);
 	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcCheckpointColorMode, g_Config.m_XcCheckpointColor, ClientId);
 	// a flat ring on the ground level of the tee and a soft flash, sparks rise like from a gate
 	CXcParticles::SParticle Ring;
@@ -345,6 +350,7 @@ void CXcEventFx::CheckpointFlash(vec2 Pos, int ClientId, bool Controlled)
 
 void CXcEventFx::TeleportFlash(vec2 From, vec2 To, int ClientId)
 {
+	const FxTune::CScope TuneScope(FxTune::TELEPORT);
 	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcTeleportColorMode, g_Config.m_XcTeleportColor, ClientId);
 	CXcParticles::SParticle Ring;
 	Ring.m_Type = CXcParticles::EType::RING;
