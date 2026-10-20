@@ -535,74 +535,183 @@ void CXcMenu::RenderFrame()
 void CXcMenu::RenderTopBar(float Width)
 {
 	const STheme &t = Theme();
-	const float BarHeight = S(40.0f);
+	const float BarHeight = S(56.0f);
+	const float Pad = S(10.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	// one solid bar, the same frame as the page panel under it
+	PanelRect(pDraw, Start, ImVec2(Start.x + Width, Start.y + BarHeight), S(16.0f), t.m_Panel);
+	const float MidY = Start.y + BarHeight * 0.5f;
 
-	// logo and the client name
-	const float LogoSize = S(30.0f);
-	DrawLogo(pDraw, ImVec2(Start.x + LogoSize * 0.5f + S(2.0f), Start.y + BarHeight * 0.5f), LogoSize, t.m_Accent);
+	// left: logo, the client name and where you are
+	const float LogoSize = S(32.0f);
+	DrawLogo(pDraw, ImVec2(Start.x + Pad + LogoSize * 0.5f, MidY), LogoSize, t.m_Accent);
 	ImFont *pTitle = Fonts().m_pTitle;
-	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(Start.x + LogoSize + S(12.0f), Start.y + BarHeight * 0.5f - pTitle->FontSize * 0.5f), Col(t.m_Text), XC_CLIENT_NAME);
+	ImFont *pSmall = Fonts().m_pSmall;
+	const float TextX = Start.x + Pad + LogoSize + S(10.0f);
+	const float TextTop = MidY - (pTitle->FontSize + pSmall->FontSize + S(1.0f)) * 0.5f;
+	pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(TextX, TextTop), Col(t.m_Text), XC_CLIENT_NAME);
+	char aStatus[128];
+	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+		str_copy(aStatus, Tr("Watching a demo"));
+	else if(IsOnline() && Client()->ServerInfo().m_aMap[0])
+		str_format(aStatus, sizeof(aStatus), "%s · %s", Tr("In game"), Client()->ServerInfo().m_aMap);
+	else
+		str_copy(aStatus, Tr("Main menu"));
+	pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(TextX, TextTop + pTitle->FontSize + S(1.0f)), Col(t.m_TextMuted), aStatus);
 
-	// tabs in a capsule in the middle
-	const char *apIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_CHECK, XC_ICON_GEAR};
-	const char *apLabels[NUM_PAGES] = {Tr("Home"), Tr("Servers"), Tr("Visuals"), Tr("Configs"), Tr("Demos"), Tr("Votes"), Tr("Settings")};
-	ImFont *pLabel = Fonts().m_pLabel;
-	float CapsuleWidth = S(8.0f);
-	for(int i = 0; i < NUM_PAGES; i++)
-		CapsuleWidth += S(32.0f) + S(8.0f) + pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, apIcons[i]).x + pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, apLabels[i]).x;
-	ImGui::SetCursorScreenPos(ImVec2(Start.x + (Width - CapsuleWidth) * 0.5f, Start.y));
-	if(TabCapsule("##pages", &m_Page, apIcons, apLabels, NUM_PAGES))
+	// middle: the pages; voting only makes sense on a server
+	const bool ShowVotes = IsOnline() && Client()->State() != IClient::STATE_DEMOPLAYBACK;
+	if(m_Page == PAGE_VOTES && !ShowVotes)
+		m_Page = PAGE_HOME;
+	static const int s_aAllPages[] = {PAGE_HOME, PAGE_SERVERS, PAGE_VISUALS, PAGE_CONFIGS, PAGE_DEMOS, PAGE_VOTES, PAGE_SETTINGS};
+	static_assert(std::size(s_aAllPages) == NUM_PAGES);
+	const char *apAllIcons[NUM_PAGES] = {XC_ICON_HOME, XC_ICON_SERVER, XC_ICON_WAND, XC_ICON_FOLDER, XC_ICON_FILM, XC_ICON_CHECK, XC_ICON_GEAR};
+	const char *apAllLabels[NUM_PAGES] = {Tr("Home"), Tr("Servers"), Tr("Visuals"), Tr("Configs"), Tr("Demos"), Tr("Votes"), Tr("Settings")};
+	int aPages[NUM_PAGES];
+	const char *apIcons[NUM_PAGES];
+	const char *apLabels[NUM_PAGES];
+	int NumTabs = 0;
+	int Current = 0;
+	for(int Page : s_aAllPages)
 	{
+		if(Page == PAGE_VOTES && !ShowVotes)
+			continue;
+		if(Page == m_Page)
+			Current = NumTabs;
+		aPages[NumTabs] = Page;
+		apIcons[NumTabs] = apAllIcons[Page];
+		apLabels[NumTabs] = apAllLabels[Page];
+		NumTabs++;
+	}
+	ImFont *pLabel = Fonts().m_pLabel;
+	const auto TextWidth = [](ImFont *pFont, const char *pText) { return pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, pText).x; };
+	const auto CapsuleWidthOf = [&](bool Labels) {
+		float Total = S(8.0f);
+		for(int i = 0; i < NumTabs; i++)
+			Total += S(32.0f) + S(8.0f) + TextWidth(pLabel, apIcons[i]) + (Labels ? TextWidth(pLabel, apLabels[i]) : 0.0f);
+		return Total;
+	};
+
+	// how much fits: 0 everything, 1 the search becomes an icon and the name hides, 2 the tabs lose their labels
+	const float ButtonSize = S(34.0f);
+	const float Gap = S(8.0f);
+	const char *pName = Client()->PlayerName();
+	const float NameWidth = std::min(TextWidth(pLabel, pName), S(130.0f));
+	const float LangWidth = std::max(TextWidth(pLabel, "RU") + S(24.0f), ButtonSize);
+	const float LeftEnd = TextX + std::max(TextWidth(pTitle, XC_CLIENT_NAME), TextWidth(pSmall, aStatus)) + S(20.0f);
+	const auto RightWidth = [&](bool Compact) {
+		const float Profile = Compact ? ButtonSize : ButtonSize + S(20.0f) + NameWidth;
+		const float Search = Compact ? ButtonSize : S(180.0f);
+		return Pad + ButtonSize + Gap + S(6.0f) + Profile + Gap + ButtonSize + Gap + LangWidth + Gap + Search + S(20.0f);
+	};
+	const float Room = Width - (LeftEnd - Start.x);
+	int Level = 0;
+	if(CapsuleWidthOf(true) + RightWidth(false) > Room)
+		Level = CapsuleWidthOf(true) + RightWidth(true) > Room ? 2 : 1;
+	const bool Compact = Level >= 1;
+	const float CapsuleWidth = CapsuleWidthOf(Level < 2);
+	// centered on the window, but never under the logo or the buttons
+	const float RightStart = Start.x + Width - RightWidth(Compact) + S(20.0f);
+	const float CapsuleX = std::clamp(Start.x + (Width - CapsuleWidth) * 0.5f, LeftEnd, std::max(RightStart - S(20.0f) - CapsuleWidth, LeftEnd));
+	const char *apNoLabels[NUM_PAGES] = {"", "", "", "", "", "", ""};
+	ImGui::SetCursorScreenPos(ImVec2(CapsuleX, MidY - S(20.0f)));
+	if(TabCapsule("##pages", &Current, apIcons, Level < 2 ? apLabels : apNoLabels, NumTabs))
+	{
+		m_Page = aPages[Current];
 		m_ScrollTarget = 0.0f;
 		m_DemosDirty = true; // new recordings show up when the page is opened again
 	}
 
-	// quick buttons on the right: search, language, theme, classic menu, avatar, close
-	const int NumButtons = 6;
-	const float ButtonsWidth = NumButtons * S(34.0f) + (NumButtons - 1) * S(8.0f);
-	float x = Start.x + Width - ButtonsWidth;
-	const float y = Start.y + (BarHeight - S(34.0f)) * 0.5f;
-	const auto Place = [&]() {
-		ImGui::SetCursorScreenPos(ImVec2(x, y));
-		x += S(34.0f) + S(8.0f);
+	// right, from the edge: close, a divider, the profile, theme, language, search
+	float Right = Start.x + Width - Pad;
+	const float ButtonY = MidY - ButtonSize * 0.5f;
+	// a pill with an icon and a text, drawn like the icon buttons
+	const auto Pill = [&](const char *pId, float PillWidth, bool Selected, const char *pTooltip) {
+		const ImVec2 Pos(Right - PillWidth, ButtonY);
+		ImGui::SetCursorScreenPos(Pos);
+		const bool Pressed = ImGui::InvisibleButton(pId, ImVec2(PillWidth, ButtonSize));
+		const bool Hovered = ImGui::IsItemHovered();
+		const float Hover = Animate(ImGui::GetItemID(), (Hovered || Selected) ? 1.0f : 0.0f, 18.0f);
+		pDraw->AddRectFilled(Pos, ImVec2(Pos.x + PillWidth, Pos.y + ButtonSize), Col(Selected ? ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f) : t.m_Track, Selected ? 1.0f : 0.55f + Hover * 0.6f), S(10.0f));
+		if(Pressed)
+			PlayUiSound(SOUND_CLICK);
+		if(pTooltip && Hovered)
+			ImGui::SetTooltip("%s", pTooltip);
+		Right -= PillWidth + Gap;
+		return std::make_pair(Pressed, Pos);
 	};
-	Place();
-	if(IconButton(XC_ICON_SEARCH, Tr("Search (Ctrl+F)"), m_SearchOpen))
-		OpenSearch();
-	Place();
-	if(IconButton(XC_ICON_GLOBE, Tr("Language")))
-		SetConfigString("cl_languagefile", IsRussian() ? "" : "languages/russian.txt");
-	Place();
-	if(IconButton(t.m_Dark ? XC_ICON_MOON : XC_ICON_SUN, Tr("Theme")))
-		SetConfigInt("xc_ui_theme", g_Config.m_XcUiTheme ? 0 : 1);
-	Place();
-	if(IconButton(XC_ICON_WINDOW, Tr("Classic menu")))
-		m_WantClassic = true;
-	Place();
+	const auto IconAt = [&](const char *pIcon, const char *pTooltip, bool Selected) {
+		ImGui::SetCursorScreenPos(ImVec2(Right - ButtonSize, ButtonY));
+		Right -= ButtonSize + Gap;
+		return IconButton(pIcon, pTooltip, Selected);
+	};
+
+	if(IsOnline())
 	{
-		// avatar: the own tee, opens the player settings
-		const ImVec2 AvatarPos = ImGui::GetCursorScreenPos();
-		const float Size = S(34.0f);
-		if(IconButton("", Tr("Profile"), m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_PLAYER))
+		if(IconAt(XC_ICON_XMARK, Tr("Back to the game (Esc)"), false))
+			SetActive(false);
+	}
+	else if(IconAt(XC_ICON_POWER, Tr("Quit"), false))
+		Client()->Quit();
+
+	// divider between the window buttons and the rest
+	pDraw->AddLine(ImVec2(Right + Gap * 0.5f - S(2.0f), MidY - S(12.0f)), ImVec2(Right + Gap * 0.5f - S(2.0f), MidY + S(12.0f)), Col(t.m_Border), 1.0f);
+	Right -= S(6.0f);
+
+	{
+		// profile: the own tee and the name, opens the player settings
+		const bool Selected = m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_PLAYER;
+		const auto [Pressed, Pos] = Pill("##profile", Compact ? ButtonSize : ButtonSize + S(20.0f) + NameWidth, Selected, Compact ? pName : Tr("Profile"));
+		if(Pressed)
 		{
 			m_Page = PAGE_SETTINGS;
 			m_SettingsSection = SETTINGS_PLAYER;
 			m_ScrollTarget = 0.0f;
 		}
-		// the tee fills the button (its body is about 0.6 of the preview rect)
-		AddTeePreview(pDraw, ImVec2(AvatarPos.x - Size * 0.2f, AvatarPos.y - Size * 0.2f), ImVec2(AvatarPos.x + Size * 1.2f, AvatarPos.y + Size * 1.2f));
+		const float TeeSize = ButtonSize * 0.86f;
+		const ImVec2 TeeCenter(Compact ? Pos.x + ButtonSize * 0.5f : Pos.x + S(4.0f) + TeeSize * 0.5f, MidY);
+		AddTeePreview(pDraw, ImVec2(TeeCenter.x - TeeSize * 0.65f, TeeCenter.y - TeeSize * 0.65f), ImVec2(TeeCenter.x + TeeSize * 0.65f, TeeCenter.y + TeeSize * 0.65f));
+		if(!Compact)
+		{
+			const ImVec4 Clip(Pos.x, Pos.y, Pos.x + ButtonSize + S(6.0f) + NameWidth, Pos.y + ButtonSize);
+			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + ButtonSize + S(6.0f), MidY - pLabel->FontSize * 0.5f), Col(Selected ? t.m_Accent : t.m_Text), pName, nullptr, 0.0f, &Clip);
+		}
 	}
-	Place();
-	if(IsOnline())
+
+	if(IconAt(t.m_Dark ? XC_ICON_MOON : XC_ICON_SUN, t.m_Dark ? Tr("Light theme") : Tr("Dark theme"), false))
+		SetConfigInt("xc_ui_theme", g_Config.m_XcUiTheme ? 0 : 1);
+
 	{
-		if(IconButton(XC_ICON_XMARK, Tr("Close")))
-			SetActive(false);
+		// language: shows the current one, a click switches
+		const char *pLang = IsRussian() ? "RU" : "EN";
+		const auto [Pressed, Pos] = Pill("##language", LangWidth, false, IsRussian() ? "Switch to English" : "Переключить на русский");
+		if(Pressed)
+			SetConfigString("cl_languagefile", IsRussian() ? "" : "languages/russian.txt");
+		pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + (LangWidth - TextWidth(pLabel, pLang)) * 0.5f, MidY - pLabel->FontSize * 0.5f), Col(t.m_TextSecondary), pLang);
 	}
-	else if(IconButton(XC_ICON_POWER, Tr("Quit")))
+
 	{
-		Client()->Quit();
+		// search: looks like a field, with the shortcut on the right
+		const float SearchWidth = Compact ? ButtonSize : S(180.0f);
+		const auto [Pressed, Pos] = Pill("##search", SearchWidth, m_SearchOpen, Compact ? Tr("Search (Ctrl+F)") : nullptr);
+		if(Pressed)
+			OpenSearch();
+		if(Compact)
+		{
+			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + (ButtonSize - TextWidth(pLabel, XC_ICON_SEARCH)) * 0.5f, MidY - pLabel->FontSize * 0.5f), Col(t.m_TextSecondary), XC_ICON_SEARCH);
+		}
+		else
+		{
+			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + S(12.0f), MidY - pLabel->FontSize * 0.5f), Col(t.m_TextMuted), XC_ICON_SEARCH);
+			const float IconWidth = TextWidth(pLabel, XC_ICON_SEARCH);
+			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + S(12.0f) + IconWidth + S(8.0f), MidY - pLabel->FontSize * 0.5f), Col(t.m_TextMuted), Tr("Search"));
+			const char *pKeys = "Ctrl F";
+			const ImVec2 KeySize = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pKeys);
+			const ImVec2 KeyMin(Pos.x + SearchWidth - KeySize.x - S(20.0f), MidY - KeySize.y * 0.5f - S(3.0f));
+			pDraw->AddRect(KeyMin, ImVec2(KeyMin.x + KeySize.x + S(10.0f), KeyMin.y + KeySize.y + S(6.0f)), Col(t.m_Border), S(5.0f));
+			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(KeyMin.x + S(5.0f), KeyMin.y + S(3.0f)), Col(t.m_TextMuted), pKeys);
+		}
 	}
 
 	ImGui::SetCursorScreenPos(ImVec2(Start.x, Start.y + BarHeight + S(12.0f)));
