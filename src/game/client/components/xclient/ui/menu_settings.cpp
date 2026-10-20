@@ -405,6 +405,14 @@ void CXcMenu::RenderSettingsControls()
 		ConfigSlider(Tr("Deadzone"), "cl_dyncam_deadzone", &g_Config.m_ClDyncamDeadzone, 1, 1300);
 		EndCard();
 	}
+	if(BeginCard("##zoom", Tr("Camera zoom"), Tr("How far the camera sees and how smooth it moves")))
+	{
+		ConfigSlider(Tr("Default zoom"), "cl_default_zoom", &g_Config.m_ClDefaultZoom, 0, 20);
+		ConfigSlider(Tr("Smooth zoom, ms"), "cl_smooth_zoom_time", &g_Config.m_ClSmoothZoomTime, 0, 5000);
+		ConfigSlider(Tr("Camera smoothness"), "cl_dyncam_smoothness", &g_Config.m_ClDyncamSmoothness, 0, 100);
+		ConfigSlider(Tr("Calm on fast mouse moves"), "cl_dyncam_stabilizing", &g_Config.m_ClDyncamStabilizing, 0, 100);
+		EndCard();
+	}
 	if(BeginCard("##binds", Tr("Key binds"), Tr("Click a key and press a new one, Esc cancels")))
 	{
 		for(int i = 0; i < (int)std::size(s_aBinds); i++)
@@ -740,6 +748,21 @@ void CXcMenu::RenderSettingsGraphics()
 		EndCard();
 	}
 
+	if(BeginCard("##prediction", Tr("Prediction and ping"), Tr("How the client shows the game ahead of the server, so it feels without lag")))
+	{
+		ToggleRow(Tr("Predict my movement"), "cl_predict", &g_Config.m_ClPredict);
+		ToggleRow(Tr("Predict the dummy"), "cl_predict_dummy", &g_Config.m_ClPredictDummy);
+		ConfigSlider(Tr("Prediction margin, ms"), "cl_prediction_margin", &g_Config.m_ClPredictionMargin, 1, 300);
+		ToggleRow(Tr("Antiping: other players and shots without delay"), "cl_antiping", &g_Config.m_ClAntiPing);
+		if(g_Config.m_ClAntiPing)
+		{
+			ToggleRow(Tr("Smooth other players"), "cl_antiping_smooth", &g_Config.m_ClAntiPingSmooth);
+			ToggleRow(Tr("Grenades"), "cl_antiping_grenade", &g_Config.m_ClAntiPingGrenade);
+			ToggleRow(Tr("Bullets and lasers"), "cl_antiping_weapons", &g_Config.m_ClAntiPingWeapons);
+		}
+		Description(Tr("Everything else is in Settings > DDNet"));
+		EndCard();
+	}
 	if(BeginCard("##performance", Tr("Performance"), Tr("Low, medium or high in one click, then each effect by hand")))
 	{
 		RenderPerformance();

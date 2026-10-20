@@ -252,6 +252,23 @@ void CXcMenu::RenderDemoDetails(SDemoEntry *pEntry, float Height)
 			Storage()->GetCompletePath(IStorage::TYPE_SAVE, m_DemoFolder.c_str(), aFolder, sizeof(aFolder));
 			Client()->ViewFile(aFolder);
 		}
+		// recording and the ghost live here, next to the demos they make
+		ImGui::Dummy(ImVec2(0.0f, S(14.0f)));
+		Title(Tr("Recording"));
+		ToggleRow(Tr("Record demos automatically"), "cl_auto_demo_record", &g_Config.m_ClAutoDemoRecord);
+		if(g_Config.m_ClAutoDemoRecord)
+			ConfigSlider(Tr("Keep demos (0 = all)"), "cl_auto_demo_max", &g_Config.m_ClAutoDemoMax, 0, 1000);
+		ImGui::Dummy(ImVec2(0.0f, S(10.0f)));
+		Title(Tr("Ghost"));
+		Description(Tr("Your best run plays next to you as a see-through tee"));
+		ToggleRow(Tr("Ghost"), "cl_race_ghost", &g_Config.m_ClRaceGhost);
+		if(g_Config.m_ClRaceGhost)
+		{
+			ToggleRow(Tr("Show the ghost"), "cl_race_show_ghost", &g_Config.m_ClRaceShowGhost);
+			ToggleRow(Tr("Save the ghost"), "cl_race_save_ghost", &g_Config.m_ClRaceSaveGhost);
+			ToggleRow(Tr("Only better runs"), "cl_race_ghost_save_best", &g_Config.m_ClRaceGhostSaveBest);
+			ConfigSlider(Tr("Visibility"), "cl_race_ghost_alpha", &g_Config.m_ClRaceGhostAlpha, 0, 100, "%d%%");
+		}
 		ImGui::EndChild();
 		return;
 	}
