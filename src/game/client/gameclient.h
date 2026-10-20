@@ -89,6 +89,7 @@
 #include "components/voting.h"
 #include "components/xclient/accessory.h"
 #include "components/xclient/cape.h"
+#include "components/xclient/cosmetics.h"
 #include "components/xclient/motion_fx.h"
 #include "components/xclient/event_fx.h"
 #include "components/xclient/floaters.h"
@@ -269,6 +270,8 @@ public:
 	CXcHats m_XcHats;
 	CXcHatsBehind m_XcHatsBehind;
 	CXcCape m_XcCape;
+	CXcCosmetics m_XcCosmetics;
+	CXcCosmeticsBehind m_XcCosmeticsBehind;
 	CXcMotion m_XcMotion;
 	CXcFloaters m_XcFloaters;
 	CXcOverTiles m_XcOverTiles;

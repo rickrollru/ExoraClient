@@ -2181,6 +2181,51 @@ set(EXPECTED_DATA
   themes/winter_night.map
   touch_controls.json
   wordlist.txt
+  xclient/cosmetics/CREDITS.txt
+  xclient/cosmetics/back_angel_wings.json
+  xclient/cosmetics/back_baby_dragon_wings.json
+  xclient/cosmetics/back_backpack_1.json
+  xclient/cosmetics/back_backpack_2.json
+  xclient/cosmetics/back_backpack_3.json
+  xclient/cosmetics/back_backpack_4.json
+  xclient/cosmetics/back_backpack_5.json
+  xclient/cosmetics/back_backpack_6.json
+  xclient/cosmetics/back_backpack_7.json
+  xclient/cosmetics/back_backpack_8.json
+  xclient/cosmetics/back_backpack_9.json
+  xclient/cosmetics/back_dark_wings.json
+  xclient/cosmetics/back_dragon_wings_blue.json
+  xclient/cosmetics/back_easter_wings.json
+  xclient/cosmetics/back_frog_backpack.json
+  xclient/cosmetics/back_ghoul_wings.json
+  xclient/cosmetics/back_katana_back.json
+  xclient/cosmetics/back_rocker_wings.json
+  xclient/cosmetics/back_vulcano_wings.json
+  xclient/cosmetics/back_wings.json
+  xclient/cosmetics/back_wings_2.json
+  xclient/cosmetics/hat_armadillo_hat.json
+  xclient/cosmetics/hat_bear_hat.json
+  xclient/cosmetics/hat_camel_hat.json
+  xclient/cosmetics/hat_chicken_hat.json
+  xclient/cosmetics/hat_frog_hat.json
+  xclient/cosmetics/hat_frog_hat_2.json
+  xclient/cosmetics/hat_hat.json
+  xclient/cosmetics/hat_hat_mask.json
+  xclient/cosmetics/hat_leaf_hat.json
+  xclient/cosmetics/hat_nimb.json
+  xclient/cosmetics/hat_penguin_hat.json
+  xclient/cosmetics/hat_sheep_hat.json
+  xclient/cosmetics/pet_angel_pet.json
+  xclient/cosmetics/pet_bee.json
+  xclient/cosmetics/pet_cake_pet.json
+  xclient/cosmetics/pet_demon_pet.json
+  xclient/cosmetics/pet_namaz_pet.json
+  xclient/cosmetics/pet_pet_1.json
+  xclient/cosmetics/pet_pet_2.json
+  xclient/cosmetics/pet_pet_2_2.json
+  xclient/cosmetics/pet_pet_3.json
+  xclient/cosmetics/pet_pet_4.json
+  xclient/cosmetics/pet_radish_pet.json
   xclient/fonts/Manrope-Bold.ttf
   xclient/fonts/editor/OFL_Manrope.txt
   xclient/fonts/editor/XClientUI.ttf
@@ -3005,6 +3050,8 @@ if(CLIENT)
     components/xclient/hook_fx.h
     components/xclient/hud/xc_hud.cpp
     components/xclient/cape.cpp
+    components/xclient/cosmetics.cpp
+    components/xclient/cosmetics.h
     components/xclient/motion_fx.cpp
     components/xclient/motion_fx.h
     components/xclient/cape.h

@@ -278,6 +278,8 @@ private:
 	void RenderVisualsTee();
 	void RenderVisualsMovement();
 	void RenderVisualsCosmeticsExtra(); // accessory and cape under the hats
+	void RenderCosmetics3d(); // wings, backpacks, hats and pets made of cubes
+	bool CosmeticTile(int Model, int Slot, bool Selected, float Width);
 	void RenderVisualsWeapons();
 	void RenderVisualsCrosshair();
 	void RenderVisualsWorld();
