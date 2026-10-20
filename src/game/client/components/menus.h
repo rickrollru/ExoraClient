@@ -720,6 +720,7 @@ public:
 		SETTINGS_TCLIENT, // TClient
 		SETTINGS_PROFILES, // TClient
 		SETTINGS_CONFIGS, // TClient
+		SETTINGS_EXORA, // XClient: every Exora setting in the classic menu
 		SETTINGS_CREDITS,
 		SETTINGS_LENGTH,
 	};
@@ -865,6 +866,9 @@ private:
 	// found in menus_ingame.cpp
 	void RenderInGameNetwork(CUIRect MainView);
 	void RenderGhost(CUIRect MainView);
+
+	// XClient: found in xclient/ui/menus_classic.cpp
+	void RenderSettingsExora(CUIRect MainView);
 
 	// TClient: found in menus_tclient.cpp
 	void RenderSettingsTClient(CUIRect MainView);

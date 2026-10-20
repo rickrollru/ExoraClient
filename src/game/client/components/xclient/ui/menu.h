@@ -13,6 +13,7 @@
 #include <game/client/component.h>
 
 #include <memory>
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -85,6 +86,8 @@ public:
 
 	bool IsActive() const { return m_Active && g_Config.m_XcNewMenu; }
 	void SetActive(bool Active);
+	// opens the new menu on a page (from the classic menu); Section: of the visuals or the settings
+	void OpenAt(int Page, int Section);
 
 private:
 	CImGuiBackend m_Backend;
@@ -369,6 +372,11 @@ private:
 	void RenderPlaceholder(const char *pIcon, const char *pTitle, const char *pText, bool ClassicButton);
 	void BeginSmoothScroll(const char *pId, ImVec2 Size);
 	void EndSmoothScroll();
+	// a list inside a scrolled page: it glides too, and while the mouse is over it the page does not move
+	void BeginInnerScroll(const char *pId, ImVec2 Size, int ExtraFlags = 0);
+	void EndInnerScroll();
+	std::unordered_map<unsigned, float> m_InnerScrollTargets;
+	bool m_InnerWheel = false; // a list under the mouse took the wheel last frame
 	void OpenClassicMenu();
 
 	// settings (menu_settings.cpp)

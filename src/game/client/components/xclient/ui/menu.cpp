@@ -120,6 +120,17 @@ void CXcMenu::SetActive(bool Active)
 		GameClient()->m_Menus.SetActive(false);
 }
 
+void CXcMenu::OpenAt(int Page, int Section)
+{
+	g_Config.m_XcNewMenu = 1;
+	m_Page = std::clamp(Page, 0, NUM_PAGES - 1);
+	if(m_Page == PAGE_VISUALS)
+		m_VisualsSection = std::clamp(Section, 0, NUM_VISUALS - 1);
+	else if(m_Page == PAGE_SETTINGS)
+		m_SettingsSection = std::clamp(Section, 0, NUM_SETTINGS - 1);
+	SetActive(true);
+}
+
 void CXcMenu::OpenClassicMenu()
 {
 	SetActive(false);
@@ -555,7 +566,9 @@ void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size)
 	ImGui::BeginChild(pId, Size, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse);
 	// the wheel sets a target, the view glides there
 	const float MaxScroll = ImGui::GetScrollMaxY();
-	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0.0f && !m_WheelCaptured)
+	const bool InnerWheel = m_InnerWheel;
+	m_InnerWheel = false;
+	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0.0f && !m_WheelCaptured && !InnerWheel)
 		m_ScrollTarget -= ImGui::GetIO().MouseWheel * S(90.0f);
 	m_ScrollTarget = std::clamp(m_ScrollTarget, 0.0f, MaxScroll);
 	const float Scroll = Animate(ImGui::GetID("##scroll"), m_ScrollTarget, 14.0f);
@@ -563,6 +576,27 @@ void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size)
 }
 
 void CXcMenu::EndSmoothScroll()
+{
+	ImGui::EndChild();
+}
+
+void CXcMenu::BeginInnerScroll(const char *pId, ImVec2 Size, int ExtraFlags)
+{
+	ImGui::BeginChild(pId, Size, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse | ExtraFlags);
+	const ImGuiID Id = ImGui::GetID("##inner_scroll");
+	float &Target = m_InnerScrollTargets.try_emplace(Id, ImGui::GetScrollY()).first->second;
+	const float MaxScroll = ImGui::GetScrollMaxY();
+	if(MaxScroll > 0.0f && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows))
+	{
+		m_InnerWheel = true;
+		if(ImGui::GetIO().MouseWheel != 0.0f)
+			Target -= ImGui::GetIO().MouseWheel * S(60.0f);
+	}
+	Target = std::clamp(Target, 0.0f, MaxScroll);
+	ImGui::SetScrollY(std::clamp(Animate(Id, Target, 16.0f), 0.0f, MaxScroll));
+}
+
+void CXcMenu::EndInnerScroll()
 {
 	ImGui::EndChild();
 }
@@ -894,7 +928,7 @@ void CXcMenu::RenderHome()
 		const char *pNews = Client()->News();
 		if(!pNews[0])
 			Description(Tr("No news loaded"));
-		ImGui::BeginChild("##news_text", ImVec2(0.0f, S(140.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		BeginInnerScroll("##news_text", ImVec2(0.0f, S(140.0f)));
 		char aLine[256];
 		const char *pStr = pNews;
 		while((pStr = str_next_token(pStr, "\n", aLine, sizeof(aLine))))
@@ -917,7 +951,7 @@ void CXcMenu::RenderHome()
 				ImGui::PopFont();
 			}
 		}
-		ImGui::EndChild();
+		EndInnerScroll();
 		EndCard();
 	}
 

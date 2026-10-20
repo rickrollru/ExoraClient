@@ -90,6 +90,12 @@ void CXcHud::ConFriendAim(IConsole::IResult *pResult, void *pUserData)
 
 void CXcHud::OnInit()
 {
+	// the effects list used to start behind the editor panel on the right, move it to the left once
+	if(g_Config.m_XcHudEffectsX == 940 && g_Config.m_XcHudEffectsY == 330)
+	{
+		g_Config.m_XcHudEffectsX = 80;
+		g_Config.m_XcHudEffectsY = 420;
+	}
 	m_Backend.Init(Graphics(), Input(), Storage());
 }
 
@@ -132,7 +138,8 @@ CXcHud::SElementConfig CXcHud::Element(int Index) const
 	case ELEMENT_WEAPON: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
 	case ELEMENT_MUSIC: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
 	case ELEMENT_KEYS: return {"Keystrokes", &g_Config.m_XcHudKeys, &g_Config.m_XcHudKeysX, &g_Config.m_XcHudKeysY, &g_Config.m_XcHudKeysScale, 120, 640};
-	case ELEMENT_EFFECTS: return {"Effects", &g_Config.m_XcHudEffects, &g_Config.m_XcHudEffectsX, &g_Config.m_XcHudEffectsY, &g_Config.m_XcHudEffectsScale, 940, 330};
+	case ELEMENT_LATENCY: return {"Input delay", &g_Config.m_XcHudLatency, &g_Config.m_XcHudLatencyX, &g_Config.m_XcHudLatencyY, &g_Config.m_XcHudLatencyScale, 500, 95};
+	case ELEMENT_EFFECTS: return {"Effects", &g_Config.m_XcHudEffects, &g_Config.m_XcHudEffectsX, &g_Config.m_XcHudEffectsY, &g_Config.m_XcHudEffectsScale, 80, 420};
 	default: return {"Top of the server", &g_Config.m_XcHudMinitop, &g_Config.m_XcHudMinitopX, &g_Config.m_XcHudMinitopY, &g_Config.m_XcHudMinitopScale, 920, 830};
 	}
 }
@@ -586,6 +593,62 @@ void CXcHud::RenderKeys(ImDrawList *pDraw, float Alpha)
 	}
 }
 
+void CXcHud::RenderLatency(ImDrawList *pDraw, float Alpha)
+{
+	const STheme &t = Theme();
+	const float U = Unit(ELEMENT_LATENCY);
+	// a new key or mouse event since the last frame: how old it is now, when this frame is built
+	unsigned KeyTicks, MouseTicks, NowTicks;
+	Input()->XcInputTimes(&KeyTicks, &MouseTicks, &NowTicks);
+	const auto Sample = [&](unsigned Ticks, unsigned &Last, float &Average) {
+		if(Ticks == Last || Ticks == 0)
+			return;
+		Last = Ticks;
+		const float Delay = (float)(NowTicks - Ticks);
+		if(Delay < 0.0f || Delay > 500.0f)
+			return;
+		Average = Average < 0.0f ? Delay : mix(Average, Delay, 0.15f);
+	};
+	Sample(KeyTicks, m_LastKeyTicks, m_KeyDelay);
+	Sample(MouseTicks, m_LastMouseTicks, m_MouseDelay);
+	m_FrameMs = mix(m_FrameMs, Client()->RenderFrameTime() * 1000.0f, 0.05f);
+
+	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
+	ImFont *pSmall = m_Backend.Fonts().m_pSmall;
+	const float ValueSize = 15.0f * U;
+	const float CaptionSize = 10.5f * U;
+	struct SCell
+	{
+		const char *m_pCaption;
+		char m_aValue[16];
+		float m_Ms;
+	};
+	SCell aCells[3] = {{Tr("Keys"), "", m_KeyDelay}, {Tr("Mouse"), "", m_MouseDelay}, {Tr("Frame time"), "", m_FrameMs}};
+	float Width = 14.0f * U;
+	for(SCell &Cell : aCells)
+	{
+		if(Cell.m_Ms < 0.0f)
+			str_copy(Cell.m_aValue, "–");
+		else
+			str_format(Cell.m_aValue, sizeof(Cell.m_aValue), Cell.m_Ms < 10.0f ? "%.1f" : "%.0f", Cell.m_Ms);
+		Width += std::max(pLabel->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, "00.0 ms").x, pSmall->CalcTextSizeA(CaptionSize, FLT_MAX, 0.0f, Cell.m_pCaption).x) + 16.0f * U;
+	}
+	const float Height = 44.0f * U;
+	const ImVec2 Min = PlaceRect(ELEMENT_LATENCY, ImVec2(Width, Height));
+	RenderPlate(pDraw, Min, ImVec2(Min.x + Width, Min.y + Height), U, Alpha);
+	float x = Min.x + 14.0f * U;
+	for(const SCell &Cell : aCells)
+	{
+		// green when it is quick, orange and red when it lags
+		const ImVec4 Color = Cell.m_Ms < 0.0f ? t.m_TextMuted : Cell.m_Ms < 12.0f ? ImVec4(0.24f, 0.84f, 0.64f, 1.0f) : Cell.m_Ms < 25.0f ? ImVec4(1.0f, 0.62f, 0.3f, 1.0f) : ImVec4(1.0f, 0.36f, 0.36f, 1.0f);
+		char aText[32];
+		str_format(aText, sizeof(aText), "%s %s", Cell.m_aValue, Tr("ms"));
+		pDraw->AddText(pLabel, ValueSize, ImVec2(x, Min.y + 6.0f * U), Col(Color, Alpha), aText);
+		pDraw->AddText(pSmall, CaptionSize, ImVec2(x, Min.y + 25.0f * U), Col(t.m_TextMuted, Alpha), Cell.m_pCaption);
+		x += std::max(pLabel->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, "00.0 ms").x, pSmall->CalcTextSizeA(CaptionSize, FLT_MAX, 0.0f, Cell.m_pCaption).x) + 16.0f * U;
+	}
+}
+
 void CXcHud::ShowBanner(const char *pTitle, const char *pSubtitle, int Kind)
 {
 	str_copy(m_aBannerTitle, pTitle);
@@ -864,7 +927,8 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 
 	// the panel on the right is drawn first in the list, so clicks on it do not move elements
 	const ImVec2 PanelSize(300.0f * U, 0.0f);
-	ImGui::SetNextWindowPos(ImVec2(Screen.x - PanelSize.x - 24.0f * U, 90.0f * U), ImGuiCond_Always);
+	// the panel can go to the other side, so no element stays hidden behind it
+	ImGui::SetNextWindowPos(ImVec2(m_EditorPanelLeft ? 24.0f * U : Screen.x - PanelSize.x - 24.0f * U, 90.0f * U), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(PanelSize.x, 0.0f));
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.95f));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 16.0f * U);
@@ -897,6 +961,12 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 	if(ImGui::Checkbox(Tr("Notifications"), &Toasts))
 		g_Config.m_XcHudToasts = Toasts ? 1 : 0;
 	ImGui::Dummy(ImVec2(0.0f, 6.0f * U));
+	if(ImGui::Button(m_EditorPanelLeft ? Tr("Move the panel to the right") : Tr("Move the panel to the left"), ImVec2(-1.0f, 30.0f * U)))
+	{
+		m_EditorPanelLeft = !m_EditorPanelLeft;
+		PlayUiSound(SOUND_CLICK);
+	}
+	ImGui::Dummy(ImVec2(0.0f, 4.0f * U));
 	const float ButtonWidth = (ImGui::GetContentRegionAvail().x - 8.0f * U) * 0.5f;
 	if(ImGui::Button(Tr("Reset"), ImVec2(ButtonWidth, 34.0f * U)))
 	{
@@ -1041,6 +1111,7 @@ void CXcHud::OnRender()
 		g_Config.m_XcHudKeys && !Focus,
 		g_Config.m_XcHudMinitop && !Focus && (m_Editing || m_ScoreboardOpen < 1.0f),
 		g_Config.m_XcHudEffects && !Focus,
+		(bool)g_Config.m_XcHudLatency,
 	};
 	for(int i = 0; i < NUM_ELEMENTS; i++)
 		Approach(m_aShown[i], aWanted[i] ? 1.0f : 0.0f);
@@ -1065,6 +1136,8 @@ void CXcHud::OnRender()
 		// the top list steps aside while the full scoreboard is open
 		if(Shown(ELEMENT_MINITOP) > 0.0f)
 			RenderMiniTop(pDraw, a * Shown(ELEMENT_MINITOP) * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen));
+		if(Shown(ELEMENT_LATENCY) > 0.0f)
+			RenderLatency(pDraw, a * Shown(ELEMENT_LATENCY));
 		if(Shown(ELEMENT_EFFECTS) > 0.0f)
 			RenderEffects(pDraw, a * Shown(ELEMENT_EFFECTS), Dt);
 		if(!m_Editing)

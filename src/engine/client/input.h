@@ -110,6 +110,8 @@ private:
 	void HandleTextEditingEvent(const char *pText, int Start, int Length);
 
 	char m_aDropFile[IO_MAX_PATH_LENGTH];
+	unsigned m_XcKeyTicks = 0; // XClient: time of the newest key event
+	unsigned m_XcMouseTicks = 0; // XClient: time of the newest mouse event
 
 	void ProcessSystemMessage(SDL_SysWMmsg *pMsg);
 
@@ -162,6 +164,7 @@ public:
 	void SetCompositionWindowPosition(float X, float Y, float H) override;
 
 	bool GetDropFile(char *aBuf, int Len) override;
+	void XcInputTimes(unsigned *pKeyTicks, unsigned *pMouseTicks, unsigned *pNowTicks) const override; // XClient
 };
 
 #endif
