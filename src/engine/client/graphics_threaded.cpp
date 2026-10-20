@@ -928,6 +928,26 @@ void CGraphics_Threaded::QuadsTex3DDrawTL(const CQuadItem *pArray, int Num)
 	QuadsDrawTLImpl(m_aVerticesTex3D, pArray, Num);
 }
 
+// XClient: the interface draws thousands of triangles a frame, one call per batch instead of three per triangle
+void CGraphics_Threaded::XcDrawTriangles(const SXcTriVertex *pVertices, const unsigned short *pIndices, int NumIndices)
+{
+	dbg_assert(m_Drawing == EDrawing::TRIANGLES, "called Graphics()->XcDrawTriangles without TrianglesBegin");
+	for(int i = 0; i + 2 < NumIndices; i += 3)
+	{
+		for(int k = 0; k < 3; k++)
+		{
+			const SXcTriVertex &Src = pVertices[pIndices[i + k]];
+			CCommandBuffer::SVertex &Dst = m_aVertices[m_NumVertices + k];
+			Dst.m_Pos.x = Src.m_X;
+			Dst.m_Pos.y = Src.m_Y;
+			Dst.m_Tex.u = Src.m_U;
+			Dst.m_Tex.v = Src.m_V;
+			Dst.m_Color = CCommandBuffer::SColor(Src.m_aColor[0], Src.m_aColor[1], Src.m_aColor[2], Src.m_aColor[3]);
+		}
+		AddVertices(3);
+	}
+}
+
 void CGraphics_Threaded::QuadsDrawFreeform(const CFreeformItem *pArray, int Num)
 {
 	dbg_assert(m_Drawing == EDrawing::QUADS || m_Drawing == EDrawing::TRIANGLES, "called Graphics()->QuadsDrawFreeform without begin");

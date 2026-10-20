@@ -983,6 +983,7 @@ public:
 	void SetColor(ColorRGBA Color) override;
 	void SetColor2(ColorRGBA First, ColorRGBA Second) override;
 	void SetColor4(ColorRGBA TopLeft, ColorRGBA TopRight, ColorRGBA BottomLeft, ColorRGBA BottomRight) override;
+	void XcDrawTriangles(const SXcTriVertex *pVertices, const unsigned short *pIndices, int NumIndices) override; // XClient
 
 	void ChangeColorOfQuadVertices(size_t QuadOffset, unsigned char r, unsigned char g, unsigned char b, unsigned char a) override;
 

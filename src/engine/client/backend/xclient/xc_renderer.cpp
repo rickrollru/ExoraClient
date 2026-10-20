@@ -2,6 +2,8 @@
 
 #include <base/log.h>
 
+#include <engine/shared/config.h>
+
 #include <atomic>
 
 static std::atomic<bool> s_Available{false};
@@ -585,6 +587,11 @@ void CXcRenderer::Shutdown()
 	glDeleteVertexArrays(1, &m_ShapeVao);
 	glDeleteVertexArrays(1, &m_EmptyVao);
 	glDeleteSamplers(1, &m_Sampler);
+	if(m_pFrameFence)
+	{
+		glDeleteSync((GLsync)m_pFrameFence);
+		m_pFrameFence = nullptr;
+	}
 	m_Initialized = false;
 }
 
@@ -596,6 +603,20 @@ void CXcRenderer::OnPreSwap()
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CaptureSavedDraw);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_CaptureSavedRead);
 		m_Capturing = false;
+	}
+	if(m_Initialized)
+	{
+		// low latency: do not let the driver queue up frames. Before this frame is shown, wait until the
+		// GPU finished the previous one, so input reaches the screen at most one frame later
+		if(m_pFrameFence)
+		{
+			if(g_Config.m_XcLowLatency)
+				glClientWaitSync((GLsync)m_pFrameFence, GL_SYNC_FLUSH_COMMANDS_BIT, 50 * 1000 * 1000);
+			glDeleteSync((GLsync)m_pFrameFence);
+			m_pFrameFence = nullptr;
+		}
+		if(g_Config.m_XcLowLatency)
+			m_pFrameFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 	}
 	if(m_Initialized || m_Failed)
 		return;
