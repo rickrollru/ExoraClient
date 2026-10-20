@@ -854,6 +854,7 @@ public:
 	void JoinTutorial();
 
 private:
+	friend class CXcMenu; // XClient: the new server browser uses the same state
 	CCommunityIcons m_CommunityIcons;
 	CMenusIngameTouchControls m_MenusIngameTouchControls;
 	friend CMenusIngameTouchControls;

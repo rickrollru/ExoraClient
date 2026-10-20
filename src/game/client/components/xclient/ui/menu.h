@@ -110,11 +110,12 @@ private:
 	bool m_WantClassic = false;
 
 	// servers page
-	char m_aServerSearch[64] = {};
-	int m_ServerFilter = 0;
 	std::string m_SelectedServer; // address
-	std::vector<const CServerInfo *> m_vServers;
-	bool m_ServersRequested = false;
+	bool m_ServersRequested = false; // the home page asks for the list too
+	bool m_BrowserOpened = false;
+	int m_ServerPanel = 0; // the right panel: server, friends, filters
+	char m_aFriendName[16] = {};
+	char m_aFriendClan[12] = {};
 
 	// configs page
 	struct SConfigEntry
@@ -236,10 +237,14 @@ private:
 		bool m_Still; // looks to the right without bobbing (hat editor)
 		int m_Who; // 0 = you, 1 = the dummy
 		char m_aSkin[24]; // a skin from the gallery in the colors of m_Who, empty = the skin m_Who wears
+		int m_ColorMode = -1; // -1: the colors of m_Who, 0: the skin's own colors, 1: m_Body and m_Feet
+		int m_Body = 0;
+		int m_Feet = 0;
 	};
 	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
 	void DrawTeePreview(const STeeDraw &Data);
 	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still = false, int Who = 0, const char *pSkin = nullptr);
+	void AddTeeSkin(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, const char *pSkin, bool CustomColors, int Body, int Feet); // someone else's tee
 	int m_PlayerTarget = 0; // Settings > Player edits 0 = you, 1 = the dummy
 
 	// player stats from ddnet.org (menu_home.cpp)
@@ -275,9 +280,17 @@ private:
 	void OpenSearch();
 	void RenderSearch();
 	void RenderServers();
-	void UpdateServerList();
+	void UpdateBrowser();
+	void RenderBrowserTabs(float Width);
+	void RenderBrowserTypes();
 	bool RenderServerCard(const CServerInfo *pInfo, float Width, float Height);
-	void RenderServerDetails(const CServerInfo *pInfo, float Height);
+	void RenderServerDetails(const CServerInfo *pInfo);
+	void RenderServerPlayers(const CServerInfo *pInfo);
+	void RenderBrowserFilters();
+	void RenderBrowserFriends();
+	void RenderBrowserStatus();
+	void DrawFlag(struct ImDrawList *pDraw, int Country, ImVec2 Min, float Height, float Alpha = 1.0f);
+	void DrawCommunityIcon(struct ImDrawList *pDraw, const char *pCommunityId, ImVec2 Min, float Height, bool Active = true);
 	// visuals page (menu_visuals.cpp)
 	int m_VisualsSection = VISUALS_GENERAL;
 	int m_aLastFxStyle[32] = {}; // last chosen style of each style card, to turn it back on
