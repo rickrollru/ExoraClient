@@ -537,12 +537,15 @@ namespace XcUi
 		PanelRect(pDraw, Rect.Min, Rect.Max, Height * 0.5f, t.m_Panel);
 
 		// highlight slides and resizes between tabs
+		// *pCurrent -1: the open page is not a tab here, nothing is highlighted
+		const bool HasCurrent = *pCurrent >= 0 && *pCurrent < NumTabs;
 		float SelectedX = Rect.Min.x + Inset;
-		for(int i = 0; i < *pCurrent; i++)
+		for(int i = 0; HasCurrent && i < *pCurrent; i++)
 			SelectedX += aWidths[i];
 		const float HighlightX = Animate(Id, SelectedX, 16.0f);
-		const float HighlightW = Animate(Id + 1, aWidths[*pCurrent], 16.0f);
-		pDraw->AddRectFilled(ImVec2(HighlightX, Rect.Min.y + Inset), ImVec2(HighlightX + HighlightW, Rect.Max.y - Inset), Col(t.m_Accent), (Height - Inset * 2.0f) * 0.5f);
+		const float HighlightW = Animate(Id + 1, HasCurrent ? aWidths[*pCurrent] : 0.0f, 16.0f);
+		if(HighlightW > S(2.0f))
+			pDraw->AddRectFilled(ImVec2(HighlightX, Rect.Min.y + Inset), ImVec2(HighlightX + HighlightW, Rect.Max.y - Inset), Col(t.m_Accent), (Height - Inset * 2.0f) * 0.5f);
 
 		bool Changed = false;
 		float x = Rect.Min.x + Inset;
@@ -557,7 +560,7 @@ namespace XcUi
 				PlayUiSound(SOUND_TAB);
 				Changed = true;
 			}
-			const float Under = std::clamp(1.0f - std::abs(HighlightX - Tab.Min.x) / std::max(aWidths[i], 1.0f), 0.0f, 1.0f);
+			const float Under = HighlightW > S(2.0f) ? std::clamp(1.0f - std::abs(HighlightX - Tab.Min.x) / std::max(aWidths[i], 1.0f), 0.0f, 1.0f) : 0.0f;
 			const float Hover = Animate(Id + 10 + i, Hovered ? 1.0f : 0.0f, 18.0f);
 			const ImVec4 TextColor = Mix(Mix(t.m_TextMuted, t.m_Text, Hover), t.m_OnAccent, Under);
 			const float TextY = Rect.GetCenter().y - pFont->FontSize * 0.5f;

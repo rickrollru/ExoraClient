@@ -3076,6 +3076,7 @@ if(CLIENT)
     components/xclient/ui/menu_servers.cpp
     components/xclient/ui/menu_settings.cpp
     components/xclient/ui/menu_tclient.cpp
+    components/xclient/ui/menu_topbar.cpp
     components/xclient/ui/menu_ddnet.cpp
     components/xclient/ui/menu_settings_list.cpp
     components/xclient/ui/settings_list.h

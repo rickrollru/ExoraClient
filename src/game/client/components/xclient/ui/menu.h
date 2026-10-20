@@ -214,6 +214,8 @@ private:
 	float m_BackgroundTime = 0.0f;
 	void RenderFrame();
 	void RenderTopBar(float Width);
+	void RenderTopbarCard(); // Settings > Interface
+	bool TopbarButtonAction(int Button);
 	void RenderHome();
 	// big home tile: icon, name and a small note, lifts under the mouse; Glow 0..1 marks an active state
 	bool HomeTile(const char *pId, const char *pIcon, const char *pLabel, const char *pNote, float Width, float Height, float Glow = 0.0f);
