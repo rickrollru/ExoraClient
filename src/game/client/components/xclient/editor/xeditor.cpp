@@ -113,7 +113,8 @@ void CXcEditorUi::Init(CEditor *pEditor)
 float CXcEditorUi::Scale() const
 {
 	// like the menu: designed for 1080p, a bit more compact than the menu since the editor is dense
-	const float Size = g_Config.m_XcUiSize / 100.0f;
+	// the size of the menu times the own size of the editor (the chip in the top bar)
+	const float Size = g_Config.m_XcUiSize / 100.0f * g_Config.m_XcEditorScale / 100.0f;
 	return std::clamp(m_pEditor->Graphics()->ScreenHeight() / 1080.0f, 0.75f, 3.0f) * Size * 0.9f;
 }
 
@@ -543,6 +544,55 @@ void CXcEditorUi::RenderTopBar()
 	ImGui::SetCursorScreenPos(ImVec2(Right, Mid - ButtonSize * 0.5f));
 	if(IconButton("##test", FontIcon::PLAY, Tr("Play the map on a local server"), false, !E.m_QuickActionTestMapLocally.Disabled(), ButtonSize))
 		E.m_QuickActionTestMapLocally.Call();
+	// the size of the interface: a chip with the percent, a click opens − / + and the presets
+	{
+		char aSize[16];
+		str_format(aSize, sizeof(aSize), "%d%%", g_Config.m_XcEditorScale);
+		ImFont *pSmall = Fonts().m_pSmall;
+		const float ChipWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, "100%").x + S(30.0f);
+		Right -= S(8.0f) + ChipWidth;
+		const ImVec2 CMin(Right, Mid - ButtonSize * 0.5f);
+		const ImVec2 CMax(Right + ChipWidth, Mid + ButtonSize * 0.5f);
+		ImGui::SetCursorScreenPos(CMin);
+		if(ImGui::InvisibleButton("##ui_size", ImVec2(ChipWidth, ButtonSize)))
+			ImGui::OpenPopup("##ui_size_popup");
+		const bool Hovered = ImGui::IsItemHovered();
+		if(Hovered)
+			ImGui::SetTooltip("%s", Tr("Interface size"));
+		pDraw->AddRectFilled(CMin, CMax, Col(t.m_Track, Hovered ? 0.9f : 0.5f), S(8.0f));
+		const float TextWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aSize).x;
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(CMin.x + S(10.0f), Mid - pSmall->FontSize * 0.5f), Col(t.m_TextSecondary), aSize);
+		pDraw->AddText(pSmall, pSmall->FontSize * 0.75f, ImVec2(std::max(CMax.x - S(16.0f), CMin.x + S(14.0f) + TextWidth), Mid - pSmall->FontSize * 0.38f), Col(t.m_TextMuted), FontIcon::CHEVRON_DOWN);
+		ImGui::SetNextWindowPos(ImVec2(CMax.x, CMax.y + S(6.0f)), ImGuiCond_Appearing, ImVec2(1.0f, 0.0f));
+		if(ImGui::BeginPopup("##ui_size_popup"))
+		{
+			ImGui::PushFont(Fonts().m_pBody);
+			ImGui::TextUnformatted(Tr("Interface size"));
+			const float Step = S(32.0f);
+			if(Button("-", false, Step))
+				g_Config.m_XcEditorScale = std::max(70, g_Config.m_XcEditorScale - 10);
+			ImGui::SameLine(0.0f, S(6.0f));
+			char aValue[16];
+			str_format(aValue, sizeof(aValue), "%d%%", g_Config.m_XcEditorScale);
+			if(Button(aValue, false, S(70.0f)))
+				g_Config.m_XcEditorScale = 110;
+			ImGui::SameLine(0.0f, S(6.0f));
+			if(Button("+", false, Step))
+				g_Config.m_XcEditorScale = std::min(200, g_Config.m_XcEditorScale + 10);
+			ImGui::Separator();
+			static const int s_aSizes[] = {90, 100, 110, 125, 140, 160};
+			for(int Size : s_aSizes)
+			{
+				char aPreset[16];
+				str_format(aPreset, sizeof(aPreset), "%d%%", Size);
+				if(ImGui::MenuItem(aPreset, nullptr, g_Config.m_XcEditorScale == Size))
+					g_Config.m_XcEditorScale = Size;
+			}
+			ImGui::PopFont();
+			ImGui::EndPopup();
+		}
+	}
+
 	// editing together: the button lights up in a session, the colors of the others next to it
 	Right -= S(8.0f) + ButtonSize;
 	ImGui::SetCursorScreenPos(ImVec2(Right, Mid - ButtonSize * 0.5f));
@@ -649,6 +699,19 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.XcOpenPreferences();
 				break;
 			case 2: // view
+				if(ImGui::BeginMenu(Tr("Interface size")))
+				{
+					static const int s_aSizes[] = {80, 90, 100, 110, 125, 140, 160, 180};
+					for(int Size : s_aSizes)
+					{
+						char aSize[16];
+						str_format(aSize, sizeof(aSize), "%d%%", Size);
+						if(ImGui::MenuItem(aSize, nullptr, g_Config.m_XcEditorScale == Size))
+							g_Config.m_XcEditorScale = Size;
+					}
+					ImGui::EndMenu();
+				}
+				ImGui::Separator();
 				QuickActionItem(E.m_QuickActionToggleGrid, Tr("Grid"), "Ctrl+G");
 				if(ImGui::MenuItem(Tr("High detail"), "Ctrl+H", E.Map()->m_ShowDetail))
 					E.Map()->m_ShowDetail = !E.Map()->m_ShowDetail;
@@ -861,6 +924,17 @@ void CXcEditorUi::RenderLeftPanel()
 	ImGui::End();
 }
 
+bool CXcEditorUi::DropIsNoOp() const
+{
+	if(m_DropGroup < 0)
+		return true;
+	if(m_DragKind == DRAG_GROUP)
+		return m_DropGroup == m_DragGroup || m_DropGroup == m_DragGroup + 1;
+	if(m_DragKind == DRAG_LAYER)
+		return m_DropGroup == m_DragGroup && (m_DropIndex == m_DragLayer || m_DropIndex == m_DragLayer + 1);
+	return true;
+}
+
 void CXcEditorUi::RenderLayersTree()
 {
 	CEditor &E = *m_pEditor;
@@ -890,6 +964,38 @@ void CXcEditorUi::RenderLayersTree()
 	} Move;
 	int ToggleSoloGroup = -1;
 
+	// ---- dragging: the places it can land are collected while the rows are drawn, the nearest one wins
+	const bool Dragging = m_DragKind != DRAG_NONE;
+	struct SSlot
+	{
+		int m_Group;
+		int m_Index;
+		float m_Y;
+	};
+	std::vector<SSlot> vSlots;
+	const bool NoOp = DropIsNoOp();
+	// the rows part where the dragged row will land: a gap with a dashed accent frame opens there
+	const auto Gap = [&](int Kind, int g, int i) {
+		if(m_DragKind != Kind || (Kind == DRAG_LAYER && m_DragEntities && g != m_DragGroup))
+			return;
+		const bool Open = !NoOp && m_DropGroup == g && m_DropIndex == i;
+		char aId[32];
+		str_format(aId, sizeof(aId), "##gap%d_%d_%d", Kind, g, i);
+		const float Height = Animate(ImGui::GetID(aId), Open ? RowHeight : 0.0f, 22.0f);
+		const ImVec2 P = ImGui::GetCursorScreenPos();
+		if(Height > 0.5f)
+		{
+			const float Show = Height / RowHeight;
+			const float Indent = Kind == DRAG_LAYER ? S(20.0f) : 0.0f;
+			const ImVec2 GMin(P.x + Indent, P.y + S(1.0f));
+			const ImVec2 GMax(P.x + Width, P.y + Height - S(1.0f));
+			pDraw->AddRectFilled(GMin, GMax, Col(t.m_Accent, 0.10f * Show), S(7.0f));
+			pDraw->AddRect(GMin, GMax, Col(t.m_Accent, 0.6f * Show), S(7.0f), 0, S(1.5f));
+			ImGui::Dummy(ImVec2(Width, Height));
+		}
+		vSlots.push_back({g, i, P.y + Height * 0.5f});
+	};
+
 	for(int g = 0; g < (int)pMap->m_vpGroups.size(); g++)
 	{
 		const std::shared_ptr<CLayerGroup> &pGroup = pMap->m_vpGroups[g];
@@ -901,13 +1007,33 @@ void CXcEditorUi::RenderLayersTree()
 		if(!GroupMatches && !AnyLayerMatches)
 			continue;
 
+		Gap(DRAG_GROUP, g, -1);
 		ImGui::PushID(g);
+		const bool DimGroup = m_DragKind == DRAG_GROUP && m_DragGroup == g;
+		if(DimGroup)
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.3f);
 		// ---- group row
 		const ImVec2 Min = ImGui::GetCursorScreenPos();
 		const ImVec2 Max(Min.x + Width, Min.y + RowHeight);
 		const bool GroupSelected = pMap->m_SelectedGroup == g;
 		ImGui::InvisibleButton("##group", ImVec2(Width - RowHeight, RowHeight + S(2.0f)), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-		const bool Hovered = ImGui::IsItemHovered();
+		const bool Hovered = ImGui::IsItemHovered() && !Dragging;
+		if(!Dragging && !m_aLayerFilter[0] && m_RenameGroup != g && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, S(6.0f)))
+		{
+			// take the group: a card follows the mouse
+			m_DragKind = DRAG_GROUP;
+			m_DragGroup = g;
+			m_DragLayer = -1;
+			m_DragEntities = false;
+			m_DragGrab = ImVec2(ImGui::GetIO().MouseClickedPos[0].x - Min.x, ImGui::GetIO().MouseClickedPos[0].y - Min.y);
+			m_DragGhost = Min;
+			m_DragTime = 0.0f;
+			m_DropGroup = g;
+			m_DropIndex = -1;
+			m_DragLabel = pGroup->m_GameGroup ? Tr("Game") : (pGroup->m_aName[0] ? pGroup->m_aName : Tr("Group"));
+			m_pDragIcon = FontIcon::FOLDER;
+			m_DragIconColor = t.m_TextMuted;
+		}
 		if(ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			if(E.Input()->ShiftIsPressed())
@@ -940,29 +1066,6 @@ void CXcEditorUi::RenderLayersTree()
 				pMap->SelectLayer(0, g);
 			ImGui::OpenPopup("##group_ctx");
 		}
-		// drag a group to move it, drop layers on it to put them at its end
-		if(ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip))
-		{
-			const int Payload[2] = {g, -1};
-			ImGui::SetDragDropPayload("XE_GROUP", Payload, sizeof(Payload));
-			ImGui::EndDragDropSource();
-		}
-		if(ImGui::BeginDragDropTarget())
-		{
-			pDraw->AddLine(ImVec2(Min.x, Min.y), ImVec2(Max.x, Min.y), Col(t.m_Accent), S(2.0f));
-			if(const ImGuiPayload *pPayload = ImGui::AcceptDragDropPayload("XE_GROUP"))
-			{
-				const int *pData = (const int *)pPayload->Data;
-				Move = {true, pData[0], -1, g, -1};
-			}
-			if(const ImGuiPayload *pPayload = ImGui::AcceptDragDropPayload("XE_LAYER"))
-			{
-				const int *pData = (const int *)pPayload->Data;
-				Move = {false, pData[0], pData[1], g, (int)pGroup->m_vpLayers.size()};
-			}
-			ImGui::EndDragDropTarget();
-		}
-
 		if(GroupSelected)
 			pDraw->AddRectFilled(Min, Max, Col(t.m_Track, 0.8f), S(7.0f));
 		else if(Hovered)
@@ -1024,6 +1127,13 @@ void CXcEditorUi::RenderLayersTree()
 				pDraw->AddText(pFont, pFont->FontSize, ImVec2(Max.x - RowHeight * 0.5f - EyeSize.x * 0.5f, Min.y + (RowHeight - EyeSize.y) * 0.5f), Col(EyeHovered ? t.m_Text : t.m_TextMuted), pEye);
 		}
 		ImGui::SetCursorScreenPos(ImVec2(Min.x, Max.y + S(2.0f)));
+		// a collapsed group takes a dragged layer at its end
+		if(m_DragKind == DRAG_LAYER && pGroup->m_Collapse && (!m_DragEntities || g == m_DragGroup))
+		{
+			vSlots.push_back({g, (int)pGroup->m_vpLayers.size(), (Min.y + Max.y) * 0.5f});
+			if(!NoOp && m_DropGroup == g && m_DropIndex == (int)pGroup->m_vpLayers.size())
+				pDraw->AddRect(Min, Max, Col(t.m_Accent, 0.8f), S(7.0f), 0, S(1.5f));
+		}
 
 		if(ImGui::BeginPopup("##group_ctx"))
 		{
@@ -1066,6 +1176,8 @@ void CXcEditorUi::RenderLayersTree()
 					pMap->m_SelectedGroup = std::max(0, g - 1);
 					ImGui::PopFont();
 					ImGui::EndPopup();
+					if(DimGroup)
+						ImGui::PopStyleVar();
 					ImGui::PopID();
 					break;
 				}
@@ -1082,12 +1194,33 @@ void CXcEditorUi::RenderLayersTree()
 				const std::shared_ptr<CLayer> &pLayer = pGroup->m_vpLayers[i];
 				if(m_aLayerFilter[0] && !GroupMatches && !str_utf8_find_nocase(pLayer->m_aName, m_aLayerFilter))
 					continue;
+				Gap(DRAG_LAYER, g, i);
 				const bool Selected = g == pMap->m_SelectedGroup && std::find(pMap->m_vSelectedLayers.begin(), pMap->m_vSelectedLayers.end(), i) != pMap->m_vSelectedLayers.end();
 				ImGui::PushID(i);
+				const bool DimLayer = m_DragKind == DRAG_LAYER && m_DragGroup == g && m_DragLayer == i;
+				if(DimLayer)
+					ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.3f);
 				const ImVec2 LMin = ImGui::GetCursorScreenPos();
 				const ImVec2 LMax(LMin.x + Width, LMin.y + RowHeight);
 				ImGui::InvisibleButton("##layer", ImVec2(Width - RowHeight, RowHeight + S(2.0f)), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-				const bool LHovered = ImGui::IsItemHovered();
+				const bool LHovered = ImGui::IsItemHovered() && !Dragging;
+				bool StartedDrag = false;
+				if(!Dragging && !m_aLayerFilter[0] && !(m_RenameGroup == g && m_RenameLayer == i) && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, S(6.0f)))
+				{
+					// take the layer: a card follows the mouse
+					m_DragKind = DRAG_LAYER;
+					m_DragGroup = g;
+					m_DragLayer = i;
+					m_DragEntities = pLayer->IsEntitiesLayer();
+					m_DragGrab = ImVec2(ImGui::GetIO().MouseClickedPos[0].x - LMin.x, ImGui::GetIO().MouseClickedPos[0].y - LMin.y);
+					m_DragGhost = LMin;
+					m_DragTime = 0.0f;
+					m_DropGroup = g;
+					m_DropIndex = i;
+					m_pDragIcon = LayerIcon(pMap, pLayer.get());
+					m_DragIconColor = LayerColor(pMap, pLayer.get());
+					StartedDrag = true;
+				}
 				if(ImGui::IsItemClicked(ImGuiMouseButton_Left))
 				{
 					if((E.Input()->ShiftIsPressed() || E.Input()->ModifierIsPressed()) && pMap->m_SelectedGroup == g)
@@ -1118,23 +1251,6 @@ void CXcEditorUi::RenderLayersTree()
 						pMap->SelectLayer(i, g);
 					ImGui::OpenPopup("##layer_ctx");
 				}
-				if(ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip))
-				{
-					const int Payload[2] = {g, i};
-					ImGui::SetDragDropPayload("XE_LAYER", Payload, sizeof(Payload));
-					ImGui::EndDragDropSource();
-				}
-				if(ImGui::BeginDragDropTarget())
-				{
-					pDraw->AddLine(ImVec2(LMin.x + S(20.0f), LMin.y), ImVec2(LMax.x, LMin.y), Col(t.m_Accent), S(2.0f));
-					if(const ImGuiPayload *pPayload = ImGui::AcceptDragDropPayload("XE_LAYER"))
-					{
-						const int *pData = (const int *)pPayload->Data;
-						Move = {false, pData[0], pData[1], g, i};
-					}
-					ImGui::EndDragDropTarget();
-				}
-
 				if(Selected)
 					pDraw->AddRectFilled(LMin, LMax, Col(t.m_Accent, 0.22f), S(7.0f));
 				else if(LHovered)
@@ -1191,6 +1307,8 @@ void CXcEditorUi::RenderLayersTree()
 							pName = pMap->m_vpSounds[Sound]->m_aName;
 					}
 					pDraw->AddText(pFont, pFont->FontSize, ImVec2(LNameX, LMin.y + (RowHeight - pFont->FontSize) * 0.5f), Col(Selected ? t.m_Text : t.m_TextSecondary, pLayer->m_Visible ? 1.0f : 0.5f), pName);
+					if(StartedDrag)
+						m_DragLabel = pName;
 					if(pLayer->m_Flags & LAYERFLAG_DETAIL)
 					{
 						const float NameWidth = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, pName).x;
@@ -1245,51 +1363,126 @@ void CXcEditorUi::RenderLayersTree()
 					ImGui::PopFont();
 					ImGui::EndPopup();
 				}
+				if(DimLayer)
+					ImGui::PopStyleVar();
 				ImGui::PopID();
 			}
+			Gap(DRAG_LAYER, g, (int)pGroup->m_vpLayers.size());
 		}
 		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+		if(DimGroup)
+			ImGui::PopStyleVar();
 		ImGui::PopID();
+	}
+	Gap(DRAG_GROUP, (int)pMap->m_vpGroups.size(), -1);
+
+	if(m_DragKind != DRAG_NONE)
+	{
+		const ImGuiIO &Io = ImGui::GetIO();
+		// the nearest place to land
+		float Best = FLT_MAX;
+		for(const SSlot &Slot : vSlots)
+		{
+			const float Distance = std::abs(Slot.m_Y - Io.MousePos.y);
+			if(Distance < Best)
+			{
+				Best = Distance;
+				m_DropGroup = Slot.m_Group;
+				m_DropIndex = Slot.m_Index;
+			}
+		}
+		// the list scrolls when the card is near its top or bottom
+		const float Top = ImGui::GetWindowPos().y;
+		const float Bottom = Top + ImGui::GetWindowHeight();
+		const float Edge = S(40.0f);
+		if(Io.MousePos.y < Top + Edge)
+			ImGui::SetScrollY(ImGui::GetScrollY() - (Top + Edge - Io.MousePos.y) * 10.0f * Io.DeltaTime);
+		else if(Io.MousePos.y > Bottom - Edge)
+			ImGui::SetScrollY(ImGui::GetScrollY() + (Io.MousePos.y - (Bottom - Edge)) * 10.0f * Io.DeltaTime);
+
+		// the card follows the mouse with a little delay and lifts up with a shadow
+		const ImVec2 Target(Io.MousePos.x - m_DragGrab.x, Io.MousePos.y - m_DragGrab.y);
+		const float Follow = 1.0f - std::exp(-28.0f * Io.DeltaTime);
+		m_DragGhost.x += (Target.x - m_DragGhost.x) * Follow;
+		m_DragGhost.y += (Target.y - m_DragGhost.y) * Follow;
+		m_DragTime += Io.DeltaTime;
+		const float Lift = std::min(m_DragTime / 0.15f, 1.0f);
+		ImDrawList *pFg = ImGui::GetForegroundDrawList();
+		const float Indent = m_DragKind == DRAG_LAYER ? S(20.0f) : 0.0f;
+		const ImVec2 CMin(m_DragGhost.x + Indent, m_DragGhost.y - S(3.0f) * Lift);
+		const ImVec2 CMax(m_DragGhost.x + Width, CMin.y + RowHeight);
+		for(int k = 1; k <= 4; k++)
+		{
+			const float Grow = S(2.5f) * k * Lift;
+			pFg->AddRectFilled(ImVec2(CMin.x - Grow, CMin.y - Grow + S(4.0f) * Lift), ImVec2(CMax.x + Grow, CMax.y + Grow + S(4.0f) * Lift), Col(ImVec4(0.0f, 0.0f, 0.0f, 0.07f * Lift)), S(8.0f) + Grow);
+		}
+		pFg->AddRectFilled(CMin, CMax, Col(ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f)), S(8.0f));
+		pFg->AddRect(CMin, CMax, Col(t.m_Accent, 0.9f), S(8.0f), 0, S(1.5f));
+		if(m_pDragIcon)
+		{
+			const float IconSize = pFont->FontSize * 0.9f;
+			const ImVec2 IconDim = pFont->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, m_pDragIcon);
+			pFg->AddText(pFont, IconSize, ImVec2(CMin.x + S(14.0f) - IconDim.x * 0.5f, CMin.y + (RowHeight - IconDim.y) * 0.5f), Col(m_DragIconColor), m_pDragIcon);
+		}
+		pFg->AddText(pLabel, pFont->FontSize, ImVec2(CMin.x + S(28.0f), CMin.y + (RowHeight - pFont->FontSize) * 0.5f), Col(t.m_Text), m_DragLabel.c_str());
+
+		if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			// let go: it lands where the gap is
+			if(!DropIsNoOp())
+			{
+				if(m_DragKind == DRAG_GROUP)
+					Move = {true, m_DragGroup, -1, m_DropGroup, -1};
+				else
+					Move = {false, m_DragGroup, m_DragLayer, m_DropGroup, m_DropIndex};
+			}
+			m_DragKind = DRAG_NONE;
+		}
+		else if(ImGui::IsKeyPressed(ImGuiKey_Escape))
+			m_DragKind = DRAG_NONE;
+		E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE);
 	}
 	ImGui::PopStyleVar();
 	ImGui::EndChild();
 
-	// ---- apply a drop
-	if(Move.m_FromGroup >= 0 && Move.m_ToGroup >= 0 && Move.m_FromGroup < (int)pMap->m_vpGroups.size() && Move.m_ToGroup < (int)pMap->m_vpGroups.size())
+	// ---- apply a drop (one step of Ctrl+Z)
+	const int NumGroups = pMap->m_vpGroups.size();
+	if(Move.m_Group && Move.m_FromGroup >= 0 && Move.m_FromGroup < NumGroups && Move.m_ToGroup >= 0 && Move.m_ToGroup <= NumGroups)
 	{
-		if(Move.m_Group)
+		// the group lands before group m_ToGroup
+		const int To = Move.m_ToGroup > Move.m_FromGroup ? Move.m_ToGroup - 1 : Move.m_ToGroup;
+		if(To != Move.m_FromGroup && To >= 0 && To < NumGroups)
 		{
-			if(Move.m_FromGroup != Move.m_ToGroup)
-			{
-				pMap->m_SelectedGroup = pMap->MoveGroup(Move.m_FromGroup, Move.m_ToGroup);
-				pMap->OnModify();
-			}
+			pMap->m_SelectedGroup = pMap->MoveGroup(Move.m_FromGroup, To);
+			pMap->m_EditorHistory.RecordAction(std::make_shared<CEditorActionEditGroupProp>(pMap, To, EGroupProp::ORDER, Move.m_FromGroup, To));
 		}
-		else
+	}
+	else if(!Move.m_Group && Move.m_FromGroup >= 0 && Move.m_FromGroup < NumGroups && Move.m_ToGroup >= 0 && Move.m_ToGroup < NumGroups)
+	{
+		std::shared_ptr<CLayerGroup> pFrom = pMap->m_vpGroups[Move.m_FromGroup];
+		std::shared_ptr<CLayerGroup> pTo = pMap->m_vpGroups[Move.m_ToGroup];
+		if(Move.m_FromLayer >= 0 && Move.m_FromLayer < (int)pFrom->m_vpLayers.size())
 		{
-			std::shared_ptr<CLayerGroup> pFrom = pMap->m_vpGroups[Move.m_FromGroup];
-			std::shared_ptr<CLayerGroup> pTo = pMap->m_vpGroups[Move.m_ToGroup];
-			if(Move.m_FromLayer >= 0 && Move.m_FromLayer < (int)pFrom->m_vpLayers.size())
+			std::shared_ptr<CLayer> pLayer = pFrom->m_vpLayers[Move.m_FromLayer];
+			// the game layers stay in the game group
+			if(Move.m_FromGroup == Move.m_ToGroup)
 			{
-				std::shared_ptr<CLayer> pLayer = pFrom->m_vpLayers[Move.m_FromLayer];
-				// the game layers stay in the game group
-				if(Move.m_FromGroup == Move.m_ToGroup || !pLayer->IsEntitiesLayer())
+				// the layer lands before layer m_ToLayer
+				const int To = std::clamp(Move.m_ToLayer > Move.m_FromLayer ? Move.m_ToLayer - 1 : Move.m_ToLayer, 0, (int)pFrom->m_vpLayers.size() - 1);
+				if(To != Move.m_FromLayer)
 				{
-					if(Move.m_FromGroup == Move.m_ToGroup)
-					{
-						const int To = std::clamp(Move.m_ToLayer > Move.m_FromLayer ? Move.m_ToLayer - 1 : Move.m_ToLayer, 0, (int)pFrom->m_vpLayers.size() - 1);
-						if(To != Move.m_FromLayer)
-							pMap->SelectLayer(pFrom->MoveLayer(Move.m_FromLayer, To), Move.m_FromGroup);
-					}
-					else
-					{
-						pFrom->m_vpLayers.erase(pFrom->m_vpLayers.begin() + Move.m_FromLayer);
-						const int To = std::clamp(Move.m_ToLayer, 0, (int)pTo->m_vpLayers.size());
-						pTo->m_vpLayers.insert(pTo->m_vpLayers.begin() + To, pLayer);
-						pMap->SelectLayer(To, Move.m_ToGroup);
-					}
-					pMap->OnModify();
+					pMap->SelectLayer(pFrom->MoveLayer(Move.m_FromLayer, To), Move.m_FromGroup);
+					pMap->m_EditorHistory.RecordAction(std::make_shared<CEditorActionEditLayersGroupAndOrder>(pMap, Move.m_FromGroup, std::vector<int>{Move.m_FromLayer}, Move.m_ToGroup, std::vector<int>{To}));
 				}
+			}
+			else if(!pLayer->IsEntitiesLayer())
+			{
+				pFrom->m_vpLayers.erase(pFrom->m_vpLayers.begin() + Move.m_FromLayer);
+				const int To = std::clamp(Move.m_ToLayer, 0, (int)pTo->m_vpLayers.size());
+				pTo->m_vpLayers.insert(pTo->m_vpLayers.begin() + To, pLayer);
+				pMap->SelectLayer(To, Move.m_ToGroup);
+				pMap->m_EditorHistory.RecordAction(std::make_shared<CEditorActionEditLayersGroupAndOrder>(pMap, Move.m_FromGroup, std::vector<int>{Move.m_FromLayer}, Move.m_ToGroup, std::vector<int>{To}));
+				pMap->OnModify();
 			}
 		}
 	}

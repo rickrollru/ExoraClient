@@ -4,6 +4,7 @@
 #include <base/str.h>
 
 #include <engine/external/imgui/imgui.h>
+#include <engine/external/imgui/misc/freetype/imgui_freetype.h>
 #include <engine/image.h>
 #include <engine/keys.h>
 #include <engine/storage.h>
@@ -169,9 +170,10 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 			return pAtlas->AddFontDefault();
 		ImFontConfig Config;
 		Config.FontDataOwnedByAtlas = false;
-		// more samples per pixel: crisper small text
-		Config.OversampleH = 3;
-		Config.OversampleV = 2;
+		// FreeType with light hinting: the letters sit on the pixel grid, sharp like the rest of the system
+		Config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LightHinting;
+		Config.OversampleH = 1;
+		Config.OversampleV = 1;
 		ImFont *pFont = pAtlas->AddFontFromMemoryTTF((void *)pData, Size, Pixels * Scale, &Config, pTextRanges);
 		if(pIcons)
 		{
@@ -180,6 +182,7 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 			IconConfig.FontDataOwnedByAtlas = false;
 			IconConfig.MergeMode = true;
 			IconConfig.PixelSnapH = true;
+			IconConfig.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LightHinting;
 			IconConfig.GlyphMinAdvanceX = Pixels * Scale;
 			IconConfig.GlyphOffset = ImVec2(0.0f, 0.5f * Scale);
 			pAtlas->AddFontFromMemoryTTF((void *)pIcons, IconSize, Pixels * Scale * 0.9f, &IconConfig, s_aIconRanges);
@@ -206,7 +209,7 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 	Image.m_Height = Height;
 	Image.m_Format = CImageInfo::FORMAT_RGBA;
 	Image.m_pData = pPixels;
-	m_FontTexture = m_pGraphics->LoadTextureRaw(Image, 0, "xclient_ui_font");
+	m_FontTexture = m_pGraphics->LoadTextureRaw(Image, IGraphics::TEXLOAD_NO_MIPMAPS, "xclient_ui_font");
 	Image.m_pData = nullptr; // owned by the atlas
 	pAtlas->SetTexID((ImTextureID)(uintptr_t)TextureId(m_FontTexture));
 }
