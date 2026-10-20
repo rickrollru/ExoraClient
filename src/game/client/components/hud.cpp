@@ -863,11 +863,16 @@ void CHud::RenderCursor()
 			Alpha /= 2.0f;
 	}
 
-	if(GameClient()->m_WorldFx.RenderCrosshair(TargetPos, Alpha, Scale)) // XClient: own crosshair
-		return;
-	Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
-	Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteWeaponCursors[CurWeapon]);
-	Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_aCursorOffset[CurWeapon], TargetPos.x, TargetPos.y, Scale, Scale);
+	// XClient: own crosshair and its motion effects (blur, trail, kick)
+	const auto DrawCursor = [&](vec2 Pos, float CursorAlpha, float CursorScale) {
+		if(GameClient()->m_WorldFx.RenderCrosshair(Pos, CursorAlpha, CursorScale))
+			return;
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, CursorAlpha);
+		Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteWeaponCursors[CurWeapon]);
+		Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_aCursorOffset[CurWeapon], Pos.x, Pos.y, CursorScale, CursorScale);
+	};
+	const bool LocalCursor = Client()->State() != IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_pLocalCharacter;
+	GameClient()->m_XcMotion.RenderCrosshair(Center, TargetPos, Alpha, Scale, LocalCursor, DrawCursor);
 }
 
 void CHud::PrepareAmmoHealthAndArmorQuads()
