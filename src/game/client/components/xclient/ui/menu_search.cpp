@@ -49,7 +49,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_items", "Pickups", "Hearts, armor, weapons and ninja softly glow", "предметы сердца броня оружие пикапы pickups items hearts armor"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_projectiles", "Bullets and lasers", "Light around shots, comet tails and glowing lasers", "пули гранаты лазер снаряды bullets grenade laser projectiles"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_floaters", "Floating lights", "Glowing cubes and orbs drift around, your tee pushes them away", "кубики огоньки частицы 3d летающие cubes orbs particles floating lights"},
-		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_weather", "Weather", "Falling particles over the map and the menu", "погода снег листья сакура пепел weather snow"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_weather", "Weather", "Falling or rising particles over the map and the menu, also your own pictures and gifs", "погода снег листья сакура пепел weather snow сердечки звёзды кристаллы светлячки деньги хэллоуин угольки дождь пузыри конфетти своя картинка гифка hearts stars rain bubbles confetti fireflies gif picture"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_freeze", "Freeze", "An icy aura around frozen tees and shards when the ice breaks", "фриз заморозка лёд осколки freeze ice"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_hammer", "Hammer hit", "A flash where the hammer lands", "молоток удар хаммер hammer hit"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_explosion", "Grenade explosion", "A shockwave, neon rings or hot sparks where a grenade explodes", "взрыв граната волна неон explosion grenade shockwave"},

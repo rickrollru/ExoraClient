@@ -6,9 +6,14 @@
 #include "theme.h"
 #include "widgets.h"
 
+#include <base/fs.h>
+#include <base/mem.h>
+#include <base/str.h>
+
 #include <engine/external/imgui/imgui.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 
 #include <game/client/components/xclient/xc_particles.h>
 #include <game/client/gameclient.h>
@@ -98,6 +103,154 @@ void CXcMenu::ParticleTuning(int Group)
 	}
 	ImGui::PopID();
 	ImGui::PopID();
+}
+
+// Weather: many kinds plus own pictures and gifs, all with color, wind and spin
+void CXcMenu::RenderWeatherCard()
+{
+	CXcBackgrounds &Images = GameClient()->m_Weather.Images();
+	if(!m_WeatherPendingAdd.empty())
+	{
+		HandleWeatherFile(m_WeatherPendingAdd.c_str());
+		m_WeatherPendingAdd.clear();
+	}
+	if(!m_WeatherPendingRemove.empty())
+	{
+		if(Images.Remove(m_WeatherPendingRemove.c_str()))
+		{
+			if(str_comp(g_Config.m_XcWeatherFile, m_WeatherPendingRemove.c_str()) == 0)
+				SetConfigString("xc_weather_file", "");
+			Toast(Tr("Deleted"));
+		}
+		else
+			Toast(Tr("Could not delete the file"), TOAST_ERROR);
+		m_WeatherPendingRemove.clear();
+	}
+
+	// the header switch remembers the last kind
+	static int s_LastKind = 1;
+	if(g_Config.m_XcWeather > 0)
+		s_LastKind = g_Config.m_XcWeather;
+	int Enabled = g_Config.m_XcWeather > 0;
+	const int WasEnabled = Enabled;
+	if(!BeginCard("##fx_weather", Tr("Weather"), Tr("Falling or rising particles over the map and the menu, also your own pictures and gifs"), &Enabled))
+		return;
+	if(Enabled != WasEnabled)
+		SetConfigInt("xc_weather", Enabled ? s_LastKind : 0);
+	const char *apKinds[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash"), Tr("Hearts"), Tr("Stars"), Tr("Crystals"), Tr("Fireflies"), Tr("Money"), Tr("Halloween"), Tr("Embers"), Tr("Rain"), Tr("Bubbles"), Tr("Confetti"), Tr("My picture")};
+	int Kind = std::clamp((Enabled ? g_Config.m_XcWeather : s_LastKind) - 1, 0, (int)std::size(apKinds) - 1);
+	if(ChoiceChips("##weather_kind", &Kind, apKinds, (int)std::size(apKinds)))
+	{
+		s_LastKind = Kind + 1;
+		SetConfigInt("xc_weather", s_LastKind);
+	}
+
+	if(Kind + 1 == CWeather::WEATHER_CUSTOM)
+	{
+		if(!m_WeatherScanned)
+		{
+			Images.Refresh();
+			m_WeatherScanned = true;
+		}
+		Images.UpdateThumbnails();
+		ParamLabel(Tr("My weather pictures"));
+		std::vector<CXcBackgrounds::SEntry> &vEntries = Images.Entries();
+		CTileGrid Grid(AvailWidth(), S(90.0f), S(10.0f));
+		for(const CXcBackgrounds::SEntry &Entry : vEntries)
+		{
+			Grid.Next();
+			const std::string Key = "w:" + Entry.m_Name;
+			const bool Selected = str_comp(g_Config.m_XcWeatherFile, Entry.m_Name.c_str()) == 0;
+			char aName[128];
+			fs_split_file_extension(Entry.m_Name.c_str(), aName, sizeof(aName));
+			bool Delete;
+			const char *pBadge = Entry.m_Broken ? Tr("broken") : (Entry.m_Animated ? "GIF" : nullptr);
+			if(BackgroundTile(Key.c_str(), Entry.m_Thumbnail, Entry.m_Aspect, aName, pBadge, Selected, !Entry.m_Builtin, &Delete, Grid.Width(), 0.0f, 1.0f, 1.0f, true))
+				SetConfigString("xc_weather_file", Entry.m_Name.c_str());
+			if(Delete)
+			{
+				if(m_BgDeleteArmed == Key && ImGui::GetTime() < m_BgDeleteArmedUntil)
+				{
+					m_BgDeleteArmed.clear();
+					m_WeatherPendingRemove = Entry.m_Name;
+				}
+				else
+				{
+					m_BgDeleteArmed = Key;
+					m_BgDeleteArmedUntil = (float)ImGui::GetTime() + 3.0f;
+				}
+			}
+		}
+		if(vEntries.empty())
+			Description(Tr("No pictures yet: drag a png or gif onto the game window, paste its path or open the folder"));
+		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+		const float Gap = S(8.0f);
+		const float ButtonWidth = S(110.0f);
+		InputText("##weather_path", m_aWeatherPath, sizeof(m_aWeatherPath), Tr("Path to a picture or gif"), std::max(AvailWidth() - ButtonWidth * 2.0f - Gap * 2.0f, S(80.0f)));
+		const bool Enter = ImGui::IsItemDeactivated() && (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter));
+		ImGui::SameLine(0.0f, Gap);
+		if((Button(Tr("Add"), true, ButtonWidth) || Enter) && m_aWeatherPath[0])
+			m_WeatherPendingAdd = m_aWeatherPath;
+		ImGui::SameLine(0.0f, Gap);
+		if(Button(Tr("Open folder"), false, ButtonWidth))
+		{
+			char aFolder[IO_MAX_PATH_LENGTH];
+			Storage()->CreateFolder(CWeather::FOLDER, IStorage::TYPE_SAVE);
+			Storage()->GetCompletePath(IStorage::TYPE_SAVE, Images.Folder(), aFolder, sizeof(aFolder));
+			Client()->ViewFile(aFolder);
+			m_WeatherScanned = false;
+		}
+		ConfigSlider(Tr("Gif speed"), "xc_weather_gif_speed", &g_Config.m_XcWeatherGifSpeed, 10, 400, "%d%%");
+	}
+
+	ConfigSlider(Tr("Amount"), "xc_weather_density", &g_Config.m_XcWeatherDensity, 1, 100, "%d%%");
+	ConfigSlider(Tr("Size"), "xc_weather_size", &g_Config.m_XcWeatherSize, 25, 300, "%d%%");
+	ConfigSlider(Tr("Speed"), "xc_weather_speed", &g_Config.m_XcWeatherSpeed, 10, 300, "%d%%");
+	ConfigSlider(Tr("Wind"), "xc_weather_wind", &g_Config.m_XcWeatherWind, 0, 400, "%d%%");
+	ConfigSlider(Tr("Spin"), "xc_weather_spin", &g_Config.m_XcWeatherSpin, 0, 400, "%d%%");
+	ConfigSlider(Tr("Opacity"), "xc_weather_alpha", &g_Config.m_XcWeatherAlpha, 5, 100, "%d%%");
+	ToggleRow(Tr("Own color"), "xc_weather_tint", &g_Config.m_XcWeatherTint);
+	if(g_Config.m_XcWeatherTint)
+		EffectColorPicker("##weather_color", &g_Config.m_XcWeatherColorMode, &g_Config.m_XcWeatherColor);
+	if(Kind + 1 == CWeather::WEATHER_STARS || Kind + 1 == CWeather::WEATHER_CRYSTALS || Kind + 1 == CWeather::WEATHER_FIREFLIES || Kind + 1 == CWeather::WEATHER_EMBERS)
+		ToggleRow(Tr("Glow"), "xc_weather_glow", &g_Config.m_XcWeatherGlow);
+	ToggleRow(Tr("In game"), "xc_weather_ingame", &g_Config.m_XcWeatherInGame);
+	ToggleRow(Tr("In the main menu"), "xc_weather_menu", &g_Config.m_XcWeatherInMenu);
+	EndCard();
+}
+
+void CXcMenu::HandleWeatherFile(const char *pPath)
+{
+	char aPath[IO_MAX_PATH_LENGTH];
+	str_copy(aPath, str_skip_whitespaces_const(pPath));
+	str_utf8_trim_right(aPath);
+	int Length = str_length(aPath);
+	// "Copy as path" in the Windows explorer puts quotes around the path
+	if(Length >= 2 && aPath[0] == '"' && aPath[Length - 1] == '"')
+	{
+		aPath[Length - 1] = '\0';
+		mem_move(aPath, aPath + 1, Length - 1);
+	}
+	if(aPath[0] == '\0')
+		return;
+	Storage()->CreateFolder(CWeather::FOLDER, IStorage::TYPE_SAVE);
+	char aAdded[128];
+	switch(GameClient()->m_Weather.Images().AddFile(aPath, aAdded, sizeof(aAdded)))
+	{
+	case CXcBackgrounds::ADD_IMAGE:
+		SetConfigString("xc_weather_file", aAdded);
+		SetConfigInt("xc_weather", CWeather::WEATHER_CUSTOM);
+		Toast(Tr("Picture added, it falls now"));
+		m_aWeatherPath[0] = '\0';
+		m_WeatherScanned = false;
+		break;
+	case CXcBackgrounds::ADD_UNSUPPORTED:
+		Toast(Tr("Only png, jpg, gif and bmp files"), TOAST_ERROR);
+		break;
+	default:
+		Toast(Tr("Could not read this file"), TOAST_ERROR);
+		break;
+	}
 }
 
 void CXcMenu::RenderVisualsGeneral()
@@ -416,17 +569,7 @@ void CXcMenu::RenderVisualsWorld()
 		ParticleTuning(FxTune::ITEMS);
 		EndCard();
 	}
-	const char *apWeather[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash")};
-	if(StyleCard("##fx_weather", Tr("Weather"), Tr("Falling particles over the map and the menu"), "xc_weather", &g_Config.m_XcWeather, apWeather, 4))
-	{
-		ConfigSlider(Tr("Amount"), "xc_weather_density", &g_Config.m_XcWeatherDensity, 1, 100, "%d%%");
-		ConfigSlider(Tr("Size"), "xc_weather_size", &g_Config.m_XcWeatherSize, 25, 300, "%d%%");
-		ConfigSlider(Tr("Speed"), "xc_weather_speed", &g_Config.m_XcWeatherSpeed, 10, 300, "%d%%");
-		ConfigSlider(Tr("Opacity"), "xc_weather_alpha", &g_Config.m_XcWeatherAlpha, 5, 100, "%d%%");
-		ToggleRow(Tr("In game"), "xc_weather_ingame", &g_Config.m_XcWeatherInGame);
-		ToggleRow(Tr("In the main menu"), "xc_weather_menu", &g_Config.m_XcWeatherInMenu);
-		EndCard();
-	}
+	RenderWeatherCard();
 	const char *apFloaters[] = {Tr("Cubes"), Tr("Orbs"), Tr("Both")};
 	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes and orbs drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
 	{
