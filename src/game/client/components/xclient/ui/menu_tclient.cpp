@@ -4,6 +4,7 @@
 #include "lang.h"
 #include "menu.h"
 #include "theme.h"
+#include "settings_list.h"
 #include "widgets.h"
 
 #include <base/color.h>
@@ -17,33 +18,13 @@
 #include <vector>
 
 using namespace XcUi;
+using namespace XcSettingsList;
 
 namespace
 {
-	enum ESettingType
-	{
-		TYPE_INT = 0,
-		TYPE_COL,
-		TYPE_STR,
-	};
-
-	struct STcSetting
-	{
-		const char *m_pName;
-		int m_Type;
-		void *m_pValue;
-		int m_Min;
-		int m_Max;
-		unsigned m_Default;
-		const char *m_pDefaultStr;
-		int m_Flags;
-		int m_Length;
-		const char *m_pDesc;
-	};
-
 	// clang-format off
-const STcSetting gs_aTcSettings[] = {
-#define MACRO_CONFIG_INT(Name, ScriptName, Def, Min, Max, Flags, Desc) {#ScriptName, TYPE_INT, &g_Config.m_##Name, Min, Max, (unsigned)(Def), nullptr, Flags, 0, Desc},
+const SSetting gs_aTcSettings[] = {
+#define MACRO_CONFIG_INT(Name, ScriptName, Def, Min, Max, Flags, Desc) {#ScriptName, TYPE_INT, &g_Config.m_##Name, (int)(Min), (int)(Max), (unsigned)(Def), nullptr, Flags, 0, Desc},
 #define MACRO_CONFIG_COL(Name, ScriptName, Def, Flags, Desc) {#ScriptName, TYPE_COL, &g_Config.m_##Name, 0, 0, (unsigned)(Def), nullptr, Flags, 0, Desc},
 #define MACRO_CONFIG_STR(Name, ScriptName, Len, Def, Flags, Desc) {#ScriptName, TYPE_STR, g_Config.m_##Name, 0, 0, 0, Def, Flags, Len, Desc},
 #include <engine/shared/config_variables_tclient.h>
@@ -75,13 +56,7 @@ const STcSetting gs_aTcSettings[] = {
 		NUM_GROUPS,
 	};
 
-	struct SGroupInfo
-	{
-		const char *m_pTitle;
-		const char *m_pDesc;
-	};
-
-	const SGroupInfo gs_aGroups[NUM_GROUPS] = {
+	const SGroup gs_aGroups[NUM_GROUPS] = {
 		{"General", "Mouse, wheels, resolution and the rest"},
 		{"Visual", "How tees, weapons and the cursor look"},
 		{"Frozen tees", "Frozen tees counter and colors"},
@@ -99,12 +74,6 @@ const STcSetting gs_aTcSettings[] = {
 		{"Prediction and antiping", "Ghosts, fast input and antiping tuning"},
 		{"Revert DDNet changes", "Bring old DDNet behavior back"},
 		{"Other", "Votes, commands on join and more"},
-	};
-
-	struct SRule
-	{
-		const char *m_pPrefix;
-		int m_Group;
 	};
 
 	// the first prefix that fits decides the group
@@ -174,15 +143,6 @@ const STcSetting gs_aTcSettings[] = {
 
 	// settings of the classic TClient menu itself or for moderators: not shown here
 	const char *const gs_apHidden[] = {"tc_tclient_settings_tabs", "tc_ui_", "tc_mod_weapon"};
-
-	// short labels; Options are "|" separated names for every value from Min to Max (segmented control)
-	struct SLabel
-	{
-		const char *m_pName;
-		const char *m_pRu;
-		const char *m_pOptionsEn;
-		const char *m_pOptionsRu;
-	};
 
 	const SLabel gs_aLabels[] = {
 		{"tc_allow_any_res", "Любое разрешение при зуме (на Windows с багами)", nullptr, nullptr},
@@ -367,192 +327,23 @@ const STcSetting gs_aTcSettings[] = {
 		{"tc_showhud_dummy_angle", "Угол прицела дамми", nullptr, nullptr},
 	};
 
-	int GroupOf(const char *pName)
-	{
-		for(const SRule &Rule : gs_aRules)
-		{
-			if(str_startswith(pName, Rule.m_pPrefix))
-				return Rule.m_Group;
-		}
-		return GROUP_OTHER;
-	}
-
-	bool Hidden(const char *pName)
-	{
-		for(const char *pPrefix : gs_apHidden)
-		{
-			if(str_startswith(pName, pPrefix))
-				return true;
-		}
-		return false;
-	}
-
-	const SLabel *FindLabel(const char *pName)
-	{
-		for(const SLabel &Label : gs_aLabels)
-		{
-			if(str_comp(Label.m_pName, pName) == 0)
-				return &Label;
-		}
-		return nullptr;
-	}
-
-	bool IsChanged(const STcSetting &Setting)
-	{
-		switch(Setting.m_Type)
-		{
-		case TYPE_INT: return *(int *)Setting.m_pValue != (int)Setting.m_Default;
-		case TYPE_COL: return *(unsigned *)Setting.m_pValue != Setting.m_Default;
-		default: return str_comp((const char *)Setting.m_pValue, Setting.m_pDefaultStr) != 0;
-		}
-	}
-
-	// splits "a|b|c" into the list, true when it has exactly Count items
-	bool SplitOptions(const char *pOptions, std::vector<std::string> *pList, int Count)
-	{
-		pList->clear();
-		if(!pOptions)
-			return false;
-		const char *pStart = pOptions;
-		while(true)
-		{
-			const char *pBar = str_find(pStart, "|");
-			pList->emplace_back(pStart, pBar ? pBar - pStart : str_length(pStart));
-			if(!pBar)
-				break;
-			pStart = pBar + 1;
-		}
-		return (int)pList->size() == Count;
-	}
 } // namespace
-
-// color with a swatch on the right, the picker opens in a popup
-void CXcMenu::ConfigColorRow(const char *pLabel, unsigned *pValue, bool Alpha)
-{
-	ImGui::PushID(pValue);
-	RowLabel(pLabel, S(44.0f));
-	const ColorRGBA Rgba = color_cast<ColorRGBA>(ColorHSLA(*pValue, Alpha));
-	float aColor[4] = {Rgba.r, Rgba.g, Rgba.b, Alpha ? Rgba.a : 1.0f};
-	const ImVec2 Pos = ImGui::GetCursorScreenPos();
-	const ImVec2 Size(S(44.0f), S(24.0f));
-	if(ImGui::InvisibleButton("##swatch", Size))
-		ImGui::OpenPopup("##picker");
-	const bool Hovered = ImGui::IsItemHovered();
-	ImDrawList *pDraw = ImGui::GetWindowDrawList();
-	const STheme &t = Theme();
-	pDraw->AddRectFilled(Pos, ImVec2(Pos.x + Size.x, Pos.y + Size.y), Col(ImVec4(aColor[0], aColor[1], aColor[2], 1.0f)), S(6.0f));
-	pDraw->AddRect(Pos, ImVec2(Pos.x + Size.x, Pos.y + Size.y), Col(Hovered ? t.m_Accent : t.m_Border), S(6.0f), 0, Hovered ? 2.0f : 1.0f);
-	if(ImGui::BeginPopup("##picker"))
-	{
-		ImGuiColorEditFlags Flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_DisplayHex;
-		if(!Alpha)
-			Flags |= ImGuiColorEditFlags_NoAlpha;
-		ImGui::SetNextItemWidth(S(220.0f));
-		if(Alpha ? ImGui::ColorPicker4("##pick", aColor, Flags | ImGuiColorEditFlags_AlphaBar) : ImGui::ColorPicker3("##pick", aColor, Flags))
-		{
-			const ColorHSLA Hsl = color_cast<ColorHSLA>(ColorRGBA(aColor[0], aColor[1], aColor[2], Alpha ? aColor[3] : 1.0f));
-			*pValue = Hsl.Pack(Alpha);
-		}
-		ImGui::EndPopup();
-	}
-	ImGui::PopID();
-}
 
 void CXcMenu::RenderSettingsTClient()
 {
-	const STheme &t = Theme();
-	const bool Russian = IsRussian();
-
-	// search and filters on top
-	const float ButtonWidth = S(190.0f);
-	InputText("##tc_search", m_aTcSearch, sizeof(m_aTcSearch), Tr("Search the TClient settings"), std::max(AvailWidth() - ButtonWidth - S(10.0f), S(160.0f)));
-	ImGui::SameLine(0.0f, S(10.0f));
-	if(Button(Tr("Only changed"), m_TcOnlyChanged, ButtonWidth))
-		m_TcOnlyChanged = !m_TcOnlyChanged;
-	ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
-
-	// what fits the filters, per group
-	std::vector<int> avGroups[NUM_GROUPS];
-	for(int i = 0; i < (int)std::size(gs_aTcSettings); i++)
-	{
-		const STcSetting &Setting = gs_aTcSettings[i];
-		if(Hidden(Setting.m_pName) || !(Setting.m_Flags & CFGFLAG_CLIENT))
-			continue;
-		if(m_TcOnlyChanged && !IsChanged(Setting))
-			continue;
-		if(m_aTcSearch[0])
-		{
-			const SLabel *pLabel = FindLabel(Setting.m_pName);
-			if(!str_find_nocase(Setting.m_pName, m_aTcSearch) && !str_find_nocase(Setting.m_pDesc, m_aTcSearch) &&
-				!(pLabel && str_utf8_find_nocase(pLabel->m_pRu, m_aTcSearch)) && !str_utf8_find_nocase(Tr(gs_aGroups[GroupOf(Setting.m_pName)].m_pTitle), m_aTcSearch))
-				continue;
-		}
-		avGroups[GroupOf(Setting.m_pName)].push_back(i);
-	}
-
-	bool Any = false;
-	BeginCardGrid("##tclient", 2);
-	std::vector<std::string> vOptions;
-	for(int Group = 0; Group < NUM_GROUPS; Group++)
-	{
-		if(avGroups[Group].empty())
-			continue;
-		Any = true;
-		char aId[32];
-		str_format(aId, sizeof(aId), "##tc_group_%d", Group);
-		if(!BeginCard(aId, Tr(gs_aGroups[Group].m_pTitle), Tr(gs_aGroups[Group].m_pDesc)))
-			continue;
-		for(int Index : avGroups[Group])
-		{
-			const STcSetting &Setting = gs_aTcSettings[Index];
-			const SLabel *pLabel = FindLabel(Setting.m_pName);
-			const char *pText = Russian && pLabel ? pLabel->m_pRu : Setting.m_pDesc;
-			if(!pText[0])
-				pText = Setting.m_pName;
-			ImGui::PushID(Setting.m_pName);
-			const ImVec2 RowStart = ImGui::GetCursorScreenPos();
-			switch(Setting.m_Type)
-			{
-			case TYPE_INT:
-			{
-				int *pValue = (int *)Setting.m_pValue;
-				const int Count = Setting.m_Max - Setting.m_Min + 1;
-				if(Setting.m_Min == 0 && Setting.m_Max == 1)
-					ToggleRow(pText, Setting.m_pName, pValue);
-				else if(pLabel && Count <= 5 && SplitOptions(Russian ? pLabel->m_pOptionsRu : pLabel->m_pOptionsEn, &vOptions, Count))
-				{
-					ParamLabel(pText);
-					const char *apItems[5];
-					int aValues[5];
-					for(int i = 0; i < Count; i++)
-					{
-						apItems[i] = vOptions[i].c_str();
-						aValues[i] = Setting.m_Min + i;
-					}
-					ConfigSegmented("##options", Setting.m_pName, pValue, apItems, Count, aValues);
-				}
-				else
-					ConfigSlider(pText, Setting.m_pName, pValue, Setting.m_Min, Setting.m_Max);
-				break;
-			}
-			case TYPE_COL:
-				ConfigColorRow(pText, (unsigned *)Setting.m_pValue, (Setting.m_Flags & CFGFLAG_COLALPHA) != 0);
-				break;
-			default:
-				ConfigText(pText, Setting.m_pName, (const char *)Setting.m_pValue, Setting.m_Length);
-				break;
-			}
-			// changed settings get a small accent mark on the left, the console name shows on hover
-			const ImVec2 RowEnd = ImGui::GetCursorScreenPos();
-			if(IsChanged(Setting))
-				ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(RowStart.x - S(8.0f), RowStart.y + S(9.0f)), S(2.5f), Col(t.m_Accent), 12);
-			if(ImGui::IsMouseHoveringRect(RowStart, ImVec2(RowStart.x + AvailWidth(), RowEnd.y)) && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows))
-				ImGui::SetTooltip("%s\n%s", Setting.m_pName, Setting.m_pDesc);
-			ImGui::PopID();
-		}
-		EndCard();
-	}
-	EndCardGrid();
-	if(!Any)
-		Description(m_TcOnlyChanged && !m_aTcSearch[0] ? Tr("Nothing is changed yet") : Tr("Nothing found"));
+	SList List;
+	List.m_pId = "##tclient";
+	List.m_pSearchHint = "Search the TClient settings";
+	List.m_pSettings = gs_aTcSettings;
+	List.m_NumSettings = (int)std::size(gs_aTcSettings);
+	List.m_pGroups = gs_aGroups;
+	List.m_NumGroups = NUM_GROUPS;
+	List.m_OtherGroup = GROUP_OTHER;
+	List.m_pRules = gs_aRules;
+	List.m_NumRules = (int)std::size(gs_aRules);
+	List.m_ppHidden = gs_apHidden;
+	List.m_NumHidden = (int)std::size(gs_apHidden);
+	List.m_pLabels = gs_aLabels;
+	List.m_NumLabels = (int)std::size(gs_aLabels);
+	RenderSettingsList(List, m_aTcSearch, sizeof(m_aTcSearch), &m_TcOnlyChanged);
 }

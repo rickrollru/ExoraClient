@@ -24,6 +24,11 @@ struct ImVec2;
 
 // The new XClient menu (Dear ImGui). Replaces the classic menu on Esc and in the main menu,
 // the classic one stays reachable with a button.
+namespace XcSettingsList
+{
+	struct SList;
+}
+
 class CXcMenu : public CComponent
 {
 public:
@@ -51,6 +56,7 @@ public:
 		SETTINGS_HUD,
 		SETTINGS_TEXTURES,
 		SETTINGS_TCLIENT,
+		SETTINGS_DDNET,
 		NUM_SETTINGS,
 	};
 
@@ -366,6 +372,11 @@ private:
 	void RenderSettingsTextures(); // menu_assets.cpp
 	char m_aTcSearch[64] = {};
 	bool m_TcOnlyChanged = false;
+	// Settings > DDNet (menu_ddnet.cpp) and the list both use (menu_settings_list.cpp)
+	void RenderSettingsDDNet();
+	void RenderSettingsList(const XcSettingsList::SList &List, char *pSearch, int SearchSize, bool *pOnlyChanged);
+	char m_aDdSearch[64] = {};
+	bool m_DdOnlyChanged = false;
 };
 
 #endif
