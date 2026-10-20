@@ -100,6 +100,8 @@ public:
 	// the new effect style: soft textured sprites, returns false when they are not available
 	bool RenderSprites(CXcSprites &Sprites) const;
 	void Clear() { m_vParticles.clear(); }
+	// for the particle physics (xc_particles_physics): falling and bouncing off the blocks
+	static void SetCollision(const class CCollision *pCollision);
 	bool Empty() const { return m_vParticles.empty(); }
 
 private:

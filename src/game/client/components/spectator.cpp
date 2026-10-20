@@ -12,6 +12,7 @@
 #include <generated/protocol.h>
 
 #include <game/client/animstate.h>
+#include <game/client/components/xclient/streamer.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
@@ -553,7 +554,7 @@ void CSpectator::OnRender()
 			TextRender()->TextColor(GameClient()->m_WarList.GetPriorityColor(pInfo->m_ClientId));
 		}
 
-		TextRender()->TextEx(&NameCursor, GameClient()->m_aClients[GameClient()->m_Snap.m_apInfoByDDTeamName[i]->m_ClientId].m_aName);
+		TextRender()->TextEx(&NameCursor, XcStreamer::Name(GameClient(), GameClient()->m_Snap.m_apInfoByDDTeamName[i]->m_ClientId, GameClient()->m_aClients[GameClient()->m_Snap.m_apInfoByDDTeamName[i]->m_ClientId].m_aName)); // XClient: streamer mode
 
 		if(GameClient()->m_MultiViewActivated)
 		{

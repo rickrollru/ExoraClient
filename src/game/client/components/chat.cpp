@@ -26,6 +26,7 @@
 #include <game/client/components/skins.h>
 #include <game/client/components/sounds.h>
 #include <game/client/components/tclient/colored_parts.h>
+#include <game/client/components/xclient/streamer.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
@@ -860,7 +861,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			if(LineAuthor.m_Active)
 			{
 				str_append(CurrentLine.m_aName, " ");
-				str_append(CurrentLine.m_aName, LineAuthor.m_aName);
+				str_append(CurrentLine.m_aName, XcStreamer::Name(GameClient(), CurrentLine.m_ClientId, LineAuthor.m_aName)); // XClient: streamer mode
 			}
 			CurrentLine.m_NameColor = TEAM_BLUE;
 			CurrentLine.m_Highlighted = false;
@@ -872,7 +873,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			if(LineAuthor.m_Active)
 			{
 				str_append(CurrentLine.m_aName, " ");
-				str_append(CurrentLine.m_aName, LineAuthor.m_aName);
+				str_append(CurrentLine.m_aName, XcStreamer::Name(GameClient(), CurrentLine.m_ClientId, LineAuthor.m_aName)); // XClient: streamer mode
 			}
 			CurrentLine.m_NameColor = TEAM_RED;
 			CurrentLine.m_Highlighted = true;
@@ -880,7 +881,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		}
 		else
 		{
-			str_copy(CurrentLine.m_aName, LineAuthor.m_aName);
+			str_copy(CurrentLine.m_aName, XcStreamer::Name(GameClient(), CurrentLine.m_ClientId, LineAuthor.m_aName)); // XClient: streamer mode
 		}
 
 		if(LineAuthor.m_Active)

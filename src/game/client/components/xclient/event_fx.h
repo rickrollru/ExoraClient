@@ -10,6 +10,8 @@
 
 #include <game/client/component.h>
 
+#include <vector>
+
 // Effects on game events: confetti or fireworks at the finish (and a banner for a new record), shards
 // when a tee dies, a ring where one spawns, a flash on teleports, and an arrow to the dummy off screen.
 class CXcEventFx : public CComponent
@@ -27,6 +29,10 @@ public:
 		DEATH_SHARDS,
 		DEATH_SPARKS,
 		DEATH_ASH,
+		DEATH_LIGHTNING, // a bolt from the sky (Flower kill effects)
+		DEATH_SOUL, // a ghost rises up
+		DEATH_HEARTS,
+		DEATH_PIXELS, // the tee falls apart into square bits
 	};
 
 	enum
@@ -60,6 +66,19 @@ public:
 
 private:
 	CXcParticles m_Particles;
+	struct SBolt
+	{
+		vec2 m_Pos;
+		float m_Life;
+		ColorRGBA m_Color;
+		unsigned m_Seed;
+	};
+	std::vector<SBolt> m_vBolts;
+	void RenderBolts(float Dt);
+	// where the own tee died last (xc_death_marker)
+	vec2 m_DeathMarkerPos = vec2(0.0f, 0.0f);
+	float m_DeathMarkerAge = -1.0f;
+	void RenderDeathMarker(float Dt);
 	vec2 m_aLastPos[NUM_DUMMIES] = {};
 	bool m_aLastValid[NUM_DUMMIES] = {};
 	float m_aSinceDeath[NUM_DUMMIES] = {};

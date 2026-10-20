@@ -1,6 +1,7 @@
 #include "fx_renderer.h"
 
 #include "xc_helpers.h"
+#include "xc_particles.h"
 
 #include <base/math.h>
 
@@ -164,6 +165,7 @@ bool CFxRenderer::ModuleActive() const
 
 void CFxRenderer::OnRender()
 {
+	CXcParticles::SetCollision(Collision());
 	// over the map tiles the queue is drawn after the front layer
 	if(!g_Config.m_XcFxOverTiles)
 		FlushWorld();

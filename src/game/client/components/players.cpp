@@ -22,6 +22,7 @@
 #include <game/client/components/flow.h>
 #include <game/client/components/skins.h>
 #include <game/client/components/sounds.h>
+#include <game/client/components/xclient/weapon_view.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/collision.h>
 #include <game/gamecore.h>
@@ -793,7 +794,7 @@ void CPlayers::RenderPlayer(
 			State.Add(&g_pData->m_aAnimations[ANIM_WALK], WalkTime, 1.0f);
 	}
 
-	const float HammerAnimationTimeScale = 5.0f;
+	const float HammerAnimationTimeScale = 5.0f * XcWeapon::SwingSpeed(GameClient(), ClientId); // XClient: swing speed
 	if(Player.m_Weapon == WEAPON_HAMMER)
 		State.Add(&g_pData->m_aAnimations[ANIM_HAMMER_SWING], std::clamp(LastAttackTime * HammerAnimationTimeScale, 0.0f, 1.0f), 1.0f);
 	if(Player.m_Weapon == WEAPON_NINJA)
@@ -837,6 +838,15 @@ void CPlayers::RenderPlayer(
 			float Recoil = 0.0f;
 			vec2 WeaponPosition;
 			bool IsSit = Inactive && !InAir && Stationary;
+			// XClient: the place and size of the weapon in the hand, the hammer swing style (xc_weapon_*, xc_swing_*)
+			const vec2 XcWeaponOffset = XcWeapon::Offset(GameClient(), ClientId, Direction);
+			const float XcWeaponScale = XcWeapon::Scale(GameClient(), ClientId);
+			const float XcSwingProgress = std::clamp(LastAttackTime * HammerAnimationTimeScale, 0.0f, 1.0f);
+			const float XcSwingAngle = XcWeapon::SwingAngle(GameClient(), ClientId, State.GetAttach()->m_Angle, XcSwingProgress);
+			const auto XcDrawWeapon = [&](vec2 &Pos) {
+				Pos += XcWeaponOffset;
+				Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, Pos.x, Pos.y, XcWeaponScale, XcWeaponScale);
+			};
 
 			if(Player.m_Weapon == WEAPON_HAMMER)
 			{
@@ -857,14 +867,15 @@ void CPlayers::RenderPlayer(
 					if(!Inactive || LastAttackTime * HammerAnimationTimeScale < 1.0f)
 					{
 						if(Direction.x < 0.0f)
-							Graphics()->QuadsSetRotation(-pi / 2.0f - State.GetAttach()->m_Angle * pi * 2.0f);
+							Graphics()->QuadsSetRotation(-pi / 2.0f - XcSwingAngle * pi * 2.0f); // XClient: swing style
 						else
-							Graphics()->QuadsSetRotation(-pi / 2.0f + State.GetAttach()->m_Angle * pi * 2.0f);
+							Graphics()->QuadsSetRotation(-pi / 2.0f + XcSwingAngle * pi * 2.0f); // XClient: swing style
+						WeaponPosition += XcWeapon::SwingPush(GameClient(), ClientId, Direction, XcSwingProgress); // XClient
 					}
 					else
 						Graphics()->QuadsSetRotation(Direction.x < 0.0f ? 100.0f : 500.0f);
 
-					Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, WeaponPosition.x, WeaponPosition.y);
+					XcDrawWeapon(WeaponPosition); // XClient
 					break;
 				}
 				case 1:
@@ -884,7 +895,7 @@ void CPlayers::RenderPlayer(
 						QuadsRotation += pi;
 
 					Graphics()->QuadsSetRotation(QuadsRotation);
-					Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, WeaponPosition.x, WeaponPosition.y);
+					XcDrawWeapon(WeaponPosition); // XClient
 					break;
 				}
 				case 2:
@@ -899,7 +910,7 @@ void CPlayers::RenderPlayer(
 						WeaponPosition.y += 3.0f;
 
 					Graphics()->QuadsSetRotation(Angle + 2 * pi);
-					Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, WeaponPosition.x, WeaponPosition.y);
+					XcDrawWeapon(WeaponPosition); // XClient
 					RenderHand(&RenderInfo,
 						Position + Direction * g_pData->m_Weapons.m_aId[WEAPON_GUN].m_Offsetx - Direction * Recoil * 10.0f + vec2(0.0f, g_pData->m_Weapons.m_aId[WEAPON_GUN].m_Offsety),
 						Direction, -3 * pi / 4, vec2(-15, 4), Alpha);
@@ -926,10 +937,10 @@ void CPlayers::RenderPlayer(
 					Graphics()->QuadsSetRotation(-pi / 2 + State.GetAttach()->m_Angle * pi * 2.0f);
 					GameClient()->m_Effects.PowerupShine(WeaponPosition - vec2(32.0f, 0.0f), vec2(32.0f, 12.0f), Alpha);
 				}
-				Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, WeaponPosition.x, WeaponPosition.y);
+				XcDrawWeapon(WeaponPosition); // XClient
 
 				// HADOKEN
-				if(AttackTime <= 1.0f / 6.0f && g_pData->m_Weapons.m_aId[CurrentWeapon].m_NumSpriteMuzzles)
+				if(AttackTime <= 1.0f / 6.0f && g_pData->m_Weapons.m_aId[CurrentWeapon].m_NumSpriteMuzzles && !g_Config.m_XcReplaceMuzzle) // XClient: xc_replace_muzzle
 				{
 					int IteX = rand() % g_pData->m_Weapons.m_aId[CurrentWeapon].m_NumSpriteMuzzles;
 					static int s_LastIteX = IteX;
@@ -982,13 +993,13 @@ void CPlayers::RenderPlayer(
 				if(Player.m_Weapon == WEAPON_GUN && g_Config.m_ClOldGunPosition)
 					WeaponPosition.y -= 8.0f;
 				Graphics()->QuadsSetRotation(State.GetAttach()->m_Angle * pi * 2.0f + Angle);
-				Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, WeaponPosition.x, WeaponPosition.y);
+				XcDrawWeapon(WeaponPosition); // XClient
 			}
 
 			if(Player.m_Weapon == WEAPON_GUN || Player.m_Weapon == WEAPON_SHOTGUN)
 			{
 				// check if we're firing stuff
-				if(g_pData->m_Weapons.m_aId[CurrentWeapon].m_NumSpriteMuzzles) // prev.attackticks)
+				if(g_pData->m_Weapons.m_aId[CurrentWeapon].m_NumSpriteMuzzles && !g_Config.m_XcReplaceMuzzle) // prev.attackticks, XClient: xc_replace_muzzle
 				{
 					float AlphaMuzzle = 0.0f;
 					if(AttackTicksPassed < g_pData->m_Weapons.m_aId[CurrentWeapon].m_Muzzleduration + 3.0f)

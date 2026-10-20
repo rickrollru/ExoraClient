@@ -2022,15 +2022,16 @@ void CHud::OnRender()
 			if(XcShift > 0.0f)
 				Graphics()->MapScreenToSize(m_Width, m_Height);
 		};
+		const bool XcHideState = GameClient()->m_XcHud.HidesClassicState(); // XClient: the new HUD shows weapons, jumps and states
 		if(GameClient()->m_Snap.m_pLocalCharacter && !GameClient()->m_Snap.m_SpecInfo.m_Active && !(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER))
 		{
-			if(g_Config.m_ClShowhudHealthAmmo)
+			if(g_Config.m_ClShowhudHealthAmmo && (!XcHideState || GameClient()->m_GameInfo.m_HudHealthArmor))
 			{
 				XcShiftBegin();
 				RenderAmmoHealthAndArmor(GameClient()->m_Snap.m_pLocalCharacter);
 				XcShiftEnd();
 			}
-			if(GameClient()->m_Snap.m_aCharacters[GameClient()->m_Snap.m_LocalClientId].m_HasExtendedData && g_Config.m_ClShowhudDDRace && GameClient()->m_GameInfo.m_HudDDRace)
+			if(GameClient()->m_Snap.m_aCharacters[GameClient()->m_Snap.m_LocalClientId].m_HasExtendedData && g_Config.m_ClShowhudDDRace && GameClient()->m_GameInfo.m_HudDDRace && !XcHideState)
 			{
 				XcShiftBegin();
 				RenderPlayerState(GameClient()->m_Snap.m_LocalClientId);
@@ -2043,7 +2044,7 @@ void CHud::OnRender()
 		else if(GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			int SpectatorId = GameClient()->m_Snap.m_SpecInfo.m_SpectatorId;
-			if(SpectatorId != SPEC_FREEVIEW && g_Config.m_ClShowhudHealthAmmo)
+			if(SpectatorId != SPEC_FREEVIEW && g_Config.m_ClShowhudHealthAmmo && (!XcHideState || GameClient()->m_GameInfo.m_HudHealthArmor))
 			{
 				XcShiftBegin();
 				RenderAmmoHealthAndArmor(&GameClient()->m_Snap.m_aCharacters[SpectatorId].m_Cur);
@@ -2053,7 +2054,7 @@ void CHud::OnRender()
 				GameClient()->m_Snap.m_aCharacters[SpectatorId].m_HasExtendedData &&
 				g_Config.m_ClShowhudDDRace &&
 				(!GameClient()->m_MultiViewActivated || GameClient()->m_MultiViewShowHud) &&
-				GameClient()->m_GameInfo.m_HudDDRace)
+				GameClient()->m_GameInfo.m_HudDDRace && !XcHideState)
 			{
 				XcShiftBegin();
 				RenderPlayerState(SpectatorId);

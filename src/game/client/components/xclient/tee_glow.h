@@ -5,7 +5,8 @@
 
 #include <game/client/component.h>
 
-// Neon glow and outline around the silhouette of tees (body, feet, eyes and weapon).
+// Neon glow and outline around the silhouette of tees (body, feet, eyes and weapon),
+// and the tee shader: a moving pattern (gradient, rainbow, galaxy...) painted over the skin.
 // CPlayers wraps the drawing of a player with Begin/End, the render module does the rest.
 class CTeeGlow : public CComponent
 {
@@ -18,6 +19,9 @@ public:
 
 private:
 	ColorRGBA GlowColor(int ClientId) const;
+	bool HasGlow(int ClientId) const;
+	// the tee shader (xc_tee_shader) uses the same capture of the tee
+	bool HasShader(int ClientId) const;
 };
 
 #endif

@@ -535,6 +535,8 @@ public:
 		unsigned char m_aColor[4];
 	};
 	virtual void XcDrawTriangles(const SXcTriVertex *pVertices, const unsigned short *pIndices, int NumIndices) = 0;
+	// XClient: false when the texture of this handle was unloaded (a copy of the handle kept elsewhere)
+	virtual bool XcTextureAlive(const CTextureHandle &Texture) const = 0;
 	virtual void QuadsText(float x, float y, float Size, const char *pText) = 0;
 
 	// sprites
