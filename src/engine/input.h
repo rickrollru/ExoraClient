@@ -195,6 +195,8 @@ public:
 	virtual void SetCompositionWindowPosition(float X, float Y, float H) = 0;
 
 	virtual bool GetDropFile(char *aBuf, int Len) = 0;
+	// XClient: SDL time in ms of the newest keyboard and mouse events and of now, for the input delay indicator
+	virtual void XcInputTimes(unsigned *pKeyTicks, unsigned *pMouseTicks, unsigned *pNowTicks) const = 0;
 
 	ECursorType CursorRelative(float *pX, float *pY)
 	{

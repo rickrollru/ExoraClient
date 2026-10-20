@@ -30,6 +30,7 @@ public:
 		ELEMENT_KEYS,
 		ELEMENT_MINITOP,
 		ELEMENT_EFFECTS,
+		ELEMENT_LATENCY,
 		NUM_ELEMENTS,
 	};
 
@@ -101,6 +102,7 @@ private:
 
 	CImGuiBackend m_Backend;
 	bool m_Editing = false;
+	bool m_EditorPanelLeft = false;
 	int m_Dragging = -1;
 	float m_aDragOffset[2] = {};
 	bool m_aSnapped[2] = {};
@@ -123,6 +125,13 @@ private:
 	void RenderMusic(ImDrawList *pDraw, float Alpha);
 	void RenderBanner(ImDrawList *pDraw);
 	void RenderKeys(ImDrawList *pDraw, float Alpha);
+	// input delay: how long from a key or mouse event to the frame that shows it (averaged)
+	void RenderLatency(ImDrawList *pDraw, float Alpha);
+	unsigned m_LastKeyTicks = 0;
+	unsigned m_LastMouseTicks = 0;
+	float m_KeyDelay = -1.0f;
+	float m_MouseDelay = -1.0f;
+	float m_FrameMs = 0.0f;
 	// xc_scoreboard.cpp
 	void RenderScoreboard(ImDrawList *pDraw, float Dt);
 	void RenderMiniTop(ImDrawList *pDraw, float Alpha);
