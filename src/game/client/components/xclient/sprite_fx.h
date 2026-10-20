@@ -71,10 +71,12 @@ public:
 	void Queue(int Sprite, bool Additive, vec2 Pos, float Size, float Rotation, ColorRGBA Color, float Frame = 0.0f, float Height = 0.0f);
 	// the bloom, glow and core of Light() as queued sprites
 	void QueueLight(vec2 Pos, float Radius, ColorRGBA Color, float Intensity = 1.0f);
+	// soft light along a line: glow sprites close to each other, Width is the width of the light
+	void QueueLightLine(vec2 From, vec2 To, float Width, ColorRGBA Color, float Intensity = 1.0f);
 	void FlushQueue();
 
-private:
-	struct SQueued
+	// sprites collected by an effect that draws right away (in its own place among the layers)
+	struct SSprite
 	{
 		int m_Sprite;
 		bool m_Additive;
@@ -85,7 +87,14 @@ private:
 		float m_Frame;
 		ColorRGBA m_Color;
 	};
-	std::vector<SQueued> m_vQueue;
+	static void Push(std::vector<SSprite> &vList, int Sprite, bool Additive, vec2 Pos, float Size, float Rotation, ColorRGBA Color, float Frame = 0.0f, float Height = 0.0f);
+	static void PushLight(std::vector<SSprite> &vList, vec2 Pos, float Radius, ColorRGBA Color, float Intensity = 1.0f);
+	static void PushLightLine(std::vector<SSprite> &vList, vec2 From, vec2 To, float Width, ColorRGBA Color, float Intensity = 1.0f);
+	// draws the list (normal sprites first, then the light) and clears it
+	void DrawList(std::vector<SSprite> &vList);
+
+private:
+	std::vector<SSprite> m_vQueue;
 	IGraphics::CTextureHandle m_aTextures[NUM_SPRITES];
 	bool m_Loaded = false;
 	int m_Current = -1;

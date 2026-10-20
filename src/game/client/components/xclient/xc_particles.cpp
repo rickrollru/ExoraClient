@@ -189,8 +189,12 @@ bool CXcParticles::RenderSprites(CXcSprites &Sprites) const
 			break;
 		}
 		case EType::CONFETTI:
+			// solid pieces keep their shapes (see Render()), a faint light under them makes them sparkle
+			Sprites.Queue(CXcSprites::SPRITE_GLOW, true, Particle.m_Pos, Size * 2.6f * Reach, 0.0f, Color.WithMultipliedAlpha(0.22f * std::clamp((1.0f - t) * 4.0f, 0.0f, 1.0f) * Glow));
+			break;
 		case EType::SHARD:
-			break; // solid pieces keep their shapes, see Render()
+			Sprites.Queue(CXcSprites::SPRITE_GLOW, true, Particle.m_Pos, Size * 2.2f * Reach, 0.0f, Color.WithMultipliedAlpha(0.3f * (1.0f - t * t) * Glow));
+			break;
 		}
 	}
 	return true;

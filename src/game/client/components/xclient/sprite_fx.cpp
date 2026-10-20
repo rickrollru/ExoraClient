@@ -133,36 +133,54 @@ void CXcSprites::Light(vec2 Pos, float Radius, ColorRGBA Color, float Intensity)
 	End();
 }
 
-void CXcSprites::Queue(int Sprite, bool Additive, vec2 Pos, float Size, float Rotation, ColorRGBA Color, float Frame, float Height)
+void CXcSprites::Push(std::vector<SSprite> &vList, int Sprite, bool Additive, vec2 Pos, float Size, float Rotation, ColorRGBA Color, float Frame, float Height)
 {
-	if(Color.a <= 0.0f || Size <= 0.0f || m_vQueue.size() >= 8192)
+	if(Color.a <= 0.0f || Size <= 0.0f || vList.size() >= 8192)
 		return;
-	m_vQueue.push_back({Sprite, Additive, Pos, Size, Height, Rotation, Frame, Color});
+	vList.push_back({Sprite, Additive, Pos, Size, Height, Rotation, Frame, Color});
 }
 
-void CXcSprites::QueueLight(vec2 Pos, float Radius, ColorRGBA Color, float Intensity)
+void CXcSprites::PushLight(std::vector<SSprite> &vList, vec2 Pos, float Radius, ColorRGBA Color, float Intensity)
 {
 	const ColorRGBA Core(mix(Color.r, 1.0f, 0.6f), mix(Color.g, 1.0f, 0.6f), mix(Color.b, 1.0f, 0.6f), Color.a);
-	Queue(SPRITE_BLOOM, true, Pos, Radius * 4.0f, 0.0f, Color.WithMultipliedAlpha(0.35f * Intensity));
+	Push(vList, SPRITE_BLOOM, true, Pos, Radius * 4.0f, 0.0f, Color.WithMultipliedAlpha(0.35f * Intensity));
 	// a colored layer with normal blending keeps the color on bright maps
-	Queue(SPRITE_GLOW, false, Pos, Radius * 1.6f, 0.0f, Color.WithMultipliedAlpha(0.45f));
-	Queue(SPRITE_GLOW, true, Pos, Radius * 2.0f, 0.0f, Color.WithMultipliedAlpha(0.6f * Intensity));
-	Queue(SPRITE_CORE, true, Pos, Radius * 0.7f, 0.0f, Core.WithMultipliedAlpha(Intensity));
+	Push(vList, SPRITE_GLOW, false, Pos, Radius * 1.6f, 0.0f, Color.WithMultipliedAlpha(0.45f));
+	Push(vList, SPRITE_GLOW, true, Pos, Radius * 2.0f, 0.0f, Color.WithMultipliedAlpha(0.6f * Intensity));
+	Push(vList, SPRITE_CORE, true, Pos, Radius * 0.7f, 0.0f, Core.WithMultipliedAlpha(Intensity));
 }
 
-void CXcSprites::FlushQueue()
+void CXcSprites::PushLightLine(std::vector<SSprite> &vList, vec2 From, vec2 To, float Width, ColorRGBA Color, float Intensity)
 {
-	if(m_vQueue.empty())
+	const float Length = distance(From, To);
+	if(Width <= 0.0f || Color.a <= 0.0f)
+		return;
+	// the glow texture fades to nothing at its edge, so sprites overlapping by two thirds make an even band
+	const float Step = std::max(Width * 0.35f, 2.0f);
+	const int Num = std::clamp((int)(Length / Step) + 1, 1, 400);
+	// the overlap adds up, keep the band as bright as one sprite
+	const float Alpha = std::min(1.0f, 1.6f * Step / Width);
+	for(int i = 0; i <= Num; i++)
+	{
+		const vec2 Pos = mix(From, To, (float)i / Num);
+		Push(vList, SPRITE_GLOW, false, Pos, Width, 0.0f, Color.WithMultipliedAlpha(0.4f * Alpha));
+		Push(vList, SPRITE_GLOW, true, Pos, Width * 1.3f, 0.0f, Color.WithMultipliedAlpha(0.42f * Alpha * Intensity));
+	}
+}
+
+void CXcSprites::DrawList(std::vector<SSprite> &vList)
+{
+	if(vList.empty())
 		return;
 	// normal sprites first, then the light added on top; one batch per texture
-	std::stable_sort(m_vQueue.begin(), m_vQueue.end(), [](const SQueued &a, const SQueued &b) {
+	std::stable_sort(vList.begin(), vList.end(), [](const SSprite &a, const SSprite &b) {
 		if(a.m_Additive != b.m_Additive)
 			return !a.m_Additive;
 		return a.m_Sprite < b.m_Sprite;
 	});
 	int Sprite = -1;
 	bool Additive = false;
-	for(const SQueued &Item : m_vQueue)
+	for(const SSprite &Item : vList)
 	{
 		if(Item.m_Sprite != Sprite || Item.m_Additive != Additive)
 		{
@@ -176,5 +194,25 @@ void CXcSprites::FlushQueue()
 	}
 	if(Sprite >= 0)
 		End();
-	m_vQueue.clear();
+	vList.clear();
+}
+
+void CXcSprites::Queue(int Sprite, bool Additive, vec2 Pos, float Size, float Rotation, ColorRGBA Color, float Frame, float Height)
+{
+	Push(m_vQueue, Sprite, Additive, Pos, Size, Rotation, Color, Frame, Height);
+}
+
+void CXcSprites::QueueLight(vec2 Pos, float Radius, ColorRGBA Color, float Intensity)
+{
+	PushLight(m_vQueue, Pos, Radius, Color, Intensity);
+}
+
+void CXcSprites::QueueLightLine(vec2 From, vec2 To, float Width, ColorRGBA Color, float Intensity)
+{
+	PushLightLine(m_vQueue, From, To, Width, Color, Intensity);
+}
+
+void CXcSprites::FlushQueue()
+{
+	DrawList(m_vQueue);
 }
