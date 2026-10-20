@@ -1,0 +1,2 @@
+3D cosmetics (wings, backpacks, pets, hats) from the Flower client, used with the permission of its author
+(see docs/xclient/third_party/flower_permission.png). Only the geometry and animations are kept.

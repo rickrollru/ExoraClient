@@ -17,6 +17,7 @@
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
+#include <game/client/components/xclient/cosmetics.h>
 #include <game/client/gameclient.h>
 
 #include <cmath>
@@ -332,6 +333,133 @@ void CXcMenu::RenderVisualsCosmetics()
 			Client()->ViewFile(aFolder);
 			m_HatsScanned = false;
 		}
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+// One tile of the 3D cosmetics gallery: the model drawn live, slowly turning in the 3D view
+bool CXcMenu::CosmeticTile(int Model, int Slot, bool Selected, float Width)
+{
+	const STheme &t = Theme();
+	CXcCosmetics &Cosmetics = GameClient()->m_XcCosmetics;
+	const CXcCosmetics::SModelInfo &Info = Cosmetics.Models()[Model];
+	ImGui::PushID(Info.m_Id.c_str());
+	const ImVec2 Min = ImGui::GetCursorScreenPos();
+	const float Height = Width + S(22.0f);
+	const bool Pressed = ImGui::InvisibleButton("##tile", ImVec2(Width, Height));
+	const bool Hovered = ImGui::IsItemHovered();
+	ImGui::PopID();
+	if(Pressed)
+		PlayUiSound(SOUND_CLICK);
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	const ImVec2 Max(Min.x + Width, Min.y + Width);
+	pDraw->AddRectFilled(Min, Max, Col(Hovered ? t.m_CardHover : t.m_Track, Hovered ? 1.0f : 0.6f), S(10.0f));
+	if(Selected)
+		pDraw->AddRect(Min, Max, Col(t.m_Accent), S(10.0f), 0, S(2.0f));
+
+	const bool View3D = g_Config.m_XcCosmetic3d != 0;
+	const float Time = (float)ImGui::GetTime();
+	// the 3D view turns slowly; the flat one looks at the side (or the front for wings)
+	const float Yaw = View3D ? -30.0f + std::sin(Time * 0.8f + Model) * 35.0f : (Info.m_Wings ? 0.0f : -90.0f);
+	static std::vector<CXcCosmetics::SFace> s_vFaces;
+	Cosmetics.BuildFaces(Model, Yaw, View3D ? 12.0f : 0.0f, View3D, g_Config.m_XcCosmeticAnim ? Time : -1.0f, false, s_vFaces);
+	const ColorRGBA Base = Cosmetics.Color(Slot, -1);
+	const float Scale = Width * 0.4f;
+	const ImVec2 Center(Min.x + Width * 0.5f, Min.y + Width * 0.5f);
+	const auto ToScreen = [&](vec2 p) { return ImVec2(Center.x + p.x * Scale, Center.y - p.y * Scale); };
+	pDraw->PushClipRect(Min, Max, true);
+	if(!View3D)
+	{
+		// our 2D look: the outline of the whole shape first
+		const float Outline = std::max(Scale * 0.035f, 1.5f);
+		const ImU32 Dark = Col(ImVec4(Base.r * 0.22f, Base.g * 0.22f, Base.b * 0.25f, 1.0f));
+		for(const CXcCosmetics::SFace &Face : s_vFaces)
+		{
+			ImVec2 aP[4];
+			ImVec2 Mid(0.0f, 0.0f);
+			for(int i = 0; i < 4; i++)
+			{
+				aP[i] = ToScreen(Face.m_aPoints[i]);
+				Mid.x += aP[i].x * 0.25f;
+				Mid.y += aP[i].y * 0.25f;
+			}
+			for(ImVec2 &p : aP)
+			{
+				const float dx = p.x - Mid.x, dy = p.y - Mid.y;
+				const float Length = std::sqrt(dx * dx + dy * dy);
+				if(Length > 0.001f)
+				{
+					p.x += dx / Length * Outline;
+					p.y += dy / Length * Outline;
+				}
+			}
+			pDraw->AddQuadFilled(aP[0], aP[1], aP[2], aP[3], Dark);
+		}
+	}
+	for(const CXcCosmetics::SFace &Face : s_vFaces)
+	{
+		const float l = View3D ? Face.m_Light : (Face.m_Light > 0.85f ? 1.0f : (Face.m_Light > 0.6f ? 0.82f : 0.66f));
+		const ImU32 Fill = Col(ImVec4(std::min(Base.r * l, 1.0f), std::min(Base.g * l, 1.0f), std::min(Base.b * l, 1.0f), 1.0f));
+		const ImVec2 a = ToScreen(Face.m_aPoints[0]), b = ToScreen(Face.m_aPoints[1]), c = ToScreen(Face.m_aPoints[2]), d = ToScreen(Face.m_aPoints[3]);
+		pDraw->AddQuadFilled(a, b, c, d, Fill);
+		if(View3D && g_Config.m_XcCosmeticOutline)
+			pDraw->AddQuad(a, b, c, d, Col(ImVec4(Base.r * l * 0.55f, Base.g * l * 0.55f, Base.b * l * 0.55f, 0.9f)), 1.0f);
+	}
+	pDraw->PopClipRect();
+
+	// the name under the picture
+	ImFont *pFont = Fonts().m_pSmall;
+	const char *pName = Info.m_Name.c_str();
+	const float TextWidth = std::min(pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, pName).x, Width);
+	const ImVec4 Clip(Min.x, Max.y, Min.x + Width, Max.y + S(22.0f));
+	pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + (Width - TextWidth) * 0.5f, Max.y + S(4.0f)), Col(Selected ? t.m_Accent : t.m_TextSecondary), pName, nullptr, 0.0f, &Clip);
+	return Pressed;
+}
+
+void CXcMenu::RenderCosmetics3d()
+{
+	CXcCosmetics &Cosmetics = GameClient()->m_XcCosmetics;
+	BeginCardGrid("##cosmetics_3d", 1);
+	if(BeginCard("##cosmetic_models", Tr("3D cosmetics"), Tr("Wings, backpacks, hats and pets made of cubes. In 2D they are drawn in our style, in 3D they turn and have depth")))
+	{
+		ParamLabel(Tr("View"));
+		const char *apViews[] = {Tr("2D, our style"), Tr("3D")};
+		ConfigSegmented("##cosmetic_view", "xc_cosmetic_3d", &g_Config.m_XcCosmetic3d, apViews, 2);
+
+		static const char *const s_apSlotTitles[CXcCosmetics::NUM_SLOTS] = {"On the back", "On the head", "Pet"};
+		static const char *const s_apConfigs[CXcCosmetics::NUM_SLOTS] = {"xc_cosmetic_back", "xc_cosmetic_hat", "xc_cosmetic_pet"};
+		char *apValues[CXcCosmetics::NUM_SLOTS] = {g_Config.m_XcCosmeticBack, g_Config.m_XcCosmeticHat, g_Config.m_XcCosmeticPet};
+		int *apModes[CXcCosmetics::NUM_SLOTS] = {&g_Config.m_XcCosmeticBackColorMode, &g_Config.m_XcCosmeticHatColorMode, &g_Config.m_XcCosmeticPetColorMode};
+		unsigned *apColors[CXcCosmetics::NUM_SLOTS] = {&g_Config.m_XcCosmeticBackColor, &g_Config.m_XcCosmeticHatColor, &g_Config.m_XcCosmeticPetColor};
+		for(int Slot = 0; Slot < CXcCosmetics::NUM_SLOTS; Slot++)
+		{
+			ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+			Title(Tr(s_apSlotTitles[Slot]));
+			CTileGrid Grid(AvailWidth(), S(104.0f), S(10.0f));
+			const auto &vModels = Cosmetics.Models();
+			for(int Model = 0; Model < (int)vModels.size(); Model++)
+			{
+				if(vModels[Model].m_Slot != Slot)
+					continue;
+				Grid.Next();
+				const bool Selected = str_comp(apValues[Slot], vModels[Model].m_Id.c_str()) == 0;
+				// a click on the worn one takes it off
+				if(CosmeticTile(Model, Slot, Selected, Grid.Width()))
+					SetConfigString(s_apConfigs[Slot], Selected ? "" : vModels[Model].m_Id.c_str());
+			}
+			ImGui::PushID(Slot);
+			EffectColorPicker("##cosmetic_color", apModes[Slot], apColors[Slot]);
+			ImGui::PopID();
+		}
+		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+		ConfigSlider(Tr("Size"), "xc_cosmetic_size", &g_Config.m_XcCosmeticSize, 40, 250, "%d%%");
+		ToggleRow(Tr("Animations"), "xc_cosmetic_anim", &g_Config.m_XcCosmeticAnim);
+		if(g_Config.m_XcCosmetic3d)
+			ToggleRow(Tr("Thin edges"), "xc_cosmetic_outline", &g_Config.m_XcCosmeticOutline);
+		ToggleRow(Tr("Glow"), "xc_cosmetic_glow", &g_Config.m_XcCosmeticGlow);
+		TargetChips("##cosmetic_targets", &g_Config.m_XcCosmeticSelf, &g_Config.m_XcCosmeticDummy, &g_Config.m_XcCosmeticOthers);
+		Description(Tr("Only you see them: other players do not have this client"));
 		EndCard();
 	}
 	EndCardGrid();
