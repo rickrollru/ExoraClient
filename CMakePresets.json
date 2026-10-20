@@ -24,6 +24,7 @@
   ],
   "buildPresets": [
     { "name": "windows-release", "displayName": "Exora Client Release", "configurePreset": "windows-release", "targets": ["game-client", "game-server"] },
+    { "name": "windows-package", "displayName": "Exora Client Release ZIP", "configurePreset": "windows-release", "targets": ["package_default"] },
     { "name": "windows-debug", "displayName": "Exora Client Debug", "configurePreset": "windows-debug", "targets": ["game-client", "game-server"] }
   ]
 }
