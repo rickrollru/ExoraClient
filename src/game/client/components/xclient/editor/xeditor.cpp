@@ -386,6 +386,7 @@ void CXcEditorUi::Render()
 			RenderPalette();
 		RenderMapDetails();
 		RenderThemes();
+		RenderTuneZones();
 		RenderCoop();
 		RenderFileDialog();
 		RenderEventDialog();
@@ -754,6 +755,8 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.XcOpenAnimate();
 				if(ImGui::MenuItem(Tr("Background theme...")))
 					m_ThemesRequest = true;
+				if(ImGui::MenuItem(Tr("Tune zones...")))
+					m_TuneRequest = true;
 				ImGui::Separator();
 				if(ImGui::MenuItem(Tr("More tools...")))
 				{
@@ -1866,6 +1869,7 @@ void CXcEditorUi::RenderPalette()
 	vEntries.push_back({Tr("Animation presets..."), "Animation presets", Tr("Animation presets for the selected quads"), false, false, [&]() { E.XcOpenAnimate(); }});
 	vEntries.push_back({Tr("Add a GIF animation..."), "Add gif", Tr("Put an animated gif on the map. It plays for every player, also in other clients."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Add", "mapres", "", CEditor::XcCallbackAddGif, &E); }});
 	vEntries.push_back({Tr("Add a sound..."), "Add sound", nullptr, false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::SOUND, "Add sound", "Add", "mapres", "", CEditor::AddSound, &E); }});
+	vEntries.push_back({Tr("Tune zones..."), "Tune zones gravity tuning", Tr("Gravity, jumps, the hook and more inside a zone, with explanations"), false, false, [&]() { m_TuneRequest = true; }});
 	vEntries.push_back({Tr("Edit together..."), "Edit together coop", Tr("One map with friends over LAN or Radmin VPN"), false, m_Coop.Role() != CXcCoop::ROLE_NONE, [&]() { m_CoopRequest = true; }});
 	vEntries.push_back({Tr("Properties panel"), "Properties panel", nullptr, false, m_ShowProperties, [&]() { m_ShowProperties = !m_ShowProperties; }});
 	vEntries.push_back({Tr("Hide the interface"), "Hide interface", nullptr, false, false, [&]() { E.m_GuiActive = false; }});

@@ -534,6 +534,8 @@ void CXcEditorUi::RenderRightPanel()
 					RunCapture(CAPTURE_BRUSH, pfnBrush, &E);
 				m_pLastBrushLayer = pLayer.get();
 				RenderCaptureCard(CAPTURE_BRUSH, "##brush", pBrushTitle, Tr("What the brush paints on this layer"));
+				if(pLayer == pMap->m_pTuneLayer)
+					RenderTuneSummary();
 			}
 		}
 

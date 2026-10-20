@@ -321,6 +321,21 @@ private:
 	void RenderCoopCursors();
 	void UpdateCoop();
 
+	// tune zones: every parameter of a zone with an explanation next to it (xeditor_tune.cpp)
+	bool m_TuneRequest = false;
+	int m_TuneZone = 1;
+	int m_TuneMessagesZone = -1; // the zone the message fields were filled for
+	char m_aTuneFilter[32] = {};
+	char m_aTuneEnter[128] = {};
+	char m_aTuneLeave[128] = {};
+	void RenderTuneZones();
+	void RenderTuneSummary(); // the zone of the brush in the properties of the tune layer
+	int FindTuneSetting(int Zone, const char *pName, float *pValue) const;
+	int FindTuneMessage(int Zone, bool Enter, char *pMessage, int MessageSize) const;
+	void SetTuneParam(int Zone, const char *pName, const float *pValue); // nullptr: back to the default
+	void SetTuneMessage(int Zone, bool Enter, const char *pMessage);
+	void PaintTuneZone(int Zone);
+
 	// map themes: a background group with a gradient (xeditor_images.cpp)
 	bool m_ThemesRequest = false;
 	void RenderThemes();
