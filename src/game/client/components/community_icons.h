@@ -17,6 +17,7 @@ class IHttpRequest;
 class CCommunityIcon
 {
 	friend class CCommunityIcons;
+	friend class CXcMenu; // XClient
 
 private:
 	char m_aCommunityId[CServerInfo::MAX_COMMUNITY_ID_LENGTH];

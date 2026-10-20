@@ -656,6 +656,17 @@ void CXcMenu::AddTeePreview(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &
 	pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 
+void CXcMenu::AddTeeSkin(ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, const char *pSkin, bool CustomColors, int Body, int Feet)
+{
+	STeeDraw Data = {this, {Min.x, Min.y, Max.x, Max.y}, true, 0, ""};
+	str_copy(Data.m_aSkin, pSkin);
+	Data.m_ColorMode = CustomColors ? 1 : 0;
+	Data.m_Body = Body;
+	Data.m_Feet = Feet;
+	pDraw->AddCallback(TeePreviewCallback, (void *)&Data, sizeof(Data));
+	pDraw->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
+}
+
 void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 {
 	const float *pRect = Data.m_aRect;
@@ -666,7 +677,9 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	const bool Dummy = Data.m_Who == 1;
 	CTeeRenderInfo Info;
 	Info.Apply(GameClient()->m_Skins.Find(Data.m_aSkin[0] ? Data.m_aSkin : (Dummy ? g_Config.m_ClDummySkin : g_Config.m_ClPlayerSkin)));
-	if(Dummy)
+	if(Data.m_ColorMode >= 0)
+		Info.ApplyColors(Data.m_ColorMode == 1, Data.m_Body, Data.m_Feet);
+	else if(Dummy)
 		Info.ApplyColors(g_Config.m_ClDummyUseCustomColor, g_Config.m_ClDummyColorBody, g_Config.m_ClDummyColorFeet);
 	else
 		Info.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
