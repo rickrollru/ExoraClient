@@ -346,6 +346,7 @@ void CXcMenu::RenderVisualsGeneral()
 		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
 		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
 		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ToggleRow(Tr("Orange stars on hits"), "xc_replace_damage", &g_Config.m_XcReplaceDamage);
 		ToggleRow(Tr("Muzzle flash of the gun, shotgun and ninja"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
 		ToggleRow(Tr("Bullet sprites of the gun and shotgun"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
 		ToggleRow(Tr("Double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
@@ -516,6 +517,7 @@ void CXcMenu::RenderVisualsWeapons()
 	}
 	if(BeginCard("##stock_weapons", Tr("Standard weapon effects"), Tr("Hide what the game draws for shots, so only our effects stay")))
 	{
+		ToggleRow(Tr("Orange stars on hits"), "xc_replace_damage", &g_Config.m_XcReplaceDamage);
 		ToggleRow(Tr("Muzzle flash of the gun, shotgun and ninja"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
 		ToggleRow(Tr("Bullet sprites of the gun and shotgun"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
 		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);

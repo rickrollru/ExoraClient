@@ -54,12 +54,15 @@ void CMenus::RenderSettings(CUIRect MainView)
 		TCLocalize("TClient"), // TClient
 		Localize("Profiles"), // TClient
 		Localize("Configs"), // TClient
+		"Exora", // XClient
 		Localize("Credits")};
 	static CButtonContainer s_aTabButtons[SETTINGS_LENGTH];
 
+	// XClient: one tab more (Exora), the gaps shrink so all tabs fit
+	const float TabGap = std::clamp((TabBar.h - 26.0f * SETTINGS_LENGTH) / SETTINGS_LENGTH, 2.0f, 10.0f);
 	for(int i = 0; i < SETTINGS_LENGTH; i++)
 	{
-		TabBar.HSplitTop(10.0f, nullptr, &TabBar);
+		TabBar.HSplitTop(TabGap, nullptr, &TabBar);
 		TabBar.HSplitTop(26.0f, &Button, &TabBar);
 		if(DoButton_MenuTab(&s_aTabButtons[i], apTabs[i], g_Config.m_UiSettingsPage == i, &Button, IGraphics::CORNER_R, &m_aAnimatorsSettingsTab[i]))
 			g_Config.m_UiSettingsPage = i;
@@ -132,6 +135,11 @@ void CMenus::RenderSettings(CUIRect MainView)
 	{
 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_PLAYER);
 		RenderSettingsTClientConfigs(MainView);
+	}
+	else if(g_Config.m_UiSettingsPage == SETTINGS_EXORA) // XClient
+	{
+		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
+		RenderSettingsExora(MainView);
 	}
 	else if(g_Config.m_UiSettingsPage == SETTINGS_CREDITS)
 	{

@@ -751,6 +751,11 @@ int CInput::Update()
 
 	while(SDL_PollEvent(&Event))
 	{
+		// XClient: when the newest key and mouse events happened (input delay indicator)
+		if(Event.type == SDL_KEYDOWN)
+			m_XcKeyTicks = Event.key.timestamp;
+		else if(Event.type == SDL_MOUSEMOTION || Event.type == SDL_MOUSEBUTTONDOWN)
+			m_XcMouseTicks = Event.common.timestamp;
 		switch(Event.type)
 		{
 		case SDL_SYSWMEVENT:
@@ -994,4 +999,12 @@ bool CInput::GetDropFile(char *aBuf, int Len)
 IEngineInput *CreateEngineInput()
 {
 	return new CInput;
+}
+
+// XClient
+void CInput::XcInputTimes(unsigned *pKeyTicks, unsigned *pMouseTicks, unsigned *pNowTicks) const
+{
+	*pKeyTicks = m_XcKeyTicks;
+	*pMouseTicks = m_XcMouseTicks;
+	*pNowTicks = SDL_GetTicks();
 }

@@ -346,7 +346,7 @@ void CXcMenu::RenderSettingsPlayer()
 		const int Columns = std::max(1, (int)((Width + Gap) / (Tile + Gap)));
 		const int Rows = ((int)vSkins.size() + Columns - 1) / Columns;
 		const float ListHeight = std::min(Rows * (Tile + Gap), S(340.0f));
-		ImGui::BeginChild("##skin_grid", ImVec2(Width, std::max(ListHeight, Tile)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		BeginInnerScroll("##skin_grid", ImVec2(Width, std::max(ListHeight, Tile)));
 		ImDrawList *pGridDraw = ImGui::GetWindowDrawList();
 		const ImVec2 Start = ImGui::GetCursorScreenPos();
 		for(int i = 0; i < (int)vSkins.size(); i++)
@@ -383,7 +383,7 @@ void CXcMenu::RenderSettingsPlayer()
 		}
 		ImGui::SetCursorScreenPos(ImVec2(Start.x, Start.y + Rows * (Tile + Gap)));
 		ImGui::Dummy(ImVec2(1.0f, 1.0f));
-		ImGui::EndChild();
+		EndInnerScroll();
 		if(vSkins.empty())
 			Description(Tr("No skins found"));
 		EndCard();
@@ -600,11 +600,22 @@ void CXcMenu::RenderSettingsGraphics()
 		ImGui::TextColored(t.m_Text, "%s", aBuf);
 		ImGui::PopFont();
 		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-		ImGui::BeginChild("##modes", ImVec2(AvailWidth(), S(220.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		BeginInnerScroll("##modes", ImVec2(AvailWidth(), S(220.0f)));
+		const ImGuiID ModesScrollId = ImGui::GetID("##inner_scroll");
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, S(2.0f)));
+		// the biggest first, whatever order the system reports
+		std::vector<int> vOrder(std::max(s_NumModes, 0));
+		for(int i = 0; i < (int)vOrder.size(); i++)
+			vOrder[i] = i;
+		std::stable_sort(vOrder.begin(), vOrder.end(), [](int a, int b) {
+			const int AreaA = s_aModes[a].m_WindowWidth * s_aModes[a].m_WindowHeight, AreaB = s_aModes[b].m_WindowWidth * s_aModes[b].m_WindowHeight;
+			return AreaA != AreaB ? AreaA > AreaB : s_aModes[a].m_RefreshRate > s_aModes[b].m_RefreshRate;
+		});
+		static bool s_ScrolledToCurrent = false;
 		ImDrawList *pDraw = ImGui::GetWindowDrawList();
 		const float RowWidth = ImGui::GetContentRegionAvail().x;
 		const float RowHeight = S(30.0f);
-		for(int i = s_NumModes - 1; i >= 0; i--) // the biggest first
+		for(int i : vOrder)
 		{
 			const CVideoMode &Mode = s_aModes[i];
 			const bool Selected = Mode.m_WindowWidth == g_Config.m_GfxScreenWidth && Mode.m_WindowHeight == g_Config.m_GfxScreenHeight && Mode.m_RefreshRate == g_Config.m_GfxScreenRefreshRate;
@@ -618,6 +629,12 @@ void CXcMenu::RenderSettingsGraphics()
 				Graphics()->ResizeToScreen();
 			}
 			const bool Hovered = ImGui::IsItemHovered();
+			if(Selected && !s_ScrolledToCurrent)
+			{
+				// open on the mode in use
+				m_InnerScrollTargets[ModesScrollId] = Min.y - ImGui::GetWindowPos().y + ImGui::GetScrollY() - ImGui::GetWindowHeight() * 0.4f;
+				s_ScrolledToCurrent = true;
+			}
 			if(Selected)
 				pDraw->AddRectFilled(Min, ImVec2(Min.x + RowWidth, Min.y + RowHeight), Col(t.m_Accent, 0.22f), S(7.0f));
 			else if(Hovered)
@@ -635,7 +652,8 @@ void CXcMenu::RenderSettingsGraphics()
 		}
 		if(s_NumModes == 0)
 			Description(Tr("The system did not report any screen modes"));
-		ImGui::EndChild();
+		ImGui::PopStyleVar();
+		EndInnerScroll();
 		ToggleRow(Tr("Show all modes (also unusual ones)"), "gfx_display_all_video_modes", &g_Config.m_GfxDisplayAllVideoModes);
 		EndCard();
 	}
@@ -863,6 +881,7 @@ void CXcMenu::RenderSettingsHud()
 			ToggleRow(Tr("Compact: icons and timers only"), "xc_hud_effects_compact", &g_Config.m_XcHudEffectsCompact);
 			ToggleRow(Tr("Notify when an effect starts or ends"), "xc_hud_effects_notify", &g_Config.m_XcHudEffectsNotify);
 		}
+		ToggleRow(Tr("Input delay of keys and mouse"), "xc_hud_latency", &g_Config.m_XcHudLatency);
 		ToggleRow(Tr("Focus mode (timer and speed only, no chat)"), "xc_focus_mode", &g_Config.m_XcFocusMode);
 		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
 		EndCard();

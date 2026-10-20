@@ -125,7 +125,7 @@ void CXcMenu::RenderVotes()
 		InputText("##vote_filter", m_aVoteFilter, sizeof(m_aVoteFilter), Tr("Search votes"));
 		const int NumOptions = Voting.NumOptions();
 		const float ListHeight = std::clamp(NumOptions * S(38.0f), S(38.0f), S(380.0f));
-		ImGui::BeginChild("##options", ImVec2(AvailWidth(), ListHeight), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		BeginInnerScroll("##options", ImVec2(AvailWidth(), ListHeight));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, S(4.0f)));
 		int Index = 0;
 		int Shown = 0;
@@ -146,7 +146,7 @@ void CXcMenu::RenderVotes()
 			ImGui::PopID();
 		}
 		ImGui::PopStyleVar();
-		ImGui::EndChild();
+		EndInnerScroll();
 		if(Voting.IsReceivingOptions())
 			Description(Tr("Loading the votes of the server..."));
 		else if(Shown == 0)
@@ -169,7 +169,7 @@ void CXcMenu::RenderVotes()
 		for(const CNetObj_PlayerInfo *pInfo : GameClient()->m_Snap.m_apInfoByName)
 			NumOthers += pInfo && pInfo->m_ClientId != LocalId;
 		const float ListHeight = std::clamp(NumOthers * S(38.0f), S(4.0f), S(300.0f));
-		ImGui::BeginChild("##players", ImVec2(AvailWidth(), ListHeight), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		BeginInnerScroll("##players", ImVec2(AvailWidth(), ListHeight));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, S(4.0f)));
 		bool Found = false;
 		for(const CNetObj_PlayerInfo *pInfo : GameClient()->m_Snap.m_apInfoByName)
@@ -190,7 +190,7 @@ void CXcMenu::RenderVotes()
 			ImGui::PopID();
 		}
 		ImGui::PopStyleVar();
-		ImGui::EndChild();
+		EndInnerScroll();
 		if(!Found)
 			m_VotePlayer = -1;
 		if(NumOthers == 0)
