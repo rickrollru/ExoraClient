@@ -38,208 +38,9 @@ bool CXcMenu::StyleCard(const char *pId, const char *pTitle, const char *pDescri
 	return true;
 }
 
-void CXcMenu::RenderVisualsTee()
+void CXcMenu::RenderVisualsGeneral()
 {
-	BeginCardGrid("##vis_tee", 2);
-	if(BeginCard("##fx_glow", Tr("Neon glow"), Tr("Soft light and a crisp outline around the tee"), &g_Config.m_XcGlow))
-	{
-		if(!Graphics()->XcRenderAvailable())
-			Description(Tr("Needs OpenGL 3.3, see Settings > Graphics"));
-		EffectColorPicker("##glow_color", &g_Config.m_XcGlowColorMode, &g_Config.m_XcGlowColor);
-		ConfigSlider(Tr("Size"), "xc_glow_size", &g_Config.m_XcGlowSize, 25, 300, "%d%%");
-		ConfigSlider(Tr("Glow strength"), "xc_glow_strength", &g_Config.m_XcGlowStrength, 10, 300, "%d%%");
-		ConfigSlider(Tr("Outline"), "xc_glow_outline", &g_Config.m_XcGlowOutline, 0, 300, "%d%%");
-		ToggleRow(Tr("Pulse"), "xc_glow_pulse", &g_Config.m_XcGlowPulse);
-		TargetChips("##glow_targets", &g_Config.m_XcGlowSelf, &g_Config.m_XcGlowDummy, &g_Config.m_XcGlowOthers);
-		EndCard();
-	}
-
-	const char *apTrails[] = {Tr("Ribbon"), Tr("Sparks"), Tr("Stars"), Tr("Comet"), Tr("Dashes"), Tr("Ghosts")};
-	if(StyleCard("##fx_trail", Tr("Trail"), Tr("A glowing ribbon behind the tee"), "xc_trail", &g_Config.m_XcTrail, apTrails, 6))
-	{
-		if(g_Config.m_XcTrail >= 2 && g_Config.m_XcTrail != 4)
-			ConfigSlider(Tr("Density"), "xc_trail_density", &g_Config.m_XcTrailDensity, 25, 300, "%d%%");
-		if(g_Config.m_XcTrail == 5)
-		{
-			const char *apDashes[] = {Tr("Stretch"), Tr("Pop"), Tr("Spin"), Tr("Blink"), Tr("Spark")};
-			ConfigSegmented("##trail_dash", "xc_trail_dash", &g_Config.m_XcTrailDash, apDashes, 5);
-			if(!g_Config.m_XcFxStyle)
-				Description(Tr("Dashes need the new effect look (Visuals > World > Glow)"));
-		}
-		EffectColorPicker("##trail_color", &g_Config.m_XcTrailColorMode, &g_Config.m_XcTrailColor);
-		ConfigSlider(Tr("Length"), "xc_trail_length", &g_Config.m_XcTrailLength, 100, 2000, "%d ms");
-		ConfigSlider(Tr("Width"), "xc_trail_width", &g_Config.m_XcTrailWidth, 25, 300, "%d%%");
-		ConfigSlider(Tr("Glow"), "xc_trail_glow", &g_Config.m_XcTrailGlow, 0, 200, "%d%%");
-		TargetChips("##trail_targets", &g_Config.m_XcTrailSelf, &g_Config.m_XcTrailDummy, &g_Config.m_XcTrailOthers);
-		EndCard();
-	}
-
-	const char *apGradients[] = {Tr("Accent"), Tr("Rainbow"), Tr("Skin"), Tr("Two colors")};
-	if(StyleCard("##fx_name_gradient", Tr("Gradient name"), Tr("The name above the tee in a smooth gradient that can flow"), "xc_name_gradient", &g_Config.m_XcNameGradient, apGradients, 4))
-	{
-		if(g_Config.m_XcNameGradient == 4)
-		{
-			// the own part of the picker for each of the two colors
-			int OwnMode = 1;
-			ParamLabel(Tr("First color"));
-			EffectColorPicker("##gradient_color1", &OwnMode, &g_Config.m_XcNameGradientColor1);
-			ParamLabel(Tr("Second color"));
-			EffectColorPicker("##gradient_color2", &OwnMode, &g_Config.m_XcNameGradientColor2);
-		}
-		ToggleRow(Tr("Flowing"), "xc_name_gradient_flow", &g_Config.m_XcNameGradientFlow);
-		TargetChips("##gradient_targets", &g_Config.m_XcNameGradientSelf, &g_Config.m_XcNameGradientDummy, &g_Config.m_XcNameGradientOthers);
-		EndCard();
-	}
-	if(BeginCard("##fx_flying_names", Tr("Flying names"), Tr("Names follow the tees on a soft spring, like kites"), &g_Config.m_XcFlyingNames))
-	{
-		ConfigSlider(Tr("Lag"), "xc_flying_names_lag", &g_Config.m_XcFlyingNamesLag, 30, 300, "%d%%");
-		EndCard();
-	}
-	if(BeginCard("##fx_jelly", Tr("Jelly tee"), Tr("Squashes when landing, stretches when jumping and wobbles back"), &g_Config.m_XcJelly))
-	{
-		ConfigSlider(Tr("Softness"), "xc_jelly_strength", &g_Config.m_XcJellyStrength, 10, 300, "%d%%");
-		TargetChips("##jelly_targets", &g_Config.m_XcJellySelf, &g_Config.m_XcJellyDummy, &g_Config.m_XcJellyOthers);
-		EndCard();
-	}
-	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Fast tees leave a soft smear of copies behind them"), &g_Config.m_XcMotionBlur))
-	{
-		ConfigSlider(Tr("Blur length"), "xc_motion_blur_strength", &g_Config.m_XcMotionBlurStrength, 10, 100, "%d%%");
-		TargetChips("##motion_blur_targets", &g_Config.m_XcMotionBlurSelf, &g_Config.m_XcMotionBlurDummy, &g_Config.m_XcMotionBlurOthers);
-		EndCard();
-	}
-	if(BeginCard("##fx_speed_lines", Tr("Speed lines"), Tr("Thin streaks behind the tee at high speed, like in anime"), &g_Config.m_XcSpeedLines))
-	{
-		ConfigSlider(Tr("Brightness"), "xc_speed_lines_alpha", &g_Config.m_XcSpeedLinesAlpha, 10, 100, "%d%%");
-		Description(Tr("Shown for the same tees as the motion blur"));
-		EndCard();
-	}
-
-	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown")};
-	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 3))
-	{
-		EffectColorPicker("##accessory_color", &g_Config.m_XcAccessoryColorMode, &g_Config.m_XcAccessoryColor);
-		ConfigSlider(Tr("Size"), "xc_accessory_size", &g_Config.m_XcAccessorySize, 50, 200, "%d%%");
-		ConfigSlider(Tr("Opacity"), "xc_accessory_alpha", &g_Config.m_XcAccessoryAlpha, 10, 100, "%d%%");
-		ConfigSlider(Tr("Sway"), "xc_accessory_physics", &g_Config.m_XcAccessoryPhysics, 0, 200, "%d%%");
-		if(g_Config.m_XcAccessory == 1)
-			ConfigSlider(Tr("Height"), "xc_accessory_height", &g_Config.m_XcAccessoryHeight, 30, 250, "%d%%");
-		// the same values as the accessory group in Visuals > World > Glow
-		ConfigSlider(Tr("Glow strength"), "xc_fxglow_accessory", &g_Config.m_XcFxglowAccessory, 0, 300, "%d%%");
-		ConfigSlider(Tr("Glow size"), "xc_fxglow_accessory_size", &g_Config.m_XcFxglowAccessorySize, 25, 300, "%d%%");
-		ToggleRow(Tr("Also on friends"), "xc_accessory_friends", &g_Config.m_XcAccessoryFriends);
-		TargetChips("##accessory_targets", &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryDummy, &g_Config.m_XcAccessoryOthers);
-		EndCard();
-	}
-	const char *apCapes[] = {Tr("Cape"), Tr("Scarf")};
-	if(StyleCard("##fx_cape", Tr("Cape"), Tr("A cloth cape or a scarf that flies behind the tee"), "xc_cape", &g_Config.m_XcCape, apCapes, 2))
-	{
-		EffectColorPicker("##cape_color", &g_Config.m_XcCapeColorMode, &g_Config.m_XcCapeColor);
-		ConfigSlider(Tr("Length"), "xc_cape_length", &g_Config.m_XcCapeLength, 50, 200, "%d%%");
-		ConfigSlider(Tr("Width"), "xc_cape_width", &g_Config.m_XcCapeWidth, 50, 200, "%d%%");
-		ConfigSlider(Tr("Wind"), "xc_cape_wind", &g_Config.m_XcCapeWind, 0, 200, "%d%%");
-		ConfigSlider(Tr("Opacity"), "xc_cape_alpha", &g_Config.m_XcCapeAlpha, 10, 100, "%d%%");
-		TargetChips("##cape_targets", &g_Config.m_XcCapeSelf, &g_Config.m_XcCapeDummy, &g_Config.m_XcCapeOthers);
-		EndCard();
-	}
-
-	if(BeginCard("##fx_freeze", Tr("Freeze"), Tr("An icy aura around frozen tees and shards when the ice breaks"), &g_Config.m_XcFreezeFx))
-	{
-		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);
-		ToggleRow(Tr("Shards on freeze and unfreeze"), "xc_freeze_burst", &g_Config.m_XcFreezeBurst);
-		TargetChips("##freeze_targets", &g_Config.m_XcFreezeSelf, &g_Config.m_XcFreezeDummy, &g_Config.m_XcFreezeOthers);
-		EndCard();
-	}
-	EndCardGrid();
-}
-
-void CXcMenu::RenderVisualsMovement()
-{
-	BeginCardGrid("##vis_move", 2);
-	const char *apJumps[] = {Tr("Rings"), Tr("Sparks"), Tr("Stars")};
-	if(StyleCard("##fx_jump", Tr("Jumps"), Tr("Effect under the feet on every jump"), "xc_jump_fx", &g_Config.m_XcJumpFx, apJumps, 3))
-	{
-		EffectColorPicker("##jump_color", &g_Config.m_XcJumpFxColorMode, &g_Config.m_XcJumpFxColor);
-		ConfigSlider(Tr("Size"), "xc_jump_fx_size", &g_Config.m_XcJumpFxSize, 25, 300, "%d%%");
-		if(g_Config.m_XcJumpFx == 1 && g_Config.m_XcFxStyle)
-			ConfigSlider(Tr("Duration"), "xc_jump_fx_duration", &g_Config.m_XcJumpFxDuration, 200, 3000, "%d ms");
-		ToggleRow(Tr("Also on double jumps"), "xc_jump_fx_air", &g_Config.m_XcJumpFxAir);
-		ToggleRow(Tr("Ring on landing"), "xc_land_fx", &g_Config.m_XcLandFx);
-		ToggleRow(Tr("Dust when running"), "xc_run_dust", &g_Config.m_XcRunDust);
-		TargetChips("##jump_targets", &g_Config.m_XcJumpFxSelf, &g_Config.m_XcJumpFxDummy, &g_Config.m_XcJumpFxOthers);
-		EndCard();
-	}
-	EndCardGrid();
-}
-
-void CXcMenu::RenderVisualsWeapons()
-{
-	BeginCardGrid("##vis_weapons", 2);
-	if(BeginCard("##fx_projectiles", Tr("Bullets and lasers"), Tr("Light around shots, comet tails and glowing lasers")))
-	{
-		ToggleRow(Tr("Glow around bullets and grenades"), "xc_projectile_glow", &g_Config.m_XcProjectileGlow);
-		ToggleRow(Tr("Comet tail"), "xc_projectile_trail", &g_Config.m_XcProjectileTrail);
-		ToggleRow(Tr("Laser glow"), "xc_laser_glow", &g_Config.m_XcLaserGlow);
-		ToggleRow(Tr("Own laser beam instead of the stock one"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
-		ToggleRow(Tr("Hide the stock smoke trails"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
-		ConfigSlider(Tr("Laser glow strength"), "xc_laser_glow_strength", &g_Config.m_XcLaserGlowStrength, 10, 250, "%d%%");
-		Description(Tr("The color is set in the Pickups card under World"));
-		EndCard();
-	}
-	const char *apHooks[] = {Tr("Chain"), Tr("Line"), Tr("Glow")};
-	if(StyleCard("##fx_hook", Tr("Hook"), Tr("Colored chain, clean line or a glowing beam"), "xc_hook_style", &g_Config.m_XcHookStyle, apHooks, 3))
-	{
-		EffectColorPicker("##hook_color", &g_Config.m_XcHookColorMode, &g_Config.m_XcHookColor);
-		ConfigSlider(Tr("Width"), "xc_hook_width", &g_Config.m_XcHookWidth, 25, 300, "%d%%");
-		ParamLabel(Tr("When the hook grabs"));
-		const char *apHits[] = {Tr("Nothing"), Tr("Ring"), Tr("Sparks"), Tr("Stars")};
-		ConfigSegmented("##hook_hit", "xc_hook_hit_fx", &g_Config.m_XcHookHitFx, apHits, 4);
-		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
-		EndCard();
-	}
-	const char *apHammer[] = {Tr("Ring"), Tr("Sparks"), Tr("Stars")};
-	if(StyleCard("##fx_hammer", Tr("Hammer hit"), Tr("A flash where the hammer lands"), "xc_hammer_fx", &g_Config.m_XcHammerFx, apHammer, 3))
-	{
-		EffectColorPicker("##hammer_color", &g_Config.m_XcHammerColorMode, &g_Config.m_XcHammerColor);
-		ToggleRow(Tr("Hide the stock hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
-		EndCard();
-	}
-	const char *apExplosions[] = {Tr("Shockwave"), Tr("Neon"), Tr("Sparks")};
-	if(StyleCard("##fx_explosion", Tr("Grenade explosion"), Tr("A shockwave, neon rings or hot sparks where a grenade explodes"), "xc_explosion_fx", &g_Config.m_XcExplosionFx, apExplosions, 3))
-	{
-		EffectColorPicker("##explosion_color", &g_Config.m_XcExplosionColorMode, &g_Config.m_XcExplosionColor);
-		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
-		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
-		EndCard();
-	}
-	const char *apCrosshairs[] = {Tr("Dot"), Tr("Cross"), Tr("Circle"), Tr("Circle + dot")};
-	if(StyleCard("##fx_crosshair", Tr("Crosshair"), Tr("Your own aim instead of the weapon cursor"), "xc_crosshair", &g_Config.m_XcCrosshair, apCrosshairs, 4))
-	{
-		EffectColorPicker("##crosshair_color", &g_Config.m_XcCrosshairColorMode, &g_Config.m_XcCrosshairColor);
-		ConfigSlider(Tr("Size"), "xc_crosshair_size", &g_Config.m_XcCrosshairSize, 30, 300, "%d%%");
-		ConfigSlider(Tr("Gap"), "xc_crosshair_gap", &g_Config.m_XcCrosshairGap, 0, 300, "%d%%");
-		ToggleRow(Tr("Glow"), "xc_crosshair_glow", &g_Config.m_XcCrosshairGlow);
-		ToggleRow(Tr("Dark outline"), "xc_crosshair_outline", &g_Config.m_XcCrosshairOutline);
-		EndCard();
-	}
-	if(BeginCard("##fx_crosshair_motion", Tr("Crosshair motion"), Tr("Blur and a trail when you move the mouse, a kick on every shot. Works with any crosshair"), &g_Config.m_XcCrosshairMotion))
-	{
-		ToggleRow(Tr("Motion blur"), "xc_crosshair_blur", &g_Config.m_XcCrosshairBlur);
-		if(g_Config.m_XcCrosshairBlur)
-			ConfigSlider(Tr("Blur length"), "xc_crosshair_blur_strength", &g_Config.m_XcCrosshairBlurStrength, 10, 100, "%d%%");
-		ToggleRow(Tr("Glowing trail"), "xc_crosshair_trail", &g_Config.m_XcCrosshairTrail);
-		if(g_Config.m_XcCrosshairTrail)
-			ConfigSlider(Tr("Trail length"), "xc_crosshair_trail_length", &g_Config.m_XcCrosshairTrailLength, 10, 100, "%d%%");
-		ToggleRow(Tr("Kick on a shot"), "xc_crosshair_kick", &g_Config.m_XcCrosshairKick);
-		if(g_Config.m_XcCrosshairKick)
-			ConfigSlider(Tr("Kick strength"), "xc_crosshair_kick_strength", &g_Config.m_XcCrosshairKickStrength, 10, 100, "%d%%");
-		EndCard();
-	}
-	EndCardGrid();
-}
-
-void CXcMenu::RenderVisualsWorld()
-{
-	BeginCardGrid("##vis_world", 2);
+	BeginCardGrid("##vis_general", 2);
 	if(BeginCard("##fx_glow_tune", Tr("Glow"), Tr("How bright and how wide every effect glows")))
 	{
 		ParamLabel(Tr("Effect look"));
@@ -301,6 +102,219 @@ void CXcMenu::RenderVisualsWorld()
 		}
 		EndCard();
 	}
+	if(BeginCard("##fx_over_tiles", Tr("Over the blocks"), Tr("Effects and hats can be drawn over the map blocks, they stay visible behind walls")))
+	{
+		ToggleRow(Tr("Effects over the blocks"), "xc_fx_over_tiles", &g_Config.m_XcFxOverTiles);
+		ToggleRow(Tr("Hats over the blocks"), "xc_hats_over_tiles", &g_Config.m_XcHatsOverTiles);
+		Description(Tr("Jumps, rings, freeze, death, finish and accessories. Hats placed behind the tee stay behind"));
+		EndCard();
+	}
+	if(BeginCard("##fx_stock", Tr("Stock effects"), Tr("Hide the standard game effects so only ours stay, sounds remain")))
+	{
+		ToggleRow(Tr("Hammer hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
+		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ToggleRow(Tr("Double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
+		ToggleRow(Tr("Skid smoke when turning"), "xc_replace_skid", &g_Config.m_XcReplaceSkid);
+		ToggleRow(Tr("Purple spawn smoke"), "xc_replace_spawn", &g_Config.m_XcReplaceSpawn);
+		ToggleRow(Tr("Blood on death"), "xc_replace_death", &g_Config.m_XcReplaceDeath);
+		ToggleRow(Tr("Snowflakes on frozen tees"), "xc_replace_freeze", &g_Config.m_XcReplaceFreeze);
+		Description(Tr("Turn on our effect for the same event in its card, otherwise nothing is shown"));
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsTee()
+{
+	BeginCardGrid("##vis_tee", 2);
+	if(BeginCard("##fx_glow", Tr("Neon glow"), Tr("Soft light and a crisp outline around the tee"), &g_Config.m_XcGlow))
+	{
+		if(!Graphics()->XcRenderAvailable())
+			Description(Tr("Needs OpenGL 3.3, see Settings > Graphics"));
+		EffectColorPicker("##glow_color", &g_Config.m_XcGlowColorMode, &g_Config.m_XcGlowColor);
+		ConfigSlider(Tr("Size"), "xc_glow_size", &g_Config.m_XcGlowSize, 25, 300, "%d%%");
+		ConfigSlider(Tr("Glow strength"), "xc_glow_strength", &g_Config.m_XcGlowStrength, 10, 300, "%d%%");
+		ConfigSlider(Tr("Outline"), "xc_glow_outline", &g_Config.m_XcGlowOutline, 0, 300, "%d%%");
+		ToggleRow(Tr("Pulse"), "xc_glow_pulse", &g_Config.m_XcGlowPulse);
+		TargetChips("##glow_targets", &g_Config.m_XcGlowSelf, &g_Config.m_XcGlowDummy, &g_Config.m_XcGlowOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_jelly", Tr("Jelly tee"), Tr("Squashes when landing, stretches when jumping and wobbles back"), &g_Config.m_XcJelly))
+	{
+		ConfigSlider(Tr("Softness"), "xc_jelly_strength", &g_Config.m_XcJellyStrength, 10, 300, "%d%%");
+		TargetChips("##jelly_targets", &g_Config.m_XcJellySelf, &g_Config.m_XcJellyDummy, &g_Config.m_XcJellyOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_freeze", Tr("Freeze"), Tr("An icy aura around frozen tees and shards when the ice breaks"), &g_Config.m_XcFreezeFx))
+	{
+		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);
+		ToggleRow(Tr("Shards on freeze and unfreeze"), "xc_freeze_burst", &g_Config.m_XcFreezeBurst);
+		TargetChips("##freeze_targets", &g_Config.m_XcFreezeSelf, &g_Config.m_XcFreezeDummy, &g_Config.m_XcFreezeOthers);
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsMovement()
+{
+	BeginCardGrid("##vis_movement", 2);
+	const char *apTrails[] = {Tr("Ribbon"), Tr("Sparks"), Tr("Stars"), Tr("Comet"), Tr("Dashes"), Tr("Ghosts")};
+	if(StyleCard("##fx_trail", Tr("Trail"), Tr("A glowing ribbon behind the tee"), "xc_trail", &g_Config.m_XcTrail, apTrails, 6))
+	{
+		if(g_Config.m_XcTrail >= 2 && g_Config.m_XcTrail != 4)
+			ConfigSlider(Tr("Density"), "xc_trail_density", &g_Config.m_XcTrailDensity, 25, 300, "%d%%");
+		if(g_Config.m_XcTrail == 5)
+		{
+			const char *apDashes[] = {Tr("Stretch"), Tr("Pop"), Tr("Spin"), Tr("Blink"), Tr("Spark")};
+			ConfigSegmented("##trail_dash", "xc_trail_dash", &g_Config.m_XcTrailDash, apDashes, 5);
+			if(!g_Config.m_XcFxStyle)
+				Description(Tr("Dashes need the new effect look (Visuals > World > Glow)"));
+		}
+		EffectColorPicker("##trail_color", &g_Config.m_XcTrailColorMode, &g_Config.m_XcTrailColor);
+		ConfigSlider(Tr("Length"), "xc_trail_length", &g_Config.m_XcTrailLength, 100, 2000, "%d ms");
+		ConfigSlider(Tr("Width"), "xc_trail_width", &g_Config.m_XcTrailWidth, 25, 300, "%d%%");
+		ConfigSlider(Tr("Glow"), "xc_trail_glow", &g_Config.m_XcTrailGlow, 0, 200, "%d%%");
+		TargetChips("##trail_targets", &g_Config.m_XcTrailSelf, &g_Config.m_XcTrailDummy, &g_Config.m_XcTrailOthers);
+		EndCard();
+	}
+	const char *apJumps[] = {Tr("Rings"), Tr("Sparks"), Tr("Stars")};
+	if(StyleCard("##fx_jump", Tr("Jumps"), Tr("Effect under the feet on every jump"), "xc_jump_fx", &g_Config.m_XcJumpFx, apJumps, 3))
+	{
+		EffectColorPicker("##jump_color", &g_Config.m_XcJumpFxColorMode, &g_Config.m_XcJumpFxColor);
+		ConfigSlider(Tr("Size"), "xc_jump_fx_size", &g_Config.m_XcJumpFxSize, 25, 300, "%d%%");
+		if(g_Config.m_XcJumpFx == 1 && g_Config.m_XcFxStyle)
+			ConfigSlider(Tr("Duration"), "xc_jump_fx_duration", &g_Config.m_XcJumpFxDuration, 200, 3000, "%d ms");
+		ToggleRow(Tr("Also on double jumps"), "xc_jump_fx_air", &g_Config.m_XcJumpFxAir);
+		ToggleRow(Tr("Ring on landing"), "xc_land_fx", &g_Config.m_XcLandFx);
+		ToggleRow(Tr("Dust when running"), "xc_run_dust", &g_Config.m_XcRunDust);
+		TargetChips("##jump_targets", &g_Config.m_XcJumpFxSelf, &g_Config.m_XcJumpFxDummy, &g_Config.m_XcJumpFxOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Fast tees leave a soft smear of copies behind them"), &g_Config.m_XcMotionBlur))
+	{
+		ConfigSlider(Tr("Blur length"), "xc_motion_blur_strength", &g_Config.m_XcMotionBlurStrength, 10, 100, "%d%%");
+		TargetChips("##motion_blur_targets", &g_Config.m_XcMotionBlurSelf, &g_Config.m_XcMotionBlurDummy, &g_Config.m_XcMotionBlurOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_speed_lines", Tr("Speed lines"), Tr("Thin streaks behind the tee at high speed, like in anime"), &g_Config.m_XcSpeedLines))
+	{
+		ConfigSlider(Tr("Brightness"), "xc_speed_lines_alpha", &g_Config.m_XcSpeedLinesAlpha, 10, 100, "%d%%");
+		Description(Tr("Shown for the same tees as the motion blur"));
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsCosmeticsExtra()
+{
+	BeginCardGrid("##vis_cosmetics_extra", 2);
+	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown")};
+	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 3))
+	{
+		EffectColorPicker("##accessory_color", &g_Config.m_XcAccessoryColorMode, &g_Config.m_XcAccessoryColor);
+		ConfigSlider(Tr("Size"), "xc_accessory_size", &g_Config.m_XcAccessorySize, 50, 200, "%d%%");
+		ConfigSlider(Tr("Opacity"), "xc_accessory_alpha", &g_Config.m_XcAccessoryAlpha, 10, 100, "%d%%");
+		ConfigSlider(Tr("Sway"), "xc_accessory_physics", &g_Config.m_XcAccessoryPhysics, 0, 200, "%d%%");
+		if(g_Config.m_XcAccessory == 1)
+			ConfigSlider(Tr("Height"), "xc_accessory_height", &g_Config.m_XcAccessoryHeight, 30, 250, "%d%%");
+		// the same values as the accessory group in Visuals > World > Glow
+		ConfigSlider(Tr("Glow strength"), "xc_fxglow_accessory", &g_Config.m_XcFxglowAccessory, 0, 300, "%d%%");
+		ConfigSlider(Tr("Glow size"), "xc_fxglow_accessory_size", &g_Config.m_XcFxglowAccessorySize, 25, 300, "%d%%");
+		ToggleRow(Tr("Also on friends"), "xc_accessory_friends", &g_Config.m_XcAccessoryFriends);
+		TargetChips("##accessory_targets", &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryDummy, &g_Config.m_XcAccessoryOthers);
+		EndCard();
+	}
+	const char *apCapes[] = {Tr("Cape"), Tr("Scarf")};
+	if(StyleCard("##fx_cape", Tr("Cape"), Tr("A cloth cape or a scarf that flies behind the tee"), "xc_cape", &g_Config.m_XcCape, apCapes, 2))
+	{
+		EffectColorPicker("##cape_color", &g_Config.m_XcCapeColorMode, &g_Config.m_XcCapeColor);
+		ConfigSlider(Tr("Length"), "xc_cape_length", &g_Config.m_XcCapeLength, 50, 200, "%d%%");
+		ConfigSlider(Tr("Width"), "xc_cape_width", &g_Config.m_XcCapeWidth, 50, 200, "%d%%");
+		ConfigSlider(Tr("Wind"), "xc_cape_wind", &g_Config.m_XcCapeWind, 0, 200, "%d%%");
+		ConfigSlider(Tr("Opacity"), "xc_cape_alpha", &g_Config.m_XcCapeAlpha, 10, 100, "%d%%");
+		TargetChips("##cape_targets", &g_Config.m_XcCapeSelf, &g_Config.m_XcCapeDummy, &g_Config.m_XcCapeOthers);
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsWeapons()
+{
+	BeginCardGrid("##vis_weapons", 2);
+	const char *apHooks[] = {Tr("Chain"), Tr("Line"), Tr("Glow")};
+	if(StyleCard("##fx_hook", Tr("Hook"), Tr("Colored chain, clean line or a glowing beam"), "xc_hook_style", &g_Config.m_XcHookStyle, apHooks, 3))
+	{
+		EffectColorPicker("##hook_color", &g_Config.m_XcHookColorMode, &g_Config.m_XcHookColor);
+		ConfigSlider(Tr("Width"), "xc_hook_width", &g_Config.m_XcHookWidth, 25, 300, "%d%%");
+		ParamLabel(Tr("When the hook grabs"));
+		const char *apHits[] = {Tr("Nothing"), Tr("Ring"), Tr("Sparks"), Tr("Stars")};
+		ConfigSegmented("##hook_hit", "xc_hook_hit_fx", &g_Config.m_XcHookHitFx, apHits, 4);
+		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_projectiles", Tr("Bullets and lasers"), Tr("Light around shots, comet tails and glowing lasers")))
+	{
+		ToggleRow(Tr("Glow around bullets and grenades"), "xc_projectile_glow", &g_Config.m_XcProjectileGlow);
+		ToggleRow(Tr("Comet tail"), "xc_projectile_trail", &g_Config.m_XcProjectileTrail);
+		ToggleRow(Tr("Laser glow"), "xc_laser_glow", &g_Config.m_XcLaserGlow);
+		ToggleRow(Tr("Own laser beam instead of the stock one"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
+		ToggleRow(Tr("Hide the stock smoke trails"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ConfigSlider(Tr("Laser glow strength"), "xc_laser_glow_strength", &g_Config.m_XcLaserGlowStrength, 10, 250, "%d%%");
+		Description(Tr("The color is set in the Pickups card under World"));
+		EndCard();
+	}
+	const char *apHammer[] = {Tr("Ring"), Tr("Sparks"), Tr("Stars")};
+	if(StyleCard("##fx_hammer", Tr("Hammer hit"), Tr("A flash where the hammer lands"), "xc_hammer_fx", &g_Config.m_XcHammerFx, apHammer, 3))
+	{
+		EffectColorPicker("##hammer_color", &g_Config.m_XcHammerColorMode, &g_Config.m_XcHammerColor);
+		ToggleRow(Tr("Hide the stock hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		EndCard();
+	}
+	const char *apExplosions[] = {Tr("Shockwave"), Tr("Neon"), Tr("Sparks")};
+	if(StyleCard("##fx_explosion", Tr("Grenade explosion"), Tr("A shockwave, neon rings or hot sparks where a grenade explodes"), "xc_explosion_fx", &g_Config.m_XcExplosionFx, apExplosions, 3))
+	{
+		EffectColorPicker("##explosion_color", &g_Config.m_XcExplosionColorMode, &g_Config.m_XcExplosionColor);
+		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
+		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsCrosshair()
+{
+	BeginCardGrid("##vis_crosshair", 2);
+	const char *apCrosshairs[] = {Tr("Dot"), Tr("Cross"), Tr("Circle"), Tr("Circle + dot")};
+	if(StyleCard("##fx_crosshair", Tr("Crosshair"), Tr("Your own aim instead of the weapon cursor"), "xc_crosshair", &g_Config.m_XcCrosshair, apCrosshairs, 4))
+	{
+		EffectColorPicker("##crosshair_color", &g_Config.m_XcCrosshairColorMode, &g_Config.m_XcCrosshairColor);
+		ConfigSlider(Tr("Size"), "xc_crosshair_size", &g_Config.m_XcCrosshairSize, 30, 300, "%d%%");
+		ConfigSlider(Tr("Gap"), "xc_crosshair_gap", &g_Config.m_XcCrosshairGap, 0, 300, "%d%%");
+		ToggleRow(Tr("Glow"), "xc_crosshair_glow", &g_Config.m_XcCrosshairGlow);
+		ToggleRow(Tr("Dark outline"), "xc_crosshair_outline", &g_Config.m_XcCrosshairOutline);
+		EndCard();
+	}
+	if(BeginCard("##fx_crosshair_motion", Tr("Crosshair motion"), Tr("Blur and a trail when you move the mouse, a kick on every shot. Works with any crosshair"), &g_Config.m_XcCrosshairMotion))
+	{
+		ToggleRow(Tr("Motion blur"), "xc_crosshair_blur", &g_Config.m_XcCrosshairBlur);
+		if(g_Config.m_XcCrosshairBlur)
+			ConfigSlider(Tr("Blur length"), "xc_crosshair_blur_strength", &g_Config.m_XcCrosshairBlurStrength, 10, 100, "%d%%");
+		ToggleRow(Tr("Glowing trail"), "xc_crosshair_trail", &g_Config.m_XcCrosshairTrail);
+		if(g_Config.m_XcCrosshairTrail)
+			ConfigSlider(Tr("Trail length"), "xc_crosshair_trail_length", &g_Config.m_XcCrosshairTrailLength, 10, 100, "%d%%");
+		ToggleRow(Tr("Kick on a shot"), "xc_crosshair_kick", &g_Config.m_XcCrosshairKick);
+		if(g_Config.m_XcCrosshairKick)
+			ConfigSlider(Tr("Kick strength"), "xc_crosshair_kick_strength", &g_Config.m_XcCrosshairKickStrength, 10, 100, "%d%%");
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsWorld()
+{
+	BeginCardGrid("##vis_world", 2);
 	if(BeginCard("##fx_items", Tr("Pickups"), Tr("Hearts, armor, weapons and ninja softly glow"), &g_Config.m_XcItemsGlow))
 	{
 		ParamLabel(Tr("Color"));
@@ -317,6 +331,17 @@ void CXcMenu::RenderVisualsWorld()
 		Description(Tr("Bullets, grenades and lasers use the same colors"));
 		EndCard();
 	}
+	const char *apWeather[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash")};
+	if(StyleCard("##fx_weather", Tr("Weather"), Tr("Falling particles over the map and the menu"), "xc_weather", &g_Config.m_XcWeather, apWeather, 4))
+	{
+		ConfigSlider(Tr("Amount"), "xc_weather_density", &g_Config.m_XcWeatherDensity, 1, 100, "%d%%");
+		ConfigSlider(Tr("Size"), "xc_weather_size", &g_Config.m_XcWeatherSize, 25, 300, "%d%%");
+		ConfigSlider(Tr("Speed"), "xc_weather_speed", &g_Config.m_XcWeatherSpeed, 10, 300, "%d%%");
+		ConfigSlider(Tr("Opacity"), "xc_weather_alpha", &g_Config.m_XcWeatherAlpha, 5, 100, "%d%%");
+		ToggleRow(Tr("In game"), "xc_weather_ingame", &g_Config.m_XcWeatherInGame);
+		ToggleRow(Tr("In the main menu"), "xc_weather_menu", &g_Config.m_XcWeatherInMenu);
+		EndCard();
+	}
 	const char *apFloaters[] = {Tr("Cubes"), Tr("Orbs"), Tr("Both")};
 	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes and orbs drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
 	{
@@ -329,28 +354,10 @@ void CXcMenu::RenderVisualsWorld()
 		ToggleRow(Tr("Your tee pushes them"), "xc_floaters_push", &g_Config.m_XcFloatersPush);
 		EndCard();
 	}
-	const char *apWeather[] = {Tr("Snow"), Tr("Leaves"), Tr("Sakura"), Tr("Ash")};
-	if(StyleCard("##fx_weather", Tr("Weather"), Tr("Falling particles over the map and the menu"), "xc_weather", &g_Config.m_XcWeather, apWeather, 4))
-	{
-		ConfigSlider(Tr("Amount"), "xc_weather_density", &g_Config.m_XcWeatherDensity, 1, 100, "%d%%");
-		ConfigSlider(Tr("Size"), "xc_weather_size", &g_Config.m_XcWeatherSize, 25, 300, "%d%%");
-		ConfigSlider(Tr("Speed"), "xc_weather_speed", &g_Config.m_XcWeatherSpeed, 10, 300, "%d%%");
-		ConfigSlider(Tr("Opacity"), "xc_weather_alpha", &g_Config.m_XcWeatherAlpha, 5, 100, "%d%%");
-		ToggleRow(Tr("In game"), "xc_weather_ingame", &g_Config.m_XcWeatherInGame);
-		ToggleRow(Tr("In the main menu"), "xc_weather_menu", &g_Config.m_XcWeatherInMenu);
-		EndCard();
-	}
 	const char *apTints[] = {Tr("Warm"), Tr("Cool"), Tr("Accent"), Tr("Night")};
 	if(StyleCard("##fx_tint", Tr("World color"), Tr("A soft color filter over the map"), "xc_world_tint", &g_Config.m_XcWorldTint, apTints, 4))
 	{
 		ConfigSlider(Tr("Strength"), "xc_world_tint_strength", &g_Config.m_XcWorldTintStrength, 5, 100, "%d%%");
-		EndCard();
-	}
-	if(BeginCard("##fx_over_tiles", Tr("Over the blocks"), Tr("Effects and hats can be drawn over the map blocks, they stay visible behind walls")))
-	{
-		ToggleRow(Tr("Effects over the blocks"), "xc_fx_over_tiles", &g_Config.m_XcFxOverTiles);
-		ToggleRow(Tr("Hats over the blocks"), "xc_hats_over_tiles", &g_Config.m_XcHatsOverTiles);
-		Description(Tr("Jumps, rings, freeze, death, finish and accessories. Hats placed behind the tee stay behind"));
 		EndCard();
 	}
 	if(BeginCard("##fx_vignette", Tr("Vignette"), Tr("Darker screen edges to focus on the center")))
@@ -414,6 +421,54 @@ void CXcMenu::RenderVisualsEvents()
 		Description(Tr("Only the picture moves, aim and movement stay the same"));
 		EndCard();
 	}
+	if(BeginCard("##fx_dummy_arrow", Tr("Arrows to players"), Tr("Glowing arrows at the screen edge show where the dummy, team mates and friends are")))
+	{
+		ToggleRow(Tr("Dummy"), "xc_dummy_arrow", &g_Config.m_XcDummyArrow);
+		ToggleRow(Tr("Team mates"), "xc_team_arrows", &g_Config.m_XcTeamArrows);
+		ToggleRow(Tr("Friends"), "xc_friend_arrows", &g_Config.m_XcFriendArrows);
+		ParamLabel(Tr("Dummy arrow color"));
+		EffectColorPicker("##arrow_color", &g_Config.m_XcDummyArrowColorMode, &g_Config.m_XcDummyArrowColor);
+		ConfigSlider(Tr("Size"), "xc_dummy_arrow_size", &g_Config.m_XcDummyArrowSize, 50, 250, "%d%%");
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+void CXcMenu::RenderVisualsNames()
+{
+	BeginCardGrid("##vis_names", 2);
+	if(BeginCard("##hud_plates", Tr("Name plates"), Tr("Names above the tees on dark rounded plates"), &g_Config.m_XcHudPlates))
+	{
+		Description(Tr("The text stays readable on bright maps"));
+		EndCard();
+	}
+	const char *apGradients[] = {Tr("Accent"), Tr("Rainbow"), Tr("Skin"), Tr("Two colors")};
+	if(StyleCard("##fx_name_gradient", Tr("Gradient name"), Tr("The name above the tee in a smooth gradient that can flow"), "xc_name_gradient", &g_Config.m_XcNameGradient, apGradients, 4))
+	{
+		if(g_Config.m_XcNameGradient == 4)
+		{
+			// the own part of the picker for each of the two colors
+			int OwnMode = 1;
+			ParamLabel(Tr("First color"));
+			EffectColorPicker("##gradient_color1", &OwnMode, &g_Config.m_XcNameGradientColor1);
+			ParamLabel(Tr("Second color"));
+			EffectColorPicker("##gradient_color2", &OwnMode, &g_Config.m_XcNameGradientColor2);
+		}
+		ToggleRow(Tr("Flowing"), "xc_name_gradient_flow", &g_Config.m_XcNameGradientFlow);
+		TargetChips("##gradient_targets", &g_Config.m_XcNameGradientSelf, &g_Config.m_XcNameGradientDummy, &g_Config.m_XcNameGradientOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_flying_names", Tr("Flying names"), Tr("Names follow the tees on a soft spring, like kites"), &g_Config.m_XcFlyingNames))
+	{
+		ConfigSlider(Tr("Lag"), "xc_flying_names_lag", &g_Config.m_XcFlyingNamesLag, 30, 300, "%d%%");
+		EndCard();
+	}
+	EndCardGrid();
+}
+
+// lives in Settings > Sound, next to the other sounds
+void CXcMenu::RenderEventSoundsCard()
+{
 	if(BeginCard("##fx_event_sounds", Tr("Event sounds"), Tr("Short sounds when you freeze, finish, set a record or teleport"), &g_Config.m_XcEventSounds))
 	{
 		ConfigSlider(Tr("Volume"), "xc_event_sound_volume", &g_Config.m_XcEventSoundVolume, 0, 100, "%d%%");
@@ -452,37 +507,12 @@ void CXcMenu::RenderVisualsEvents()
 		}
 		EndCard();
 	}
-	if(BeginCard("##fx_stock", Tr("Stock effects"), Tr("Hide the standard game effects so only ours stay, sounds remain")))
-	{
-		ToggleRow(Tr("Hammer hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
-		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
-		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
-		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
-		ToggleRow(Tr("Double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
-		ToggleRow(Tr("Skid smoke when turning"), "xc_replace_skid", &g_Config.m_XcReplaceSkid);
-		ToggleRow(Tr("Purple spawn smoke"), "xc_replace_spawn", &g_Config.m_XcReplaceSpawn);
-		ToggleRow(Tr("Blood on death"), "xc_replace_death", &g_Config.m_XcReplaceDeath);
-		ToggleRow(Tr("Snowflakes on frozen tees"), "xc_replace_freeze", &g_Config.m_XcReplaceFreeze);
-		Description(Tr("Turn on our effect for the same event in its card, otherwise nothing is shown"));
-		EndCard();
-	}
-	if(BeginCard("##fx_dummy_arrow", Tr("Arrows to players"), Tr("Glowing arrows at the screen edge show where the dummy, team mates and friends are")))
-	{
-		ToggleRow(Tr("Dummy"), "xc_dummy_arrow", &g_Config.m_XcDummyArrow);
-		ToggleRow(Tr("Team mates"), "xc_team_arrows", &g_Config.m_XcTeamArrows);
-		ToggleRow(Tr("Friends"), "xc_friend_arrows", &g_Config.m_XcFriendArrows);
-		ParamLabel(Tr("Dummy arrow color"));
-		EffectColorPicker("##arrow_color", &g_Config.m_XcDummyArrowColorMode, &g_Config.m_XcDummyArrowColor);
-		ConfigSlider(Tr("Size"), "xc_dummy_arrow_size", &g_Config.m_XcDummyArrowSize, 50, 250, "%d%%");
-		EndCard();
-	}
-	EndCardGrid();
 }
 
 void CXcMenu::RenderVisuals()
 {
-	const char *apIcons[NUM_VISUALS] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_HAT};
-	const char *apLabels[NUM_VISUALS] = {Tr("Tee"), Tr("Movement"), Tr("Hook and weapons"), Tr("World"), Tr("Events"), Tr("Cosmetics")};
+	const char *apIcons[NUM_VISUALS] = {XC_ICON_SLIDERS, XC_ICON_USER, XC_ICON_BOLT, XC_ICON_HAT, XC_ICON_HAMMER, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_USERS};
+	const char *apLabels[NUM_VISUALS] = {Tr("General"), Tr("Tee"), Tr("Movement"), Tr("Cosmetics"), Tr("Weapons"), Tr("Crosshair"), Tr("World"), Tr("Events"), Tr("Names")};
 	const float NavWidth = S(210.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
 	if(SideNav("##visual_sections", &m_VisualsSection, apIcons, apLabels, NUM_VISUALS, NavWidth))
@@ -496,10 +526,16 @@ void CXcMenu::RenderVisuals()
 	{
 	case VISUALS_TEE: RenderVisualsTee(); break;
 	case VISUALS_MOVEMENT: RenderVisualsMovement(); break;
+	case VISUALS_COSMETICS:
+		RenderVisualsCosmetics();
+		RenderVisualsCosmeticsExtra();
+		break;
 	case VISUALS_WEAPONS: RenderVisualsWeapons(); break;
+	case VISUALS_CROSSHAIR: RenderVisualsCrosshair(); break;
+	case VISUALS_WORLD: RenderVisualsWorld(); break;
 	case VISUALS_EVENTS: RenderVisualsEvents(); break;
-	case VISUALS_COSMETICS: RenderVisualsCosmetics(); break;
-	default: RenderVisualsWorld(); break;
+	case VISUALS_NAMES: RenderVisualsNames(); break;
+	default: RenderVisualsGeneral(); break;
 	}
 	if(m_VisualsSection != VISUALS_COSMETICS)
 		m_WheelCaptured = false;
