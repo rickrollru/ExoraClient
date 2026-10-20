@@ -7,10 +7,25 @@
 
 #include <engine/shared/config.h>
 
+#include <game/collision.h>
+
 #include <algorithm>
 #include <cmath>
 
 static constexpr size_t MAX_PARTICLES = 6000;
+static const CCollision *s_pCollision = nullptr;
+
+void CXcParticles::SetCollision(const CCollision *pCollision)
+{
+	s_pCollision = pCollision;
+}
+
+// the particles that are small pieces of matter: they can fall, bounce and change their look
+static bool IsPiece(CXcParticles::EType Type)
+{
+	return Type == CXcParticles::EType::SPARK || Type == CXcParticles::EType::STAR || Type == CXcParticles::EType::SHARD ||
+	       Type == CXcParticles::EType::CONFETTI || Type == CXcParticles::EType::ICON;
+}
 
 namespace FxTune
 {
@@ -49,6 +64,23 @@ void CXcParticles::Add(const SParticle &Particle)
 	Scaled.m_StartSize *= Tune.m_Size;
 	Scaled.m_EndSize *= Tune.m_Size;
 	Scaled.m_Thickness *= Tune.m_Size;
+	// one look for all small particles (xc_particles_shape)
+	if(g_Config.m_XcParticlesShape > 0 && (Particle.m_Type == EType::SPARK || Particle.m_Type == EType::STAR || Particle.m_Type == EType::ICON))
+	{
+		static const int s_aSprites[] = {-1, CXcSprites::SPRITE_STAR, CXcSprites::SPRITE_HEART, CXcSprites::SPRITE_RHOMBUS, CXcSprites::SPRITE_SNOWFLAKE, CXcSprites::SPRITE_FIREFLY};
+		const int Shape = std::clamp(g_Config.m_XcParticlesShape, 1, (int)std::size(s_aSprites));
+		if(Shape == 1)
+			Scaled.m_Type = EType::SPARK;
+		else
+		{
+			Scaled.m_Type = EType::ICON;
+			Scaled.m_Sprite = s_aSprites[Shape - 1];
+			Scaled.m_StartSize *= 1.6f;
+			Scaled.m_EndSize *= 1.6f;
+			if(Scaled.m_RotSpeed == 0.0f)
+				Scaled.m_RotSpeed = random_float(-3.0f, 3.0f);
+		}
+	}
 
 	// rings, flashes and circles are one piece of an effect, more of them would only make it brighter
 	const bool Countable = Particle.m_Type == EType::SPARK || Particle.m_Type == EType::STAR || Particle.m_Type == EType::DUST ||
@@ -83,14 +115,41 @@ void CXcParticles::Add(const SParticle &Particle)
 
 void CXcParticles::Update(float Dt)
 {
+	const bool Physics = g_Config.m_XcParticlesPhysics && s_pCollision;
+	const float ExtraGravity = Physics ? 1400.0f * g_Config.m_XcParticlesGravity / 100.0f : 0.0f;
+	const float Bounce = g_Config.m_XcParticlesBounce / 100.0f;
 	for(SParticle &Particle : m_vParticles)
 	{
 		Particle.m_Life += Dt;
 		if(Particle.m_Life < 0.0f)
 			continue;
-		Particle.m_Vel.y += Particle.m_Gravity * Dt;
+		const bool Piece = Physics && IsPiece(Particle.m_Type);
+		Particle.m_Vel.y += (Particle.m_Gravity + (Piece ? ExtraGravity : 0.0f)) * Dt;
 		Particle.m_Vel *= std::pow(Particle.m_Friction, Dt);
-		Particle.m_Pos += Particle.m_Vel * Dt;
+		const vec2 NewPos = Particle.m_Pos + Particle.m_Vel * Dt;
+		if(Piece && s_pCollision->CheckPoint(NewPos))
+		{
+			// bounce off the side that was hit, lose some speed and spin on the ground
+			bool Hit = false;
+			if(s_pCollision->CheckPoint(vec2(NewPos.x, Particle.m_Pos.y)))
+			{
+				Particle.m_Vel.x = -Particle.m_Vel.x * Bounce;
+				Hit = true;
+			}
+			if(s_pCollision->CheckPoint(vec2(Particle.m_Pos.x, NewPos.y)))
+			{
+				Particle.m_Vel.y = -Particle.m_Vel.y * Bounce;
+				Particle.m_Vel.x *= 0.8f;
+				Particle.m_RotSpeed *= 0.7f;
+				Hit = true;
+			}
+			if(!Hit)
+				Particle.m_Vel = -Particle.m_Vel * Bounce;
+			if(!s_pCollision->CheckPoint(Particle.m_Pos + Particle.m_Vel * Dt))
+				Particle.m_Pos += Particle.m_Vel * Dt;
+		}
+		else
+			Particle.m_Pos = NewPos;
 		Particle.m_Rot += Particle.m_RotSpeed * Dt;
 	}
 	m_vParticles.erase(std::remove_if(m_vParticles.begin(), m_vParticles.end(), [](const SParticle &Particle) { return Particle.m_Life >= Particle.m_LifeSpan; }), m_vParticles.end());

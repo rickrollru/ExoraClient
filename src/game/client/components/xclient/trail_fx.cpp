@@ -282,6 +282,12 @@ void CTrailFx::OnRender()
 		if(PlayerFade <= 0.0f)
 			continue;
 		const vec2 Pos = GameClient()->m_aClients[ClientId].m_RenderPos;
+		// far players keep no trail (xc_trail_max_distance, in blocks)
+		if(g_Config.m_XcTrailMaxDistance > 0 && TargetOf(GameClient(), ClientId) == ETarget::OTHER && distance(Pos, GameClient()->m_Camera.m_Center) > g_Config.m_XcTrailMaxDistance * 32.0f)
+		{
+			Trail.m_vPoints.clear();
+			continue;
+		}
 		const vec2 OldHead = Trail.m_vPoints.empty() ? Pos : Trail.m_vPoints.front().m_Pos;
 		Update(ClientId, Pos, Length);
 		const size_t Count = Trail.m_vPoints.size();
@@ -388,17 +394,41 @@ void CTrailFx::OnRender()
 				vRibbon.push_back(Point);
 			}
 		}
-		if(vRibbon.size() >= 2)
-		{
+		const auto DrawPiece = [&](const std::vector<SRibbonPoint> &vPiece) {
+			if(vPiece.size() < 2)
+				return;
 			if(GameClient()->m_XcSprites.Enabled())
 			{
 				// the smooth body of the classic ribbon with soft textured light over it
-				DrawRibbon(vRibbon, 0.0f, Style == TRAIL_RIBBON ? 0.85f : 0.6f);
-				DrawLightRibbon(vRibbon, Glow);
+				DrawRibbon(vPiece, 0.0f, Style == TRAIL_RIBBON ? 0.85f : 0.6f);
+				DrawLightRibbon(vPiece, Glow);
 			}
 			else
-				DrawRibbon(vRibbon, Glow, Style == TRAIL_RIBBON ? 0.95f : 0.7f);
+				DrawRibbon(vPiece, Glow, Style == TRAIL_RIBBON ? 0.95f : 0.7f);
+		};
+		if(g_Config.m_XcTrailSegments && vRibbon.size() >= 2)
+		{
+			// pieces with gaps between them (xc_trail_segments), the pattern stays on the ground
+			const float Piece = 16.0f * Scale, Gap = 9.0f * Scale;
+			std::vector<SRibbonPoint> vPiece;
+			float Walked = 0.0f;
+			for(size_t i = 0; i < vRibbon.size(); i++)
+			{
+				if(i > 0)
+					Walked += distance(vRibbon[i - 1].m_Pos, vRibbon[i].m_Pos);
+				const bool InPiece = std::fmod(Walked, Piece + Gap) < Piece;
+				if(InPiece)
+					vPiece.push_back(vRibbon[i]);
+				else if(!vPiece.empty())
+				{
+					DrawPiece(vPiece);
+					vPiece.clear();
+				}
+			}
+			DrawPiece(vPiece);
 		}
+		else
+			DrawPiece(vRibbon);
 	}
 	GameClient()->m_FxRenderer.Draw(vShapes, true);
 	if(GameClient()->m_XcSprites.Enabled())

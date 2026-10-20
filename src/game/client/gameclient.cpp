@@ -171,6 +171,7 @@ void CGameClient::OnConsoleInit()
 					      &m_MapLayersForeground,
 					      &m_XcOverTiles, // XClient: effects and hats over the blocks (xc_fx_over_tiles, xc_hats_over_tiles)
 					      &m_XcFloaters, // XClient: floating cubes and orbs, over the map
+					      &m_XcBlockOutline, // XClient: frame around the block under the crosshair
 					      &m_MovingTilesForeground, // TClient
 					      &m_Outlines, // TClient
 					      &m_Mumble, // TClient
@@ -185,6 +186,7 @@ void CGameClient::OnConsoleInit()
 					      &m_PlayerIndicator, // TClient
 					      &m_Mod, // TClient
 					      &m_CustomCommunities, // TClient
+					      &m_XcAmbience, // XClient: time of day, sun rays and fog over the world
 					      &m_ScreenFx, // XClient: color filter and vignette under the HUD
 					      &m_Hud,
 					      &m_XcMusic, // XClient: music player state for the HUD and the menu

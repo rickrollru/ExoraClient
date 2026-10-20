@@ -322,7 +322,63 @@ uniform vec4 u_RimColor;
 uniform float u_Strength;
 uniform float u_RimWidth;
 uniform vec2 u_Texel;
+uniform int u_FillMode;
+uniform vec4 u_FillColor;
+uniform vec4 u_FillColor2;
+uniform float u_FillAlpha;
+uniform float u_FillScale;
+uniform float u_FillTime;
+uniform float u_KeepShade;
 out vec4 FragColor;
+
+vec3 Hue(float h)
+{
+	return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+}
+
+float Hash(vec2 p)
+{
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float Noise(vec2 p)
+{
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(Hash(i), Hash(i + vec2(1.0, 0.0)), f.x), mix(Hash(i + vec2(0.0, 1.0)), Hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// the pattern at a screen point, p is in tee widths
+vec3 Pattern(vec2 p)
+{
+	float t = u_FillTime;
+	if(u_FillMode == 1) // gradient that flows up
+		return mix(u_FillColor.rgb, u_FillColor2.rgb, 0.5 + 0.5 * sin(p.y * 3.0 - t * 1.6));
+	if(u_FillMode == 2) // rainbow
+		return Hue(fract((p.x + p.y) * 0.6 - t * 0.25));
+	if(u_FillMode == 3) // galaxy: dark sky, colored nebula and twinkling stars
+	{
+		vec2 q = p * 3.0 + vec2(t * 0.08, 0.0);
+		float n = Noise(q) * 0.6 + Noise(q * 2.3 + 7.0) * 0.4;
+		vec3 Sky = mix(u_FillColor.rgb * 0.18, u_FillColor2.rgb * 0.8, smoothstep(0.35, 0.85, n));
+		vec2 Cell = floor(p * 14.0);
+		float Star = step(0.93, Hash(Cell)) * (0.5 + 0.5 * sin(t * 3.0 + Hash(Cell + 3.0) * 6.28));
+		vec2 f = fract(p * 14.0) - 0.5;
+		Star *= smoothstep(0.25, 0.0, length(f));
+		return Sky + vec3(Star);
+	}
+	if(u_FillMode == 4) // diagonal waves
+	{
+		float w = sin((p.x + p.y) * 9.0 - t * 3.0 + sin(p.y * 4.0 + t) * 1.5);
+		return mix(u_FillColor.rgb, u_FillColor2.rgb, smoothstep(-0.2, 0.2, w));
+	}
+	// chrome: bands of light like a mirror, slowly sliding
+	float b = sin(p.y * 7.0 + sin(p.x * 3.0 + t * 0.7) * 1.2 - t * 0.5);
+	vec3 Dark = u_FillColor.rgb * 0.35;
+	vec3 Light = mix(u_FillColor.rgb, vec3(1.0), 0.65);
+	return mix(Dark, Light, smoothstep(-0.3, 0.6, b)) + vec3(pow(max(b, 0.0), 12.0)) * 0.6;
+}
 
 // DDNet blends with glBlendFunc(SRC_ALPHA, ONE_MINUS_SRC_ALPHA) for all channels, so on a
 // transparent target the stored alpha is a*a and the color is premultiplied by a
@@ -355,7 +411,16 @@ void main()
 	float RimA = Rim * u_RimColor.a;
 	vec3 Light = u_Color.rgb * GlowA + u_RimColor.rgb * RimA;
 	float Cover = clamp(GlowA * 0.55 + RimA * 0.9, 0.0, 1.0) * (1.0 - a);
-	FragColor = vec4(c.rgb + Light * (1.0 - a), a + Cover);
+	vec3 Body = c.rgb;
+	if(u_FillMode > 0 && a > 0.001)
+	{
+		// the pattern over the tee, lit by the skin's own light and dark parts
+		vec3 Src = c.rgb / a;
+		float Lum = dot(Src, vec3(0.299, 0.587, 0.114));
+		vec3 Fill = Pattern(gl_FragCoord.xy / max(u_FillScale, 1.0)) * mix(1.0, clamp(Lum * 1.7, 0.0, 1.5), u_KeepShade);
+		Body = mix(Src, Fill, u_FillAlpha) * a;
+	}
+	FragColor = vec4(Body + Light * (1.0 - a), a + Cover);
 }
 )";
 
@@ -514,6 +579,13 @@ bool CXcRenderer::Init()
 	m_LocGlowStrength = glGetUniformLocation(m_GlowProgram, "u_Strength");
 	m_LocGlowRimWidth = glGetUniformLocation(m_GlowProgram, "u_RimWidth");
 	m_LocGlowTexel = glGetUniformLocation(m_GlowProgram, "u_Texel");
+	m_LocGlowFillMode = glGetUniformLocation(m_GlowProgram, "u_FillMode");
+	m_LocGlowFillColor = glGetUniformLocation(m_GlowProgram, "u_FillColor");
+	m_LocGlowFillColor2 = glGetUniformLocation(m_GlowProgram, "u_FillColor2");
+	m_LocGlowFillAlpha = glGetUniformLocation(m_GlowProgram, "u_FillAlpha");
+	m_LocGlowFillScale = glGetUniformLocation(m_GlowProgram, "u_FillScale");
+	m_LocGlowFillTime = glGetUniformLocation(m_GlowProgram, "u_FillTime");
+	m_LocGlowKeepShade = glGetUniformLocation(m_GlowProgram, "u_KeepShade");
 
 	m_LocScreen = glGetUniformLocation(m_ShapeProgram, "u_Screen");
 	m_LocPixel = glGetUniformLocation(m_ShapeProgram, "u_Pixel");
@@ -991,21 +1063,25 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 		const XcRender::SGlowSettings &Settings = pCommand->m_Settings;
 
 		// glow: silhouette down to half resolution, then blurred as wide as asked
-		const int Levels = std::clamp((int)std::round(std::log2(std::max(Settings.m_Radius, 5.0f) / 2.5f)) - 1, 1, (int)MAX_GLOW_LEVELS);
+		// (only the pattern: no blur needed, the glow strength is 0)
 		glActiveTexture(GL_TEXTURE0);
 		glBindSampler(0, m_Sampler);
-		glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
-		glViewport(0, 0, m_aBloom[0].m_Width, m_aBloom[0].m_Height);
-		glEnable(GL_SCISSOR_TEST);
-		ScissorScaled(m_aCaptureRegion, Width, m_aBloom[0]);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDisable(GL_BLEND);
-		glUseProgram(m_DownProgram);
-		glUniform1i(m_LocDownTex, 0);
-		glUniform2f(m_LocDownHalfPixel, 0.5f / Width, 0.5f / Height);
-		DrawFullscreen(m_DownProgram, m_Capture.m_Texture);
-		BlurChain(m_aBloom, Levels + 1, 1.5f, Width, m_aCaptureRegion);
+		if(Settings.m_DoGlow)
+		{
+			const int Levels = std::clamp((int)std::round(std::log2(std::max(Settings.m_Radius, 5.0f) / 2.5f)) - 1, 1, (int)MAX_GLOW_LEVELS);
+			glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
+			glViewport(0, 0, m_aBloom[0].m_Width, m_aBloom[0].m_Height);
+			glEnable(GL_SCISSOR_TEST);
+			ScissorScaled(m_aCaptureRegion, Width, m_aBloom[0]);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glDisable(GL_BLEND);
+			glUseProgram(m_DownProgram);
+			glUniform1i(m_LocDownTex, 0);
+			glUniform2f(m_LocDownHalfPixel, 0.5f / Width, 0.5f / Height);
+			DrawFullscreen(m_DownProgram, m_Capture.m_Texture);
+			BlurChain(m_aBloom, Levels + 1, 1.5f, Width, m_aCaptureRegion);
+		}
 
 		// back to DDNet's framebuffer: glow and outline, then the sprites on top
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_CaptureSavedDraw);
@@ -1022,6 +1098,18 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 		glUniform1f(m_LocGlowStrength, Settings.m_Strength);
 		glUniform1f(m_LocGlowRimWidth, Settings.m_RimWidth);
 		glUniform2f(m_LocGlowTexel, 1.0f / Width, 1.0f / Height);
+		if(!Settings.m_DoGlow)
+		{
+			glUniform1f(m_LocGlowStrength, 0.0f);
+			glUniform1f(m_LocGlowRimWidth, 0.0f);
+		}
+		glUniform1i(m_LocGlowFillMode, Settings.m_FillMode);
+		glUniform4f(m_LocGlowFillColor, Settings.m_FillColor.r, Settings.m_FillColor.g, Settings.m_FillColor.b, Settings.m_FillColor.a);
+		glUniform4f(m_LocGlowFillColor2, Settings.m_FillColor2.r, Settings.m_FillColor2.g, Settings.m_FillColor2.b, Settings.m_FillColor2.a);
+		glUniform1f(m_LocGlowFillAlpha, Settings.m_FillAlpha);
+		glUniform1f(m_LocGlowFillScale, Settings.m_FillScale);
+		glUniform1f(m_LocGlowFillTime, Settings.m_FillTime);
+		glUniform1f(m_LocGlowKeepShade, Settings.m_KeepShade);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, m_aBloom[0].m_Texture);
 		glBindSampler(1, m_Sampler);

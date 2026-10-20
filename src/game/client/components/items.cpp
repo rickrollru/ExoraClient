@@ -118,7 +118,8 @@ void CItems::RenderProjectile(const CProjectileData *pCurrent, int ItemId, const
 			Graphics()->QuadsSetRotation(0);
 	}
 
-	if(GameClient()->m_GameSkin.m_aSpriteWeaponProjectiles[CurWeapon].IsValid())
+	const bool XcHideBullet = g_Config.m_XcReplaceBullets && (CurWeapon == WEAPON_GUN || CurWeapon == WEAPON_SHOTGUN); // XClient
+	if(GameClient()->m_GameSkin.m_aSpriteWeaponProjectiles[CurWeapon].IsValid() && !XcHideBullet)
 	{
 		Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteWeaponProjectiles[CurWeapon]);
 		Graphics()->SetColor(1.f, 1.f, 1.f, Alpha);

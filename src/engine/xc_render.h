@@ -61,6 +61,15 @@ namespace XcRender
 		float m_Radius = 24.0f; // glow reach in pixels
 		float m_Strength = 1.6f;
 		float m_RimWidth = 2.0f; // outline width in pixels, 0 = no outline
+		// a pattern painted over the tee itself (the tee shader, from the Flower client's hands effect)
+		int m_FillMode = 0; // 0 = none, 1 = gradient, 2 = rainbow, 3 = galaxy, 4 = waves, 5 = chrome
+		ColorRGBA m_FillColor = ColorRGBA(0.31f, 0.55f, 1.0f, 1.0f);
+		ColorRGBA m_FillColor2 = ColorRGBA(1.0f, 0.36f, 0.54f, 1.0f);
+		float m_FillAlpha = 0.0f; // how much of the tee is covered by the pattern
+		float m_FillScale = 1.0f; // pixels of one tee width, the pattern size follows the zoom
+		float m_FillTime = 0.0f; // seconds, moves the pattern
+		float m_KeepShade = 0.7f; // keep the dark and light parts of the skin under the pattern
+		bool m_DoGlow = true; // false: only the pattern, no glow or outline around
 	};
 
 	// Set by the render thread once the module has initialized successfully.

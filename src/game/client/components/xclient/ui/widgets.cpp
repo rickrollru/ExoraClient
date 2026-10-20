@@ -260,6 +260,7 @@ namespace XcUi
 		if(NewValue == *pValue)
 			return false;
 		*pValue = NewValue;
+		PlayUiSound(SOUND_TICK);
 		return true;
 	}
 

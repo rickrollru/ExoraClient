@@ -50,6 +50,7 @@ static const SBindEntry s_aBinds[] = {
 	{"Music: next track", "xc_music_next"},
 	{"Music: previous track", "xc_music_prev"},
 	{"Focus mode", "xc_focus"},
+	{"Friend under the crosshair", "xc_friend_aim"},
 };
 
 // --------------------------------------------------------------------------------------------
@@ -470,6 +471,11 @@ void CXcMenu::RenderSettingsSound()
 	if(BeginCard("##ui_sounds", Tr("Interface sounds"), Tr("Clicks, switches and notifications"), &g_Config.m_XcUiSounds))
 	{
 		ConfigSlider(Tr("Volume"), "xc_ui_sound_volume", &g_Config.m_XcUiSoundVolume, 0, 100, "%d%%");
+		ParamLabel(Tr("Sound set"));
+		const char *apPacks[] = {"Exora", "Flower"};
+		if(ConfigSegmented("##ui_sound_pack", "xc_ui_sound_pack", &g_Config.m_XcUiSoundPack, apPacks, 2))
+			PlayUiSound(SOUND_TOGGLE_ON);
+		ToggleRow(Tr("Tick when a slider moves"), "xc_ui_sound_ticks", &g_Config.m_XcUiSoundTicks);
 		EndCard();
 	}
 	RenderEventSoundsCard();
@@ -494,6 +500,17 @@ void CXcMenu::RenderSettingsChat()
 	{
 		ConfigSlider(Tr("Plate opacity"), "xc_chat_opacity", &g_Config.m_XcChatOpacity, 0, 100, "%d%%");
 		Description(Tr("Accent: you were mentioned. Mint: team chat. Pink: whisper. Gray: server"));
+		EndCard();
+	}
+	if(BeginCard("##streamer", Tr("Streamer mode"), Tr("Hide names on name plates, in the scoreboard, the chat and the HUD. Only on your screen")))
+	{
+		ParamLabel(Tr("Hide names"));
+		const char *apModes[] = {Tr("Off"), Tr("Mine"), Tr("Mine and friends"), Tr("Everyone")};
+		ConfigSegmented("##streamer_names", "xc_streamer_names", &g_Config.m_XcStreamerNames, apModes, 4);
+		if(g_Config.m_XcStreamerNames)
+			ConfigText(Tr("Instead of my name"), "xc_streamer_replacement", g_Config.m_XcStreamerReplacement, sizeof(g_Config.m_XcStreamerReplacement));
+		ToggleRow(Tr("Hide passwords from /save"), "cl_streamer_mode", &g_Config.m_ClStreamerMode);
+		Description(Tr("Others are shown as \"Player\" and their number"));
 		EndCard();
 	}
 	EndCardGrid();
@@ -794,8 +811,17 @@ void CXcMenu::RenderSettingsHud()
 		ToggleRow(Tr("Timer"), "xc_hud_timer", &g_Config.m_XcHudTimer);
 		ToggleRow(Tr("Speed"), "xc_hud_speed", &g_Config.m_XcHudSpeed);
 		ToggleRow(Tr("Weapon"), "xc_hud_weapon", &g_Config.m_XcHudWeapon);
+		if(g_Config.m_XcHudWeapon)
+			ToggleRow(Tr("All weapons and jumps under the weapon"), "xc_hud_weapon_list", &g_Config.m_XcHudWeaponList);
+		ToggleRow(Tr("Hide the standard HUD in the corner (weapons, jumps, states)"), "xc_hud_hide_classic", &g_Config.m_XcHudHideClassic);
 		ToggleRow(Tr("Music"), "xc_hud_music", &g_Config.m_XcHudMusic);
 		ToggleRow(Tr("Keystrokes"), "xc_hud_keys", &g_Config.m_XcHudKeys);
+		ToggleRow(Tr("Effects (freeze, jetpack, endless hook...)"), "xc_hud_effects", &g_Config.m_XcHudEffects);
+		if(g_Config.m_XcHudEffects)
+		{
+			ToggleRow(Tr("Compact: icons and timers only"), "xc_hud_effects_compact", &g_Config.m_XcHudEffectsCompact);
+			ToggleRow(Tr("Notify when an effect starts or ends"), "xc_hud_effects_notify", &g_Config.m_XcHudEffectsNotify);
+		}
 		ToggleRow(Tr("Focus mode (timer and speed only, no chat)"), "xc_focus_mode", &g_Config.m_XcFocusMode);
 		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
 		EndCard();
@@ -808,6 +834,7 @@ void CXcMenu::RenderSettingsHud()
 		ConfigSlider(Tr("Weapon"), "xc_hud_weapon_scale", &g_Config.m_XcHudWeaponScale, 50, 200, "%d%%");
 		ConfigSlider(Tr("Music"), "xc_hud_music_scale", &g_Config.m_XcHudMusicScale, 50, 200, "%d%%");
 		ConfigSlider(Tr("Keystrokes"), "xc_hud_keys_scale", &g_Config.m_XcHudKeysScale, 50, 200, "%d%%");
+		ConfigSlider(Tr("Effects"), "xc_hud_effects_scale", &g_Config.m_XcHudEffectsScale, 50, 200, "%d%%");
 		EndCard();
 	}
 	if(BeginCard("##music_player", Tr("Music player"), Tr("What plays in the browser or a music app: YouTube, SoundCloud, Yandex Music, Spotify..."), &g_Config.m_XcMusic))

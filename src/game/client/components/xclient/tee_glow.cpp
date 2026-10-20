@@ -24,11 +24,21 @@ ColorRGBA CTeeGlow::GlowColor(int ClientId) const
 	return EffectColor(GameClient(), g_Config.m_XcGlowColorMode, g_Config.m_XcGlowColor, ClientId);
 }
 
+bool CTeeGlow::HasGlow(int ClientId) const
+{
+	return g_Config.m_XcGlow && ShowFor(GameClient(), ClientId, g_Config.m_XcGlowSelf, g_Config.m_XcGlowDummy, g_Config.m_XcGlowOthers);
+}
+
+bool CTeeGlow::HasShader(int ClientId) const
+{
+	return g_Config.m_XcTeeShader && ShowFor(GameClient(), ClientId, g_Config.m_XcTeeShaderSelf, g_Config.m_XcTeeShaderDummy, g_Config.m_XcTeeShaderOthers);
+}
+
 bool CTeeGlow::Begin(int ClientId)
 {
-	if(!g_Config.m_XcGlow || !GameClient()->m_FxRenderer.ModuleActive())
+	if(!GameClient()->m_FxRenderer.ModuleActive() || !in_range(ClientId, MAX_CLIENTS - 1))
 		return false;
-	if(!in_range(ClientId, MAX_CLIENTS - 1) || !ShowFor(GameClient(), ClientId, g_Config.m_XcGlowSelf, g_Config.m_XcGlowDummy, g_Config.m_XcGlowOthers))
+	if(!HasGlow(ClientId) && !HasShader(ClientId))
 		return false;
 	if(PlayerAlpha(GameClient(), ClientId) <= 0.0f)
 		return false;
@@ -61,5 +71,17 @@ void CTeeGlow::End(int ClientId)
 	Settings.m_Radius = GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius * PixelsPerUnit;
 	Settings.m_Strength = 2.4f * g_Config.m_XcGlowStrength / 100.0f * FxGlow::For(-1).m_Strength * Pulse;
 	Settings.m_RimWidth = OUTLINE_WIDTH * g_Config.m_XcGlowOutline / 100.0f * PixelsPerUnit;
+	Settings.m_DoGlow = HasGlow(ClientId);
+	if(HasShader(ClientId))
+	{
+		// the tee shader: a moving pattern painted over the skin
+		Settings.m_FillMode = g_Config.m_XcTeeShader;
+		Settings.m_FillColor = EffectColor(GameClient(), g_Config.m_XcTeeShaderColorMode, g_Config.m_XcTeeShaderColor, ClientId);
+		Settings.m_FillColor2 = HslConfigColor(g_Config.m_XcTeeShaderColor2);
+		Settings.m_FillAlpha = g_Config.m_XcTeeShaderAlpha / 100.0f;
+		Settings.m_FillScale = 64.0f * PixelsPerUnit * g_Config.m_XcTeeShaderScale / 100.0f;
+		Settings.m_FillTime = Client()->GlobalTime() * g_Config.m_XcTeeShaderSpeed / 100.0f + ClientId * 0.37f;
+		Settings.m_KeepShade = g_Config.m_XcTeeShaderShade / 100.0f;
+	}
 	Graphics()->XcCaptureEnd(Settings);
 }

@@ -1,6 +1,7 @@
 #include "event_fx.h"
 
 #include "fx_renderer.h"
+#include "sprite_fx.h"
 #include "xc_helpers.h"
 
 #include <base/math.h>
@@ -18,6 +19,7 @@
 #include <game/collision.h>
 #include <game/mapitems.h>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace XcHelpers;
@@ -62,6 +64,8 @@ bool CXcEventFx::IsOwn(int ClientId) const
 void CXcEventFx::OnReset()
 {
 	m_Particles.Clear();
+	m_vBolts.clear();
+	m_DeathMarkerAge = -1.0f;
 	for(int i = 0; i < NUM_DUMMIES; i++)
 	{
 		m_aLastValid[i] = false;
@@ -222,6 +226,11 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 	}
 	if(IsOwn(ClientId))
 		PlayEventSound(EVENT_SOUND_DEATH);
+	if(ClientId >= 0 && ClientId == GameClient()->m_aLocalIds[g_Config.m_ClDummy] && g_Config.m_XcDeathMarker)
+	{
+		m_DeathMarkerPos = Pos;
+		m_DeathMarkerAge = 0.0f;
+	}
 	const int Style = g_Config.m_XcDeathFx;
 	if(Style == DEATH_OFF || ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return;
@@ -240,7 +249,35 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 	Ring.m_Thickness = 6.0f;
 	Ring.m_Color = Color;
 	m_Particles.Add(Ring);
-	const int Count = Style == DEATH_ASH ? 26 : 18;
+	if(Style == DEATH_LIGHTNING)
+	{
+		// the bolt is drawn by RenderBolts, here only the flash on the ground and the sparks
+		m_vBolts.push_back({Pos, 0.0f, Color, (unsigned)rand()});
+		CXcParticles::SParticle Flash;
+		Flash.m_Type = CXcParticles::EType::FLASH;
+		Flash.m_Pos = Pos;
+		Flash.m_LifeSpan = 0.3f;
+		Flash.m_StartSize = 40.0f;
+		Flash.m_EndSize = 110.0f;
+		Flash.m_Color = Color;
+		m_Particles.Add(Flash);
+	}
+	if(Style == DEATH_SOUL)
+	{
+		CXcParticles::SParticle Soul;
+		Soul.m_Type = CXcParticles::EType::ICON;
+		Soul.m_Sprite = CXcSprites::SPRITE_GHOST;
+		Soul.m_Pos = Pos;
+		Soul.m_Vel = vec2(0.0f, -90.0f);
+		Soul.m_Gravity = -40.0f;
+		Soul.m_Friction = 0.8f;
+		Soul.m_LifeSpan = 1.6f;
+		Soul.m_StartSize = 38.0f;
+		Soul.m_EndSize = 46.0f;
+		Soul.m_Color = Color;
+		m_Particles.Add(Soul);
+	}
+	const int Count = Style == DEATH_ASH ? 26 : Style == DEATH_PIXELS ? 30 : Style == DEATH_SOUL ? 10 : 18;
 	for(int i = 0; i < Count; i++)
 	{
 		const float Angle = random_float(0.0f, 2.0f * pi);
@@ -269,6 +306,49 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 			Particle.m_StartSize = random_float(9.0f, 14.0f);
 			Particle.m_EndSize = 0.0f;
 			Particle.m_RotSpeed = random_float(-6.0f, 6.0f);
+			break;
+		case DEATH_LIGHTNING:
+			// electric sparks that jump off the ground
+			Particle.m_Type = CXcParticles::EType::SPARK;
+			Particle.m_Vel = vec2(std::cos(Angle) * random_float(150.0f, 420.0f), -std::abs(std::sin(Angle)) * random_float(150.0f, 450.0f));
+			Particle.m_Gravity = 1200.0f;
+			Particle.m_Friction = 0.3f;
+			Particle.m_LifeSpan = random_float(0.3f, 0.6f);
+			Particle.m_StartSize = random_float(6.0f, 10.0f);
+			Particle.m_EndSize = 0.0f;
+			break;
+		case DEATH_SOUL:
+			// small lights that rise with the ghost
+			Particle.m_Type = CXcParticles::EType::SPARK;
+			Particle.m_Vel = vec2(random_float(-40.0f, 40.0f), random_float(-140.0f, -60.0f));
+			Particle.m_Gravity = -30.0f;
+			Particle.m_Friction = 0.6f;
+			Particle.m_LifeSpan = random_float(0.8f, 1.4f);
+			Particle.m_StartSize = random_float(5.0f, 9.0f);
+			Particle.m_EndSize = 0.0f;
+			break;
+		case DEATH_HEARTS:
+			Particle.m_Type = CXcParticles::EType::ICON;
+			Particle.m_Sprite = CXcSprites::SPRITE_HEART;
+			Particle.m_Vel = direction(Angle) * random_float(150.0f, 340.0f);
+			Particle.m_Gravity = 250.0f;
+			Particle.m_Friction = 0.2f;
+			Particle.m_LifeSpan = random_float(0.6f, 1.0f);
+			Particle.m_StartSize = random_float(14.0f, 22.0f);
+			Particle.m_EndSize = 6.0f;
+			Particle.m_RotSpeed = random_float(-4.0f, 4.0f);
+			break;
+		case DEATH_PIXELS:
+			// square bits of the tee that fall down
+			Particle.m_Type = CXcParticles::EType::CONFETTI;
+			Particle.m_Pos = Pos + vec2(random_float(-20.0f, 20.0f), random_float(-20.0f, 20.0f));
+			Particle.m_Vel = (Particle.m_Pos - Pos) * random_float(6.0f, 14.0f) + vec2(0.0f, -120.0f);
+			Particle.m_Gravity = 1300.0f;
+			Particle.m_Friction = 0.5f;
+			Particle.m_LifeSpan = random_float(0.7f, 1.1f);
+			Particle.m_StartSize = random_float(6.0f, 10.0f);
+			Particle.m_EndSize = 5.0f;
+			Particle.m_RotSpeed = random_float(-3.0f, 3.0f);
 			break;
 		default:
 			// ash: dark flakes drifting up
@@ -555,4 +635,68 @@ void CXcEventFx::OnRender()
 
 	m_Particles.Update(Dt);
 	m_Particles.Render(GameClient()->m_FxRenderer);
+	RenderBolts(Dt);
+	RenderDeathMarker(Dt);
+}
+
+void CXcEventFx::RenderBolts(float Dt)
+{
+	constexpr float BOLT_LIFE = 0.45f;
+	for(SBolt &Bolt : m_vBolts)
+	{
+		Bolt.m_Life += Dt;
+		const float t = Bolt.m_Life / BOLT_LIFE;
+		// it flickers: on, off, on again and fades
+		const float Flicker = t < 0.15f ? 1.0f : t < 0.25f ? 0.25f : 1.0f - (t - 0.25f) / 0.75f;
+		if(Flicker <= 0.0f)
+			continue;
+		// a jagged line from high above down to the tee, the same shape every frame (the seed)
+		unsigned Seed = Bolt.m_Seed;
+		const auto Next = [&Seed]() {
+			Seed = Seed * 1103515245u + 12345u;
+			return ((Seed >> 16) & 0x7fff) / 32767.0f;
+		};
+		const float Height = 420.0f;
+		constexpr int SEGMENTS = 9;
+		vec2 Prev = Bolt.m_Pos - vec2((Next() - 0.5f) * 80.0f, Height);
+		const float Width = 4.0f * Flicker + 1.0f;
+		for(int i = 1; i <= SEGMENTS; i++)
+		{
+			const float k = i / (float)SEGMENTS;
+			const vec2 Point = i == SEGMENTS ? Bolt.m_Pos : Bolt.m_Pos - vec2((Next() - 0.5f) * 70.0f * (1.0f - k), Height * (1.0f - k));
+			GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Line(Prev, Point, Width, ColorRGBA(1.0f, 1.0f, 1.0f, Flicker)), 14.0f, 0.9f);
+			GameClient()->m_FxRenderer.AddWorld(FxShape::Line(Prev, Point, Width * 2.2f, Bolt.m_Color.WithAlpha(0.45f * Flicker)).Glow(18.0f, 0.8f).Additive());
+			// a small branch now and then
+			if(Next() < 0.35f && i < SEGMENTS - 1)
+			{
+				const vec2 Branch = Point + vec2((Next() - 0.5f) * 90.0f, Next() * 50.0f + 15.0f);
+				GameClient()->m_FxRenderer.AddWorld(FxShape::Line(Point, Branch, Width * 0.6f, Bolt.m_Color.WithAlpha(0.7f * Flicker)).Glow(10.0f, 0.6f).Additive());
+			}
+			Prev = Point;
+		}
+	}
+	m_vBolts.erase(std::remove_if(m_vBolts.begin(), m_vBolts.end(), [](const SBolt &Bolt) { return Bolt.m_Life >= BOLT_LIFE; }), m_vBolts.end());
+}
+
+void CXcEventFx::RenderDeathMarker(float Dt)
+{
+	if(m_DeathMarkerAge < 0.0f)
+		return;
+	m_DeathMarkerAge += Dt;
+	const float Duration = (float)g_Config.m_XcDeathMarkerTime;
+	if(!g_Config.m_XcDeathMarker || m_DeathMarkerAge > Duration)
+	{
+		m_DeathMarkerAge = -1.0f;
+		return;
+	}
+	// a small cross in a ring that fades in the last second
+	const float Fade = std::min(std::min(m_DeathMarkerAge * 4.0f, 1.0f), Duration - m_DeathMarkerAge);
+	const ColorRGBA Color = ColorRGBA(1.0f, 0.35f, 0.35f, 0.85f * Fade);
+	const float Bob = std::sin(Client()->GlobalTime() * 3.0f) * 3.0f;
+	const vec2 Pos = m_DeathMarkerPos + vec2(0.0f, -46.0f + Bob);
+	GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Ring(Pos, vec2(11.0f, 11.0f), 2.5f, Color), 8.0f, 0.5f);
+	GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Line(Pos + vec2(-5.0f, -5.0f), Pos + vec2(5.0f, 5.0f), 2.5f, Color), 6.0f, 0.4f);
+	GameClient()->m_FxRenderer.AddWorldGlowing(FxShape::Line(Pos + vec2(5.0f, -5.0f), Pos + vec2(-5.0f, 5.0f), 2.5f, Color), 6.0f, 0.4f);
+	// a thin line down to the place
+	GameClient()->m_FxRenderer.AddWorld(FxShape::Line(Pos + vec2(0.0f, 13.0f), m_DeathMarkerPos + vec2(0.0f, -16.0f), 1.5f, Color.WithMultipliedAlpha(0.4f)));
 }
