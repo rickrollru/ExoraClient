@@ -474,7 +474,7 @@ void CXcEventFx::RenderDummyArrow()
 		vec2 m_Pos;
 		int m_ClientId;
 		ColorRGBA m_Color;
-		bool m_Name;
+		const char *m_pLabel; // next to the arrow, nullptr = none
 	};
 	std::vector<STarget> vTargets;
 	const int Own = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
@@ -488,7 +488,7 @@ void CXcEventFx::RenderDummyArrow()
 			if(GameClient()->m_Snap.m_aCharacters[Other].m_Active)
 				m_DummyLastPos = GameClient()->m_aClients[Other].m_RenderPos;
 			if(m_DummyLastPos != vec2(0.0f, 0.0f))
-				vTargets.push_back({m_DummyLastPos, Other, EffectColor(GameClient(), g_Config.m_XcDummyArrowColorMode, g_Config.m_XcDummyArrowColor, Other), false});
+				vTargets.push_back({m_DummyLastPos, Other, EffectColor(GameClient(), g_Config.m_XcDummyArrowColorMode, g_Config.m_XcDummyArrowColor, Other), nullptr});
 		}
 	}
 	// team mates (the same DDRace team) and friends, while they are in the snapshot
@@ -514,8 +514,17 @@ void CXcEventFx::RenderDummyArrow()
 				continue;
 			// friends are mint, team mates wear their body color
 			const ColorRGBA Color = Friend && !Mate ? ColorRGBA(0.24f, 0.84f, 0.64f, 1.0f) : EffectColor(GameClient(), COLOR_SKIN, 0, ClientId);
-			vTargets.push_back({m_aLastSeenPos[ClientId], ClientId, GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ? Color : Color.WithMultipliedAlpha(0.6f), true});
+			vTargets.push_back({m_aLastSeenPos[ClientId], ClientId, GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ? Color : Color.WithMultipliedAlpha(0.6f), GameClient()->m_aClients[ClientId].m_aName});
 		}
+	}
+	// the place of the last death: after the respawn it is usually off the screen
+	char aDeathLabel[64];
+	if(g_Config.m_XcDeathMarker && m_DeathMarkerAge >= 0.0f && Own >= 0)
+	{
+		const vec2 From = GameClient()->m_Snap.m_aCharacters[Own].m_Active ? GameClient()->m_aClients[Own].m_RenderPos : GameClient()->m_Camera.m_Center;
+		str_format(aDeathLabel, sizeof(aDeathLabel), "%s · %d", XcUi::Tr("Death"), (int)(distance(From, m_DeathMarkerPos) / 32.0f));
+		const float Fade = std::clamp(g_Config.m_XcDeathMarkerTime - m_DeathMarkerAge, 0.0f, 1.0f);
+		vTargets.push_back({m_DeathMarkerPos, -1, ColorRGBA(1.0f, 0.35f, 0.35f, Fade), aDeathLabel});
 	}
 	if(vTargets.empty())
 		return;
@@ -551,15 +560,15 @@ void CXcEventFx::RenderDummyArrow()
 		const float t = std::min(Dir.x != 0.0f ? Half.x / std::abs(Dir.x) : 1e9f, Dir.y != 0.0f ? Half.y / std::abs(Dir.y) : 1e9f);
 		const vec2 Tip = Center + Dir * t;
 		// the others get smaller arrows than the dummy
-		const float Size = (Target.m_Name ? 15.0f : 20.0f) * Unit * g_Config.m_XcDummyArrowSize / 100.0f;
+		const float Size = (Target.m_pLabel ? 15.0f : 20.0f) * Unit * g_Config.m_XcDummyArrowSize / 100.0f;
 		const ColorRGBA Color = Target.m_Color;
 		// a dark round plate keeps the arrow readable on bright maps
 		vShapes.push_back(FxShape::Circle(Tip, Size * 1.45f, ColorRGBA(0.04f, 0.045f, 0.06f, 0.55f)));
 		vShapes.push_back(FxShape::Ring(Tip, vec2(Size * 1.45f, Size * 1.45f), 1.5f * Unit, Color.WithAlpha(0.5f * Pulse)));
 		const float Angle = std::atan2(Dir.y, Dir.x) + pi / 2.0f; // the triangle points up by default
 		CFxRenderer::AppendGlowing(vShapes, FxShape::Triangle(Tip + Dir * Size * 0.12f, vec2(Size * 0.7f, Size * 0.75f), Color.WithAlpha(0.95f * Pulse)).Rotate(Angle), 10.0f * Unit, 0.6f);
-		if(Target.m_Name)
-			vLabels.push_back({Tip, Dir, Size, GameClient()->m_aClients[Target.m_ClientId].m_aName});
+		if(Target.m_pLabel)
+			vLabels.push_back({Tip, Dir, Size, Target.m_pLabel});
 	}
 	GameClient()->m_FxRenderer.Draw(vShapes, true);
 	// the name next to the arrows of team mates and friends, towards the middle of the screen

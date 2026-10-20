@@ -19,6 +19,7 @@
 #include <game/gamecore.h>
 
 #include <engine/external/imgui/imgui.h>
+#include <engine/external/imgui/imgui_internal.h>
 
 #include <algorithm>
 #include <cmath>
@@ -387,11 +388,13 @@ void CXcEditorUi::RenderTuneZones()
 	CEditor &E = *m_pEditor;
 	CEditorMap *pMap = E.Map();
 	const STheme &t = Theme();
-	if(m_TuneRequest)
+	// opens once the mouse button is up, so the click that asked for it cannot land on a button inside
+	if(m_TuneRequest && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{
 		ImGui::OpenPopup("##xe_tune");
 		m_TuneRequest = false;
 		m_TuneMessagesZone = -1;
+		m_TuneOpenTime = ImGui::GetTime();
 	}
 	const ImVec2 Display = ImGui::GetIO().DisplaySize;
 	const float Width = std::min(S(980.0f), Display.x - S(40.0f));
@@ -410,6 +413,9 @@ void CXcEditorUi::RenderTuneZones()
 	}
 	ImFont *pSmall = Fonts().m_pSmall;
 	ImFont *pLabel = Fonts().m_pLabel;
+	// a double click or a touchpad tap must not close it the moment it appears
+	const bool JustOpened = ImGui::GetTime() - m_TuneOpenTime < 0.25;
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, JustOpened);
 
 	// the header
 	Header(Tr("Tune zones"));
@@ -688,6 +694,7 @@ void CXcEditorUi::RenderTuneZones()
 	ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
 	if(Button(Tr("Done"), true, Width - S(40.0f)) || (ImGui::IsKeyPressed(ImGuiKey_Escape) && !m_Typing))
 		ImGui::CloseCurrentPopup();
+	ImGui::PopItemFlag();
 	ImGui::EndPopup();
 	ImGui::PopStyleVar(2);
 	ImGui::PopStyleColor(2);
