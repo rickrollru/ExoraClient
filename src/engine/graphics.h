@@ -527,6 +527,14 @@ public:
 	virtual void RenderQuadContainerAsSpriteMultiple(int ContainerIndex, int QuadOffset, int DrawCount, SRenderSpriteInfo *pRenderInfo) = 0;
 
 	virtual void QuadsDrawFreeform(const CFreeformItem *pArray, int Num) = 0;
+	// XClient: indexed triangles straight into the vertex buffer (between TrianglesBegin and TrianglesEnd),
+	// the same layout as ImDrawVert: position, texture coordinate, color as R, G, B, A bytes
+	struct SXcTriVertex
+	{
+		float m_X, m_Y, m_U, m_V;
+		unsigned char m_aColor[4];
+	};
+	virtual void XcDrawTriangles(const SXcTriVertex *pVertices, const unsigned short *pIndices, int NumIndices) = 0;
 	virtual void QuadsText(float x, float y, float Size, const char *pText) = 0;
 
 	// sprites

@@ -343,22 +343,9 @@ void CImGuiBackend::RenderDrawData(ImDrawData *pDrawData)
 				pGraphics->TextureClear();
 
 			pGraphics->TrianglesBegin();
-			for(unsigned i = 0; i + 2 < Cmd.ElemCount; i += 3)
-			{
-				const ImDrawVert &a = pVertices[Cmd.VtxOffset + pIndices[Cmd.IdxOffset + i]];
-				const ImDrawVert &b = pVertices[Cmd.VtxOffset + pIndices[Cmd.IdxOffset + i + 1]];
-				const ImDrawVert &c = pVertices[Cmd.VtxOffset + pIndices[Cmd.IdxOffset + i + 2]];
-				const auto ToColor = [](ImU32 Col) {
-					return ColorRGBA(((Col >> IM_COL32_R_SHIFT) & 0xFF) / 255.0f, ((Col >> IM_COL32_G_SHIFT) & 0xFF) / 255.0f,
-						((Col >> IM_COL32_B_SHIFT) & 0xFF) / 255.0f, ((Col >> IM_COL32_A_SHIFT) & 0xFF) / 255.0f);
-				};
-				const ColorRGBA ColorC = ToColor(c.col);
-				pGraphics->SetColor4(ToColor(a.col), ToColor(b.col), ColorC, ColorC);
-				pGraphics->QuadsSetSubsetFree(a.uv.x, a.uv.y, b.uv.x, b.uv.y, c.uv.x, c.uv.y, c.uv.x, c.uv.y);
-				// a quad with the last two corners on the same point is one triangle
-				const IGraphics::CFreeformItem Item(a.pos.x, a.pos.y, b.pos.x, b.pos.y, c.pos.x, c.pos.y, c.pos.x, c.pos.y);
-				pGraphics->QuadsDrawFreeform(&Item, 1);
-			}
+			// ImDrawVert has the same layout, the whole command goes in one call
+			static_assert(sizeof(ImDrawVert) == sizeof(IGraphics::SXcTriVertex) && sizeof(ImDrawIdx) == sizeof(unsigned short));
+			pGraphics->XcDrawTriangles(reinterpret_cast<const IGraphics::SXcTriVertex *>(pVertices + Cmd.VtxOffset), pIndices + Cmd.IdxOffset, (int)Cmd.ElemCount);
 			pGraphics->TrianglesEnd();
 		}
 	}

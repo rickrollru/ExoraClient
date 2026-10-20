@@ -745,6 +745,7 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"Low input latency", "Низкая задержка ввода"},
 			{"Sparks and dust", "Искры и пыль"},
 			{"Bullet hits", "Попадания"},
 			{"Sparks where a bullet or a laser hits a block, a flash where a shot starts", "Искры там, где пуля или лазер попадает в блок, и вспышка у ствола при выстреле"},

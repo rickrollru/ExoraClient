@@ -771,6 +771,7 @@ void CXcMenu::RenderSettingsGraphics()
 		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
 		// the render module draws the glow, the blur and the neon outline
 		ToggleRow(Tr("Effects module (OpenGL 3.3)"), "xc_render", &g_Config.m_XcRender);
+		ToggleRow(Tr("Low input latency"), "xc_low_latency", &g_Config.m_XcLowLatency);
 		if(!Graphics()->XcRenderAvailable())
 			Description(Tr("Not available: needs OpenGL 3.3"));
 		ParamLabel(Tr("Effect quality"));
