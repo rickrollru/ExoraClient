@@ -73,10 +73,24 @@ void CXcMusic::Previous()
 		m_Session.Send(CXcMediaSession::COMMAND_PREVIOUS);
 }
 
+void CXcMusic::Seek(double Seconds)
+{
+	if(!Enabled() || !m_State.m_CanSeek || m_State.m_Duration <= 0.0)
+		return;
+	Seconds = std::clamp(Seconds, 0.0, m_State.m_Duration);
+	m_Session.Send(CXcMediaSession::COMMAND_SEEK, Seconds);
+	m_SeekTarget = Seconds;
+	m_SeekStart = CXcMediaSession::Now();
+}
+
 double CXcMusic::Position() const
 {
 	if(m_State.m_Position < 0.0 || m_State.m_Duration <= 0.0)
 		return -1.0;
+	// right after a seek the player still reports the old place for a moment
+	const double SinceSeek = CXcMediaSession::Now() - m_SeekStart;
+	if(m_SeekTarget >= 0.0 && SinceSeek < 2.0 && m_State.m_SampleTime < m_SeekStart + 0.3)
+		return std::clamp(m_SeekTarget + (m_State.m_Playing ? SinceSeek : 0.0), 0.0, m_State.m_Duration);
 	double Position = m_State.m_Position;
 	if(m_State.m_Playing)
 		Position += CXcMediaSession::Now() - m_State.m_SampleTime;

@@ -36,6 +36,8 @@ public:
 	void PlayPause();
 	void Next();
 	void Previous();
+	// jump inside the track, when the player allows it (State().m_CanSeek)
+	void Seek(double Seconds);
 
 private:
 	CXcMediaSession m_Session;
@@ -48,6 +50,9 @@ private:
 	// a play / pause press shows right away, before the player answers
 	int m_PendingPlaying = -1;
 	float m_PendingTime = 0.0f;
+	// a seek shows right away too, until the player reports the new position
+	double m_SeekTarget = -1.0;
+	double m_SeekStart = 0.0;
 
 	static void ConPlayPause(IConsole::IResult *pResult, void *pUserData);
 	static void ConNext(IConsole::IResult *pResult, void *pUserData);

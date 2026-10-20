@@ -41,6 +41,12 @@ public:
 		COMMAND_PLAY_PAUSE = 0,
 		COMMAND_NEXT,
 		COMMAND_PREVIOUS,
+		COMMAND_SEEK, // to m_Seconds from the start of the track
+	};
+	struct SCommand
+	{
+		ECommand m_Command;
+		double m_Seconds;
 	};
 
 	CXcMediaSession() = default;
@@ -55,7 +61,7 @@ public:
 
 	// copies the state; the art is copied only when ArtId differs from KnownArtId
 	void Snapshot(SXcMediaState *pState, uint64_t KnownArtId);
-	void Send(ECommand Command);
+	void Send(ECommand Command, double Seconds = 0.0);
 
 	static double Now();
 
@@ -64,7 +70,7 @@ private:
 	std::mutex m_Mutex;
 	std::condition_variable m_Wake;
 	bool m_Quit = false;
-	std::deque<ECommand> m_Commands;
+	std::deque<SCommand> m_Commands;
 	SXcMediaState m_State;
 
 	void Run();
@@ -78,7 +84,7 @@ namespace XcMediaPlatform
 	void ThreadShutdown();
 	// fills everything but the art; pArtBytes gets the encoded cover when WantArt is set and there is one
 	bool Poll(SXcMediaState *pState, bool WantArt, std::vector<unsigned char> *pArtBytes);
-	void Command(CXcMediaSession::ECommand Command);
+	void Command(CXcMediaSession::ECommand Command, double Seconds);
 	// how often to ask, in seconds
 	double PollInterval();
 }
