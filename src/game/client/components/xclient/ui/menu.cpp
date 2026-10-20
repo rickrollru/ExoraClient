@@ -426,11 +426,15 @@ void CXcMenu::OnRender()
 	const bool CaptureHats = m_Active && m_Page == PAGE_VISUALS && m_VisualsSection == VISUALS_COSMETICS;
 	// and on the textures page they become texture sets
 	const bool CaptureAssets = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_TEXTURES;
-	Client()->XcSetDropCapture(CaptureBackgrounds || CaptureHats || CaptureAssets);
+	// and on the world page (weather) they fall as weather
+	const bool CaptureWeather = m_Active && m_Page == PAGE_VISUALS && m_VisualsSection == VISUALS_WORLD;
+	Client()->XcSetDropCapture(CaptureBackgrounds || CaptureHats || CaptureAssets || CaptureWeather);
 	char aDropped[IO_MAX_PATH_LENGTH];
-	if((CaptureBackgrounds || CaptureHats || CaptureAssets) && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
+	if((CaptureBackgrounds || CaptureHats || CaptureAssets || CaptureWeather) && Client()->XcTakeDropFile(aDropped, sizeof(aDropped)))
 	{
-		if(CaptureHats)
+		if(CaptureWeather)
+			HandleWeatherFile(aDropped);
+		else if(CaptureHats)
 			HandleHatFile(aDropped);
 		else if(CaptureAssets)
 			HandleAssetFile(aDropped);

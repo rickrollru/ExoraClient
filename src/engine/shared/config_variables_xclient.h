@@ -163,13 +163,21 @@ MACRO_CONFIG_INT(XcHudMinitopScale, xc_hud_minitop_scale, 100, 50, 200, CFGFLAG_
 MACRO_CONFIG_INT(XcHudMinitopCount, xc_hud_minitop_count, 3, 1, 5, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many players the HUD top list shows")
 MACRO_CONFIG_INT(XcHudWheels, xc_hud_wheels, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "New look for the emote wheel and the spectator menu")
 // Weather
-MACRO_CONFIG_INT(XcWeather, xc_weather, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weather effect (0 = off, 1 = snow, 2 = leaves, 3 = sakura, 4 = ash)")
+MACRO_CONFIG_INT(XcWeather, xc_weather, 0, 0, 15, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weather effect (0 = off, 1 = snow, 2 = leaves, 3 = sakura, 4 = ash, 5 = hearts, 6 = stars, 7 = crystals, 8 = fireflies, 9 = money, 10 = halloween, 11 = embers, 12 = rain, 13 = bubbles, 14 = confetti, 15 = own picture)")
 MACRO_CONFIG_INT(XcWeatherDensity, xc_weather_density, 50, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Amount of weather particles")
 MACRO_CONFIG_INT(XcWeatherSize, xc_weather_size, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of weather particles in percent")
 MACRO_CONFIG_INT(XcWeatherSpeed, xc_weather_speed, 100, 10, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Falling speed of weather particles in percent")
 MACRO_CONFIG_INT(XcWeatherAlpha, xc_weather_alpha, 80, 5, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of weather particles in percent")
 MACRO_CONFIG_INT(XcWeatherInGame, xc_weather_ingame, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show weather in game")
 MACRO_CONFIG_INT(XcWeatherInMenu, xc_weather_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show weather in the main menu")
+MACRO_CONFIG_STR(XcWeatherFile, xc_weather_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own weather picture or gif, a file in xclient/weather")
+MACRO_CONFIG_INT(XcWeatherGifSpeed, xc_weather_gif_speed, 100, 10, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of an animated weather gif in percent")
+MACRO_CONFIG_INT(XcWeatherTint, xc_weather_tint, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Paint the weather in one color instead of its own colors")
+MACRO_CONFIG_INT(XcWeatherColorMode, xc_weather_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Weather color (0 = accent, 1 = own, 2 = rainbow, 3 = skin)")
+MACRO_CONFIG_COL(XcWeatherColor, xc_weather_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own weather color")
+MACRO_CONFIG_INT(XcWeatherWind, xc_weather_wind, 100, 0, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the wind in the weather in percent")
+MACRO_CONFIG_INT(XcWeatherSpin, xc_weather_spin, 100, 0, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How fast the weather particles turn in percent")
+MACRO_CONFIG_INT(XcWeatherGlow, xc_weather_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Soft light around glowing weather (stars, fireflies, embers)")
 
 // Jump and run effects
 MACRO_CONFIG_INT(XcJumpFx, xc_jump_fx, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect on jump (0 = off, 1 = rings, 2 = sparks, 3 = stars)")

@@ -53,6 +53,8 @@ public:
 
 	// true when the textures are loaded and the new style is chosen
 	bool Enabled() const;
+	// the textures are loaded, whatever style is chosen
+	bool Loaded() const { return m_Loaded; }
 	static int NumFrames(int Sprite);
 	// width / height of one frame
 	static float Aspect(int Sprite);
