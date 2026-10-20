@@ -279,6 +279,23 @@ private:
 	bool m_EnvRenameFocus = false;
 	char m_aEnvRename[32] = {};
 	void RenderEnvelopesDock();
+	// experimental: one graph with bezier handles, like the graph editor of After Effects (xc_editor_env_curves)
+	int m_EnvGraphChannel = 0;
+	float m_EnvGraphLow = 0.0f;
+	float m_EnvGraphHigh = 1.0f;
+	enum
+	{
+		ENVDRAG_NONE = 0,
+		ENVDRAG_KEY,
+		ENVDRAG_IN,
+		ENVDRAG_OUT,
+	};
+	int m_EnvGraphDrag = ENVDRAG_NONE;
+	int m_EnvGraphDragPoint = -1;
+	CFixedTime m_aEnvGraphOldTime[2];
+	int m_aEnvGraphOldValue[2] = {};
+	void RenderEnvelopeGraph(const std::shared_ptr<class CEnvelope> &pEnv, int EnvIndex, float Width, float Height, float Now);
+	void SetEnvelopeCurve(const std::shared_ptr<class CEnvelope> &pEnv, int EnvIndex, int Point, int Curve);
 	bool m_PaletteOpen = false;
 	bool m_PaletteFocus = false;
 	char m_aPaletteSearch[64] = {};
