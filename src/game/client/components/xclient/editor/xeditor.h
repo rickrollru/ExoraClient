@@ -324,6 +324,7 @@ private:
 	// tune zones: every parameter of a zone with an explanation next to it (xeditor_tune.cpp)
 	bool m_TuneRequest = false;
 	double m_TuneOpenTime = 0.0;
+	bool m_TypingLastFrame = false; // Esc that ended typing must not close the editor
 	int m_TuneZone = 1;
 	int m_TuneMessagesZone = -1; // the zone the message fields were filled for
 	char m_aTuneFilter[32] = {};

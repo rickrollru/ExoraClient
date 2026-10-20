@@ -355,6 +355,8 @@ void CXcEditorUi::Render()
 		const bool ClassicBusy = (E.m_Dialog != DIALOG_NONE && E.m_Dialog != DIALOG_FILE) || E.Ui()->IsPopupHovered() || (!m_WantsMouse && !E.Ui()->CheckActiveItem(nullptr));
 		const vec2 Mouse = ClassicBusy ? vec2(-100000.0f, -100000.0f) : E.Ui()->UpdatedMousePos();
 		m_Gui.NewFrame(std::min(E.Client()->RenderFrameTime(), 0.1f), Mouse);
+		// a window that closes itself on Esc this frame must still keep the Esc from the editor
+		const bool PopupOpenAtStart = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
 
 		if(Gui)
 		{
@@ -396,8 +398,9 @@ void CXcEditorUi::Render()
 		m_WantsMouse = Io.WantCaptureMouse && !ClassicBusy;
 		HandleTyping();
 		// Esc closes the menus and stops typing before it can close the editor
-		if(ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId) || m_Typing)
+		if(PopupOpenAtStart || ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId) || m_Typing || m_TypingLastFrame)
 			E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE);
+		m_TypingLastFrame = m_Typing;
 		m_Gui.Render();
 		SetFonts(OldFonts);
 		SetScale(OldScale);
