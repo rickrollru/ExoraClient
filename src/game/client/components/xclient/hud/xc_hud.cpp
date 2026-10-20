@@ -209,7 +209,16 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	char aFps[32];
 	char aPing[32];
 	char aTime[16];
-	str_format(aFps, sizeof(aFps), "%d fps", (int)std::round(1.0f / std::max(Client()->FrameTimeAverage(), 0.0001f)));
+	// the frame rate is averaged and shown twice a second, so the number can be read and does not flicker
+	m_FpsFrames++;
+	m_FpsTime += Client()->RenderFrameTime();
+	if(m_FpsTime >= 0.5f || m_FpsShown <= 0)
+	{
+		m_FpsShown = (int)std::round(m_FpsFrames / std::max(m_FpsTime, 0.0001f));
+		m_FpsFrames = 0;
+		m_FpsTime = 0.0f;
+	}
+	str_format(aFps, sizeof(aFps), "%d fps", m_FpsShown);
 	const int Local = GameClient()->m_Snap.m_LocalClientId;
 	const CNetObj_PlayerInfo *pInfo = Local >= 0 ? GameClient()->m_Snap.m_apPlayerInfos[Local] : nullptr;
 	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
@@ -221,6 +230,22 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	str_format(aTime, sizeof(aTime), "%02d:%02d", pTm ? pTm->tm_hour : 0, pTm ? pTm->tm_min : 0);
 	const char *apIcons[] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_SIGNAL, XC_ICON_CLOCK};
 	const char *apTexts[] = {Client()->PlayerName(), aFps, aPing, aTime};
+	// numbers get a fixed place (as wide as zeros, at least a few digits), so the plate does not wobble
+	const auto Slot = [&](const char *pText, int MinDigits) {
+		char aWidth[32] = "";
+		int Digits = 0;
+		for(const char *p = pText; *p; p++)
+			Digits += *p >= '0' && *p <= '9';
+		for(int i = Digits; i < MinDigits; i++)
+			str_append(aWidth, "0");
+		for(const char *p = pText; *p; p++)
+		{
+			const char aChar[2] = {*p >= '0' && *p <= '9' ? '0' : *p, '\0'};
+			str_append(aWidth, aChar);
+		}
+		return pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, aWidth).x;
+	};
+	const float aTextWidths[] = {pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apTexts[0]).x, Slot(aFps, 3), Slot(aPing, 3), Slot(aTime, 4)};
 
 	const float Pad = 14.0f * U;
 	const float Gap = 10.0f * U;
@@ -230,7 +255,7 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const char *pName = "Exora Client";
 	float Width = Pad + LogoSize + 8.0f * U + pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
 	for(int i = 0; i < 4; i++)
-		Width += Gap * 2.0f + 1.0f + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apTexts[i]).x;
+		Width += Gap * 2.0f + 1.0f + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap + aTextWidths[i];
 	Width += Pad;
 
 	const ImVec2 Min = PlaceRect(ELEMENT_WATERMARK, ImVec2(Width, Height));
@@ -253,7 +278,7 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 		pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_Accent, Alpha), apIcons[i]);
 		x += pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap;
 		pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(i == 0 ? t.m_Text : t.m_TextSecondary, Alpha), apTexts[i]);
-		x += pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apTexts[i]).x;
+		x += aTextWidths[i];
 	}
 }
 

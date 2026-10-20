@@ -11,6 +11,11 @@
 // Dear ImGui in its own context. Every element can be moved and resized in the HUD editor.
 class CXcHud : public CComponent
 {
+	// the frame rate in the watermark, averaged
+	int m_FpsShown = 0;
+	int m_FpsFrames = 0;
+	float m_FpsTime = 0.0f;
+
 public:
 	enum
 	{
