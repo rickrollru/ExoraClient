@@ -824,6 +824,10 @@ void CGameClient::UpdatePositions()
 
 void CGameClient::OnRender()
 {
+	// XClient: the world in another aspect ratio, stretched to the screen; only in game, the menus stay true
+	const bool XcInGame = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
+	Graphics()->XcSetWorldAspect(XcInGame && g_Config.m_XcAspectRatio > 0 ? g_Config.m_XcAspectRatio / 100.0f : 0.0f);
+
 	const ColorRGBA ClearColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOverlayEntities ? g_Config.m_ClBackgroundEntitiesColor : g_Config.m_ClBackgroundColor));
 	Graphics()->Clear(ClearColor.r, ClearColor.g, ClearColor.b);
 
