@@ -27,6 +27,7 @@ enum EGroup
 	TELEPORT,
 	CHECKPOINT,
 	ITEMS,
+	IMPACT,
 	NUM_GROUPS,
 };
 // config names of the groups, "xc_fxtune_<name>_amount" etc.

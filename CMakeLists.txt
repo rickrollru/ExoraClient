@@ -3033,6 +3033,8 @@ if(CLIENT)
     components/xclient/editor/xeditor_tune.cpp
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
+    components/xclient/impact_fx.cpp
+    components/xclient/impact_fx.h
     components/xclient/item_fx.cpp
     components/xclient/item_fx.h
     components/xclient/jelly.cpp

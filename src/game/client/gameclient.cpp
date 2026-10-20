@@ -145,6 +145,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
 					      &m_ItemFx, // XClient: glow of the items just drawn
+					      &m_ImpactFx, // XClient: bullet hits on blocks
 					      &m_Trails, // TClient
 					      &m_TrailFx, // XClient: behind the players
 					      &m_Translate, // TClient
