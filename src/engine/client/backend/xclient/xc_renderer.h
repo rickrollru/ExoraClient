@@ -42,6 +42,8 @@ private:
 	};
 
 	bool m_Initialized = false;
+	// low latency: the fence of the last frame, waited for before the next one is shown
+	void *m_pFrameFence = nullptr;
 	bool m_Failed = false;
 
 	unsigned m_ShapeProgram = 0;

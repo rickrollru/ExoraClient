@@ -12,6 +12,7 @@
 
 // Render module
 MACRO_CONFIG_INT(XcRender, xc_render, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use the Exora Client render module for effects (needs OpenGL 3.3)")
+MACRO_CONFIG_INT(XcLowLatency, xc_low_latency, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Low input latency: the driver may not queue frames ahead (OpenGL 3.3)")
 MACRO_CONFIG_INT(XcBloom, xc_bloom, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bloom strength of glowing effects in percent")
 MACRO_CONFIG_INT(XcBloomThreshold, xc_bloom_threshold, 10, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Only parts brighter than this (percent) glow")
 MACRO_CONFIG_INT(XcFxQuality, xc_fx_quality, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect quality (0 = low, no bloom, 1 = medium, 2 = high)")
