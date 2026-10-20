@@ -51,6 +51,13 @@ namespace XcRender
 		int m_Passes = 4; // more passes = wider blur
 		float m_Offset = 1.0f;
 		ColorRGBA m_Tint = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f); // mixed over the blurred image
+		// only these parts of the screen get the blur (x0, y0, x1, y1 in 0..1, top left origin); none = all
+		enum
+		{
+			MAX_RECTS = 24,
+		};
+		int m_NumRects = 0;
+		float m_aaRects[MAX_RECTS][4] = {};
 	};
 
 	// Neon outline around captured sprites (tees), see IGraphics::XcCaptureBegin.

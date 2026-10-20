@@ -485,6 +485,47 @@ void CXcMenu::RenderSettingsSound()
 void CXcMenu::RenderSettingsChat()
 {
 	BeginCardGrid("##chat", 2);
+	if(BeginCard("##chat_new", Tr("New chat"), Tr("Five looks, avatars, time, groups and an own input line. Needs the new HUD"), &g_Config.m_XcChatNew))
+	{
+		ParamLabel(Tr("Look"));
+		const char *apLooks[] = {Tr("Minimal"), Tr("Plates"), Tr("Glass"), Tr("Bubbles"), Tr("Panel")};
+		ConfigSegmented("##chat_look_new", "xc_chat_look", &g_Config.m_XcChatLook, apLooks, 5);
+		static const char *const s_apLookHints[] = {
+			"Only text with a soft shadow, nothing around it",
+			"Every message on its own plate",
+			"Frosted glass: the game blurred behind the messages",
+			"Messenger bubbles, your messages on the right",
+			"One panel for the whole chat",
+		};
+		Description(Tr(s_apLookHints[std::clamp(g_Config.m_XcChatLook, 0, 4)]));
+		if(g_Config.m_XcChatLook == 2 && !Graphics()->XcRenderAvailable())
+			Description(Tr("Without OpenGL 3.3 the glass is not blurred"));
+		ConfigSlider(Tr("Text size"), "xc_chat_scale", &g_Config.m_XcChatScale, 60, 200, "%d%%");
+		ConfigSlider(Tr("Width"), "xc_chat_width", &g_Config.m_XcChatWidth, 250, 1000, "%d px");
+		ConfigSlider(Tr("Height above the bottom"), "xc_chat_y", &g_Config.m_XcChatY, 0, 500, "%d px");
+		if(g_Config.m_XcChatLook != 0)
+			ConfigSlider(Tr("Plate opacity"), "xc_chat_opacity", &g_Config.m_XcChatOpacity, 0, 100, "%d%%");
+		ParamLabel(Tr("Name color"));
+		const char *apNames[] = {Tr("Game colors"), Tr("Accent"), Tr("Skin")};
+		ConfigSegmented("##chat_name_color", "xc_chat_name_color", &g_Config.m_XcChatNameColor, apNames, 3);
+		ToggleRow(Tr("Avatars (the tee of the player)"), "xc_chat_avatars", &g_Config.m_XcChatAvatars);
+		ToggleRow(Tr("Time of messages"), "xc_chat_time", &g_Config.m_XcChatTime);
+		ToggleRow(Tr("Group messages of one player"), "xc_chat_group", &g_Config.m_XcChatGroup);
+		if(g_Config.m_XcChatLook == 0)
+			ToggleRow(Tr("Text shadow"), "xc_chat_shadow", &g_Config.m_XcChatShadow);
+		ToggleRow(Tr("Animation of new messages"), "xc_chat_anim", &g_Config.m_XcChatAnim);
+		if(g_Config.m_XcChatAnim)
+		{
+			const char *apAnims[] = {Tr("Slide in"), Tr("Fade in")};
+			ConfigSegmented("##chat_anim_style", "xc_chat_anim_style", &g_Config.m_XcChatAnimStyle, apAnims, 2);
+		}
+		ConfigSlider(Tr("Messages stay"), "xc_chat_lifetime", &g_Config.m_XcChatLifetime, 3, 60, "%d s");
+		ConfigSlider(Tr("Messages on screen"), "xc_chat_lines", &g_Config.m_XcChatLines, 1, 30);
+		ConfigSlider(Tr("Messages while typing"), "xc_chat_history", &g_Config.m_XcChatHistory, 5, 64);
+		if(!g_Config.m_XcHud)
+			Description(Tr("Turn on the new HUD in Settings > HUD"));
+		EndCard();
+	}
 	if(BeginCard("##chat_look", Tr("Chat"), Tr("How the chat looks"), &g_Config.m_ClShowChat))
 	{
 		ConfigSlider(Tr("Font size"), "cl_chat_size", &g_Config.m_ClChatFontSize, 10, 100);
@@ -496,7 +537,7 @@ void CXcMenu::RenderSettingsChat()
 		ToggleRow(Tr("New messages slide in"), "xc_chat_anim", &g_Config.m_XcChatAnim);
 		EndCard();
 	}
-	if(BeginCard("##chat_style", Tr("Chat in the HUD style"), Tr("Plates in the theme colors, marks for mentions, team chat and whispers, a framed input"), &g_Config.m_XcChatStyle))
+	if(!g_Config.m_XcChatNew && BeginCard("##chat_style", Tr("Chat in the HUD style"), Tr("Plates in the theme colors, marks for mentions, team chat and whispers, a framed input"), &g_Config.m_XcChatStyle))
 	{
 		ConfigSlider(Tr("Plate opacity"), "xc_chat_opacity", &g_Config.m_XcChatOpacity, 0, 100, "%d%%");
 		Description(Tr("Accent: you were mentioned. Mint: team chat. Pink: whisper. Gray: server"));

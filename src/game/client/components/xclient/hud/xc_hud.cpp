@@ -1007,7 +1007,9 @@ void CXcHud::OnRender()
 	// the own scoreboard shows even with the HUD turned off, like the classic one
 	const bool Scoreboard = Online && (m_ScoreboardOpen > 0.0f || (GameClient()->m_Scoreboard.IsActive() && DrawsScoreboard()));
 	const bool HudVisible = Visible();
-	if(!HudVisible && !Scoreboard)
+	// the new chat shows even with the HUD turned off, like the classic one (cl_showchat decides)
+	const bool ChatVisible = DrawsChat() && (g_Config.m_ClShowChat || GameClient()->m_Chat.IsActive()) && !m_Editing && (!g_Config.m_XcFocusMode || GameClient()->m_Chat.IsActive());
+	if(!HudVisible && !Scoreboard && !ChatVisible)
 		return;
 	const float Scale = std::round(Graphics()->ScreenHeight() / 1080.0f * FONT_OVERSAMPLE * 20.0f) / 20.0f;
 	if(m_Backend.FontFamily() != g_Config.m_XcUiFont || m_Backend.FontScale() != Scale)
@@ -1072,8 +1074,13 @@ void CXcHud::OnRender()
 		else if(g_Config.m_XcHudToasts && HasToasts())
 			RenderToasts(ImGui::GetForegroundDrawList(), ImGui::GetIO().DisplaySize, Client()->GlobalTime(), a, m_Backend.Fonts().m_pLabel, m_Backend.Fonts().m_pSmall);
 	}
+	if(ChatVisible)
+		RenderChat(ImGui::GetBackgroundDrawList(), Dt, Alpha);
+	else
+		m_vChatBlurRects.clear();
 	if(Online)
 		RenderScoreboard(ImGui::GetForegroundDrawList(), Dt);
+	BlurChat();
 	m_Backend.Render();
 
 	if(m_Editing || ScoreboardMouse())
