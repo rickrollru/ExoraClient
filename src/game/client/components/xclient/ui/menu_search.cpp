@@ -53,6 +53,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_freeze", "Freeze", "An icy aura around frozen tees and shards when the ice breaks", "фриз заморозка лёд осколки freeze ice"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_hammer", "Hammer hit", "A flash where the hammer lands", "молоток удар хаммер hammer hit"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_explosion", "Grenade explosion", "A shockwave, neon rings or hot sparks where a grenade explodes", "взрыв граната волна неон explosion grenade shockwave"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_impact", "Bullet hits", "Sparks where a bullet or a laser hits a block, a flash where a shot starts", "попадания пули искры выстрел вспышка ствол стена блок bullet hit impact sparks muzzle"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_GENERAL, "##fx_over_tiles", "Over the blocks", "Effects and hats can be drawn over the map blocks, they stay visible behind walls", "поверх блоков стен карты слой over tiles blocks walls layer"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_GENERAL, "##fx_stock", "Stock effects", "Hide the standard game effects so only ours stay, sounds remain", "стандартные эффекты замена скрыть кровь дым лазер replace stock default"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_CROSSHAIR, "##fx_crosshair", "Crosshair", "Your own aim instead of the weapon cursor", "прицел курсор точка крест crosshair cursor aim"},

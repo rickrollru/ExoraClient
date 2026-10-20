@@ -47,7 +47,7 @@ bool CXcMenu::StyleCard(const char *pId, const char *pTitle, const char *pDescri
 // "Fine particle settings" folded under the effect: amount, life time, speed and size of its particles
 void CXcMenu::ParticleTuning(int Group)
 {
-	static const char *const s_apTitles[FxTune::NUM_GROUPS] = {"Particles: jumps", "Particles: run dust", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles: sparkles"};
+	static const char *const s_apTitles[FxTune::NUM_GROUPS] = {"Particles: jumps", "Particles: run dust", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles", "Particles: sparkles", "Particles"};
 	ImGui::PushID("##particle_tuning");
 	ImGui::PushID(Group);
 	ImGuiStorage *pStorage = ImGui::GetStateStorage();
@@ -515,6 +515,17 @@ void CXcMenu::RenderVisualsWeapons()
 		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
 		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
 		ParticleTuning(FxTune::EXPLOSION);
+		EndCard();
+	}
+	const char *apImpacts[] = {Tr("Sparks"), Tr("Sparks and dust"), Tr("Stars")};
+	if(StyleCard("##fx_impact", Tr("Bullet hits"), Tr("Sparks where a bullet or a laser hits a block, a flash where a shot starts"), "xc_impact_fx", &g_Config.m_XcImpactFx, apImpacts, 3))
+	{
+		ToggleRow(Tr("Flash at the gun"), "xc_impact_muzzle", &g_Config.m_XcImpactMuzzle);
+		ToggleRow(Tr("Color of the weapon"), "xc_impact_weapon_color", &g_Config.m_XcImpactWeaponColor);
+		if(!g_Config.m_XcImpactWeaponColor)
+			EffectColorPicker("##impact_color", &g_Config.m_XcImpactColorMode, &g_Config.m_XcImpactColor);
+		TargetChips("##impact_targets", &g_Config.m_XcImpactSelf, &g_Config.m_XcImpactDummy, &g_Config.m_XcImpactOthers);
+		ParticleTuning(FxTune::IMPACT);
 		EndCard();
 	}
 	EndCardGrid();
