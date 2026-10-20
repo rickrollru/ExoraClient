@@ -203,6 +203,30 @@ void CXcMenu::RenderSettingsInterface()
 		EndCard();
 	}
 
+	if(BeginCard("##cursor", Tr("Cursor"), Tr("The mouse cursor of the menus, the HUD editor and the wheels")))
+	{
+		const char *apCursors[] = {Tr("Standard"), Tr("Arrow"), Tr("Dot"), Tr("Triangle"), Tr("Picture")};
+		ConfigSegmented("##cursor_style", "xc_cursor", &g_Config.m_XcCursor, apCursors, 5);
+		if(g_Config.m_XcCursor != 0 && g_Config.m_XcCursor != 4)
+		{
+			ParamLabel(Tr("Color"));
+			const char *apColors[] = {Tr("Accent"), Tr("Own"), Tr("Rainbow")};
+			ConfigSegmented("##cursor_color_mode", "xc_cursor_color_mode", &g_Config.m_XcCursorColorMode, apColors, 3);
+			if(g_Config.m_XcCursorColorMode == 1)
+				ConfigColorRow(Tr("Own color"), &g_Config.m_XcCursorColor, false);
+			ToggleRow(Tr("Dark outline"), "xc_cursor_outline", &g_Config.m_XcCursorOutline);
+			ToggleRow(Tr("Glow"), "xc_cursor_glow", &g_Config.m_XcCursorGlow);
+		}
+		if(g_Config.m_XcCursor != 0)
+			ConfigSlider(Tr("Size"), "xc_cursor_size", &g_Config.m_XcCursorSize, 50, 200, "%d%%");
+		if(g_Config.m_XcCursor == 4)
+		{
+			ConfigText(Tr("Picture name"), "xc_cursor_file", g_Config.m_XcCursorFile, sizeof(g_Config.m_XcCursorFile));
+			Description(Tr("A PNG in the folder xclient/cursors of the game settings, the top left corner points"));
+		}
+		EndCard();
+	}
+
 	if(BeginCard("##font", Tr("Font"), Tr("Main font of the menu")))
 	{
 		const char *apFonts[] = {"Manrope", "Onest", "Unbounded"};

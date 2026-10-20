@@ -3059,6 +3059,8 @@ if(CLIENT)
     components/xclient/block_outline.h
     components/xclient/cape.cpp
     components/xclient/cosmetics.cpp
+    components/xclient/cursor.cpp
+    components/xclient/cursor.h
     components/xclient/cosmetics.h
     components/xclient/motion_fx.cpp
     components/xclient/motion_fx.h

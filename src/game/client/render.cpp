@@ -16,6 +16,7 @@
 #include <generated/protocol.h>
 #include <generated/protocol7.h>
 
+#include <game/client/components/xclient/cursor.h> // XClient
 #include <game/client/gameclient.h>
 #include <game/mapitems.h>
 
@@ -134,6 +135,8 @@ void CRenderTools::Init(IGraphics *pGraphics, ITextRender *pTextRender, CGameCli
 
 void CRenderTools::RenderCursor(vec2 Center, float Size, float Alpha) const
 {
+	if(XcCursor::Render(Graphics(), Center, Size, Alpha)) // XClient: own cursor (xc_cursor)
+		return;
 	Graphics()->WrapClamp();
 	Graphics()->TextureSet(g_pData->m_aImages[IMAGE_CURSOR].m_Id);
 	Graphics()->QuadsBegin();
