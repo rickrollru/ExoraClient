@@ -16,7 +16,11 @@
 #include <game/client/components/xclient/hud/xc_hud.h>
 #include <game/client/gameclient.h>
 
+#include <algorithm>
+#include <cmath>
 #include <map>
+#include <numeric>
+#include <vector>
 #include <string>
 
 using namespace XcUi;
@@ -486,20 +490,258 @@ void CXcMenu::RenderSettingsChat()
 
 void CXcMenu::RenderSettingsGraphics()
 {
+	const STheme &t = Theme();
+	char aBuf[128];
+	// the screen modes are asked once and again when the window moves to another screen
+	static CVideoMode s_aModes[256];
+	static int s_NumModes = -1;
+	static int s_ModesScreen = -1;
+	static bool s_ListenerAdded = false;
+	static bool s_ModesReload = false;
+	if(!s_ListenerAdded)
+	{
+		s_ListenerAdded = true;
+		Graphics()->AddWindowPropChangeListener([]() { s_ModesReload = true; });
+	}
+	if(s_NumModes < 0 || s_ModesReload || s_ModesScreen != g_Config.m_GfxScreen)
+	{
+		s_NumModes = Graphics()->GetVideoModes(s_aModes, (int)std::size(s_aModes), g_Config.m_GfxScreen);
+		s_ModesScreen = g_Config.m_GfxScreen;
+		s_ModesReload = false;
+	}
+	static bool s_FsaaNeedsRestart = false;
+	static char s_aStartBackend[64] = "";
+	static char s_aStartGpu[64] = "";
+	if(!s_aStartBackend[0])
+	{
+		str_format(s_aStartBackend, sizeof(s_aStartBackend), "%s %d.%d.%d", g_Config.m_GfxBackend, g_Config.m_GfxGLMajor, g_Config.m_GfxGLMinor, g_Config.m_GfxGLPatch);
+		str_copy(s_aStartGpu, g_Config.m_GfxGpuName);
+	}
+
 	BeginCardGrid("##graphics", 2);
+
+	// ---- resolution
+	if(BeginCard("##resolution", Tr("Resolution"), Tr("The size of the picture and the refresh rate of the monitor")))
+	{
+		const int Gcd = std::gcd(std::max(g_Config.m_GfxScreenWidth, 1), std::max(g_Config.m_GfxScreenHeight, 1));
+		str_format(aBuf, sizeof(aBuf), "%s: %d×%d · %d %s · %d:%d", Tr("Now"),
+			(int)(g_Config.m_GfxScreenWidth * Graphics()->ScreenHiDPIScale()), (int)(g_Config.m_GfxScreenHeight * Graphics()->ScreenHiDPIScale()),
+			g_Config.m_GfxScreenRefreshRate, Tr("Hz"), g_Config.m_GfxScreenWidth / Gcd, g_Config.m_GfxScreenHeight / Gcd);
+		ImGui::PushFont(Fonts().m_pLabel);
+		ImGui::TextColored(t.m_Text, "%s", aBuf);
+		ImGui::PopFont();
+		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+		ImGui::BeginChild("##modes", ImVec2(AvailWidth(), S(220.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		const float RowWidth = ImGui::GetContentRegionAvail().x;
+		const float RowHeight = S(30.0f);
+		for(int i = s_NumModes - 1; i >= 0; i--) // the biggest first
+		{
+			const CVideoMode &Mode = s_aModes[i];
+			const bool Selected = Mode.m_WindowWidth == g_Config.m_GfxScreenWidth && Mode.m_WindowHeight == g_Config.m_GfxScreenHeight && Mode.m_RefreshRate == g_Config.m_GfxScreenRefreshRate;
+			ImGui::PushID(i);
+			const ImVec2 Min = ImGui::GetCursorScreenPos();
+			if(ImGui::InvisibleButton("##mode", ImVec2(RowWidth, RowHeight)) && !Selected)
+			{
+				g_Config.m_GfxScreenWidth = Mode.m_WindowWidth;
+				g_Config.m_GfxScreenHeight = Mode.m_WindowHeight;
+				g_Config.m_GfxScreenRefreshRate = Mode.m_RefreshRate;
+				Graphics()->ResizeToScreen();
+			}
+			const bool Hovered = ImGui::IsItemHovered();
+			if(Selected)
+				pDraw->AddRectFilled(Min, ImVec2(Min.x + RowWidth, Min.y + RowHeight), Col(t.m_Accent, 0.22f), S(7.0f));
+			else if(Hovered)
+				pDraw->AddRectFilled(Min, ImVec2(Min.x + RowWidth, Min.y + RowHeight), Col(t.m_Track, 0.6f), S(7.0f));
+			const int ModeGcd = std::gcd(std::max(Mode.m_WindowWidth, 1), std::max(Mode.m_WindowHeight, 1));
+			char aSize[32], aRest[48];
+			str_format(aSize, sizeof(aSize), "%d×%d", Mode.m_CanvasWidth, Mode.m_CanvasHeight);
+			str_format(aRest, sizeof(aRest), "%d %s · %d:%d", Mode.m_RefreshRate, Tr("Hz"), Mode.m_WindowWidth / ModeGcd, Mode.m_WindowHeight / ModeGcd);
+			ImFont *pLabel = Fonts().m_pLabel;
+			ImFont *pSmall = Fonts().m_pSmall;
+			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(10.0f), Min.y + (RowHeight - pLabel->FontSize) * 0.5f), Col(Selected ? t.m_Text : t.m_TextSecondary), aSize);
+			const float RestWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aRest).x;
+			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(Min.x + RowWidth - RestWidth - S(10.0f), Min.y + (RowHeight - pSmall->FontSize) * 0.5f), Col(t.m_TextMuted), aRest);
+			ImGui::PopID();
+		}
+		if(s_NumModes == 0)
+			Description(Tr("The system did not report any screen modes"));
+		ImGui::EndChild();
+		ToggleRow(Tr("Show all modes (also unusual ones)"), "gfx_display_all_video_modes", &g_Config.m_GfxDisplayAllVideoModes);
+		EndCard();
+	}
+
+	// ---- window
+	if(BeginCard("##screen", Tr("Window"), Tr("Window mode, monitor and frame rate")))
+	{
+		ParamLabel(Tr("Window mode"));
+		const char *apModes[] = {Tr("Window"), Tr("Borderless window"), Tr("Fullscreen window"), Tr("Desktop fullscreen"), Tr("Fullscreen")};
+		int Mode = g_Config.m_GfxFullscreen ? (g_Config.m_GfxFullscreen == 1 ? 4 : (g_Config.m_GfxFullscreen == 2 ? 3 : 2)) : (g_Config.m_GfxBorderless ? 1 : 0);
+		if(ChoiceChips("##window_mode", &Mode, apModes, 5))
+		{
+			static const int s_aFullscreen[] = {0, 0, 3, 2, 1};
+			Graphics()->SetWindowParams(s_aFullscreen[Mode], Mode == 1);
+		}
+		Description(Tr("«Desktop fullscreen» switches windows fastest; «Fullscreen» may give a bit more FPS"));
+		if(Graphics()->GetNumScreens() > 1)
+		{
+			ParamLabel(Tr("Monitor"));
+			const int NumScreens = std::min(Graphics()->GetNumScreens(), 8);
+			static char s_aaScreenNames[8][96];
+			const char *apScreens[8];
+			for(int i = 0; i < NumScreens; i++)
+			{
+				str_format(s_aaScreenNames[i], sizeof(s_aaScreenNames[i]), "%d: %s", i + 1, Graphics()->GetScreenName(i));
+				apScreens[i] = s_aaScreenNames[i];
+			}
+			int Screen = g_Config.m_GfxScreen;
+			if(ChoiceChips("##monitor", &Screen, apScreens, NumScreens) && Screen != g_Config.m_GfxScreen)
+				Graphics()->SwitchWindowScreen(Screen, true);
+		}
+		bool Vsync = g_Config.m_GfxVsync != 0;
+		RowLabel(Tr("V-Sync (smooth, but adds delay)"), S(38.0f));
+		if(Toggle("##vsync", &Vsync))
+			Graphics()->SetVSync(Vsync);
+		ConfigSlider(Tr("FPS limit"), "gfx_refresh_rate", &g_Config.m_GfxRefreshRate, 0, 1000, g_Config.m_GfxRefreshRate == 0 ? Tr("unlimited") : "%d");
+		ConfigSlider(Tr("FPS when the game is in the background"), "cl_refresh_rate_inactive", &g_Config.m_ClRefreshRateInactive, 0, 500, g_Config.m_ClRefreshRateInactive == 0 ? Tr("unlimited") : "%d");
+		ToggleRow(Tr("Show FPS"), "cl_showfps", &g_Config.m_ClShowfps);
+		EndCard();
+	}
+
+	// ---- aspect ratio
+	if(BeginCard("##aspect", Tr("Aspect ratio"), Tr("Draw the game in another aspect ratio and stretch it over the whole screen, like 4:3 stretched in CS")))
+	{
+		static const int s_aRatios[] = {0, 133, 125, 160, 178, 233};
+		const char *apRatios[] = {Tr("Like the screen"), "4:3", "5:4", "16:10", "16:9", "21:9"};
+		int Current = -1;
+		for(int i = 0; i < (int)std::size(s_aRatios); i++)
+			if(g_Config.m_XcAspectRatio == s_aRatios[i])
+				Current = i;
+		const int Before = Current;
+		ChoiceChips("##ratio", &Current, apRatios, (int)std::size(s_aRatios));
+		if(Current != Before && Current >= 0)
+			g_Config.m_XcAspectRatio = s_aRatios[Current];
+		int Custom = g_Config.m_XcAspectRatio == 0 ? (int)std::round(Graphics()->ScreenAspect() * 100.0f) : g_Config.m_XcAspectRatio;
+		char aFormat[32];
+		str_format(aFormat, sizeof(aFormat), "%.2f : 1", Custom / 100.0f);
+		if(SliderInt(Tr("Own ratio"), &Custom, 100, 300, aFormat))
+			g_Config.m_XcAspectRatio = Custom;
+		const float Screen = Graphics()->ScreenAspect();
+		const float Game = g_Config.m_XcAspectRatio > 0 ? g_Config.m_XcAspectRatio / 100.0f : Screen;
+		if(std::abs(Game - Screen) < 0.02f)
+			Description(Tr("The game looks as usual"));
+		else if(Game < Screen)
+			Description(Tr("Narrower than the screen: everything looks wider and bigger, you see less to the sides"));
+		else
+			Description(Tr("Wider than the screen: everything looks thinner, you see more to the sides (up to the limit of the game)"));
+		Description(Tr("Only the game is stretched: the HUD, the chat and the menus stay sharp. The editor always shows the map as it is."));
+		EndCard();
+	}
+
+	// ---- picture quality and the renderer
+	if(BeginCard("##quality", Tr("Picture"), Tr("Smoothing, details and the renderer")))
+	{
+		ParamLabel(Tr("Smooth edges (FSAA)"));
+		static const int s_aFsaa[] = {0, 2, 4, 8, 16};
+		const char *apFsaa[] = {Tr("Off"), "2×", "4×", "8×", "16×"};
+		int Fsaa = 0;
+		for(int i = 0; i < (int)std::size(s_aFsaa); i++)
+			if(g_Config.m_GfxFsaaSamples == s_aFsaa[i])
+				Fsaa = i;
+		if(ChoiceChips("##fsaa", &Fsaa, apFsaa, (int)std::size(s_aFsaa)))
+		{
+			uint32_t Backend = 0;
+			if(Graphics()->SetMultiSampling(s_aFsaa[Fsaa], Backend))
+				g_Config.m_GfxFsaaSamples = (int)Backend; // applied right away (the card may give less than asked)
+			else
+			{
+				g_Config.m_GfxFsaaSamples = s_aFsaa[Fsaa];
+				s_FsaaNeedsRestart = true;
+			}
+		}
+		ToggleRow(Tr("High detail (map decorations)"), "gfx_high_detail", &g_Config.m_GfxHighDetail);
+
+		// the renderers this computer has
+		struct SRenderer
+		{
+			char m_aLabel[64];
+			const char *m_pName;
+			int m_Major, m_Minor, m_Patch;
+		};
+		static std::vector<SRenderer> s_vRenderers;
+		if(s_vRenderers.empty())
+		{
+			for(int Type = 0; Type < BACKEND_TYPE_COUNT; Type++)
+			{
+				if(EBackendType(Type) == BACKEND_TYPE_AUTO)
+					continue;
+				for(int Age = 0; Age < GRAPHICS_DRIVER_AGE_TYPE_COUNT; Age++)
+				{
+					SRenderer Renderer;
+					if(!Graphics()->GetDriverVersion(EGraphicsDriverAgeType(Age), Renderer.m_Major, Renderer.m_Minor, Renderer.m_Patch, Renderer.m_pName, EBackendType(Type)))
+						continue;
+					if(EBackendType(Type) == BACKEND_TYPE_OPENGL && EGraphicsDriverAgeType(Age) != GRAPHICS_DRIVER_AGE_TYPE_LEGACY && g_Config.m_GfxDriverIsBlocked)
+						continue;
+					str_format(Renderer.m_aLabel, sizeof(Renderer.m_aLabel), "%s %d.%d", Renderer.m_pName, Renderer.m_Major, Renderer.m_Minor);
+					s_vRenderers.push_back(Renderer);
+				}
+			}
+		}
+		if(s_vRenderers.size() > 1)
+		{
+			ParamLabel(Tr("Renderer"));
+			std::vector<const char *> vpLabels;
+			int Current = -1;
+			for(size_t i = 0; i < s_vRenderers.size(); i++)
+			{
+				const SRenderer &Renderer = s_vRenderers[i];
+				vpLabels.push_back(Renderer.m_aLabel);
+				if(str_comp_nocase(Renderer.m_pName, g_Config.m_GfxBackend) == 0 && Renderer.m_Major == g_Config.m_GfxGLMajor && Renderer.m_Minor == g_Config.m_GfxGLMinor && Renderer.m_Patch == g_Config.m_GfxGLPatch)
+					Current = (int)i;
+			}
+			if(ChoiceChips("##renderer", &Current, vpLabels.data(), (int)vpLabels.size()) && Current >= 0)
+			{
+				const SRenderer &Renderer = s_vRenderers[Current];
+				str_copy(g_Config.m_GfxBackend, Renderer.m_pName);
+				g_Config.m_GfxGLMajor = Renderer.m_Major;
+				g_Config.m_GfxGLMinor = Renderer.m_Minor;
+				g_Config.m_GfxGLPatch = Renderer.m_Patch;
+			}
+			Description(Tr("The glow, the blur and the neon outline of Exora need OpenGL 3.3"));
+		}
+		const auto &GpuList = Graphics()->GetGpus();
+		if(GpuList.m_vGpus.size() > 1)
+		{
+			ParamLabel(Tr("Graphics card"));
+			std::vector<const char *> vpGpus;
+			vpGpus.push_back(Tr("Automatic"));
+			int Current = str_comp(g_Config.m_GfxGpuName, "auto") == 0 ? 0 : -1;
+			for(size_t i = 0; i < GpuList.m_vGpus.size(); i++)
+			{
+				vpGpus.push_back(GpuList.m_vGpus[i].m_aName);
+				if(str_comp(GpuList.m_vGpus[i].m_aName, g_Config.m_GfxGpuName) == 0)
+					Current = (int)i + 1;
+			}
+			if(ChoiceChips("##gpu", &Current, vpGpus.data(), (int)vpGpus.size()) && Current >= 0)
+				str_copy(g_Config.m_GfxGpuName, Current == 0 ? "auto" : GpuList.m_vGpus[Current - 1].m_aName);
+		}
+		// some of these need a restart of the game
+		char aBackend[64];
+		str_format(aBackend, sizeof(aBackend), "%s %d.%d.%d", g_Config.m_GfxBackend, g_Config.m_GfxGLMajor, g_Config.m_GfxGLMinor, g_Config.m_GfxGLPatch);
+		const bool NeedRestart = str_comp(aBackend, s_aStartBackend) != 0 || str_comp(g_Config.m_GfxGpuName, s_aStartGpu) != 0 || s_FsaaNeedsRestart;
+		if(NeedRestart)
+		{
+			ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+			Description(Tr("The game has to restart for this"));
+			if(Button(Tr("Restart now"), true, -1.0f))
+				Client()->Restart();
+		}
+		EndCard();
+	}
+
 	if(BeginCard("##performance", Tr("Performance"), Tr("Low, medium or high in one click")))
 	{
 		RenderPerformance();
-		EndCard();
-	}
-	if(BeginCard("##screen", Tr("Screen"), Tr("Window mode and frame rate")))
-	{
-		ParamLabel(Tr("Window mode"));
-		const char *apModes[] = {Tr("Window"), Tr("Fullscreen"), Tr("Borderless")};
-		ConfigSegmented("##fullscreen", "gfx_fullscreen", &g_Config.m_GfxFullscreen, apModes, 3);
-		ToggleRow(Tr("V-Sync"), "gfx_vsync", &g_Config.m_GfxVsync);
-		ConfigSlider(Tr("FPS limit"), "gfx_refresh_rate", &g_Config.m_GfxRefreshRate, 0, 1000, g_Config.m_GfxRefreshRate == 0 ? Tr("unlimited") : "%d");
-		ToggleRow(Tr("Show FPS"), "cl_showfps", &g_Config.m_ClShowfps);
 		EndCard();
 	}
 	if(BeginCard("##effects", Tr("Effects"), Tr("Quality of the render module (OpenGL 3.3)"), &g_Config.m_XcRender))
@@ -513,7 +755,6 @@ void CXcMenu::RenderSettingsGraphics()
 		EndCard();
 	}
 	EndCardGrid();
-	Description(Tr("Some changes apply after a restart"));
 }
 
 void CXcMenu::RenderSettingsHud()

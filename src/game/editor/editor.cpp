@@ -5001,6 +5001,7 @@ void CEditor::OnInput(const IInput::CEvent &Event)
 
 void CEditor::OnRender()
 {
+	Graphics()->XcSetWorldAspect(0.0f); // XClient: the editor always shows the map as it is
 	Ui()->SetMouseSlow(false);
 	// XClient: the editor draws its text in the menu font
 	const bool XcFont = XcEditorStyle::FontFace()[0] != '\0';
