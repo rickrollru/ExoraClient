@@ -7,6 +7,9 @@
 #include <game/client/component.h>
 #include <game/client/components/xclient/ui/imgui_backend.h>
 
+#include <array>
+#include <vector>
+
 // The XClient HUD: watermark, race timer, speed, weapon and in-game notifications, drawn with
 // Dear ImGui in its own context. Every element can be moved and resized in the HUD editor.
 class CXcHud : public CComponent
@@ -59,6 +62,17 @@ public:
 	// the chat in the colors of the HUD (xc_chat_style); Kind 1 = mention or input, 2 = team, 3 = whisper, 4 = server
 	ColorRGBA ChatLineColor() const;
 	ColorRGBA ChatMarkColor(int Kind) const;
+
+	// the new chat draws the lines and the input instead of CChat (xc_chat_new)
+	bool DrawsChat() const;
+	enum
+	{
+		XC_CHAT_MINIMAL = 0,
+		XC_CHAT_PLATES,
+		XC_CHAT_GLASS,
+		XC_CHAT_BUBBLES,
+		XC_CHAT_PANEL,
+	};
 
 	// the own scoreboard replaces the classic one (xc_scoreboard)
 	bool DrawsScoreboard() const;
@@ -126,6 +140,15 @@ private:
 	float m_BannerStart = -100.0f;
 	float m_MusicAlpha = 0.0f;
 	void RenderEditor(ImDrawList *pDraw);
+	// xc_chat.cpp: the new chat
+	float m_ChatOpen = 0.0f;
+	float m_ChatInputScroll = 0.0f;
+	std::vector<std::array<float, 4>> m_vChatBlurRects; // glass look: where the game gets blurred
+	void RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha);
+	void RenderChatInput(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float U, float Alpha);
+	void BlurChat();
+	static void ChatTeeCallback(const ImDrawList *pList, const ImDrawCmd *pCmd);
+	void AddChatTee(ImDrawList *pDraw, int LineIndex, ImVec2 Center, float Size, float Alpha);
 	// xc_effects.cpp: active states of the tee (freeze, jetpack, endless hook...) like potion effects
 	enum
 	{
