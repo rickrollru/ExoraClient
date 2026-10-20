@@ -170,7 +170,7 @@ void CXcMenu::RenderVisualsMovement()
 			const char *apDashes[] = {Tr("Stretch"), Tr("Pop"), Tr("Spin"), Tr("Blink"), Tr("Spark")};
 			ConfigSegmented("##trail_dash", "xc_trail_dash", &g_Config.m_XcTrailDash, apDashes, 5);
 			if(!g_Config.m_XcFxStyle)
-				Description(Tr("Dashes need the new effect look (Visuals > World > Glow)"));
+				Description(Tr("Dashes need the new effect look (Visuals > General > Glow)"));
 		}
 		EffectColorPicker("##trail_color", &g_Config.m_XcTrailColorMode, &g_Config.m_XcTrailColor);
 		ConfigSlider(Tr("Length"), "xc_trail_length", &g_Config.m_XcTrailLength, 100, 2000, "%d ms");
@@ -254,6 +254,21 @@ void CXcMenu::RenderVisualsWeapons()
 		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
 		EndCard();
 	}
+	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
+	{
+		const char *apModes[] = {Tr("Off"), Tr("When aiming"), Tr("Always")};
+		ParamLabel(Tr("My line"));
+		ConfigSegmented("##hook_coll_own", "cl_show_hook_coll_own", &g_Config.m_ClShowHookCollOwn, apModes, 3);
+		ParamLabel(Tr("Other players"));
+		ConfigSegmented("##hook_coll_other", "cl_show_hook_coll_other", &g_Config.m_ClShowHookCollOther, apModes, 3);
+		ConfigSlider(Tr("My line width"), "cl_hook_coll_size", &g_Config.m_ClHookCollSize, 0, 20);
+		ConfigSlider(Tr("Others' line width"), "cl_hook_coll_size_other", &g_Config.m_ClHookCollSizeOther, 0, 20);
+		ConfigSlider(Tr("Visibility"), "cl_hook_coll_alpha", &g_Config.m_ClHookCollAlpha, 0, 100, "%d%%");
+		ConfigColorRow(Tr("Catches nothing"), &g_Config.m_ClHookCollColorNoColl, false);
+		ConfigColorRow(Tr("Catches a wall"), &g_Config.m_ClHookCollColorHookableColl, false);
+		ConfigColorRow(Tr("Catches a player"), &g_Config.m_ClHookCollColorTeeColl, false);
+		EndCard();
+	}
 	if(BeginCard("##fx_projectiles", Tr("Bullets and lasers"), Tr("Light around shots, comet tails and glowing lasers")))
 	{
 		ToggleRow(Tr("Glow around bullets and grenades"), "xc_projectile_glow", &g_Config.m_XcProjectileGlow);
@@ -278,21 +293,6 @@ void CXcMenu::RenderVisualsWeapons()
 		EffectColorPicker("##explosion_color", &g_Config.m_XcExplosionColorMode, &g_Config.m_XcExplosionColor);
 		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
 		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
-		EndCard();
-	}
-	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
-	{
-		const char *apModes[] = {Tr("Off"), Tr("When aiming"), Tr("Always")};
-		ParamLabel(Tr("My line"));
-		ConfigSegmented("##hook_coll_own", "cl_show_hook_coll_own", &g_Config.m_ClShowHookCollOwn, apModes, 3);
-		ParamLabel(Tr("Other players"));
-		ConfigSegmented("##hook_coll_other", "cl_show_hook_coll_other", &g_Config.m_ClShowHookCollOther, apModes, 3);
-		ConfigSlider(Tr("My line width"), "cl_hook_coll_size", &g_Config.m_ClHookCollSize, 0, 20);
-		ConfigSlider(Tr("Others' line width"), "cl_hook_coll_size_other", &g_Config.m_ClHookCollSizeOther, 0, 20);
-		ConfigSlider(Tr("Visibility"), "cl_hook_coll_alpha", &g_Config.m_ClHookCollAlpha, 0, 100, "%d%%");
-		ConfigColorRow(Tr("Catches nothing"), &g_Config.m_ClHookCollColorNoColl, false);
-		ConfigColorRow(Tr("Catches a wall"), &g_Config.m_ClHookCollColorHookableColl, false);
-		ConfigColorRow(Tr("Catches a player"), &g_Config.m_ClHookCollColorTeeColl, false);
 		EndCard();
 	}
 	EndCardGrid();
