@@ -77,12 +77,15 @@ void CXcMediaSession::Snapshot(SXcMediaState *pState, uint64_t KnownArtId)
 		pState->m_vArtRgba = m_State.m_vArtRgba;
 }
 
-void CXcMediaSession::Send(ECommand Command)
+void CXcMediaSession::Send(ECommand Command, double Seconds)
 {
 	{
 		std::lock_guard<std::mutex> Lock(m_Mutex);
-		if(m_Commands.size() < 8)
-			m_Commands.push_back(Command);
+		// a newer seek replaces the one that is still waiting
+		if(Command == COMMAND_SEEK && !m_Commands.empty() && m_Commands.back().m_Command == COMMAND_SEEK)
+			m_Commands.back().m_Seconds = Seconds;
+		else if(m_Commands.size() < 8)
+			m_Commands.push_back({Command, Seconds});
 	}
 	m_Wake.notify_all();
 }
@@ -126,15 +129,15 @@ void CXcMediaSession::Run()
 	while(true)
 	{
 		// commands first, then a fresh look so the button press shows right away
-		std::deque<ECommand> Commands;
+		std::deque<SCommand> Commands;
 		{
 			std::lock_guard<std::mutex> Lock(m_Mutex);
 			if(m_Quit)
 				break;
 			Commands.swap(m_Commands);
 		}
-		for(ECommand Command : Commands)
-			XcMediaPlatform::Command(Command);
+		for(const SCommand &Command : Commands)
+			XcMediaPlatform::Command(Command.m_Command, Command.m_Seconds);
 
 		SXcMediaState State;
 		std::vector<unsigned char> vArtBytes;

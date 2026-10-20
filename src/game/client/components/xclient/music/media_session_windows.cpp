@@ -137,7 +137,7 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 	}
 }
 
-void XcMediaPlatform::Command(CXcMediaSession::ECommand Command)
+void XcMediaPlatform::Command(CXcMediaSession::ECommand Command, double Seconds)
 {
 	try
 	{
@@ -148,6 +148,14 @@ void XcMediaPlatform::Command(CXcMediaSession::ECommand Command)
 		{
 		case CXcMediaSession::COMMAND_NEXT: Current.TrySkipNextAsync().get(); break;
 		case CXcMediaSession::COMMAND_PREVIOUS: Current.TrySkipPreviousAsync().get(); break;
+		case CXcMediaSession::COMMAND_SEEK:
+		{
+			// the position is in 100 ns ticks on the timeline of the session
+			const auto Timeline = Current.GetTimelineProperties();
+			const int64_t Ticks = Timeline.StartTime().count() + (int64_t)(Seconds * 10000000.0);
+			Current.TryChangePlaybackPositionAsync(Ticks).get();
+			break;
+		}
 		default: Current.TryTogglePlayPauseAsync().get(); break;
 		}
 	}
@@ -171,7 +179,11 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 	pState->m_Available = false;
 	return true;
 }
-void XcMediaPlatform::Command(CXcMediaSession::ECommand Command) { (void)Command; }
+void XcMediaPlatform::Command(CXcMediaSession::ECommand Command, double Seconds)
+{
+	(void)Command;
+	(void)Seconds;
+}
 
 #endif
 #endif

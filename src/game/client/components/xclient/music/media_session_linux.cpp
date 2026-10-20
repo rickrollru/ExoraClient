@@ -141,14 +141,23 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 		pState->m_Duration = std::atoll(vFields[6].c_str()) / 1000000.0;
 		pState->m_Position = std::atoll(vFields[5].c_str()) / 1000000.0;
 		pState->m_SampleTime = CXcMediaSession::Now();
+		pState->m_CanSeek = true; // MPRIS players take "playerctl position"
 	}
 	if(WantArt && !vFields[7].empty())
 		ReadArt(vFields[7], pArtBytes);
 	return true;
 }
 
-void XcMediaPlatform::Command(CXcMediaSession::ECommand Command)
+void XcMediaPlatform::Command(CXcMediaSession::ECommand Command, double Seconds)
 {
+	if(Command == CXcMediaSession::COMMAND_SEEK)
+	{
+		char aSeek[64];
+		std::snprintf(aSeek, sizeof(aSeek), "playerctl position %.2f 2>/dev/null", Seconds < 0.0 ? 0.0 : Seconds);
+		std::string Output;
+		RunCommand(aSeek, &Output);
+		return;
+	}
 	const char *pCommand = Command == CXcMediaSession::COMMAND_NEXT ? "playerctl next 2>/dev/null" : (Command == CXcMediaSession::COMMAND_PREVIOUS ? "playerctl previous 2>/dev/null" : "playerctl play-pause 2>/dev/null");
 	std::string Output;
 	RunCommand(pCommand, &Output);
@@ -168,7 +177,11 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 	pState->m_Available = false;
 	return true;
 }
-void XcMediaPlatform::Command(CXcMediaSession::ECommand Command) { (void)Command; }
+void XcMediaPlatform::Command(CXcMediaSession::ECommand Command, double Seconds)
+{
+	(void)Command;
+	(void)Seconds;
+}
 
 #endif
 #endif

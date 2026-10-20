@@ -14,6 +14,7 @@
 
 #include <game/client/gameclient.h>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace XcUi;
@@ -57,16 +58,38 @@ static bool RoundButton(const char *pId, const char *pIcon, float Radius, bool M
 void CXcMenu::RenderMusicCard()
 {
 	CXcMusic &Music = GameClient()->m_XcMusic;
-	if(!g_Config.m_XcMusic || !Music.Supported())
-		return;
 	const STheme &t = Theme();
+	// the card is always there: when the player is off or missing, it says why and how to fix it
+	if(!g_Config.m_XcMusic || !Music.Supported())
+	{
+		if(BeginCard("##music", Tr("Music"), Tr("What plays in the browser or a music app")))
+		{
+			if(!Music.Supported())
+			{
+#if defined(CONF_FAMILY_WINDOWS)
+				Description(Tr("The music player is not in this build: the Windows SDK with C++/WinRT was not found when it was built."));
+#else
+				Description(Tr("The music player needs the playerctl program. Install it (for example: sudo apt install playerctl) and restart the game."));
+#endif
+			}
+			else
+			{
+				Description(Tr("The music player is off. It shows the track from YouTube, Spotify, Yandex Music and others, with the buttons."));
+				ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+				if(Button(Tr("Turn on"), true, -1.0f))
+					g_Config.m_XcMusic = 1;
+			}
+			EndCard();
+		}
+		return;
+	}
 	if(!BeginCard("##music", Tr("Music"), Music.HasTrack() ? Music.AppName() : Tr("What plays in the browser or a music app")))
 		return;
 
 	const SXcMediaState &State = Music.State();
 	const bool HasTrack = Music.HasTrack();
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
-	const float ArtSize = S(112.0f);
+	const float ArtSize = S(96.0f);
 	const ImVec2 ArtMin = ImGui::GetCursorScreenPos();
 	const ImVec2 ArtMax(ArtMin.x + ArtSize, ArtMin.y + ArtSize);
 	const float Rounding = S(12.0f);
@@ -120,20 +143,43 @@ void CXcMenu::RenderMusicCard()
 	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 	if(HasTrack && Position >= 0.0)
 	{
+		// the bar can be dragged to jump inside the track (when the player allows it)
 		const ImVec2 BarPos = ImGui::GetCursorScreenPos();
 		const float BarHeight = S(4.0f);
-		const float Fill = (float)(Position / State.m_Duration);
-		pDraw->AddRectFilled(BarPos, ImVec2(BarPos.x + Width, BarPos.y + BarHeight), Col(t.m_Track), BarHeight);
-		pDraw->AddRectFilled(BarPos, ImVec2(BarPos.x + Width * Fill, BarPos.y + BarHeight), Col(t.m_Accent), BarHeight);
-		pDraw->AddCircleFilled(ImVec2(BarPos.x + Width * Fill, BarPos.y + BarHeight * 0.5f), S(5.0f), Col(t.m_Text), 16);
-		ImGui::Dummy(ImVec2(Width, BarHeight + S(4.0f)));
+		const float HitHeight = S(16.0f);
+		const bool CanSeek = State.m_CanSeek;
+		ImGui::SetCursorScreenPos(ImVec2(BarPos.x, BarPos.y - (HitHeight - BarHeight) * 0.5f));
+		ImGui::InvisibleButton("##seek", ImVec2(Width, HitHeight));
+		const bool Hovered = ImGui::IsItemHovered() && CanSeek;
+		const bool Dragging = ImGui::IsItemActive() && CanSeek;
+		const float MouseFill = std::clamp((ImGui::GetIO().MousePos.x - BarPos.x) / Width, 0.0f, 1.0f);
+		if(Hovered || Dragging)
+			ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+		if(ImGui::IsItemDeactivated() && CanSeek)
+			Music.Seek(MouseFill * State.m_Duration);
+		const float Grow = Animate(ImGui::GetID("##seek_grow"), Hovered || Dragging ? 1.0f : 0.0f, 16.0f);
+		const float Fill = Dragging ? MouseFill : (float)(Position / State.m_Duration);
+		const float Thick = BarHeight * (1.0f + 0.5f * Grow);
+		const float Mid = BarPos.y + BarHeight * 0.5f;
+		pDraw->AddRectFilled(ImVec2(BarPos.x, Mid - Thick * 0.5f), ImVec2(BarPos.x + Width, Mid + Thick * 0.5f), Col(t.m_Track), Thick);
+		if(Hovered && !Dragging)
+			pDraw->AddRectFilled(ImVec2(BarPos.x, Mid - Thick * 0.5f), ImVec2(BarPos.x + Width * MouseFill, Mid + Thick * 0.5f), Col(t.m_Accent, 0.25f), Thick);
+		pDraw->AddRectFilled(ImVec2(BarPos.x, Mid - Thick * 0.5f), ImVec2(BarPos.x + Width * Fill, Mid + Thick * 0.5f), Col(t.m_Accent), Thick);
+		pDraw->AddCircleFilled(ImVec2(BarPos.x + Width * Fill, Mid), S(5.0f) + S(2.0f) * Grow, Col(t.m_Text), 16);
 		char aNow[16], aTotal[16];
-		FormatTime(Position, aNow, sizeof(aNow));
+		FormatTime(Dragging ? MouseFill * State.m_Duration : Position, aNow, sizeof(aNow));
 		FormatTime(State.m_Duration, aTotal, sizeof(aTotal));
+		if(Hovered && !Dragging)
+		{
+			char aAt[16];
+			FormatTime(MouseFill * State.m_Duration, aAt, sizeof(aAt));
+			ImGui::SetTooltip("%s", aAt);
+		}
+		ImGui::SetCursorScreenPos(ImVec2(BarPos.x, BarPos.y + BarHeight + S(4.0f)));
 		ImFont *pSmall = Fonts().m_pSmall;
 		const ImVec2 TimePos = ImGui::GetCursorScreenPos();
 		const float TotalWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aTotal).x;
-		pDraw->AddText(pSmall, pSmall->FontSize, TimePos, Col(t.m_TextMuted), aNow);
+		pDraw->AddText(pSmall, pSmall->FontSize, TimePos, Col(Dragging ? t.m_Text : t.m_TextMuted), aNow);
 		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(TimePos.x + Width - TotalWidth, TimePos.y), Col(t.m_TextMuted), aTotal);
 		ImGui::Dummy(ImVec2(Width, pSmall->FontSize));
 	}
