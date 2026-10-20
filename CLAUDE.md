@@ -636,6 +636,13 @@ Minecraft-клиентов (Nursultan, Expensive, Space Visuals): красиво
     мипмапов (новый флаг `IGraphics::TEXLOAD_NO_MIPMAPS`, `// XClient` в `graphics.h`/`graphics_threaded.cpp`).
   - Размер интерфейса редактора: плашка «110%» в верхней панели (−/+, пресеты) и Вид → «Размер интерфейса»,
     `xc_editor_scale` (70–200, по умолч. 110), умножается на размер меню.
+- 20.10.2026: Огибающие «Кривые как в After Effects» (эксперимент, вариант В, `RenderEnvelopeGraph` в `xeditor_envelopes.cpp`):
+  кнопка с графиком в панели огибающих (`xc_editor_env_curves`, по умолч. выкл) меняет строки каналов на один большой
+  график выбранного канала (плашки каналов сверху, остальные каналы бледно — только форма), шкала значений слева.
+  Ключи тянутся по времени и значению (Shift — шаг 0,1 с), двойной клик — ключ в точке мыши, правый клик — удалить.
+  У ключа сглаживание «Кривая» (bezier DDNet): ручки ставятся на треть пути (`SetEnvelopeCurve`, одним шагом Ctrl+Z),
+  тянутся мышкой, две ручки ключа держатся на одной линии (Alt — отдельно). Всё через классические
+  `CEditorActionEditEnvelopePointValue` (POINT / TANGENT_IN / TANGENT_OUT) + `CEditorActionBulk`.
 - Тестирование без Windows: в облаке собираем на Linux, запускаем DDNet-Server + клиент на Xvfb,
   жмём клавиши через xdotool и снимаем скрины (`import`). Короткие эффекты — видео `ffmpeg -f x11grab`.
   Звук — `SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE=...` (48 кГц, стерео, s16). Окно ищется по имени «XClient».
