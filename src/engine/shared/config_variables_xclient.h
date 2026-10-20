@@ -342,6 +342,7 @@ MACRO_CONFIG_INT(XcMusicToasts, xc_music_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the Exora Client style: flat dark panels, accent selection, the menu font")
 MACRO_CONFIG_INT(XcEditorGuideSeen, xc_editor_guide_seen, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The map editor guide was shown once")
 MACRO_CONFIG_INT(XcEditorUi, xc_editor_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The new map editor interface in the Exora Client style (0 = the classic editor)")
+MACRO_CONFIG_INT(XcEditorScale, xc_editor_scale, 110, 70, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the new map editor interface in percent")
 MACRO_CONFIG_INT(XcCoopPort, xc_coop_port, 8314, 1024, 65535, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The port of a room for editing a map together")
 MACRO_CONFIG_STR(XcCoopAddress, xc_coop_address, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "The last room address for editing a map together (IP:port)")
 MACRO_CONFIG_INT(XcEditorLayout, xc_editor_layout, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor layout like Photoshop: tools on the left, layers on the right")

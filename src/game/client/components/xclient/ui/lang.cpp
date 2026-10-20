@@ -745,6 +745,7 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"Interface size", "Размер интерфейса"},
 			{"Smart fill", "Умная заливка"},
 			{"[U] Smart fill: drag a rectangle, it fills with blocks and the automapper of the layer makes the edges and corners. Shift erases the rectangle.", "[U] Умная заливка: протяни рамку — она зальётся блоками, а автомаппер слоя сам поставит края и углы. С Shift рамка стирается."},
 			{"Smart fill: drag a rectangle. The automapper of the layer makes the edges. Shift erases", "Умная заливка: протяни рамку. Края поставит автомаппер слоя. Shift — стереть"},

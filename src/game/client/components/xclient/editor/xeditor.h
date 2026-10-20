@@ -15,6 +15,8 @@
 #include "xeditor_coop.h"
 
 #include <game/client/components/xclient/ui/imgui_backend.h>
+
+#include <engine/external/imgui/imgui.h>
 #include <game/client/lineinput.h>
 #include <game/client/ui.h>
 #include <game/client/ui_rect.h>
@@ -25,7 +27,6 @@
 
 class CEditor;
 struct ImDrawList;
-struct ImVec2;
 
 // While a capture is active, CEditor::DoPropertiesWithState and CEditor::DoButton_Editor draw nothing: they
 // record the properties and buttons of a property popup for the new properties panel and hand back the
@@ -172,6 +173,27 @@ private:
 	bool ReadPrefab(SPrefab &Prefab);
 	bool SavePrefab(const char *pName);
 	void UsePrefab(const SPrefab &Prefab);
+
+	// dragging a layer or a group in the tree: a card follows the mouse, the rows part where it will land
+	enum
+	{
+		DRAG_NONE = 0,
+		DRAG_LAYER,
+		DRAG_GROUP,
+	};
+	int m_DragKind = DRAG_NONE;
+	int m_DragGroup = -1;
+	int m_DragLayer = -1;
+	bool m_DragEntities = false; // game layers stay in the game group
+	ImVec2 m_DragGrab = {}; // where the row was taken, from its corner
+	ImVec2 m_DragGhost = {}; // the card, smoothed
+	float m_DragTime = 0.0f;
+	int m_DropGroup = -1; // where it lands: before layer m_DropIndex of m_DropGroup (a group drag: before group m_DropGroup)
+	int m_DropIndex = -1;
+	std::string m_DragLabel;
+	const char *m_pDragIcon = nullptr;
+	ImVec4 m_DragIconColor = {};
+	bool DropIsNoOp() const;
 
 	// layers panel state
 	int m_RenameGroup = -1;
