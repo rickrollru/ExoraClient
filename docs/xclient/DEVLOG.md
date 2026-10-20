@@ -797,3 +797,8 @@
   (вкладка), страны флажками, сброс. Внизу — число серверов и игроков и вход по адресу. Вставки `// XClient`:
   `friend class CXcMenu` в `menus.h` и `community_icons.h`; иконки сообществ обновляются из нового меню.
   Проверено в облаке на LAN с локальным сервером (интернет-список в облаке недоступен, 403).
+- 20.10.2026: **Архив для релиза.** В `CMakePresets.json` пресет сборки «Exora Client Release ZIP» (цель
+  `package_default`): в Visual Studio выбрать его в списке рядом с «Exora Client Release» и собрать — в `build-release`
+  появится `ExoraClient-win64.zip` (exe, сервер, data, библиотеки). Имя архива — `CPACK_PACKAGE_FILE_NAME` в
+  `CMakeLists.txt` (`// XClient`), версия пишется в тег релиза на GitHub. Проверено в облаке: архив Linux собирается,
+  все 107 файлов `data/xclient` внутри. Ошибки LNK2019 у владельца — запуск из 32-битного терминала VS (библиотеки x86).
