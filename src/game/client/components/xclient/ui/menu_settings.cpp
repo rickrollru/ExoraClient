@@ -234,6 +234,8 @@ void CXcMenu::RenderSettingsInterface()
 		EndCard();
 	}
 
+	RenderTopbarCard();
+
 	if(BeginCard("##classic", Tr("Classic menu"), Tr("The old DDNet menu, for settings that are not here yet")))
 	{
 		if(Button(Tr("Open"), false, -1.0f))
