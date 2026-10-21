@@ -70,7 +70,7 @@ void CXcEditorUi::RenderCoop()
 	{
 		bool Close = false;
 		Header(Tr("Edit together"));
-		Description(Tr("One map with friends over LAN or Radmin VPN. Blocks show up right away, layers, quads and envelopes a moment after you stop."), Inner);
+		Description(Tr("Maps with friends over LAN or Radmin VPN. Every tab is shared, each player works in any tab. Blocks show up right away, layers, quads and envelopes a moment after you stop."), Inner);
 		ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
 
 		ImDrawList *pDraw = ImGui::GetWindowDrawList();
@@ -78,7 +78,7 @@ void CXcEditorUi::RenderCoop()
 		if(Role == CXcCoop::ROLE_NONE)
 		{
 			// open a room
-			ParamLabel(Tr("Open a room for the current map"));
+			ParamLabel(Tr("Open a room with all your tabs"));
 			const float PortWidth = S(90.0f);
 			InputText("##coop_port", m_aCoopPort, sizeof(m_aCoopPort), Tr("Port"), PortWidth);
 			ImGui::SameLine(0.0f, S(8.0f));
@@ -115,7 +115,7 @@ void CXcEditorUi::RenderCoop()
 					str_copy(m_aCoopError, Tr(aError));
 			}
 			ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
-			Description(Tr("The map of the room opens in a new tab. Save it to your computer whenever you want."), Inner);
+			Description(Tr("The maps of the room open in new tabs, your own tabs stay yours. A tab you open later is shared, a closed one closes for everyone."), Inner);
 			if(m_aCoopError[0])
 			{
 				ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
@@ -171,6 +171,16 @@ void CXcEditorUi::RenderCoop()
 				str_format(aName, sizeof(aName), "%s%s%s", Member.m_Name.c_str(), Member.m_Id == m_Coop.SelfId() ? Tr(" (you)") : "", Member.m_Id == 0 ? Tr(" · host") : "");
 				ImFont *pLabel = Fonts().m_pLabel;
 				pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(30.0f), Min.y + (Row - pLabel->FontSize) * 0.5f), Col(t.m_Text), aName);
+				// the tab the member is in
+				const uint32_t MemberMap = Member.m_Id == m_Coop.SelfId() ? m_Coop.MapId(m_pEditor->Map()) : (Member.m_HasCursor ? Member.m_MapId : 0);
+				for(const auto &pMap : m_pEditor->m_vpMaps)
+				{
+					if(MemberMap == 0 || m_Coop.MapId(pMap.get()) != MemberMap)
+						continue;
+					ImFont *pSmall = Fonts().m_pSmall;
+					const float TabWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pMap->m_aDisplayName).x;
+					pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(Min.x + Inner - TabWidth - S(12.0f), Min.y + (Row - pSmall->FontSize) * 0.5f), Col(t.m_TextMuted), pMap->m_aDisplayName);
+				}
 				ImGui::Dummy(ImVec2(Inner, Row));
 				ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
 			}
@@ -194,8 +204,9 @@ void CXcEditorUi::RenderCoop()
 void CXcEditorUi::RenderCoopCursors()
 {
 	CEditor &E = *m_pEditor;
-	const CEditorMap *pMap = m_Coop.SharedMap();
-	if(m_Coop.State() != CXcCoop::STATE_ONLINE || !pMap || E.Map() != pMap)
+	const CEditorMap *pMap = E.Map();
+	const uint32_t MapId = m_Coop.MapId(pMap);
+	if(m_Coop.State() != CXcCoop::STATE_ONLINE || MapId == 0)
 		return;
 	// world (without parallax) -> pixels through the game group, like the editor does for the mouse
 	const CLayerGroup *pGame = nullptr;
@@ -217,7 +228,8 @@ void CXcEditorUi::RenderCoopCursors()
 	const float Time = E.Client()->GlobalTime();
 	for(const CXcCoop::SMember &Member : m_Coop.Members())
 	{
-		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasCursor)
+		// only the ones in this tab
+		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasCursor || Member.m_MapId != MapId)
 			continue;
 		const ImVec2 Pos((Member.m_Cursor.x - Rect.m_TopLeft.x) / Rect.Width() * Display.x, (Member.m_Cursor.y - Rect.m_TopLeft.y) / Rect.Height() * Display.y);
 		const float Alpha = Time - Member.m_LastSeen > 20.0f ? 0.45f : 1.0f;
