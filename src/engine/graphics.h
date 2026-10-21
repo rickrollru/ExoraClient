@@ -344,6 +344,7 @@ public:
 	// XClient: the world is computed with this aspect ratio and stretched over the screen (0: the aspect of the screen)
 	void XcSetWorldAspect(float Aspect) { m_XcWorldAspect = Aspect; }
 	float XcWorldAspect() const { return m_XcWorldAspect; }
+	ivec2 XcDesktopSize() const { return m_DesktopSize; } // XClient: the monitor's own resolution
 	CScreenRect MapScreenToWorld(float CenterX, float CenterY, float ParallaxX, float ParallaxY,
 		float ParallaxZoom, float OffsetX, float OffsetY, float Aspect, float Zoom) const;
 	void MapScreenToInterface(float CenterX, float CenterY, float Zoom = 1.0f);
