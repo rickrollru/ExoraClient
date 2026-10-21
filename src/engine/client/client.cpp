@@ -3562,6 +3562,9 @@ void CClient::Run()
 
 				Render();
 				m_pGraphics->Swap();
+				// XClient: synchronous frames, the next one reads the input only after this one is with the GPU
+				if(g_Config.m_XcInputSync)
+					m_pGraphics->WaitForIdle();
 			}
 
 			// Wake up for the next update or frame, whichever comes first. While playing, also wake up for

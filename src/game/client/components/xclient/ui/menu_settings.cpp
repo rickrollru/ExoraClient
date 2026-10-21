@@ -866,6 +866,53 @@ void CXcMenu::RenderSettingsGraphics()
 		Description(Tr("Everything else is in Settings > DDNet"));
 		EndCard();
 	}
+	if(BeginCard("##latency", Tr("Input delay"), Tr("The mouse in the game already comes as raw input, past the Windows pointer. The delay comes from the frame queue, VSync and the window mode")))
+	{
+		// every setting that adds delay, with its state
+		const bool VsyncOff = !g_Config.m_GfxVsync;
+		const bool Exclusive = g_Config.m_GfxFullscreen == 1;
+		const bool Unlimited = g_Config.m_GfxRefreshRate == 0 || g_Config.m_GfxRefreshRate >= 480;
+		const bool Queue = g_Config.m_XcLowLatency && Graphics()->XcRenderAvailable();
+		const bool Sync = g_Config.m_XcInputSync;
+		const bool Skip = g_Config.m_GfxAsyncRenderOld;
+		const auto &&StateRow = [&](const char *pLabel, bool Good, const char *pHint) {
+			ImGui::PushStyleColor(ImGuiCol_Text, Good ? ImVec4(0.24f, 0.84f, 0.64f, 1.0f) : ImVec4(1.0f, 0.54f, 0.24f, 1.0f));
+			ImGui::TextUnformatted(Good ? XC_ICON_CHECK : XC_ICON_XMARK);
+			ImGui::PopStyleColor();
+			ImGui::SameLine(0.0f, S(10.0f));
+			ImGui::TextUnformatted(pLabel);
+			if(!Good && pHint)
+				Description(pHint);
+		};
+		StateRow(Tr("VSync off"), VsyncOff, Tr("VSync waits for the monitor: up to 2-3 frames of delay"));
+		StateRow(Tr("Fullscreen (exclusive)"), Exclusive, Tr("A window goes through the Windows compositor: one frame more"));
+		StateRow(Tr("FPS without a low limit"), Unlimited, Tr("More frames: every frame shows newer input"));
+		StateRow(Tr("The driver does not queue frames"), Queue, Graphics()->XcRenderAvailable() ? nullptr : Tr("Needs OpenGL 3.3"));
+		StateRow(Tr("Synchronous frames"), Sync, Tr("The next frame reads the input only after the previous one went to the GPU: one frame less, a bit less FPS"));
+		StateRow(Tr("Skip a frame when the GPU is busy"), Skip, nullptr);
+		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+		if(Button(Tr("Set everything for the lowest delay"), true, -1.0f))
+		{
+			if(g_Config.m_GfxVsync)
+			{
+				g_Config.m_GfxVsync = 0;
+				Graphics()->SetVSync(false);
+			}
+			g_Config.m_GfxRefreshRate = 0;
+			g_Config.m_ClRefreshRate = 0;
+			g_Config.m_XcLowLatency = 1;
+			g_Config.m_XcInputSync = 1;
+			g_Config.m_GfxAsyncRenderOld = 1;
+			if(g_Config.m_GfxFullscreen != 1)
+				Graphics()->SetWindowParams(1, false);
+			Toast(Tr("Set for the lowest delay"));
+		}
+		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+		ToggleRow(Tr("Synchronous frames"), "xc_input_sync", &g_Config.m_XcInputSync);
+		ToggleRow(Tr("Show the input delay in the HUD"), "xc_hud_latency", &g_Config.m_XcHudLatency);
+		Description(Tr("Also: a mouse with 1000 Hz or more, the game on the monitor with the highest refresh rate. The ping to the server is network, the client cannot lower it"));
+		EndCard();
+	}
 	if(BeginCard("##performance", Tr("Performance"), Tr("Low, medium or high in one click, then each effect by hand")))
 	{
 		RenderPerformance();
