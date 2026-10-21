@@ -400,8 +400,8 @@ MACRO_CONFIG_INT(XcEventSoundDeath, xc_event_sound_death, 0, 0, 1, CFGFLAG_CLIEN
 MACRO_CONFIG_INT(XcEventSoundTeleport, xc_event_sound_teleport, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sound when you are teleported")
 
 // Links on the home page (empty = coming soon)
-MACRO_CONFIG_STR(XcLinkGithub, xc_link_github, 256, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "GitHub page of the client")
-MACRO_CONFIG_STR(XcLinkDiscord, xc_link_discord, 256, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord server of the client")
+MACRO_CONFIG_STR(XcLinkGithub, xc_link_github, 256, "https://github.com/rickrollru/ExoraClient", CFGFLAG_CLIENT | CFGFLAG_SAVE, "GitHub page of the client")
+MACRO_CONFIG_STR(XcLinkDiscord, xc_link_discord, 256, "https://discord.gg/PJzRd3TBj2", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord server of the client")
 MACRO_CONFIG_INT(XcDiscord, xc_discord, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord status: server, map and play time in your Discord profile")
 MACRO_CONFIG_STR(XcDiscordAppId, xc_discord_app_id, 32, "1325361453988970527", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Discord application id, its name is the game name in the status")
 MACRO_CONFIG_STR(XcDiscordLogo, xc_discord_logo, 64, "tclient_logo", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Name of the logo picture in the Discord application")
