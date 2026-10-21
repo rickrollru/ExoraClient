@@ -3057,6 +3057,8 @@ if(CLIENT)
     components/xclient/ambience.h
     components/xclient/block_outline.cpp
     components/xclient/block_outline.h
+    components/xclient/discord_rpc.cpp
+    components/xclient/discord_rpc.h
     components/xclient/cape.cpp
     components/xclient/cosmetics.cpp
     components/xclient/cursor.cpp
