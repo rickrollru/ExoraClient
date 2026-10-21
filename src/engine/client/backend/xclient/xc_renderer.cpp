@@ -1027,8 +1027,8 @@ void CXcRenderer::CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand)
 	if(Width <= 0 || Height <= 0)
 		return;
 	const float aScreen[4] = {pCommand->m_ScreenLeft, pCommand->m_ScreenTop, pCommand->m_ScreenRight, pCommand->m_ScreenBottom};
-	// room for the widest glow
-	if(!WorldToRegion(aScreen, pCommand->m_aWorldRect, Width, Height, BlurSpread(MAX_GLOW_LEVELS) + 8.0f, m_aCaptureRegion))
+	// the world rect already has room for the glow, a few pixels more for the filter taps
+	if(!WorldToRegion(aScreen, pCommand->m_aWorldRect, Width, Height, 8.0f, m_aCaptureRegion))
 		return;
 
 	// targets may be created here, keep DDNet's bindings intact while doing so

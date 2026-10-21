@@ -925,6 +925,10 @@ void CXcMenu::RenderSettingsGraphics()
 		ParamLabel(Tr("Effect quality"));
 		const char *apQuality[] = {Tr("Low"), Tr("Medium"), Tr("High")};
 		ConfigSegmented("##quality", "xc_fx_quality", &g_Config.m_XcFxQuality, apQuality, 3);
+		ToggleRow(Tr("Lower the effects when FPS drops"), "xc_auto_quality", &g_Config.m_XcAutoQuality);
+		if(GameClient()->m_FxRenderer.Reduced())
+			Description(Tr("Glow and bloom are off now: the game was below 50 FPS"));
+		ToggleRow(Tr("FPS log in the console"), "xc_perf_log", &g_Config.m_XcPerfLog);
 		EndCard();
 	}
 	EndCardGrid();

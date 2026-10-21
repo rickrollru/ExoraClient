@@ -5,6 +5,9 @@
 
 #include <base/math.h>
 
+#include "ui/feedback.h"
+#include "ui/lang.h"
+
 #include <engine/client.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
@@ -163,8 +166,61 @@ bool CFxRenderer::ModuleActive() const
 	return g_Config.m_XcRender && Graphics()->XcRenderAvailable();
 }
 
+int CFxRenderer::Quality() const
+{
+	return m_Reduced ? 0 : g_Config.m_XcFxQuality;
+}
+
+void CFxRenderer::UpdatePerf()
+{
+	if(!g_Config.m_XcAutoQuality)
+		m_Reduced = false;
+	// only real gameplay counts: menus, loading and demos have their own frame times
+	const bool Playing = Client()->State() == IClient::STATE_ONLINE && !GameClient()->m_Menus.IsActive() && !GameClient()->m_XcMenu.IsActive();
+	if(!Playing)
+	{
+		m_WindowTime = 0.0;
+		m_WindowFrames = 0;
+		m_WindowWorst = 0.0f;
+		return;
+	}
+	const float FrameTime = Client()->RenderFrameTime();
+	m_WindowTime += FrameTime;
+	m_WindowFrames++;
+	m_WindowWorst = std::max(m_WindowWorst, FrameTime);
+	if(m_WindowTime < 5.0)
+		return;
+
+	const double Fps = m_WindowFrames / m_WindowTime;
+	if(g_Config.m_XcPerfLog)
+	{
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "fps %.0f, frame %.2f ms, worst %.1f ms, effects %s", Fps, m_WindowTime / m_WindowFrames * 1000.0, m_WindowWorst * 1000.0f, m_Reduced ? "reduced" : "full");
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "xc_perf", aBuf);
+	}
+
+	// the heavy GPU effects go off when the game stays slow (a weak or hot GPU); a frame cap below
+	// the threshold is the player's choice and does not count
+	const bool Capped = g_Config.m_GfxRefreshRate > 0 && g_Config.m_GfxRefreshRate < 60;
+	if(g_Config.m_XcAutoQuality && !m_Reduced && !Capped && ModuleActive() && Fps < 50.0)
+	{
+		if(++m_SlowWindows >= 2)
+		{
+			m_Reduced = true;
+			XcUi::Toast(XcUi::Tr("Low FPS: glow and bloom are off for now"), XcUi::TOAST_INFO);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "xc_perf", "low fps, heavy effects reduced");
+		}
+	}
+	else
+		m_SlowWindows = 0;
+	m_WindowTime = 0.0;
+	m_WindowFrames = 0;
+	m_WindowWorst = 0.0f;
+}
+
 void CFxRenderer::OnRender()
 {
+	UpdatePerf();
 	CXcParticles::SetCollision(Collision());
 	// over the map tiles the queue is drawn after the front layer
 	if(!g_Config.m_XcFxOverTiles)
@@ -200,8 +256,8 @@ void CFxRenderer::Draw(const std::vector<SFxShape> &vShapes, bool AllowBloom)
 		(Shape.m_Additive ? m_vAdditive : m_vAlpha).push_back(Shape.m_Gpu);
 
 	XcRender::SDrawSettings Settings;
-	Settings.m_Quality = g_Config.m_XcFxQuality;
-	Settings.m_BloomStrength = AllowBloom ? g_Config.m_XcBloom / 100.0f : 0.0f;
+	Settings.m_Quality = Quality();
+	Settings.m_BloomStrength = AllowBloom && !m_Reduced ? g_Config.m_XcBloom / 100.0f : 0.0f;
 	Settings.m_BloomThreshold = g_Config.m_XcBloomThreshold / 100.0f;
 	Graphics()->XcDrawShapes(m_vAlpha.data(), (int)m_vAlpha.size(), m_vAdditive.data(), (int)m_vAdditive.size(), Settings);
 }
@@ -211,7 +267,7 @@ void CFxRenderer::BlurBackground(float Amount, bool Force)
 	if(!ModuleActive() || (!g_Config.m_XcMenuBlur && !Force) || Amount <= 0.0f)
 		return;
 	XcRender::SBlurSettings Settings;
-	Settings.m_Passes = g_Config.m_XcFxQuality >= 2 ? 4 : (g_Config.m_XcFxQuality == 1 ? 3 : 2);
+	Settings.m_Passes = Quality() >= 2 ? 4 : (Quality() == 1 ? 3 : 2);
 	Settings.m_Offset = 1.5f * Amount;
 	// slight darkening in the theme background color #0A0B0E
 	Settings.m_Tint = ColorRGBA(0.039f, 0.043f, 0.055f, 0.25f * Amount);
