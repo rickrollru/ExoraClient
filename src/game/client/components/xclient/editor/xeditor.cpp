@@ -243,8 +243,16 @@ void CXcEditorUi::Render()
 	const bool Gui = E.m_GuiActive;
 	m_TopHeight = Gui ? std::round(48.0f * s) : 0.0f;
 	m_StatusHeight = Gui ? std::round(26.0f * s) : 0.0f;
-	m_LeftWidth = Gui ? std::round(270.0f * s) : 0.0f;
-	m_RightWidth = Gui && m_ShowProperties ? std::round(290.0f * s) : 0.0f;
+	// the panels are as wide as dragged, but always leave room for the map
+	const float MaxPanels = Screen.w * k * 0.7f;
+	m_LeftWidth = Gui ? std::round(g_Config.m_XcEditorLeftWidth * s) : 0.0f;
+	m_RightWidth = Gui && m_ShowProperties ? std::round(g_Config.m_XcEditorRightWidth * s) : 0.0f;
+	if(m_LeftWidth + m_RightWidth > MaxPanels)
+	{
+		const float Shrink = MaxPanels / (m_LeftWidth + m_RightWidth);
+		m_LeftWidth = std::round(m_LeftWidth * Shrink);
+		m_RightWidth = std::round(m_RightWidth * Shrink);
+	}
 	const bool Dock = Gui && !E.m_ShowPicker && E.m_ActiveExtraEditor != CEditor::EXTRAEDITOR_NONE;
 	const float DockHeaderUi = 0.0f;
 	float DockUi = Dock ? std::clamp(E.m_aExtraEditorSplits[(int)E.m_ActiveExtraEditor], 100.0f, Screen.h * 0.7f) : 0.0f;
@@ -379,6 +387,7 @@ void CXcEditorUi::Render()
 					RenderEnvelopesDock();
 			}
 			RenderStatusBar();
+			RenderPanelSplitters();
 		}
 		if(Gui && E.m_Mode == MODE_LAYERS && !E.m_ShowPicker)
 			RenderCapsule();
@@ -499,6 +508,55 @@ void CXcEditorUi::Render()
 
 // ------------------------------------------------------------------------------------------------
 // top bar: logo, menus, map tabs, undo / redo, test and save
+
+// the inner edges of the side panels: drag to make a panel wider or narrower, double click for the default
+void CXcEditorUi::RenderPanelSplitters()
+{
+	const STheme &t = Theme();
+	const float s = Scale();
+	const float Grip = std::round(10.0f * s);
+	const float Top = m_TopHeight;
+	const float Height = ImGui::GetIO().DisplaySize.y - m_TopHeight - m_StatusHeight;
+	const auto Splitter = [&](const char *pId, float x, int *pValue, int Default, float Direction) {
+		ImGui::SetNextWindowPos(ImVec2(x - Grip * 0.5f, Top));
+		ImGui::SetNextWindowSize(ImVec2(Grip, Height));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		const bool Open = ImGui::Begin(pId, nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav);
+		ImGui::PopStyleVar(2);
+		if(Open)
+		{
+			// over the panel it belongs to
+			ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+			ImGui::InvisibleButton("##grip", ImVec2(Grip, Height));
+			const bool Active = ImGui::IsItemActive();
+			const bool Hovered = ImGui::IsItemHovered();
+			if(Hovered || Active)
+				ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+			if(Active)
+			{
+				// the value is in design pixels at 100 %
+				m_SplitDrag += ImGui::GetIO().MouseDelta.x * Direction / std::max(s, 0.01f);
+				const int Whole = (int)m_SplitDrag;
+				if(Whole != 0)
+				{
+					*pValue = std::clamp(*pValue + Whole, 180, 700);
+					m_SplitDrag -= Whole;
+				}
+			}
+			else if(ImGui::IsItemDeactivated())
+				m_SplitDrag = 0.0f;
+			if(Hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+				*pValue = Default;
+			if(Hovered || Active)
+				ImGui::GetForegroundDrawList()->AddLine(ImVec2(x, Top), ImVec2(x, Top + Height), Col(t.m_Accent), Active ? 2.0f * s : 1.5f * s);
+		}
+		ImGui::End();
+	};
+	Splitter("##xe_split_left", m_LeftWidth, &g_Config.m_XcEditorLeftWidth, 270, 1.0f);
+	if(m_RightWidth > 0.0f)
+		Splitter("##xe_split_right", ImGui::GetIO().DisplaySize.x - m_RightWidth, &g_Config.m_XcEditorRightWidth, 290, -1.0f);
+}
 
 void CXcEditorUi::RenderTopBar()
 {
