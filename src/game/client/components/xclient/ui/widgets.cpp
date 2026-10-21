@@ -472,7 +472,7 @@ namespace XcUi
 		return Changed;
 	}
 
-	bool InputText(const char *pLabel, char *pBuffer, int BufferSize, const char *pHint, float Width)
+	bool InputText(const char *pLabel, char *pBuffer, int BufferSize, const char *pHint, float Width, int Flags)
 	{
 		const STheme &t = Theme();
 		ImGui::PushFont(FontOr(s_Fonts.m_pBody));
@@ -482,7 +482,7 @@ namespace XcUi
 		ImGui::PushStyleColor(ImGuiCol_FrameBg, t.m_Track);
 		ImGui::PushStyleColor(ImGuiCol_Border, t.m_Border);
 		ImGui::SetNextItemWidth(Width > 0.0f ? Width : AvailWidth());
-		const bool Changed = ImGui::InputTextWithHint(pLabel, pHint ? pHint : "", pBuffer, BufferSize);
+		const bool Changed = ImGui::InputTextWithHint(pLabel, pHint ? pHint : "", pBuffer, BufferSize, Flags);
 		ImGui::PopStyleColor(2);
 		ImGui::PopStyleVar(3);
 		ImGui::PopFont();

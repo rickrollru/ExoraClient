@@ -193,7 +193,8 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 			m_SearchOpen = false;
 			return true;
 		}
-		if(ImGui::GetIO().WantTextInput)
+		// a text field or the disconnected / password window takes the Esc
+		if(ImGui::GetIO().WantTextInput || GameClient()->m_Menus.m_Popup == CMenus::POPUP_DISCONNECTED || GameClient()->m_Menus.m_Popup == CMenus::POPUP_PASSWORD)
 		{
 			m_Backend.OnInput(Event);
 			return true;
@@ -558,6 +559,7 @@ void CXcMenu::RenderFrame()
 	if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
 		OpenSearch();
 	RenderSearch();
+	RenderConnectionPopup();
 	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Open);
 }
 
