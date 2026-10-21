@@ -26,8 +26,9 @@
 
 using namespace XcUi;
 
-// design sizes are for 1080p at 100 %, the fonts are rasterized bigger so scaling up stays sharp
-static constexpr float FONT_OVERSAMPLE = 1.5f;
+// design sizes are for 1080p at 100 %; the fonts are rasterized at the size they are mostly drawn at:
+// the atlas has no mipmaps, so text drawn much smaller than rasterized breaks up on small screens
+static constexpr float FONT_OVERSAMPLE = 1.0f;
 static constexpr float SNAP_DISTANCE = 10.0f;
 
 void CXcHud::OnConsoleInit()
