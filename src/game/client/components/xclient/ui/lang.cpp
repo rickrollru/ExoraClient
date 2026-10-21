@@ -745,6 +745,8 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"The volume of this player is not found yet: start the music", "Громкость этого плеера пока не найдена: включи музыку"},
+			{"Letter spacing", "Расстояние между буквами"},
 			{"The resolution is not the monitor's own: the monitor stretches the picture and it gets blurry. The same picture stays sharp with the monitor's resolution and the game stretched inside.", "Разрешение не родное для монитора: картинку растягивает монитор, и она мылится. Та же картинка будет чёткой в родном разрешении монитора с растяжкой внутри игры."},
 			{"Make it sharp", "Сделать чётко"},
 			{"Monitor resolution, the game stretched inside", "Родное разрешение, игра растянута внутри"},

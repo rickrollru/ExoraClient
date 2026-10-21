@@ -375,6 +375,7 @@ private:
 	char m_aText[std::max((size_t)MAX_NAME_LENGTH, (size_t)protocol7::MAX_NAME_ARRAY_SIZE)] = "";
 	float m_FontSize = -INFINITY;
 	int m_XcGradientKey = -1; // XClient: what the letter colors were built for, -1 none
+	int m_XcSpacing = 0; // XClient: the letter spacing the text was built with
 
 	// XClient: the gradient key changes with the mode and the colors, and over time when it flows
 	int XcGradientKey(const CGameClient &This, int ClientId) const
@@ -406,8 +407,9 @@ protected:
 		const int GradientKey = XcWarColor || !Data.m_InGame ? -1 : XcGradientKey(This, Data.m_ClientId);
 		if(GradientKey >= 0)
 			m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
-		const bool GradientChanged = GradientKey != m_XcGradientKey;
+		const bool GradientChanged = GradientKey != m_XcGradientKey || m_XcSpacing != g_Config.m_XcNameSpacing;
 		m_XcGradientKey = GradientKey;
+		m_XcSpacing = g_Config.m_XcNameSpacing;
 		return GradientChanged || m_FontSize != Data.m_FontSize || str_comp(m_aText, Data.m_aName) != 0;
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
@@ -416,12 +418,13 @@ protected:
 		str_copy(m_aText, Data.m_aName);
 		CTextCursor Cursor;
 		Cursor.m_FontSize = m_FontSize;
-		if(m_XcGradientKey < 0)
+		if(m_XcGradientKey < 0 && m_XcSpacing == 0)
 		{
 			This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
 			return;
 		}
-		// XClient: letter by letter, each in its own color
+		// XClient: letter by letter, each in its own color, with the letter spacing (xc_name_spacing) between them
+		const float Spacing = m_XcSpacing / 100.0f * m_FontSize;
 		size_t Bytes, Letters;
 		str_utf8_stats(m_aText, sizeof(m_aText), sizeof(m_aText), &Bytes, &Letters);
 		Letters = std::max<size_t>(Letters, 1);
@@ -434,7 +437,10 @@ protected:
 			str_utf8_decode(&pNext);
 			char aLetter[8];
 			str_truncate(aLetter, sizeof(aLetter), pCursor, pNext - pCursor);
-			This.TextRender()->TextColor(XcNameGradientColor(This, Data.m_ClientId, Letters > 1 ? i / (float)(Letters - 1) : 0.0f, Shift));
+			if(m_XcGradientKey >= 0)
+				This.TextRender()->TextColor(XcNameGradientColor(This, Data.m_ClientId, Letters > 1 ? i / (float)(Letters - 1) : 0.0f, Shift));
+			if(i > 0)
+				Cursor.m_X += Spacing;
 			This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, aLetter);
 			pCursor = pNext;
 		}
