@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_XCLIENT_UI_MENU_H
 
 #include "backgrounds.h"
+#include "map_preview.h"
 #include "imgui_backend.h"
 #include "map_info.h"
 #include "player_stats.h"
@@ -126,6 +127,10 @@ private:
 	int m_ServerPanel = 0; // the right panel: server, friends, filters
 	char m_aFriendName[16] = {};
 	char m_aFriendClan[12] = {};
+	CXcMapPreviews m_MapPreviews;
+	void RenderBrowserCommunities();
+	// the map scheme in a rect: covers it, cut to its shape (ImDrawFlags corners)
+	bool DrawMapPreview(struct ImDrawList *pDraw, const CServerInfo *pInfo, ImVec2 Min, ImVec2 Max, float Rounding, int Corners, float Alpha);
 
 	// configs page
 	struct SConfigEntry

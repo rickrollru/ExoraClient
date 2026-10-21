@@ -3139,6 +3139,8 @@ if(CLIENT)
     components/xclient/ui/menu_presets.cpp
     components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
+    components/xclient/ui/map_preview.cpp
+    components/xclient/ui/map_preview.h
     components/xclient/ui/menu_status.cpp
     components/xclient/ui/menu_settings.cpp
     components/xclient/ui/menu_tclient.cpp
