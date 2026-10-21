@@ -205,5 +205,66 @@ void CXcMenu::RenderMusicCard()
 	ImGui::SetCursorPosY(Row + Big - Small);
 	if(RoundButton("##next", XC_ICON_FORWARD, Small, false, pIcons))
 		Music.Next();
+
+	// the volume of the player app: the speaker mutes, the bar drags, the wheel steps by 5%
+	const float Volume = Music.Volume();
+	if(HasTrack && Volume >= 0.0f)
+	{
+		ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
+		static float s_VolumeBeforeMute = 0.5f;
+		ImFont *pSmall = Fonts().m_pSmall;
+		const float RowWidth = AvailWidth();
+		const float RowHeight = S(20.0f);
+		const ImVec2 RowPos = ImGui::GetCursorScreenPos();
+		const char *pSpeaker = Volume <= 0.0f ? XC_ICON_VOLUME_MUTE : XC_ICON_VOLUME;
+		const float IconWidth = S(22.0f);
+		ImGui::InvisibleButton("##mute", ImVec2(IconWidth, RowHeight));
+		const bool IconHovered = ImGui::IsItemHovered();
+		if(ImGui::IsItemClicked())
+		{
+			if(Volume > 0.0f)
+			{
+				s_VolumeBeforeMute = Volume;
+				Music.SetVolume(0.0f);
+			}
+			else
+				Music.SetVolume(s_VolumeBeforeMute > 0.0f ? s_VolumeBeforeMute : 0.5f);
+			PlayUiSound(SOUND_CLICK);
+		}
+		if(IconHovered)
+			ImGui::SetTooltip("%s", Volume > 0.0f ? Tr("Mute") : Tr("Unmute"));
+		const ImVec2 IconDim = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, pSpeaker);
+		pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(RowPos.x + (IconWidth - IconDim.x) * 0.5f, RowPos.y + (RowHeight - IconDim.y) * 0.5f), Col(IconHovered ? t.m_Text : t.m_TextSecondary), pSpeaker);
+
+		char aPercent[16];
+		str_format(aPercent, sizeof(aPercent), "%d%%", (int)std::round(Volume * 100.0f));
+		const float PercentWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, "100%").x;
+		const float BarX = RowPos.x + IconWidth + S(10.0f);
+		const float BarWidth = RowWidth - IconWidth - S(20.0f) - PercentWidth;
+		ImGui::SetCursorScreenPos(ImVec2(BarX, RowPos.y));
+		ImGui::InvisibleButton("##volume", ImVec2(BarWidth, RowHeight));
+		const bool Hovered = ImGui::IsItemHovered();
+		const bool Dragging = ImGui::IsItemActive();
+		const float MouseLevel = std::clamp((ImGui::GetIO().MousePos.x - BarX) / BarWidth, 0.0f, 1.0f);
+		if(Dragging && std::abs(MouseLevel - Volume) > 0.005f)
+			Music.SetVolume(MouseLevel);
+		if(Hovered)
+			m_InnerWheel = true; // the wheel turns the volume, not the page
+		if(Hovered && ImGui::GetIO().MouseWheel != 0.0f)
+			Music.SetVolume(Volume + (ImGui::GetIO().MouseWheel > 0.0f ? 0.05f : -0.05f));
+		if(Hovered || Dragging)
+			ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+		const float Grow = Animate(ImGui::GetID("##volume_grow"), Hovered || Dragging ? 1.0f : 0.0f, 16.0f);
+		const float Thick = S(4.0f) * (1.0f + 0.5f * Grow);
+		const float Mid = RowPos.y + RowHeight * 0.5f;
+		const float Shown = Dragging ? MouseLevel : Volume;
+		pDraw->AddRectFilled(ImVec2(BarX, Mid - Thick * 0.5f), ImVec2(BarX + BarWidth, Mid + Thick * 0.5f), Col(t.m_Track), Thick);
+		pDraw->AddRectFilled(ImVec2(BarX, Mid - Thick * 0.5f), ImVec2(BarX + BarWidth * Shown, Mid + Thick * 0.5f), Col(t.m_Accent), Thick);
+		pDraw->AddCircleFilled(ImVec2(BarX + BarWidth * Shown, Mid), S(5.0f) + S(2.0f) * Grow, Col(t.m_Text), 16);
+		const float PercentTextWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aPercent).x;
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(RowPos.x + RowWidth - PercentTextWidth, Mid - pSmall->FontSize * 0.5f), Col(Dragging ? t.m_Text : t.m_TextMuted), aPercent);
+		ImGui::SetCursorScreenPos(ImVec2(RowPos.x, RowPos.y + RowHeight));
+		ImGui::Dummy(ImVec2(RowWidth, 0.0f));
+	}
 	EndCard();
 }

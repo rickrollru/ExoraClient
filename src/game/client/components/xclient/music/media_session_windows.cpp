@@ -92,6 +92,7 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 		pState->m_Artist = winrt::to_string(Properties.Artist());
 		pState->m_Album = winrt::to_string(Properties.AlbumTitle());
 		pState->m_App = winrt::to_string(Current.SourceAppUserModelId());
+		XcAppVolumeGet(pState->m_App, &pState->m_Volume);
 		const auto Playback = Current.GetPlaybackInfo();
 		pState->m_Playing = Playback.PlaybackStatus() == PlaybackStatus::Playing;
 		pState->m_CanSeek = Playback.Controls().IsPlaybackPositionEnabled();
@@ -156,6 +157,7 @@ void XcMediaPlatform::Command(CXcMediaSession::ECommand Command, double Seconds)
 			Current.TryChangePlaybackPositionAsync(Ticks).get();
 			break;
 		}
+		case CXcMediaSession::COMMAND_VOLUME: XcAppVolumeSet(winrt::to_string(Current.SourceAppUserModelId()), (float)Seconds); break;
 		default: Current.TryTogglePlayPauseAsync().get(); break;
 		}
 	}

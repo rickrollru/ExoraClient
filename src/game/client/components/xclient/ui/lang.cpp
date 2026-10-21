@@ -745,6 +745,8 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"Mute", "Выключить звук"},
+			{"Unmute", "Включить звук"},
 			{"Add a friend", "Добавить друга"},
 			{"Add a tab for this community", "Добавить вкладку этого сообщества"},
 			{"Address copied", "Адрес скопирован"},

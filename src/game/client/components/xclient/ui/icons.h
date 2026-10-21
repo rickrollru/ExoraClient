@@ -41,6 +41,7 @@
 #define XC_ICON_TRASH "\xef\x87\xb8" // U+F1F8
 #define XC_ICON_PLUS "\xef\x81\xa7" // U+F067
 #define XC_ICON_FILM "\xef\x80\x88" // U+F008
+#define XC_ICON_VOLUME_MUTE "\xef\x9a\xa9" // U+F6A9 volume-xmark
 #define XC_ICON_LOCK "\xef\x80\xa3" // U+F023
 #define XC_ICON_FILTER "\xef\x82\xb0" // U+F0B0
 #define XC_ICON_HEART "\xef\x80\x84" // U+F004
