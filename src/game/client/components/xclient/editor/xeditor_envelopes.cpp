@@ -75,6 +75,24 @@ const char *TypeIcon(const CEnvelope &Env)
 }
 } // namespace
 
+// pressed wheel (middle button) and drag: moves the time like a hand, in the graph also the values.
+// Started inside the area, it keeps going when the mouse leaves it
+void CXcEditorUi::PanEnvelopeView(ImVec2 AreaMin, ImVec2 AreaMax, float TrackWidth, float GraphHeight)
+{
+	const ImGuiIO &Io = ImGui::GetIO();
+	if(ImGui::IsMouseClicked(ImGuiMouseButton_Middle) && MouseIn(AreaMin, AreaMax))
+		m_EnvPanning = true;
+	if(!ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+		m_EnvPanning = false;
+	if(!m_EnvPanning)
+		return;
+	ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+	if(TrackWidth > 0.0f)
+		m_EnvScroll = std::max(0.0f, m_EnvScroll - Io.MouseDelta.x / TrackWidth * m_EnvView);
+	if(GraphHeight > 0.0f)
+		m_EnvValuePan += Io.MouseDelta.y / GraphHeight * (m_EnvGraphHigh - m_EnvGraphLow);
+}
+
 void CXcEditorUi::RenderEnvelopesDock()
 {
 	CEditor &E = *m_pEditor;
@@ -99,6 +117,7 @@ void CXcEditorUi::RenderEnvelopesDock()
 		m_pEnvLast = pEnv;
 		m_EnvSelPoint = -1;
 		m_EnvScroll = 0.0f;
+		m_EnvValuePan = 0.0f;
 		m_EnvView = pEnv ? std::max(2.0f, pEnv->EndTime() * 1.25f) : 5.0f;
 	}
 	if(pEnv && m_EnvSelPoint >= (int)pEnv->m_vPoints.size())
@@ -249,6 +268,7 @@ void CXcEditorUi::RenderEnvelopesDock()
 		if(IconButton("##fit", ICON_EXPAND, Tr("Show the whole animation"), false, true, Small))
 		{
 			m_EnvScroll = 0.0f;
+			m_EnvValuePan = 0.0f;
 			m_EnvView = std::max(1.0f, pEnv->EndTime() * 1.25f);
 		}
 		ImGui::SameLine(0.0f, S(4.0f));
@@ -283,6 +303,7 @@ void CXcEditorUi::RenderEnvelopesDock()
 
 			// the wheel zooms the time, Shift + wheel scrolls it
 			const ImVec2 AreaMax(TrackMin + TrackWidth, AreaMin.y + RulerHeight + RowHeight * Channels);
+			PanEnvelopeView(AreaMin, AreaMax, TrackWidth, 0.0f);
 			if(MouseIn(AreaMin, AreaMax) && ImGui::GetIO().MouseWheel != 0.0f)
 			{
 				if(ImGui::GetIO().KeyShift)
@@ -478,7 +499,7 @@ void CXcEditorUi::RenderEnvelopesDock()
 			float Seconds = Point.m_Time.AsSeconds();
 			ImGui::SetNextItemWidth(Width - LabelWidth);
 			ImGui::BeginDisabled(p == 0);
-			if(ImGui::DragFloat("##time", &Seconds, 0.01f, 0.0f, 600.0f, "%.2f"))
+			if(HoldMouseWhileDragging(ImGui::DragFloat("##time", &Seconds, 0.01f, 0.0f, 600.0f, "%.2f")))
 			{
 				const int Low = p > 0 ? pEnv->m_vPoints[p - 1].m_Time.GetInternal() + 1 : 0;
 				const int High = p + 1 < (int)pEnv->m_vPoints.size() ? pEnv->m_vPoints[p + 1].m_Time.GetInternal() - 1 : 1000000;
@@ -502,7 +523,7 @@ void CXcEditorUi::RenderEnvelopesDock()
 			ImGui::SameLine(LabelWidth);
 			float Value = fx2f(Point.m_aValues[c]) * Info.m_Scale;
 			ImGui::SetNextItemWidth(Width - LabelWidth);
-			if(ImGui::DragFloat("##value", &Value, Info.m_Scale > 1.0f ? 0.5f : 0.25f, 0.0f, 0.0f, Info.m_pFormat))
+			if(HoldMouseWhileDragging(ImGui::DragFloat("##value", &Value, Info.m_Scale > 1.0f ? 0.5f : 0.25f, 0.0f, 0.0f, Info.m_pFormat)))
 				Point.m_aValues[c] = f2fx(Value / Info.m_Scale);
 			if(ImGui::IsItemActivated())
 				m_EnvValueOld = Point.m_aValues[c];
@@ -656,7 +677,9 @@ void CXcEditorUi::RenderEnvelopeGraph(const std::shared_ptr<CEnvelope> &pEnv, in
 		m_EnvGraphLow = Low - Pad;
 		m_EnvGraphHigh = High + Pad;
 	}
-	const float Low = m_EnvGraphLow, High = m_EnvGraphHigh;
+	// the held wheel moves the view: time to the sides, values up and down
+	PanEnvelopeView(AreaMin, AreaMax, TrackWidth, GraphHeight);
+	const float Low = m_EnvGraphLow + m_EnvValuePan, High = m_EnvGraphHigh + m_EnvValuePan;
 	const auto ValueToY = [&](float Value) { return GraphTop + GraphHeight - (Value - Low) / (High - Low) * GraphHeight; };
 	const auto YToValue = [&](float y) { return Low + (GraphTop + GraphHeight - y) / GraphHeight * (High - Low); };
 

@@ -661,6 +661,7 @@ void CXcEditorUi::RenderTuneZones()
 					else
 						str_copy(aFormat, std::abs(Default) < 10.0f ? "%.3g" : "%.1f");
 					ImGui::DragFloat("##value", &Edit, Speed, 0.0f, 0.0f, aFormat);
+					HoldMouseWhileDragging();
 					// the value is written when the drag or the typing ends: one step of Ctrl+Z
 					static float s_Pending = 0.0f;
 					if(ImGui::IsItemActive())

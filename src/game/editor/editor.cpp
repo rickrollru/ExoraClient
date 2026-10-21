@@ -4957,9 +4957,14 @@ void CEditor::OnUpdate()
 	{
 		Ui()->ConvertMouseMove(&CursorRel.x, &CursorRel.y, CursorType);
 		MouseAxisLock(CursorRel);
-		Ui()->OnCursorMove(CursorRel.x, CursorRel.y);
-		if(XcNewUi()) // XClient
-			m_XcUi.OnMouseMove(Ui()->UpdatedMousePos());
+		if(XcNewUi() && m_XcUi.HoldsMouse()) // XClient: dragging a number keeps the mouse in place
+			m_XcUi.OnHeldMouseMove(CursorRel);
+		else
+		{
+			Ui()->OnCursorMove(CursorRel.x, CursorRel.y);
+			if(XcNewUi()) // XClient
+				m_XcUi.OnMouseMove(Ui()->UpdatedMousePos());
+		}
 	}
 
 	// handle key presses

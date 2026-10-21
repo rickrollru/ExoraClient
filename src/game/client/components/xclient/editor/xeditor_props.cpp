@@ -132,6 +132,7 @@ void CXcEditorUi::RenderProp(int Kind, int Call, int Index, const SXcCapturedPro
 		const int Min = Angle ? 0 : Prop.m_Min;
 		const int Max = Angle ? 359 : Prop.m_Max;
 		const bool Changed = ImGui::DragInt("##v", &Value, Angle ? 1.0f : 0.25f, Min, Max, "%d", ImGuiSliderFlags_AlwaysClamp);
+		HoldMouseWhileDragging();
 		if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
 			ImGui::SetTooltip("%s", Tr("Drag to change, double click to type"));
 		DragResult(Changed, Value);
