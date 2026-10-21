@@ -57,6 +57,7 @@ public:
 		SETTINGS_GRAPHICS,
 		SETTINGS_HUD,
 		SETTINGS_TEXTURES,
+		SETTINGS_WARLIST,
 		SETTINGS_TCLIENT,
 		SETTINGS_DDNET,
 		NUM_SETTINGS,
@@ -433,6 +434,7 @@ private:
 	void ConfigColorRow(const char *pLabel, unsigned *pValue, bool Alpha);
 	// Settings > TClient (menu_tclient.cpp)
 	void RenderSettingsTClient();
+	void RenderSettingsWarList(); // menu_warlist.cpp
 	void RenderSettingsTextures(); // menu_assets.cpp
 	char m_aTcSearch[64] = {};
 	bool m_TcOnlyChanged = false;
