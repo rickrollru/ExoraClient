@@ -346,7 +346,8 @@ void CEditor::RenderBackground(CUIRect View, IGraphics::CTextureHandle Texture, 
 	Graphics()->TextureSet(Texture);
 	Graphics()->QuadsBegin();
 	Graphics()->SetColor(Brightness, Brightness, Brightness, 1.0f);
-	Graphics()->QuadsSetSubset(0, 0, View.w / Size, View.h / Size);
+	// XClient: the pattern sits on the screen, so it stays put when the panels hide (Tab) or resize
+	Graphics()->QuadsSetSubset(View.x / Size, View.y / Size, (View.x + View.w) / Size, (View.y + View.h) / Size);
 	IGraphics::CQuadItem QuadItem(View.x, View.y, View.w, View.h);
 	Graphics()->QuadsDrawTL(&QuadItem, 1);
 	Graphics()->QuadsEnd();
