@@ -579,6 +579,19 @@ void CXcMenu::RenderSettingsChat()
 		Description(Tr("Others are shown as \"Player\" and their number"));
 		EndCard();
 	}
+	if(BeginCard("##discord", Tr("Discord status"), Tr("Server, map with its picture and play time in your Discord profile. Discord must be running on this computer"), &g_Config.m_XcDiscord))
+	{
+		ToggleRow(Tr("Server name"), "xc_discord_server", &g_Config.m_XcDiscordServer);
+		ToggleRow(Tr("Map"), "xc_discord_map", &g_Config.m_XcDiscordMap);
+		ToggleRow(Tr("Map picture from ddnet.org"), "xc_discord_map_image", &g_Config.m_XcDiscordMapImage);
+		ToggleRow(Tr("Player count"), "xc_discord_players", &g_Config.m_XcDiscordPlayers);
+		ToggleRow(Tr("Play time"), "xc_discord_time", &g_Config.m_XcDiscordTime);
+		ToggleRow(Tr("Button to the client Discord"), "xc_discord_button", &g_Config.m_XcDiscordButton);
+		ConfigText(Tr("Application id"), "xc_discord_app_id", g_Config.m_XcDiscordAppId, sizeof(g_Config.m_XcDiscordAppId));
+		if(g_Config.m_XcDiscord)
+			Description(GameClient()->m_XcDiscordRpc.Connected() ? Tr("Connected to Discord") : Tr("Discord is not found: start it and wait a few seconds"));
+		EndCard();
+	}
 	EndCardGrid();
 }
 
