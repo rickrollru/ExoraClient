@@ -7,6 +7,8 @@
 
 #if defined(CONF_FAMILY_WINDOWS)
 
+// the project builds with NOGDI, but the audio headers (mmreg.h) need the GDI bitmap types
+#undef NOGDI
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
