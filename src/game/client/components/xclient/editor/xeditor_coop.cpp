@@ -1,6 +1,6 @@
-// Editing one map together (see xeditor_coop.h). A small TCP protocol of its own: [u32 size][u8 type][data].
-// The host is the authority: every whole map gets a number (epoch) from him, and blocks are only applied to
-// the map with the same number, so a late block never lands on a layer that moved.
+// Editing maps together (see xeditor_coop.h). A small TCP protocol of its own: [u32 size][u8 type][data].
+// The host is the authority: he gives every shared tab its id, every whole map a number (epoch), and blocks
+// are only applied to the map with the same number, so a late block never lands on a layer that moved.
 #include "xeditor_coop.h"
 
 #include <base/io.h>
@@ -36,19 +36,26 @@ namespace
 enum
 {
 	MSG_HELLO = 1,
-	MSG_WELCOME,
+	MSG_WELCOME, // [id][maps]
 	MSG_MEMBERS,
-	MSG_MAP,
-	MSG_EPOCH,
-	MSG_TILES,
-	MSG_CURSOR,
+	MSG_MAP, // [map][epoch][base][flags][author][token][name][file]
+	MSG_EPOCH, // [map][epoch]: the host took the change of the guest
+	MSG_TILES, // [map][epoch][author][diff]
+	MSG_CURSOR, // [member][visible][x][y][group][layer][map]
 	MSG_BYE,
+	MSG_CLOSE, // [map][member]: the tab was closed
+	MSG_ASSIGN, // [token][map][epoch]: the id of a guest's new tab
+	MSG_CHECK, // [map][epoch][hash]: the host's state of the map
+	MSG_RESYNC, // [map]: a guest is out of sync and asks for the whole map
 };
 enum
 {
 	MAPFLAG_ANSWER = 1, // the map answers the change of the guest who gets it
+	MAPFLAG_REPLACE = 2, // take it as it is: the copy of the guest was out of sync
+	MAPFLAG_NEW = 4, // a guest opened a new tab (the map id is 0, the token names it)
 };
-constexpr int PROTOCOL_VERSION = 1;
+constexpr int PROTOCOL_VERSION = 2;
+constexpr float VERIFY_INTERVAL = 2.0f;
 constexpr uint32_t MAX_MESSAGE = 256 * 1024 * 1024;
 const char *const COOP_FOLDER = "xclient/coop";
 
@@ -194,6 +201,21 @@ CLayerTiles *TileLayer(CEditorMap *pMap, int Group, int Layer)
 }
 }
 
+
+// a quick hash of a big block of memory (the tiles of a layer), 8 bytes at a time
+static uint64_t HashBlock(uint64_t h, const uint8_t *p, size_t Size)
+{
+	size_t i = 0;
+	for(; i + 8 <= Size; i += 8)
+	{
+		uint64_t v;
+		std::memcpy(&v, p + i, 8);
+		h = (h ^ v) * 1099511628211ull;
+		h ^= h >> 29;
+	}
+	return Hash(h, p + i, Size - i);
+}
+
 // a guest connects in its own thread: a wrong address can take many seconds to fail
 struct CXcCoop::SConnectJob
 {
@@ -240,6 +262,56 @@ CXcCoop::SMember *CXcCoop::FindMember(int Id)
 	return nullptr;
 }
 
+CXcCoop::SConn *CXcCoop::ConnOf(int MemberId)
+{
+	for(auto &pConn : m_vpConns)
+		if(pConn->m_MemberId == MemberId && !pConn->m_Dead)
+			return pConn.get();
+	return nullptr;
+}
+
+CXcCoop::SShared *CXcCoop::FindShared(uint32_t Id)
+{
+	if(Id == 0)
+		return nullptr;
+	for(auto &pShared : m_vpShared)
+		if(pShared->m_Id == Id)
+			return pShared.get();
+	return nullptr;
+}
+
+CXcCoop::SShared *CXcCoop::FindSharedMap(const CEditorMap *pMap)
+{
+	for(auto &pShared : m_vpShared)
+		if(pShared->m_pMap == pMap)
+			return pShared.get();
+	return nullptr;
+}
+
+CXcCoop::SShared *CXcCoop::FindToken(uint32_t Token)
+{
+	for(auto &pShared : m_vpShared)
+		if(pShared->m_Token == Token && pShared->m_Id == 0)
+			return pShared.get();
+	return nullptr;
+}
+
+uint32_t CXcCoop::MapId(const CEditorMap *pMap) const
+{
+	for(const auto &pShared : m_vpShared)
+		if(pShared->m_pMap == pMap && pMap)
+			return pShared->m_Id;
+	return 0;
+}
+
+int CXcCoop::MapIndex(const CEditorMap *pMap) const
+{
+	for(size_t i = 0; i < m_pEditor->m_vpMaps.size(); i++)
+		if(m_pEditor->m_vpMaps[i].get() == pMap)
+			return (int)i;
+	return -1;
+}
+
 static const char *OwnName()
 {
 	return g_Config.m_PlayerName[0] ? g_Config.m_PlayerName : "Player";
@@ -265,14 +337,22 @@ bool CXcCoop::Host(int Port, char *pError, int ErrorSize)
 	m_State = STATE_ONLINE;
 	m_SelfId = 0;
 	m_Port = Port;
-	m_pMap = m_pEditor->Map();
-	m_Epoch = 1;
 	SMember Self;
 	Self.m_Id = 0;
 	Self.m_Name = OwnName();
 	m_vMembers = {Self};
-	ResetSync();
-	log_info("xc_coop", "room open on port %d", Port);
+	m_LastActivity = Now();
+	// every open tab is shared
+	for(const auto &pMap : m_pEditor->m_vpMaps)
+	{
+		auto pShared = std::make_unique<SShared>();
+		pShared->m_Id = m_NextMapId++;
+		pShared->m_pMap = pMap.get();
+		pShared->m_Epoch = 1;
+		ResetSync(*pShared);
+		m_vpShared.push_back(std::move(pShared));
+	}
+	log_info("xc_coop", "room open on port %d, %d maps", Port, (int)m_vpShared.size());
 	return true;
 }
 
@@ -330,12 +410,15 @@ bool CXcCoop::Join(const char *pAddress, char *pError, int ErrorSize)
 
 	m_Role = ROLE_GUEST;
 	m_State = STATE_CONNECTING;
-	m_pMap = nullptr;
 	m_SelfId = -1;
 	net_addr_str(&Addr, m_aAddress, sizeof(m_aAddress), true);
 	log_info("xc_coop", "connecting to %s", m_aAddress);
 	m_vMembers.clear();
-	ResetSync();
+	// the tabs open now stay this player's own, the room's tabs come next to them
+	m_PrivateMaps.clear();
+	for(const auto &pMap : m_pEditor->m_vpMaps)
+		m_PrivateMaps.insert(pMap.get());
+	m_LastActivity = Now();
 	return true;
 }
 
@@ -371,56 +454,42 @@ void CXcCoop::Leave(const char *pReason)
 	m_Role = ROLE_NONE;
 	m_State = STATE_IDLE;
 	m_SelfId = -1;
-	m_pMap = nullptr;
+	m_vpShared.clear();
+	m_PrivateMaps.clear();
 	m_vMembers.clear();
 	m_vSaves.clear();
-	m_vSnaps.clear();
-	m_vIncomingMap.clear();
-	m_HasIncomingMap = false;
-	m_pIncomingFrom = nullptr;
-	m_ProposalPending = false;
 	m_Progress = -1.0f;
 	if(pReason)
 		m_Notice = pReason;
 	log_info("xc_coop", "session ended%s%s", pReason ? ": " : "", pReason ? pReason : "");
 }
 
-void CXcCoop::ResetSync()
+void CXcCoop::ResetSync(SShared &Shared)
 {
-	m_vSaves.clear();
-	m_vSnaps.clear();
-	m_vIncomingMap.clear();
-	m_HasIncomingMap = false;
-	m_pIncomingFrom = nullptr;
-	m_ProposalPending = false;
-	m_NextCheck = 0.0f;
-	m_LastActivity = Now();
-	m_LastCursor = vec2(-1.0f, -1.0f);
-	if(m_pMap)
+	Shared.m_vIncoming.clear();
+	Shared.m_HasIncoming = false;
+	Shared.m_pIncomingFrom = nullptr;
+	Shared.m_ProposalPending = false;
+	Shared.m_Mismatches = 0;
+	Shared.m_NextVerify = Now() + VERIFY_INTERVAL;
+	if(Shared.m_pMap)
 	{
-		TakeSnapshot();
-		m_SyncedHash = m_LastHash = StateHash(m_pMap);
+		TakeSnapshot(Shared);
+		Shared.m_SyncedHash = Shared.m_LastHash = StateHash(Shared.m_pMap);
 	}
 }
 
-bool CXcCoop::MapAlive()
+bool CXcCoop::BroadcastSavePending(uint32_t MapId) const
 {
-	if(!m_pMap)
-		return true;
-	for(const auto &pMap : m_pEditor->m_vpMaps)
-		if(pMap.get() == m_pMap)
+	for(const SPendingSave &Save : m_vSaves)
+		if(Save.m_MapId == MapId && Save.m_Kind != SAVE_TARGET)
 			return true;
 	return false;
 }
 
-bool CXcCoop::SendingBlocked() const
+bool CXcCoop::SendingBlocked(const SShared &Shared) const
 {
-	if(m_ProposalPending || m_HasIncomingMap || m_SyncedHash != m_LastHash)
-		return true;
-	for(const SPendingSave &Save : m_vSaves)
-		if(Save.m_TargetSock == nullptr)
-			return true;
-	return false;
+	return Shared.m_Id == 0 || Shared.m_ProposalPending || Shared.m_HasIncoming || Shared.m_SyncedHash != Shared.m_LastHash || BroadcastSavePending(Shared.m_Id);
 }
 
 static bool MouseBusy(CEditor &E)
@@ -428,76 +497,188 @@ static bool MouseBusy(CEditor &E)
 	return E.Input()->KeyIsPressed(KEY_MOUSE_1) || E.Input()->KeyIsPressed(KEY_MOUSE_2) || E.Input()->KeyIsPressed(KEY_MOUSE_3) || !E.Ui()->CheckActiveItem(nullptr);
 }
 
+// tabs opened or closed by this player: shared with the room or closed for everyone
+void CXcCoop::TrackTabs()
+{
+	CEditor &E = *m_pEditor;
+	for(auto It = m_PrivateMaps.begin(); It != m_PrivateMaps.end();)
+		It = MapIndex(*It) < 0 ? m_PrivateMaps.erase(It) : std::next(It);
+
+	for(size_t i = 0; i < m_vpShared.size();)
+	{
+		SShared &Shared = *m_vpShared[i];
+		// a whole new tab from the room that is not loaded yet has no map
+		if(!Shared.m_pMap || MapIndex(Shared.m_pMap) >= 0)
+		{
+			i++;
+			continue;
+		}
+		if(Shared.m_Id != 0)
+		{
+			CCoopPacker Close;
+			Close.U32(Shared.m_Id);
+			Close.U8(m_SelfId < 0 ? 0 : m_SelfId);
+			Broadcast(MSG_CLOSE, Close.m_vData);
+			log_info("xc_coop", "map %u closed", Shared.m_Id);
+		}
+		const uint32_t Id = Shared.m_Id;
+		m_vSaves.erase(std::remove_if(m_vSaves.begin(), m_vSaves.end(), [&](const SPendingSave &Save) { return Id != 0 && Save.m_MapId == Id; }), m_vSaves.end());
+		m_vpShared.erase(m_vpShared.begin() + i);
+	}
+
+	for(const auto &pMap : E.m_vpMaps)
+	{
+		if(FindSharedMap(pMap.get()) || m_PrivateMaps.count(pMap.get()))
+			continue;
+		auto pShared = std::make_unique<SShared>();
+		pShared->m_pMap = pMap.get();
+		SShared &Shared = *pShared;
+		m_vpShared.push_back(std::move(pShared));
+		ResetSync(Shared);
+		if(m_Role == ROLE_HOST)
+		{
+			// a new tab of the host: everyone gets it
+			Shared.m_Id = m_NextMapId++;
+			Shared.m_Epoch = 1;
+			StartSave(Shared, SAVE_CHANGE);
+		}
+		else
+		{
+			// a new tab of a guest: the host gives it an id and shows it to the others
+			Shared.m_Token = m_NextToken++;
+			if(StartSave(Shared, SAVE_NEW))
+				Shared.m_ProposalPending = true;
+		}
+		log_info("xc_coop", "sharing a new tab");
+	}
+}
+
+void CXcCoop::CloseSharedTab(uint32_t Id, int ByMember)
+{
+	CEditor &E = *m_pEditor;
+	for(size_t i = 0; i < m_vpShared.size(); i++)
+	{
+		if(m_vpShared[i]->m_Id != Id)
+			continue;
+		CEditorMap *pMap = m_vpShared[i]->m_pMap;
+		m_vpShared.erase(m_vpShared.begin() + i);
+		m_vSaves.erase(std::remove_if(m_vSaves.begin(), m_vSaves.end(), [&](const SPendingSave &Save) { return Save.m_MapId == Id; }), m_vSaves.end());
+		const int Index = MapIndex(pMap);
+		if(Index >= 0)
+		{
+			// the editor keeps at least one tab: then the closed map stays as a tab of this player
+			if(E.m_vpMaps.size() > 1)
+			{
+				E.CloseMap(Index, false);
+				m_MapReplaced = true;
+			}
+			else
+				m_PrivateMaps.insert(pMap);
+		}
+		const SMember *pMember = FindMember(ByMember);
+		log_info("xc_coop", "map %u closed by '%s'", Id, pMember ? pMember->m_Name.c_str() : "?");
+		return;
+	}
+}
+
 void CXcCoop::Update()
 {
 	if(m_Role == ROLE_NONE)
 		return;
 	CEditor &E = *m_pEditor;
-	if(!MapAlive())
-	{
-		Leave("The shared map tab was closed");
-		return;
-	}
 	Poll();
 	if(m_Role == ROLE_NONE)
 		return;
 	FinishSaves();
-	if(m_HasIncomingMap && !MouseBusy(E))
-		LoadIncomingMap();
+	// one whole map at a time, when the mouse is free
+	if(!MouseBusy(E))
+	{
+		for(auto &pShared : m_vpShared)
+		{
+			if(pShared->m_HasIncoming)
+			{
+				LoadIncomingMap(*pShared);
+				break;
+			}
+		}
+	}
 	if(m_Role == ROLE_NONE)
 		return;
 
-	if(m_State == STATE_ONLINE && m_pMap)
+	if(m_State == STATE_ONLINE)
 	{
+		TrackTabs();
 		const float Time = Now();
 		if(Time >= m_NextCheck)
 		{
 			m_NextCheck = Time + (Time - m_LastActivity < 1.5f ? 0.1f : 0.5f);
-			const uint64_t Hash = StateHash(m_pMap);
-			if(Hash != m_LastHash)
-			{
-				m_LastHash = Hash;
-				m_HashChangeTime = Time;
-			}
-			bool BroadcastSave = false;
-			for(const SPendingSave &Save : m_vSaves)
-				BroadcastSave |= Save.m_TargetSock == nullptr;
-			if(Hash != m_SyncedHash)
-			{
-				// layers, quads, envelopes... changed: the whole map goes out when the user pauses
-				if(Time - m_HashChangeTime > 0.35f && !MouseBusy(E) && !m_ProposalPending && !m_HasIncomingMap && !BroadcastSave)
-				{
-					const bool Started = StartSave(nullptr);
-					m_SyncedHash = Hash;
-					m_LastHash = Hash;
-					TakeSnapshot();
-					if(Started && m_Role == ROLE_GUEST)
-						m_ProposalPending = true;
-				}
-			}
-			else if(!SendingBlocked())
-			{
-				CCoopPacker Tiles;
-				Tiles.U32(m_Epoch);
-				Tiles.U8(m_SelfId);
-				std::vector<uint8_t> vDiff;
-				if(DiffTiles(vDiff))
-				{
-					Tiles.Raw(vDiff.data(), vDiff.size());
-					Broadcast(MSG_TILES, Tiles.m_vData);
-				}
-			}
+			for(auto &pShared : m_vpShared)
+				if(pShared->m_pMap)
+					UpdateMap(*pShared, Time);
 		}
 		SendCursor();
 	}
 	Flush();
 }
 
+void CXcCoop::UpdateMap(SShared &Shared, float Time)
+{
+	CEditor &E = *m_pEditor;
+	const uint64_t Hash = StateHash(Shared.m_pMap);
+	if(Hash != Shared.m_LastHash)
+	{
+		Shared.m_LastHash = Hash;
+		Shared.m_HashChangeTime = Time;
+	}
+	if(Shared.m_Id == 0 || Shared.m_HasIncoming)
+		return;
+	if(Hash != Shared.m_SyncedHash)
+	{
+		// layers, quads, envelopes... changed: the whole map goes out when the user pauses
+		if(Time - Shared.m_HashChangeTime > 0.35f && !MouseBusy(E) && !Shared.m_ProposalPending && !BroadcastSavePending(Shared.m_Id))
+		{
+			const bool Started = StartSave(Shared, SAVE_CHANGE);
+			Shared.m_SyncedHash = Hash;
+			Shared.m_LastHash = Hash;
+			TakeSnapshot(Shared);
+			if(Started && m_Role == ROLE_GUEST)
+				Shared.m_ProposalPending = true;
+		}
+		return;
+	}
+	if(SendingBlocked(Shared))
+		return;
+	std::vector<uint8_t> vDiff;
+	if(DiffTiles(Shared, vDiff))
+	{
+		CCoopPacker Tiles;
+		Tiles.U32(Shared.m_Id);
+		Tiles.U32(Shared.m_Epoch);
+		Tiles.U8(m_SelfId < 0 ? 0 : m_SelfId);
+		Tiles.Raw(vDiff.data(), vDiff.size());
+		Broadcast(MSG_TILES, Tiles.m_vData);
+		// a guest's blocks are on the way: its copy differs from the host's for a moment
+		Shared.m_NextVerify = std::max(Shared.m_NextVerify, Time + 1.5f);
+	}
+	// the host: the state of the map for everyone to compare (after the blocks, so they agree)
+	if(m_Role == ROLE_HOST && Time >= Shared.m_NextVerify && m_vpConns.size() > 0)
+	{
+		Shared.m_NextVerify = Time + VERIFY_INTERVAL;
+		CCoopPacker Check;
+		Check.U32(Shared.m_Id);
+		Check.U32(Shared.m_Epoch);
+		const uint64_t Full = FullHash(Shared);
+		Check.U32((uint32_t)Full);
+		Check.U32((uint32_t)(Full >> 32));
+		Broadcast(MSG_CHECK, Check.m_vData);
+	}
+}
+
 // ---- network
 
 void CXcCoop::Queue(SConn &Conn, int Type, const void *pData, size_t Size, bool Hold)
 {
-	std::vector<uint8_t> &vTarget = (Hold && Conn.m_AwaitMap && m_Role == ROLE_HOST) ? Conn.m_vHeld : Conn.m_vOut;
+	std::vector<uint8_t> &vTarget = (Hold && Conn.m_AwaitMaps > 0 && m_Role == ROLE_HOST) ? Conn.m_vHeld : Conn.m_vOut;
 	const uint32_t Length = (uint32_t)Size + 1;
 	for(int i = 0; i < 4; i++)
 		vTarget.push_back((Length >> (i * 8)) & 0xff);
@@ -552,7 +733,6 @@ void CXcCoop::Poll()
 		auto pConn = std::make_unique<SConn>();
 		pConn->m_Sock = pJob->m_Sock;
 		pConn->m_Hello = true;
-		pConn->m_AwaitMap = false;
 		CCoopPacker Hello;
 		Hello.Raw("EXCO", 4);
 		Hello.U16(PROTOCOL_VERSION);
@@ -581,6 +761,12 @@ void CXcCoop::Poll()
 		}
 	}
 
+	const auto IncomingWaits = [&]() {
+		for(const auto &pShared : m_vpShared)
+			if(pShared->m_HasIncoming)
+				return true;
+		return false;
+	};
 	for(size_t c = 0; c < m_vpConns.size(); c++)
 	{
 		SConn &Conn = *m_vpConns[c];
@@ -601,7 +787,7 @@ void CXcCoop::Poll()
 		}
 		// whole messages; a map waiting to be loaded stops everything after it until it is in
 		size_t Pos = 0;
-		while(!m_HasIncomingMap && Conn.m_vIn.size() - Pos >= 4)
+		while(!IncomingWaits() && Conn.m_vIn.size() - Pos >= 4)
 		{
 			const uint8_t *p = Conn.m_vIn.data() + Pos;
 			const uint32_t Length = p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24);
@@ -620,11 +806,12 @@ void CXcCoop::Poll()
 		if(Pos > 0)
 			Conn.m_vIn.erase(Conn.m_vIn.begin(), Conn.m_vIn.begin() + Pos);
 		// how far a big map has come
-		if(m_State == STATE_JOINING && Conn.m_vIn.size() >= 5)
+		m_Progress = -1.0f;
+		if(m_Role == ROLE_GUEST && Conn.m_vIn.size() >= 5)
 		{
 			const uint8_t *p = Conn.m_vIn.data();
 			const uint32_t Length = p[0] | (p[1] << 8) | (p[2] << 16) | ((uint32_t)p[3] << 24);
-			if(p[4] == MSG_MAP && Length > 0)
+			if(p[4] == MSG_MAP && Length > 256 * 1024)
 				m_Progress = std::clamp((Conn.m_vIn.size() - 4) / (float)Length, 0.0f, 1.0f);
 		}
 	}
@@ -643,8 +830,9 @@ void CXcCoop::Poll()
 			Leave(m_State == STATE_ONLINE ? "The connection to the room was lost" : "The room did not answer");
 			return;
 		}
-		if(m_pIncomingFrom == &Conn)
-			m_pIncomingFrom = nullptr;
+		for(auto &pShared : m_vpShared)
+			if(pShared->m_pIncomingFrom == &Conn)
+				pShared->m_pIncomingFrom = nullptr;
 		if(Conn.m_MemberId >= 0)
 		{
 			const SMember *pMember = FindMember(Conn.m_MemberId);
@@ -653,6 +841,8 @@ void CXcCoop::Poll()
 			m_vMembers.erase(std::remove_if(m_vMembers.begin(), m_vMembers.end(), [&](const SMember &Member) { return Member.m_Id == Conn.m_MemberId; }), m_vMembers.end());
 		}
 		const bool WasMember = Conn.m_MemberId >= 0;
+		const NETSOCKET Sock = Conn.m_Sock;
+		m_vSaves.erase(std::remove_if(m_vSaves.begin(), m_vSaves.end(), [&](const SPendingSave &Save) { return Save.m_Kind == SAVE_TARGET && Sock && Save.m_TargetSock == Sock; }), m_vSaves.end());
 		m_vpConns.erase(m_vpConns.begin() + c);
 		if(WasMember)
 			SendMembers();
@@ -692,6 +882,62 @@ void CXcCoop::Flush()
 	}
 }
 
+void CXcCoop::HandleMap(SConn &Conn, const uint8_t *pData, size_t Size)
+{
+	CCoopUnpacker Msg(pData, Size);
+	const uint32_t Id = Msg.U32();
+	const uint32_t Epoch = Msg.U32();
+	const uint32_t Base = Msg.U32();
+	const int Flags = Msg.U8();
+	Msg.U8(); // the author
+	const uint32_t Token = Msg.U32();
+	const std::string Name = Msg.Str();
+	if(Msg.m_Error)
+		return;
+
+	SShared *pShared = nullptr;
+	if(m_Role == ROLE_HOST)
+	{
+		if(Flags & MAPFLAG_NEW)
+		{
+			// a guest opened a new tab: it gets an id now, the map loads when the mouse is free
+			auto pNew = std::make_unique<SShared>();
+			pNew->m_Id = m_NextMapId++;
+			pNew->m_Token = Token;
+			pNew->m_Epoch = 1;
+			pShared = pNew.get();
+			m_vpShared.push_back(std::move(pNew));
+		}
+		else
+			pShared = FindShared(Id);
+		if(!pShared)
+			return;
+		pShared->m_pIncomingFrom = &Conn;
+		pShared->m_IncomingBase = Base;
+		pShared->m_IncomingAnswer = false;
+		pShared->m_IncomingReplace = false;
+	}
+	else
+	{
+		pShared = FindShared(Id);
+		if(!pShared)
+		{
+			// a tab the room has and this player not yet
+			auto pNew = std::make_unique<SShared>();
+			pNew->m_Id = Id;
+			pShared = pNew.get();
+			m_vpShared.push_back(std::move(pNew));
+		}
+		pShared->m_IncomingEpoch = Epoch;
+		pShared->m_IncomingAnswer = (Flags & MAPFLAG_ANSWER) != 0;
+		pShared->m_IncomingReplace = (Flags & MAPFLAG_REPLACE) != 0;
+		m_Progress = -1.0f;
+	}
+	pShared->m_IncomingName = Name;
+	pShared->m_vIncoming.assign(pData + Msg.m_Pos, pData + Size);
+	pShared->m_HasIncoming = true;
+}
+
 void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 {
 	CCoopUnpacker Msg(pData, Size);
@@ -729,63 +975,58 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			m_vMembers.push_back(Member);
 			Conn.m_MemberId = Id;
 			Conn.m_Hello = true;
-			Conn.m_AwaitMap = true;
+			int NumMaps = 0;
+			for(const auto &pShared : m_vpShared)
+				NumMaps += pShared->m_pMap && pShared->m_Id != 0 ? 1 : 0;
 			CCoopPacker Welcome;
 			Welcome.U8(Id);
-			Welcome.U32(m_Epoch);
+			Welcome.U16(NumMaps);
 			Queue(Conn, MSG_WELCOME, Welcome.m_vData.data(), Welcome.m_vData.size(), false);
 			SendMembers();
-			// the blocks drawn so far go to the others first, so the map file and the diffs agree
-			if(!SendingBlocked())
+			// the blocks drawn so far go to the others first, so the map files and the diffs agree
+			for(auto &pShared : m_vpShared)
 			{
-				std::vector<uint8_t> vDiff;
-				if(DiffTiles(vDiff))
+				if(!pShared->m_pMap || pShared->m_Id == 0)
+					continue;
+				if(!SendingBlocked(*pShared))
 				{
-					CCoopPacker Tiles;
-					Tiles.U32(m_Epoch);
-					Tiles.U8(m_SelfId);
-					Tiles.Raw(vDiff.data(), vDiff.size());
-					Broadcast(MSG_TILES, Tiles.m_vData, &Conn);
+					std::vector<uint8_t> vDiff;
+					if(DiffTiles(*pShared, vDiff))
+					{
+						CCoopPacker Tiles;
+						Tiles.U32(pShared->m_Id);
+						Tiles.U32(pShared->m_Epoch);
+						Tiles.U8(m_SelfId);
+						Tiles.Raw(vDiff.data(), vDiff.size());
+						Broadcast(MSG_TILES, Tiles.m_vData, &Conn);
+					}
 				}
+				if(StartSave(*pShared, SAVE_TARGET, Conn.m_Sock))
+					Conn.m_AwaitMaps++;
 			}
-			if(!StartSave(Conn.m_Sock))
-			{
-				CCoopPacker Bye;
-				Bye.Str("The host could not save the map");
-				Queue(Conn, MSG_BYE, Bye.m_vData.data(), Bye.m_vData.size(), false);
-				CloseConn(Conn);
-			}
-			log_info("xc_coop", "'%s' joined", Member.m_Name.c_str());
+			log_info("xc_coop", "'%s' joined, %d maps", Member.m_Name.c_str(), NumMaps);
 			return;
 		}
 		if(!Conn.m_Hello)
 			return;
 		if(Type == MSG_MAP)
 		{
-			Msg.U32(); // a guest sends no epoch
-			const uint32_t Base = Msg.U32();
-			Msg.U8();
-			Msg.U8();
-			Msg.Str();
-			if(Msg.m_Error)
-				return;
-			m_vIncomingMap.assign(pData + Msg.m_Pos, pData + Size);
-			m_HasIncomingMap = true;
-			m_pIncomingFrom = &Conn;
-			m_IncomingBase = Base;
-			m_IncomingAnswer = false;
+			HandleMap(Conn, pData, Size);
 			return;
 		}
 		if(Type == MSG_TILES)
 		{
+			const uint32_t Id = Msg.U32();
 			const uint32_t Epoch = Msg.U32();
 			Msg.U8();
-			if(Msg.m_Error || Epoch != m_Epoch)
+			SShared *pShared = FindShared(Id);
+			// blocks for an older map are dropped; the check later brings this guest back in sync
+			if(Msg.m_Error || !pShared || !pShared->m_pMap || Epoch != pShared->m_Epoch || pShared->m_HasIncoming)
 				return;
-			ApplyTiles(pData + Msg.m_Pos, Msg.Left(), true);
+			ApplyTiles(*pShared, pData + Msg.m_Pos, Msg.Left(), true);
 			// to the others, as from this guest
 			std::vector<uint8_t> vRelay(pData, pData + Size);
-			vRelay[4] = (uint8_t)Conn.m_MemberId;
+			vRelay[8] = (uint8_t)Conn.m_MemberId;
 			Broadcast(MSG_TILES, vRelay, &Conn);
 			return;
 		}
@@ -797,6 +1038,28 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			vRelay[0] = (uint8_t)Conn.m_MemberId;
 			Handle(Conn, -MSG_CURSOR, vRelay.data(), vRelay.size());
 			Broadcast(MSG_CURSOR, vRelay, &Conn);
+			return;
+		}
+		if(Type == MSG_CLOSE)
+		{
+			const uint32_t Id = Msg.U32();
+			if(Msg.m_Error || !FindShared(Id))
+				return;
+			CCoopPacker Close;
+			Close.U32(Id);
+			Close.U8(Conn.m_MemberId);
+			Broadcast(MSG_CLOSE, Close.m_vData, &Conn);
+			CloseSharedTab(Id, Conn.m_MemberId);
+			return;
+		}
+		if(Type == MSG_RESYNC)
+		{
+			SShared *pShared = FindShared(Msg.U32());
+			if(!Msg.m_Error && pShared && pShared->m_pMap)
+			{
+				log_info("xc_coop", "map %u is out of sync for member %d, sending it again", pShared->m_Id, Conn.m_MemberId);
+				StartSave(*pShared, SAVE_TARGET, Conn.m_Sock, true);
+			}
 			return;
 		}
 		if(Type == -MSG_CURSOR)
@@ -814,7 +1077,9 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 	if(Type == MSG_WELCOME)
 	{
 		m_SelfId = Msg.U8();
-		m_Epoch = Msg.U32();
+		const int NumMaps = Msg.U16();
+		if(NumMaps == 0)
+			m_State = STATE_ONLINE;
 	}
 	else if(Type == MSG_MEMBERS)
 	{
@@ -835,32 +1100,69 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			m_vMembers = vMembers;
 	}
 	else if(Type == MSG_MAP)
-	{
-		const uint32_t Epoch = Msg.U32();
-		Msg.U32();
-		const int Flags = Msg.U8();
-		Msg.U8();
-		const std::string Name = Msg.Str();
-		if(Msg.m_Error)
-			return;
-		m_vIncomingMap.assign(pData + Msg.m_Pos, pData + Size);
-		m_HasIncomingMap = true;
-		m_IncomingEpoch = Epoch;
-		m_IncomingAnswer = (Flags & MAPFLAG_ANSWER) != 0;
-		m_Progress = -1.0f;
-		m_IncomingName = Name;
-	}
+		HandleMap(Conn, pData, Size);
 	else if(Type == MSG_EPOCH)
 	{
-		m_Epoch = Msg.U32();
-		m_ProposalPending = false;
+		SShared *pShared = FindShared(Msg.U32());
+		const uint32_t Epoch = Msg.U32();
+		if(!Msg.m_Error && pShared)
+		{
+			pShared->m_Epoch = Epoch;
+			pShared->m_ProposalPending = false;
+		}
+	}
+	else if(Type == MSG_ASSIGN)
+	{
+		const uint32_t Token = Msg.U32();
+		const uint32_t Id = Msg.U32();
+		const uint32_t Epoch = Msg.U32();
+		SShared *pShared = FindToken(Token);
+		if(!Msg.m_Error && pShared)
+		{
+			pShared->m_Id = Id;
+			pShared->m_Epoch = Epoch;
+			pShared->m_ProposalPending = false;
+		}
 	}
 	else if(Type == MSG_TILES)
 	{
+		SShared *pShared = FindShared(Msg.U32());
 		const uint32_t Epoch = Msg.U32();
 		Msg.U8();
-		if(!Msg.m_Error && Epoch == m_Epoch && !m_ProposalPending && m_pMap)
-			ApplyTiles(pData + Msg.m_Pos, Msg.Left(), true);
+		if(!Msg.m_Error && pShared && pShared->m_pMap && Epoch == pShared->m_Epoch && !pShared->m_ProposalPending && !pShared->m_HasIncoming)
+			ApplyTiles(*pShared, pData + Msg.m_Pos, Msg.Left(), true);
+	}
+	else if(Type == MSG_CHECK)
+	{
+		SShared *pShared = FindShared(Msg.U32());
+		const uint32_t Epoch = Msg.U32();
+		const uint32_t Low = Msg.U32();
+		const uint64_t HostHash = Low | ((uint64_t)Msg.U32() << 32);
+		if(Msg.m_Error || !pShared || !pShared->m_pMap)
+			return;
+		// only a copy at rest can be compared: own changes on the way would differ anyway
+		if(Epoch != pShared->m_Epoch || SendingBlocked(*pShared) || StateHash(pShared->m_pMap) != pShared->m_SyncedHash || TilesDirty(*pShared) || Now() < pShared->m_NextVerify)
+			return;
+		if(FullHash(*pShared) == HostHash)
+		{
+			pShared->m_Mismatches = 0;
+			return;
+		}
+		if(++pShared->m_Mismatches >= 2)
+		{
+			log_info("xc_coop", "map %u is out of sync, asking the host for it", pShared->m_Id);
+			pShared->m_Mismatches = -3; // give the map time to come
+			CCoopPacker Resync;
+			Resync.U32(pShared->m_Id);
+			Broadcast(MSG_RESYNC, Resync.m_vData);
+		}
+	}
+	else if(Type == MSG_CLOSE)
+	{
+		const uint32_t Id = Msg.U32();
+		const int By = Msg.U8();
+		if(!Msg.m_Error)
+			CloseSharedTab(Id, By);
 	}
 	else if(Type == MSG_CURSOR)
 	{
@@ -870,6 +1172,7 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 		const float y = Msg.F32();
 		const int Group = (int16_t)Msg.U16();
 		const int Layer = (int16_t)Msg.U16();
+		const uint32_t MapId = Msg.U32();
 		SMember *pMember = FindMember(Id);
 		if(Msg.m_Error || !pMember || Id == m_SelfId)
 			return;
@@ -877,6 +1180,7 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 		pMember->m_Cursor = vec2(x, y);
 		pMember->m_Group = Group;
 		pMember->m_Layer = Layer;
+		pMember->m_MapId = MapId;
 		pMember->m_LastSeen = Now();
 	}
 	else if(Type == MSG_BYE)
@@ -892,16 +1196,19 @@ void CXcCoop::SendCursor()
 	const float Time = Now();
 	if(Time < m_NextCursor)
 		return;
-	const bool Visible = E.Map() == m_pMap;
-	const vec2 Pos = Visible ? m_pMap->m_MapViewState.m_MouseWorldNoParaPos : vec2(-1.0f, -1.0f);
-	const int Group = m_pMap->m_SelectedGroup;
-	const int Layer = m_pMap->m_vSelectedLayers.empty() ? -1 : m_pMap->m_vSelectedLayers[0];
-	if(distance(Pos, m_LastCursor) < 0.5f && Group == m_LastCursorGroup && Layer == m_LastCursorLayer)
+	const CEditorMap *pMap = E.Map();
+	const uint32_t Id = MapId(pMap);
+	const bool Visible = Id != 0;
+	const vec2 Pos = Visible ? pMap->m_MapViewState.m_MouseWorldNoParaPos : vec2(-1.0f, -1.0f);
+	const int Group = pMap->m_SelectedGroup;
+	const int Layer = pMap->m_vSelectedLayers.empty() ? -1 : pMap->m_vSelectedLayers[0];
+	if(distance(Pos, m_LastCursor) < 0.5f && Group == m_LastCursorGroup && Layer == m_LastCursorLayer && Id == m_LastCursorMap)
 		return;
 	m_NextCursor = Time + 0.05f;
 	m_LastCursor = Pos;
 	m_LastCursorGroup = Group;
 	m_LastCursorLayer = Layer;
+	m_LastCursorMap = Id;
 	CCoopPacker Cursor;
 	Cursor.U8(m_SelfId < 0 ? 0 : m_SelfId);
 	Cursor.U8(Visible ? 1 : 0);
@@ -909,6 +1216,7 @@ void CXcCoop::SendCursor()
 	Cursor.F32(Pos.y);
 	Cursor.U16(Group & 0xffff);
 	Cursor.U16(Layer & 0xffff);
+	Cursor.U32(Id);
 	Broadcast(MSG_CURSOR, Cursor.m_vData);
 }
 
@@ -992,17 +1300,40 @@ uint64_t CXcCoop::StateHash(const CEditorMap *pMap) const
 	return h;
 }
 
-void CXcCoop::TakeSnapshot()
+// everything, the blocks too: what the host and the guests compare
+uint64_t CXcCoop::FullHash(SShared &Shared) const
 {
-	m_vSnaps.clear();
-	if(!m_pMap)
-		return;
-	for(int g = 0; g < (int)m_pMap->m_vpGroups.size(); g++)
+	uint64_t h = StateHash(Shared.m_pMap);
+	for(int g = 0; g < (int)Shared.m_pMap->m_vpGroups.size(); g++)
 	{
-		const auto &vpLayers = m_pMap->m_vpGroups[g]->m_vpLayers;
+		const auto &vpLayers = Shared.m_pMap->m_vpGroups[g]->m_vpLayers;
 		for(int l = 0; l < (int)vpLayers.size(); l++)
 		{
-			CLayerTiles *pLayer = TileLayer(m_pMap, g, l);
+			CLayerTiles *pLayer = TileLayer(Shared.m_pMap, g, l);
+			if(!pLayer || !pLayer->m_pTiles)
+				continue;
+			const size_t Cells = (size_t)pLayer->m_Width * pLayer->m_Height;
+			h = HashBlock(h, (const uint8_t *)pLayer->m_pTiles, Cells * sizeof(CTile));
+			const int Extra = ExtraSize(pLayer);
+			if(Extra && ExtraData(pLayer))
+				h = HashBlock(h, ExtraData(pLayer), Cells * Extra);
+		}
+	}
+	return h;
+}
+
+void CXcCoop::TakeSnapshot(SShared &Shared)
+{
+	Shared.m_vSnaps.clear();
+	CEditorMap *pMap = Shared.m_pMap;
+	if(!pMap)
+		return;
+	for(int g = 0; g < (int)pMap->m_vpGroups.size(); g++)
+	{
+		const auto &vpLayers = pMap->m_vpGroups[g]->m_vpLayers;
+		for(int l = 0; l < (int)vpLayers.size(); l++)
+		{
+			CLayerTiles *pLayer = TileLayer(pMap, g, l);
 			if(!pLayer || !pLayer->m_pTiles)
 				continue;
 			STileSnap Snap;
@@ -1022,18 +1353,38 @@ void CXcCoop::TakeSnapshot()
 					continue;
 				Snap.m_vExtra.assign(pExtra, pExtra + Cells * Extra);
 			}
-			m_vSnaps.push_back(std::move(Snap));
+			Shared.m_vSnaps.push_back(std::move(Snap));
 		}
 	}
 }
 
+// are there own blocks not sent yet
+bool CXcCoop::TilesDirty(const SShared &Shared) const
+{
+	for(const STileSnap &Snap : Shared.m_vSnaps)
+	{
+		CLayerTiles *pLayer = TileLayer(Shared.m_pMap, Snap.m_Group, Snap.m_Layer);
+		if(!pLayer || !pLayer->m_pTiles || pLayer->m_Width != Snap.m_Width || pLayer->m_Height != Snap.m_Height)
+			return true;
+		if(std::memcmp(pLayer->m_pTiles, Snap.m_vTiles.data(), Snap.m_vTiles.size()) != 0)
+			return true;
+		if(!Snap.m_vExtra.empty())
+		{
+			const uint8_t *pExtra = ExtraData(pLayer);
+			if(!pExtra || std::memcmp(pExtra, Snap.m_vExtra.data(), Snap.m_vExtra.size()) != 0)
+				return true;
+		}
+	}
+	return false;
+}
+
 // the changed blocks since the snapshot: [u16 group][u16 layer][u16 cell size][u32 runs] runs: [u32 start][u32 count][cells]
-bool CXcCoop::DiffTiles(std::vector<uint8_t> &vOut)
+bool CXcCoop::DiffTiles(SShared &Shared, std::vector<uint8_t> &vOut)
 {
 	CCoopPacker Out;
-	for(STileSnap &Snap : m_vSnaps)
+	for(STileSnap &Snap : Shared.m_vSnaps)
 	{
-		CLayerTiles *pLayer = TileLayer(m_pMap, Snap.m_Group, Snap.m_Layer);
+		CLayerTiles *pLayer = TileLayer(Shared.m_pMap, Snap.m_Group, Snap.m_Layer);
 		if(!pLayer || !pLayer->m_pTiles || pLayer->m_Width != Snap.m_Width || pLayer->m_Height != Snap.m_Height || (int)sizeof(CTile) + ExtraSize(pLayer) != Snap.m_CellSize)
 			continue;
 		const int Extra = Snap.m_CellSize - (int)sizeof(CTile);
@@ -1102,9 +1453,10 @@ bool CXcCoop::DiffTiles(std::vector<uint8_t> &vOut)
 	return !vOut.empty();
 }
 
-void CXcCoop::ApplyTiles(const uint8_t *pData, size_t Size, bool UpdateSnap)
+void CXcCoop::ApplyTiles(SShared &Shared, const uint8_t *pData, size_t Size, bool UpdateSnap)
 {
-	if(!m_pMap)
+	CEditorMap *pMap = Shared.m_pMap;
+	if(!pMap)
 		return;
 	CCoopUnpacker In(pData, Size);
 	bool Applied = false;
@@ -1116,12 +1468,12 @@ void CXcCoop::ApplyTiles(const uint8_t *pData, size_t Size, bool UpdateSnap)
 		const uint32_t Runs = In.U32();
 		if(In.m_Error)
 			break;
-		CLayerTiles *pLayer = TileLayer(m_pMap, Group, Layer);
+		CLayerTiles *pLayer = TileLayer(pMap, Group, Layer);
 		const bool Fits = pLayer && pLayer->m_pTiles && (int)sizeof(CTile) + ExtraSize(pLayer) == CellSize && (ExtraSize(pLayer) == 0 || ExtraData(pLayer));
 		const size_t Cells = pLayer ? (size_t)pLayer->m_Width * pLayer->m_Height : 0;
 		STileSnap *pSnap = nullptr;
 		if(Fits && UpdateSnap)
-			for(STileSnap &Snap : m_vSnaps)
+			for(STileSnap &Snap : Shared.m_vSnaps)
 				if(Snap.m_Group == Group && Snap.m_Layer == Layer && Snap.m_Width == pLayer->m_Width && Snap.m_Height == pLayer->m_Height && Snap.m_CellSize == CellSize)
 					pSnap = &Snap;
 		const int Extra = CellSize - (int)sizeof(CTile);
@@ -1152,32 +1504,37 @@ void CXcCoop::ApplyTiles(const uint8_t *pData, size_t Size, bool UpdateSnap)
 		}
 	}
 	if(Applied)
-		m_pMap->OnModify();
+		pMap->OnModify();
 }
 
 // ---- whole maps
 
-bool CXcCoop::StartSave(NETSOCKET TargetSock)
+bool CXcCoop::StartSave(SShared &Shared, int Kind, NETSOCKET TargetSock, bool Replace)
 {
 	CEditor &E = *m_pEditor;
+	if(!Shared.m_pMap)
+		return false;
 	E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
 	E.Storage()->CreateFolder(COOP_FOLDER, IStorage::TYPE_SAVE);
 	char aPath[IO_MAX_PATH_LENGTH];
-	for(int Try = 0; Try < 16; Try++)
+	for(int Try = 0; Try < 32; Try++)
 	{
-		str_format(aPath, sizeof(aPath), "%s/out_%d.map", COOP_FOLDER, m_SaveCounter++ % 16);
+		str_format(aPath, sizeof(aPath), "%s/out_%d.map", COOP_FOLDER, m_SaveCounter++ % 32);
 		if(!E.IsSaving(aPath))
 			break;
 	}
 	const size_t Before = E.m_WriterFinishJobs.size();
-	const bool Saved = m_pMap->Save(aPath, [&E](const char *pError) { E.ShowFileDialogError("%s", pError); });
+	const bool Saved = Shared.m_pMap->Save(aPath, [&E](const char *pError) { E.ShowFileDialogError("%s", pError); });
 	if(!Saved || E.m_WriterFinishJobs.size() == Before)
 		return false;
 	SPendingSave Save;
 	Save.m_pJob = E.m_WriterFinishJobs.back();
 	Save.m_Path = aPath;
+	Save.m_MapId = Shared.m_Id;
+	Save.m_Token = Shared.m_Token;
+	Save.m_Kind = Kind;
 	Save.m_TargetSock = TargetSock;
-	Save.m_Hash = StateHash(m_pMap);
+	Save.m_Replace = Replace;
 	m_vSaves.push_back(Save);
 	return true;
 }
@@ -1190,30 +1547,56 @@ void CXcCoop::FinishSaves()
 	{
 		SPendingSave Save = m_vSaves.front();
 		m_vSaves.erase(m_vSaves.begin());
+		SShared *pShared = Save.m_Kind == SAVE_NEW ? FindToken(Save.m_Token) : FindShared(Save.m_MapId);
+		if(!pShared && Save.m_Kind == SAVE_NEW)
+			pShared = FindShared(Save.m_MapId);
 		void *pFile = nullptr;
 		unsigned FileSize = 0;
-		if(Save.m_pJob->ErrorMessage()[0] != '\0' || !E.Storage()->ReadFile(Save.m_Path.c_str(), IStorage::TYPE_SAVE, &pFile, &FileSize))
+		const bool Read = Save.m_pJob->ErrorMessage()[0] == '\0' && E.Storage()->ReadFile(Save.m_Path.c_str(), IStorage::TYPE_SAVE, &pFile, &FileSize);
+		E.Storage()->RemoveFile(Save.m_Path.c_str(), IStorage::TYPE_SAVE);
+		if(!Read || !pShared)
 		{
-			if(Save.m_TargetSock == nullptr && m_Role == ROLE_GUEST)
-				m_ProposalPending = false;
+			free(pFile);
+			if(pShared && Save.m_Kind != SAVE_TARGET && m_Role == ROLE_GUEST)
+				pShared->m_ProposalPending = false;
+			if(Save.m_Kind == SAVE_TARGET)
+			{
+				// the guest must not wait for a map that never comes
+				for(auto &pConn : m_vpConns)
+				{
+					if(pConn->m_Sock != Save.m_TargetSock || pConn->m_AwaitMaps <= 0 || Save.m_Replace)
+						continue;
+					if(--pConn->m_AwaitMaps == 0)
+					{
+						pConn->m_vOut.insert(pConn->m_vOut.end(), pConn->m_vHeld.begin(), pConn->m_vHeld.end());
+						pConn->m_vHeld.clear();
+					}
+				}
+			}
 			continue;
 		}
-		E.Storage()->RemoveFile(Save.m_Path.c_str(), IStorage::TYPE_SAVE);
 
+		if(Save.m_Kind == SAVE_CHANGE && m_Role == ROLE_HOST)
+			pShared->m_Epoch++;
+		int Flags = 0;
+		if(Save.m_Kind == SAVE_NEW)
+			Flags |= MAPFLAG_NEW;
+		if(Save.m_Replace)
+			Flags |= MAPFLAG_REPLACE;
 		CCoopPacker Map;
-		if(Save.m_TargetSock == nullptr && m_Role == ROLE_HOST)
-			m_Epoch++;
-		Map.U32(m_Role == ROLE_HOST ? m_Epoch : 0);
-		Map.U32(m_Epoch); // the base the change was made on
-		Map.U8(0);
+		Map.U32(pShared->m_Id);
+		Map.U32(m_Role == ROLE_HOST ? pShared->m_Epoch : 0);
+		Map.U32(pShared->m_Epoch); // the base the change was made on
+		Map.U8(Flags);
 		Map.U8(m_SelfId < 0 ? 0 : m_SelfId);
-		Map.Str(m_pMap ? m_pMap->m_aDisplayName : "");
+		Map.U32(pShared->m_Token);
+		Map.Str(pShared->m_pMap ? pShared->m_pMap->m_aDisplayName : "");
 		Map.Raw(pFile, FileSize);
 		free(pFile);
 
-		if(Save.m_TargetSock == nullptr)
+		if(Save.m_Kind != SAVE_TARGET)
 		{
-			// a change of the structure: the host gives it to everyone, a guest gives it to the host
+			// a change or a new tab: the host gives it to everyone, a guest gives it to the host
 			Broadcast(MSG_MAP, Map.m_vData);
 			continue;
 		}
@@ -1221,26 +1604,28 @@ void CXcCoop::FinishSaves()
 		{
 			if(pConn->m_Sock != Save.m_TargetSock || pConn->m_Dead)
 				continue;
-			// the first map of a new guest, then what happened while it was written
+			// the maps of a new guest go first, then what happened while they were written
 			Queue(*pConn, MSG_MAP, Map.m_vData.data(), Map.m_vData.size(), false);
-			pConn->m_vOut.insert(pConn->m_vOut.end(), pConn->m_vHeld.begin(), pConn->m_vHeld.end());
-			pConn->m_vHeld.clear();
-			pConn->m_AwaitMap = false;
+			if(!Save.m_Replace && pConn->m_AwaitMaps > 0 && --pConn->m_AwaitMaps == 0)
+			{
+				pConn->m_vOut.insert(pConn->m_vOut.end(), pConn->m_vHeld.begin(), pConn->m_vHeld.end());
+				pConn->m_vHeld.clear();
+			}
 		}
 	}
 }
 
-void CXcCoop::LoadIncomingMap()
+void CXcCoop::LoadIncomingMap(SShared &Shared)
 {
 	CEditor &E = *m_pEditor;
-	m_HasIncomingMap = false;
+	Shared.m_HasIncoming = false;
 	std::vector<uint8_t> vData;
-	std::swap(vData, m_vIncomingMap);
+	std::swap(vData, Shared.m_vIncoming);
 
-	// the blocks drawn here and not sent yet go onto the new map again
+	// the blocks drawn here and not sent yet go onto the new map again (not when the host says it is out of sync)
 	std::vector<uint8_t> vLocal;
-	if(m_pMap && StateHash(m_pMap) == m_SyncedHash)
-		DiffTiles(vLocal);
+	if(Shared.m_pMap && !Shared.m_IncomingReplace && StateHash(Shared.m_pMap) == Shared.m_SyncedHash)
+		DiffTiles(Shared, vLocal);
 
 	E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
 	E.Storage()->CreateFolder(COOP_FOLDER, IStorage::TYPE_SAVE);
@@ -1264,34 +1649,39 @@ void CXcCoop::LoadIncomingMap()
 		log_error("xc_coop", "could not load the map: %s", Error.c_str());
 		if(m_Role == ROLE_GUEST)
 		{
-			Leave("The map of the room could not be opened");
+			Leave("A map of the room could not be opened");
 			return;
 		}
 		// the host keeps his map and sends it to everyone instead
-		m_SyncedHash = 0;
+		if(Shared.m_pMap)
+			Shared.m_SyncedHash = 0;
+		else
+			m_vpShared.erase(std::remove_if(m_vpShared.begin(), m_vpShared.end(), [&](const auto &p) { return p.get() == &Shared; }), m_vpShared.end());
 		return;
 	}
 
-	auto It = std::find_if(E.m_vpMaps.begin(), E.m_vpMaps.end(), [&](const std::unique_ptr<CEditorMap> &pMap) { return pMap.get() == m_pMap; });
-	if(It == E.m_vpMaps.end())
+	const int Index = MapIndex(Shared.m_pMap);
+	if(Index < 0)
 	{
-		// a guest gets his first map: a new tab
+		// a new tab from the room; the first one of a joining guest is opened
 		char aName[IO_MAX_PATH_LENGTH];
-		str_format(aName, sizeof(aName), "maps/%s.map", m_IncomingName.empty() ? "coop" : m_IncomingName.c_str());
+		str_format(aName, sizeof(aName), "maps/%s.map", Shared.m_IncomingName.empty() ? "coop" : Shared.m_IncomingName.c_str());
 		str_copy(pNew->m_aFilename, aName);
 		pNew->m_ValidSaveFilename = false;
-		E.Reset();
+		const bool First = m_Role == ROLE_GUEST && m_State == STATE_JOINING;
 		E.m_vpMaps.push_back(std::move(pNew));
-		E.m_SelectedMap = E.m_vpMaps.size() - 1;
-		E.m_MapTabsRevealSelected = true;
-		m_pMap = E.m_vpMaps.back().get();
-		m_State = STATE_ONLINE;
-		m_Progress = -1.0f;
+		Shared.m_pMap = E.m_vpMaps.back().get();
+		if(First)
+		{
+			E.m_SelectedMap = E.m_vpMaps.size() - 1;
+			E.m_MapTabsRevealSelected = true;
+			E.Reset();
+		}
 	}
 	else
 	{
 		// the same tab, the same view, the same selection
-		CEditorMap *pOld = It->get();
+		CEditorMap *pOld = E.m_vpMaps[Index].get();
 		str_copy(pNew->m_aFilename, pOld->m_aFilename);
 		pNew->m_ValidSaveFilename = pOld->m_ValidSaveFilename;
 		pNew->m_MapViewState = pOld->m_MapViewState;
@@ -1309,61 +1699,102 @@ void CXcCoop::LoadIncomingMap()
 		}
 		pNew->m_SelectedEnvelope = std::clamp(pOld->m_SelectedEnvelope, 0, std::max(0, (int)pNew->m_vpEnvelopes.size() - 1));
 		pNew->m_Modified = true;
-		if(It - E.m_vpMaps.begin() == (std::ptrdiff_t)E.m_SelectedMap)
+		if(Index == (int)E.m_SelectedMap)
 		{
 			E.Ui()->ClosePopupMenus();
 			E.Ui()->SetActiveItem(nullptr);
 		}
-		*It = std::move(pNew);
-		m_pMap = It->get();
+		E.m_vpMaps[Index] = std::move(pNew);
+		Shared.m_pMap = E.m_vpMaps[Index].get();
 	}
 	E.UpdateMapDisplayNames();
-	if(E.Map() == m_pMap)
+	if(E.Map() == Shared.m_pMap)
 		for(CEditorComponent &Component : E.m_vComponents)
 			Component.OnMapLoad();
 	m_MapReplaced = true;
 
-	const uint32_t OldEpoch = m_Epoch;
 	if(m_Role == ROLE_HOST)
 	{
-		// a change of a guest: everyone gets the new map, its author only the new number (or the map, if
-		// the host changed something in the meantime)
-		m_Epoch++;
-		CCoopPacker Map;
-		Map.U32(m_Epoch);
-		Map.U32(m_Epoch);
-		Map.U8(0);
-		Map.U8(m_pIncomingFrom ? m_pIncomingFrom->m_MemberId : 0);
-		Map.Str(m_pMap->m_aDisplayName);
-		Map.Raw(vData.data(), vData.size());
-		const bool Fresh = m_pIncomingFrom && m_IncomingBase == OldEpoch;
-		for(auto &pConn : m_vpConns)
+		SConn *pFrom = Shared.m_pIncomingFrom;
+		Shared.m_pIncomingFrom = nullptr;
+		if(Index < 0)
 		{
-			if(!pConn->m_Hello || pConn->m_Dead)
-				continue;
-			if(pConn.get() == m_pIncomingFrom && Fresh)
+			// a guest's new tab: its id to him, the tab to the others
+			if(pFrom)
 			{
-				CCoopPacker Epoch;
-				Epoch.U32(m_Epoch);
-				Queue(*pConn, MSG_EPOCH, Epoch.m_vData.data(), Epoch.m_vData.size());
-				continue;
+				CCoopPacker Assign;
+				Assign.U32(Shared.m_Token);
+				Assign.U32(Shared.m_Id);
+				Assign.U32(Shared.m_Epoch);
+				Queue(*pFrom, MSG_ASSIGN, Assign.m_vData.data(), Assign.m_vData.size());
 			}
-			Map.m_vData[8] = pConn.get() == m_pIncomingFrom ? MAPFLAG_ANSWER : 0;
-			Queue(*pConn, MSG_MAP, Map.m_vData.data(), Map.m_vData.size());
+			Shared.m_Token = 0;
+			CCoopPacker Map;
+			Map.U32(Shared.m_Id);
+			Map.U32(Shared.m_Epoch);
+			Map.U32(Shared.m_Epoch);
+			Map.U8(0);
+			Map.U8(pFrom ? pFrom->m_MemberId : 0);
+			Map.U32(0);
+			Map.Str(Shared.m_pMap->m_aDisplayName);
+			Map.Raw(vData.data(), vData.size());
+			Broadcast(MSG_MAP, Map.m_vData, pFrom);
 		}
-		m_pIncomingFrom = nullptr;
+		else
+		{
+			// a change of a guest: everyone gets the new map, its author only the new number (or the map,
+			// if the host changed something in the meantime)
+			const uint32_t OldEpoch = Shared.m_Epoch;
+			Shared.m_Epoch++;
+			CCoopPacker Map;
+			Map.U32(Shared.m_Id);
+			Map.U32(Shared.m_Epoch);
+			Map.U32(Shared.m_Epoch);
+			Map.U8(0);
+			Map.U8(pFrom ? pFrom->m_MemberId : 0);
+			Map.U32(0);
+			Map.Str(Shared.m_pMap->m_aDisplayName);
+			Map.Raw(vData.data(), vData.size());
+			const bool Fresh = pFrom && Shared.m_IncomingBase == OldEpoch;
+			for(auto &pConn : m_vpConns)
+			{
+				if(!pConn->m_Hello || pConn->m_Dead)
+					continue;
+				if(pConn.get() == pFrom && Fresh)
+				{
+					CCoopPacker Epoch;
+					Epoch.U32(Shared.m_Id);
+					Epoch.U32(Shared.m_Epoch);
+					Queue(*pConn, MSG_EPOCH, Epoch.m_vData.data(), Epoch.m_vData.size());
+					continue;
+				}
+				Map.m_vData[12] = pConn.get() == pFrom ? MAPFLAG_ANSWER : 0;
+				Queue(*pConn, MSG_MAP, Map.m_vData.data(), Map.m_vData.size());
+			}
+		}
 	}
 	else
 	{
-		m_Epoch = m_IncomingEpoch;
-		if(m_IncomingAnswer)
-			m_ProposalPending = false;
+		Shared.m_Epoch = Shared.m_IncomingEpoch;
+		if(Shared.m_IncomingAnswer || Shared.m_IncomingReplace)
+			Shared.m_ProposalPending = false;
+		// all the maps of the room are here
+		if(m_State == STATE_JOINING)
+		{
+			bool AllLoaded = true;
+			for(const auto &pOther : m_vpShared)
+				AllLoaded &= pOther->m_pMap != nullptr && !pOther->m_HasIncoming;
+			if(AllLoaded)
+				m_State = STATE_ONLINE;
+		}
 	}
 
-	TakeSnapshot();
-	m_SyncedHash = m_LastHash = StateHash(m_pMap);
+	TakeSnapshot(Shared);
+	Shared.m_SyncedHash = Shared.m_LastHash = StateHash(Shared.m_pMap);
+	Shared.m_Mismatches = 0;
+	Shared.m_NextVerify = Now() + VERIFY_INTERVAL;
 	// own blocks on top; the snapshot does not have them, so they go out with the new number
 	if(!vLocal.empty())
-		ApplyTiles(vLocal.data(), vLocal.size(), false);
-	log_info("xc_coop", "map %u loaded", m_Epoch);
+		ApplyTiles(Shared, vLocal.data(), vLocal.size(), false);
+	log_info("xc_coop", "map %u (epoch %u) loaded", Shared.m_Id, Shared.m_Epoch);
 }

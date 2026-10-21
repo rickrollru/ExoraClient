@@ -948,6 +948,20 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 		char aName[64];
 		XcFitText(pFont, pFont->FontSize, MapEntry.m_aDisplayName, TabWidth - Height - S(14.0f), aName, sizeof(aName));
 		pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + S(12.0f), Mid - pFont->FontSize * 0.5f), Col(Selected ? t.m_Text : t.m_TextSecondary), aName);
+		// editing together: who works in this tab, a dot in his color
+		const uint32_t SharedId = m_Coop.MapId(&MapEntry);
+		if(SharedId != 0)
+		{
+			float DotX = Max.x - Height - S(4.0f);
+			for(const CXcCoop::SMember &Member : m_Coop.Members())
+			{
+				if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasCursor || Member.m_MapId != SharedId)
+					continue;
+				const unsigned Rgb = CXcCoop::MemberColor(Member.m_Id);
+				pDraw->AddCircleFilled(ImVec2(DotX, Min.y + S(6.0f)), S(3.0f), IM_COL32((Rgb >> 16) & 0xff, (Rgb >> 8) & 0xff, Rgb & 0xff, 255), 10);
+				DotX -= S(8.0f);
+			}
+		}
 		// a dot for unsaved changes, it turns into the cross on hover
 		const ImVec2 CloseCenter(Max.x - Height * 0.5f, Mid);
 		if(MapEntry.m_Modified && !CloseHovered)
