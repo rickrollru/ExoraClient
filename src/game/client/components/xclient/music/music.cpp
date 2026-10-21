@@ -83,6 +83,25 @@ void CXcMusic::Seek(double Seconds)
 	m_SeekStart = CXcMediaSession::Now();
 }
 
+float CXcMusic::Volume() const
+{
+	if(m_State.m_Volume < 0.0f)
+		return -1.0f;
+	// the player answers with the new level after the next poll
+	if(m_VolumeTarget >= 0.0f && CXcMediaSession::Now() - m_VolumeStart < 1.5)
+		return m_VolumeTarget;
+	return m_State.m_Volume;
+}
+
+void CXcMusic::SetVolume(float Volume)
+{
+	if(!Enabled() || m_State.m_Volume < 0.0f)
+		return;
+	m_VolumeTarget = std::clamp(Volume, 0.0f, 1.0f);
+	m_VolumeStart = CXcMediaSession::Now();
+	m_Session.Send(CXcMediaSession::COMMAND_VOLUME, m_VolumeTarget);
+}
+
 double CXcMusic::Position() const
 {
 	if(m_State.m_Position < 0.0 || m_State.m_Duration <= 0.0)

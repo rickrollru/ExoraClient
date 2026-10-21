@@ -6,6 +6,7 @@
 
 #if !defined(CONF_FAMILY_WINDOWS)
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -112,7 +113,7 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 {
 	std::string Output;
 	// one line, tab separated; times are microseconds
-	RunCommand("playerctl metadata --format '{{status}}\t{{playerName}}\t{{xesam:title}}\t{{xesam:artist}}\t{{xesam:album}}\t{{position}}\t{{mpris:length}}\t{{mpris:artUrl}}' 2>/dev/null", &Output);
+	RunCommand("playerctl metadata --format '{{status}}\t{{playerName}}\t{{xesam:title}}\t{{xesam:artist}}\t{{xesam:album}}\t{{position}}\t{{mpris:length}}\t{{mpris:artUrl}}\t{{volume}}' 2>/dev/null", &Output);
 	while(!Output.empty() && (Output.back() == '\n' || Output.back() == '\r'))
 		Output.pop_back();
 	std::vector<std::string> vFields;
@@ -143,6 +144,8 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 		pState->m_SampleTime = CXcMediaSession::Now();
 		pState->m_CanSeek = true; // MPRIS players take "playerctl position"
 	}
+	if(vFields.size() >= 9 && !vFields[8].empty())
+		pState->m_Volume = std::clamp((float)std::atof(vFields[8].c_str()), 0.0f, 1.0f);
 	if(WantArt && !vFields[7].empty())
 		ReadArt(vFields[7], pArtBytes);
 	return true;
@@ -150,6 +153,14 @@ bool XcMediaPlatform::Poll(SXcMediaState *pState, bool WantArt, std::vector<unsi
 
 void XcMediaPlatform::Command(CXcMediaSession::ECommand Command, double Seconds)
 {
+	if(Command == CXcMediaSession::COMMAND_VOLUME)
+	{
+		char aVolume[64];
+		std::snprintf(aVolume, sizeof(aVolume), "playerctl volume %.2f 2>/dev/null", std::clamp(Seconds, 0.0, 1.0));
+		std::string Output;
+		RunCommand(aVolume, &Output);
+		return;
+	}
 	if(Command == CXcMediaSession::COMMAND_SEEK)
 	{
 		char aSeek[64];

@@ -67,6 +67,7 @@ void CXcMediaSession::Snapshot(SXcMediaState *pState, uint64_t KnownArtId)
 	pState->m_Position = m_State.m_Position;
 	pState->m_Duration = m_State.m_Duration;
 	pState->m_SampleTime = m_State.m_SampleTime;
+	pState->m_Volume = m_State.m_Volume;
 	pState->m_TrackId = m_State.m_TrackId;
 	pState->m_ArtId = m_State.m_ArtId;
 	pState->m_ArtWidth = m_State.m_ArtWidth;
@@ -81,8 +82,8 @@ void CXcMediaSession::Send(ECommand Command, double Seconds)
 {
 	{
 		std::lock_guard<std::mutex> Lock(m_Mutex);
-		// a newer seek replaces the one that is still waiting
-		if(Command == COMMAND_SEEK && !m_Commands.empty() && m_Commands.back().m_Command == COMMAND_SEEK)
+		// a newer seek or volume replaces the one that is still waiting
+		if((Command == COMMAND_SEEK || Command == COMMAND_VOLUME) && !m_Commands.empty() && m_Commands.back().m_Command == Command)
 			m_Commands.back().m_Seconds = Seconds;
 		else if(m_Commands.size() < 8)
 			m_Commands.push_back({Command, Seconds});
