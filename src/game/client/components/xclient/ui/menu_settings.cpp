@@ -910,6 +910,32 @@ void CXcMenu::RenderSettingsHud()
 		ToggleRow(Tr("Notifications"), "xc_hud_toasts", &g_Config.m_XcHudToasts);
 		EndCard();
 	}
+	if(BeginCard("##hud_classic", Tr("Standard DDNet HUD"), Tr("Turn off the whole standard HUD or only some of its parts"), &g_Config.m_XcHudClassic))
+	{
+		ToggleRow(Tr("Health and ammo"), "cl_showhud_healthammo", &g_Config.m_ClShowhudHealthAmmo);
+		ToggleRow(Tr("Weapons, jumps and states (ninja, jetpack...)"), "cl_showhud_ddrace", &g_Config.m_ClShowhudDDRace);
+		if(g_Config.m_ClShowhudDDRace)
+			ToggleRow(Tr("Jumps indicator"), "cl_showhud_jumps_indicator", &g_Config.m_ClShowhudJumpsIndicator);
+		ToggleRow(Tr("Timer"), "cl_showhud_timer", &g_Config.m_ClShowhudTimer);
+		ToggleRow(Tr("Checkpoint and finish times"), "xc_hud_classic_effects", &g_Config.m_XcHudClassicEffects);
+		if(g_Config.m_XcHudClassicEffects)
+			ToggleRow(Tr("Difference to the best checkpoint"), "cl_showhud_time_cp_diff", &g_Config.m_ClShowhudTimeCpDiff);
+		ToggleRow(Tr("Score"), "cl_showhud_score", &g_Config.m_ClShowhudScore);
+		ToggleRow(Tr("Spectator count"), "cl_showhud_spectator_count", &g_Config.m_ClShowhudSpectatorCount);
+		ToggleRow(Tr("Dummy actions"), "cl_showhud_dummy_actions", &g_Config.m_ClShowhudDummyActions);
+		ToggleRow(Tr("Position"), "cl_showhud_player_position", &g_Config.m_ClShowhudPlayerPosition);
+		ToggleRow(Tr("Speed"), "cl_showhud_player_speed", &g_Config.m_ClShowhudPlayerSpeed);
+		ToggleRow(Tr("Aim angle"), "cl_showhud_player_angle", &g_Config.m_ClShowhudPlayerAngle);
+		ToggleRow(Tr("Spectator panel"), "cl_showhud_spectator", &g_Config.m_ClShowhudSpectator);
+		ToggleRow(Tr("FPS"), "cl_showfps", &g_Config.m_ClShowfps);
+		ToggleRow(Tr("Local time always"), "cl_show_local_time_always", &g_Config.m_ClShowLocalTimeAlways);
+		ToggleRow(Tr("Game messages (pause, warmup, sudden death, team balance)"), "xc_hud_classic_messages", &g_Config.m_XcHudClassicMessages);
+		ToggleRow(Tr("Old style records"), "cl_showrecord", &g_Config.m_ClShowRecord);
+		ToggleRow(Tr("Frozen teammates at the top (TClient)"), "tc_frozen_tees_hud", &g_Config.m_TcShowFrozenHud);
+		ToggleRow(Tr("Status bar (TClient)"), "tc_statusbar", &g_Config.m_TcStatusBar);
+		Description(Tr("The connection warning always stays. The vote panel is in the Scoreboard card"));
+		EndCard();
+	}
 	if(BeginCard("##hud_sizes", Tr("Sizes"), Tr("Size of every element in percent")))
 	{
 		ConfigSlider(Tr("Watermark"), "xc_hud_watermark_scale", &g_Config.m_XcHudWatermarkScale, 50, 200, "%d%%");
@@ -940,7 +966,9 @@ void CXcMenu::RenderSettingsHud()
 		}
 		else
 			ToggleRow(Tr("Standard scoreboard in the colors of the menu"), "xc_hud_scoreboard", &g_Config.m_XcHudScoreboard);
-		ToggleRow(Tr("Vote panel in the same style"), "xc_hud_votes", &g_Config.m_XcHudVotes);
+		ToggleRow(Tr("Vote panel"), "xc_hud_classic_vote", &g_Config.m_XcHudClassicVote);
+		if(g_Config.m_XcHudClassicVote)
+			ToggleRow(Tr("Vote panel in the same style"), "xc_hud_votes", &g_Config.m_XcHudVotes);
 		ToggleRow(Tr("Top of the server in the HUD"), "xc_hud_minitop", &g_Config.m_XcHudMinitop);
 		if(g_Config.m_XcHudMinitop)
 			ConfigSlider(Tr("Players in the list"), "xc_hud_minitop_count", &g_Config.m_XcHudMinitopCount, 1, 5);
