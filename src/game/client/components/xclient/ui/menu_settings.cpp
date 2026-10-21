@@ -195,6 +195,14 @@ void CXcMenu::RenderSettingsInterface()
 		int Accent = g_Config.m_XcUiAccent;
 		if(ColorSwatches("##accent", &Accent, aColors, NUM_ACCENTS))
 			SetConfigInt("xc_ui_accent", Accent);
+		// the last swatch is the own color
+		const unsigned OldAccentColor = g_Config.m_XcUiAccentColor;
+		ConfigColorRow(Tr("Own accent color"), &g_Config.m_XcUiAccentColor, false);
+		if(g_Config.m_XcUiAccentColor != OldAccentColor)
+			g_Config.m_XcUiAccent = ACCENT_CUSTOM;
+		ConfigSlider(Tr("Background tint"), "xc_ui_tint", &g_Config.m_XcUiTint, 0, 100, "%d%%");
+		if(g_Config.m_XcUiTint > 0)
+			ConfigColorRow(Tr("Tint color"), &g_Config.m_XcUiTintColor, false);
 		EndCard();
 	}
 
@@ -240,7 +248,18 @@ void CXcMenu::RenderSettingsInterface()
 		const char *apScales[] = {Tr("Auto"), "1080p", "2K", "4K"};
 		static const int s_aScales[] = {0, 100, 133, 200};
 		ConfigSegmented("##scale_mode", "xc_ui_scale", &g_Config.m_XcUiScale, apScales, 4, s_aScales);
-		ConfigSlider(Tr("Size"), "xc_ui_size", &g_Config.m_XcUiSize, 70, 200, "%d%%");
+		// the size applies when the slider is let go: resizing the menu under the mouse made it jump
+		static int s_DragSize = -1;
+		int Size = s_DragSize >= 0 ? s_DragSize : g_Config.m_XcUiSize;
+		SliderInt(Tr("Size"), &Size, 70, 200, "%d%%");
+		if(ImGui::IsItemActive())
+			s_DragSize = Size;
+		else
+		{
+			if(Size != g_Config.m_XcUiSize)
+				SetConfigInt("xc_ui_size", Size);
+			s_DragSize = -1;
+		}
 		EndCard();
 	}
 
@@ -357,12 +376,16 @@ void CXcMenu::RenderSettingsPlayer()
 	if(BeginCard("##skins", Tr("Skins"), Dummy ? Tr("Click a skin to put it on the dummy") : Tr("Click a skin to put it on")))
 	{
 		// search in the skin names, the list filters itself
-		static char s_aFilter[sizeof(g_Config.m_ClSkinFilterString)] = {};
-		if(InputText("##skin_filter", s_aFilter, sizeof(s_aFilter), Tr("Search skins")))
+		// the search is the DDNet filter itself (it is saved), cleared every time the page opens again
+		static int s_LastFrame = -10;
+		if(ImGui::GetFrameCount() - s_LastFrame > 1 && g_Config.m_ClSkinFilterString[0])
 		{
-			str_copy(g_Config.m_ClSkinFilterString, s_aFilter);
+			g_Config.m_ClSkinFilterString[0] = '\0';
 			GameClient()->m_Skins.SkinList().ForceRefresh();
 		}
+		s_LastFrame = ImGui::GetFrameCount();
+		if(InputText("##skin_filter", g_Config.m_ClSkinFilterString, sizeof(g_Config.m_ClSkinFilterString), Tr("Search skins")))
+			GameClient()->m_Skins.SkinList().ForceRefresh();
 		std::vector<CSkins::CSkinListEntry> &vSkins = GameClient()->m_Skins.SkinList().Skins();
 		const char *pCurrent = Dummy ? g_Config.m_ClDummySkin : g_Config.m_ClPlayerSkin;
 		const float Tile = S(72.0f);
@@ -610,8 +633,10 @@ void CXcMenu::RenderSettingsGraphics()
 		s_ListenerAdded = true;
 		Graphics()->AddWindowPropChangeListener([]() { s_ModesReload = true; });
 	}
-	if(s_NumModes < 0 || s_ModesReload || s_ModesScreen != g_Config.m_GfxScreen)
+	static int s_ModesAll = -1;
+	if(s_NumModes < 0 || s_ModesReload || s_ModesScreen != g_Config.m_GfxScreen || s_ModesAll != g_Config.m_GfxDisplayAllVideoModes)
 	{
+		s_ModesAll = g_Config.m_GfxDisplayAllVideoModes;
 		s_NumModes = Graphics()->GetVideoModes(s_aModes, (int)std::size(s_aModes), g_Config.m_GfxScreen);
 		s_ModesScreen = g_Config.m_GfxScreen;
 		s_ModesReload = false;

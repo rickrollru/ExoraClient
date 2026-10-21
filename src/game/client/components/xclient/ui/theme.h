@@ -21,6 +21,7 @@ namespace XcUi
 		ACCENT_LIME,
 		ACCENT_RED,
 		ACCENT_WHITE,
+		ACCENT_CUSTOM, // xc_ui_accent_color
 		NUM_ACCENTS,
 	};
 
