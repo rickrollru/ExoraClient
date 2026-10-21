@@ -718,6 +718,14 @@ void CMenus::RenderLoadingDirect(const char *pCaption, const char *pContent, std
 
 	m_LoadingState.m_LastRender = Now;
 
+	// XClient: the loading screen in the style of the new menu
+	if(GameClient()->m_XcMenu.RenderStatusScreen(pCaption, pContent, nullptr, Progress.has_value() ? Progress.value() : -2.0f, nullptr) != CXcMenu::STATUS_NOT_DRAWN)
+	{
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+		Client()->UpdateAndSwap();
+		return;
+	}
+
 	CUIRect Box;
 	Ui()->Screen()->Margin(160.0f, &Box);
 
@@ -2072,6 +2080,33 @@ void CMenus::RenderPopupConnecting(CUIRect Screen)
 {
 	const float FontSize = 20.0f;
 
+	// XClient: the connecting screen in the style of the new menu
+	{
+		const char *pConnectivity = nullptr;
+		if(time_get() - Client()->StateStartTime() > time_freq())
+		{
+			switch(Client()->UdpConnectivity(Client()->ConnectNetTypes()))
+			{
+			case IClient::CONNECTIVITY_CHECKING: pConnectivity = Localize("Trying to determine UDP connectivity…"); break;
+			case IClient::CONNECTIVITY_UNREACHABLE: pConnectivity = Localize("UDP seems to be filtered."); break;
+			case IClient::CONNECTIVITY_DIFFERING_UDP_TCP_IP_ADDRESSES: pConnectivity = Localize("UDP and TCP IP addresses seem to be different. Try disabling VPN, proxy or network accelerators."); break;
+			case IClient::CONNECTIVITY_REACHABLE: pConnectivity = Localize("No answer from server yet."); break;
+			default: break;
+			}
+		}
+		const int Status = GameClient()->m_XcMenu.RenderStatusScreen(Localize("Connecting to"), Client()->ConnectAddressString(), pConnectivity, -1.0f, Localize("Abort"));
+		if(Status != CXcMenu::STATUS_NOT_DRAWN)
+		{
+			if(Status == CXcMenu::STATUS_BUTTON || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+			{
+				Client()->Disconnect();
+				Ui()->SetActiveItem(nullptr);
+				RefreshBrowserTab(true);
+			}
+			return;
+		}
+	}
+
 	CUIRect Box, Label;
 	Screen.Margin(150.0f, &Box);
 	Box.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), IGraphics::CORNER_ALL, 15.0f);
@@ -2199,6 +2234,22 @@ void CMenus::RenderPopupLoading(CUIRect Screen)
 			dbg_assert_failed("Invalid loading state %d for RenderPopupLoading", static_cast<int>(Client()->LoadingStateDetail()));
 		}
 		aLabel2[0] = '\0';
+	}
+
+	// XClient: the loading screen in the style of the new menu
+	{
+		const float Progress = Client()->MapDownloadTotalsize() > 0 ? Client()->MapDownloadAmount() / (float)Client()->MapDownloadTotalsize() : -1.0f;
+		const int Status = GameClient()->m_XcMenu.RenderStatusScreen(aTitle, aLabel1, aLabel2, Progress, Localize("Abort"));
+		if(Status != CXcMenu::STATUS_NOT_DRAWN)
+		{
+			if(Status == CXcMenu::STATUS_BUTTON || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+			{
+				Client()->Disconnect();
+				Ui()->SetActiveItem(nullptr);
+				RefreshBrowserTab(true);
+			}
+			return;
+		}
 	}
 
 	const float FontSize = 20.0f;
