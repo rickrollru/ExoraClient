@@ -156,8 +156,34 @@ void CXcMenu::DrawCommunityIcon(ImDrawList *pDraw, const char *pCommunityId, ImV
 		pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), Min, ImVec2(Min.x + Height * 2.0f, Min.y + Height), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, Active ? 1.0f : 0.5f)));
 }
 
+bool CXcMenu::DrawMapPreview(ImDrawList *pDraw, const CServerInfo *pInfo, ImVec2 Min, ImVec2 Max, float Rounding, int Corners, float Alpha)
+{
+	const CXcMapPreviews::SPreview *pPreview = m_MapPreviews.Find(pInfo->m_aMap, pInfo->m_MapCrc);
+	if(!pPreview || pPreview->m_Width <= 0 || pPreview->m_Height <= 0)
+		return false;
+	// cover the rect: the middle of a long map rather than a thin line of all of it
+	const float AreaAspect = (Max.x - Min.x) / std::max(Max.y - Min.y, 1.0f);
+	const float ImageAspect = pPreview->m_Width / (float)pPreview->m_Height;
+	ImVec2 Uv0(0.0f, 0.0f), Uv1(1.0f, 1.0f);
+	if(ImageAspect > AreaAspect)
+	{
+		const float Part = AreaAspect / ImageAspect;
+		Uv0.x = 0.5f - Part * 0.5f;
+		Uv1.x = 0.5f + Part * 0.5f;
+	}
+	else
+	{
+		const float Part = ImageAspect / AreaAspect;
+		Uv0.y = 0.5f - Part * 0.5f;
+		Uv1.y = 0.5f + Part * 0.5f;
+	}
+	pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(pPreview->m_Texture), Min, Max, Uv0, Uv1, Col(ImVec4(1, 1, 1, 1), Alpha), Rounding, Corners);
+	return true;
+}
+
 void CXcMenu::UpdateBrowser()
 {
+	m_MapPreviews.Update();
 	CMenus &Menus = GameClient()->m_Menus;
 	// the classic menu does this in its render, which does not run while the new menu is open
 	Menus.m_CommunityIcons.Update();
@@ -257,6 +283,75 @@ void CXcMenu::RenderBrowserTabs(float Width)
 	}
 }
 
+void CXcMenu::RenderBrowserCommunities()
+{
+	// the communities shown in the internet and favorites lists (DDNet, KoG, ...), like the classic filter:
+	// a click shows or hides one, a right click gives it a tab at the top
+	if((g_Config.m_UiPage != CMenus::PAGE_INTERNET && g_Config.m_UiPage != CMenus::PAGE_FAVORITES) || ServerBrowser()->Communities().empty())
+		return;
+	std::vector<const char *> vpNames;
+	for(const CCommunity &Community : ServerBrowser()->Communities())
+		vpNames.push_back(Community.Id());
+	IFilterList &Filter = ServerBrowser()->CommunitiesFilter();
+	bool AnyHidden = false;
+	for(const char *pName : vpNames)
+		AnyHidden |= Filter.Filtered(pName);
+
+	const float Avail = ImGui::GetContentRegionAvail().x;
+	const float Gap = S(6.0f);
+	const float IconHeight = S(13.0f);
+	ImFont *pFont = Fonts().m_pSmall;
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	float x = 0.0f;
+	bool Changed = false;
+	ImGui::PushID("##communities");
+	FlowNext(x, pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, Tr("All communities")).x + S(20.0f), Avail, Gap);
+	if(FilterChip("##all", Tr("All communities"), !AnyHidden))
+	{
+		ShowAllFilterItems(Filter, vpNames);
+		Changed = true;
+	}
+	for(int i = 0; i < (int)vpNames.size(); i++)
+	{
+		const CCommunity &Community = ServerBrowser()->Communities()[i];
+		const bool Favorite = ServerBrowser()->FavoriteCommunitiesFilter().Filtered(Community.Id());
+		char aLabel[128];
+		str_format(aLabel, sizeof(aLabel), "%s  %d%s%s", Community.Name(), Community.NumPlayers(), Favorite ? "  " : "", Favorite ? XC_ICON_STAR : "");
+		const float PictureWidth = IconHeight * 2.0f;
+		FlowNext(x, PictureWidth + S(6.0f) + pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, aLabel).x + S(20.0f), Avail, Gap);
+		ImGui::PushID(i);
+		ImVec2 PictureMin;
+		const bool On = !Filter.Filtered(Community.Id());
+		if(FilterChip("##community", aLabel, AnyHidden && On, PictureWidth, &PictureMin))
+		{
+			ToggleFilterItem(Filter, vpNames, i, nullptr);
+			Changed = true;
+		}
+		if(ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("%s", Favorite ? Tr("Right click: remove the tab at the top") : Tr("Right click: add a tab at the top"));
+			if(ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+			{
+				if(Favorite)
+					ServerBrowser()->FavoriteCommunitiesFilter().Remove(Community.Id());
+				else if(ServerBrowser()->FavoriteCommunities().size() < 5)
+					ServerBrowser()->FavoriteCommunitiesFilter().Add(Community.Id());
+				else
+					Toast(Tr("Five community tabs at most"));
+				PlayUiSound(SOUND_CLICK);
+			}
+		}
+		ImGui::PopID();
+		DrawCommunityIcon(pDraw, Community.Id(), ImVec2(PictureMin.x, PictureMin.y + (S(26.0f) - IconHeight) * 0.5f), IconHeight, !AnyHidden || On);
+	}
+	ImGui::PopID();
+	if(Changed)
+	{
+		GameClient()->m_Menus.UpdateCommunityCache(true);
+		Client()->ServerBrowserUpdate();
+	}
+}
+
 void CXcMenu::RenderBrowserTypes()
 {
 	// the map types of the shown communities (Novice, Moderate, ... Solo, Race), taken from ddnet.org
@@ -312,7 +407,18 @@ bool CXcMenu::RenderServerCard(const CServerInfo *pInfo, float Width, float Heig
 	const bool Selected = m_SelectedServer == pInfo->m_aAddress;
 	const float Hover = Animate(Id, Hovered ? 1.0f : 0.0f, 16.0f);
 	const float Select = Animate(Id + 1, Selected ? 1.0f : 0.0f, 16.0f);
-	pDraw->AddRectFilled(Min, Max, Col(Mix(t.m_Card, t.m_CardHover, Hover)), S(12.0f));
+	const ImVec4 CardColor = Mix(t.m_Card, t.m_CardHover, Hover);
+	pDraw->AddRectFilled(Min, Max, Col(CardColor), S(12.0f));
+	// the scheme of the map on the right, when the map is on the disk; it fades into the card on the left
+	const ImVec2 PreviewMin(Min.x + Width * 0.42f, Min.y + 1.0f);
+	const ImVec2 PreviewMax(Max.x - 1.0f, Max.y - 1.0f);
+	if(DrawMapPreview(pDraw, pInfo, PreviewMin, PreviewMax, S(12.0f), ImDrawFlags_RoundCornersRight, 0.55f + 0.3f * Hover))
+	{
+		const ImU32 Solid = Col(CardColor);
+		const ImU32 Clear = Col(CardColor, 0.0f);
+		const float FadeEnd = PreviewMin.x + (PreviewMax.x - PreviewMin.x) * 0.45f;
+		pDraw->AddRectFilledMultiColor(PreviewMin, ImVec2(FadeEnd, PreviewMax.y), Solid, Clear, Clear, Solid);
+	}
 	pDraw->AddRect(Min, Max, Col(Mix(t.m_Border, t.m_Accent, Select)), S(12.0f), 0, 1.0f + Select);
 
 	const float Pad = S(14.0f);
@@ -477,6 +583,18 @@ void CXcMenu::RenderServerDetails(const CServerInfo *pInfo)
 		return;
 	}
 
+	// the scheme of the map on top, when the map is on the disk
+	{
+		const ImVec2 PreviewMin = ImGui::GetCursorScreenPos();
+		const ImVec2 PreviewMax(PreviewMin.x + ImGui::GetContentRegionAvail().x, PreviewMin.y + S(130.0f));
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		if(m_MapPreviews.Find(pInfo->m_aMap, pInfo->m_MapCrc))
+		{
+			pDraw->AddRectFilled(PreviewMin, PreviewMax, Col(t.m_Track), S(10.0f));
+			DrawMapPreview(pDraw, pInfo, PreviewMin, PreviewMax, S(10.0f), ImDrawFlags_RoundCornersAll, 1.0f);
+			ImGui::Dummy(ImVec2(0.0f, S(130.0f) + S(8.0f)));
+		}
+	}
 	// map as the big title, the server name below
 	ImGui::PushFont(Fonts().m_pHeader);
 	ImGui::PushTextWrapPos(0.0f);
@@ -918,6 +1036,7 @@ void CXcMenu::RenderServers()
 	if(IconButton(XC_ICON_ROTATE, Tr("Refresh")))
 		GameClient()->m_Menus.RefreshBrowserTab(true);
 	ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
+	RenderBrowserCommunities();
 	RenderBrowserTypes();
 	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 
