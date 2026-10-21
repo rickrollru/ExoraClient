@@ -63,6 +63,9 @@ public:
 	// every frame of the editor, before its panels
 	void Update();
 	void OnActivity(); // the user pressed something: look for changes more often
+	// play the map of the current tab together: the host starts his local server, everyone joins it
+	void RequestPlay();
+	bool PlayStarting() const { return m_PlayMapId != 0; }
 
 	int Role() const { return m_Role; }
 	int State() const { return m_State; }
@@ -172,6 +175,7 @@ private:
 		SAVE_CHANGE = 0, // a change for everyone (a guest: for the host)
 		SAVE_TARGET, // the map for one guest (joining, or out of sync)
 		SAVE_NEW, // a guest's new tab, for the host
+		SAVE_PLAY, // the map for the local server
 	};
 	struct SPendingSave
 	{
@@ -185,6 +189,13 @@ private:
 	};
 	std::vector<SPendingSave> m_vSaves;
 	int m_SaveCounter = 0;
+
+	// playing together
+	uint32_t m_PlayMapId = 0; // the tab being saved for the server
+	float m_PlayRunAt = -1.0f; // the old server was stopped: start the new one then
+	void StartPlay(uint32_t MapId);
+	void RunPlayServer();
+	void JoinPlay(int Port);
 
 	float Now() const;
 	SShared *FindShared(uint32_t Id);

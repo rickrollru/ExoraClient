@@ -14,6 +14,7 @@
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
+#include <game/client/gameclient.h>
 #include <game/editor/editor.h>
 #include <game/editor/mapitems/image.h>
 #include <game/editor/mapitems/layer_group.h>
@@ -47,6 +48,8 @@ enum
 	MSG_ASSIGN, // [token][map][epoch]: the id of a guest's new tab
 	MSG_CHECK, // [map][epoch][hash]: the host's state of the map
 	MSG_RESYNC, // [map]: a guest is out of sync and asks for the whole map
+	MSG_PLAY_REQ, // [map]: a guest asks the host to play this map together
+	MSG_PLAY, // [port]: the host's local server is up, join it
 };
 enum
 {
@@ -56,6 +59,8 @@ enum
 };
 constexpr int PROTOCOL_VERSION = 2;
 constexpr float VERIFY_INTERVAL = 2.0f;
+constexpr int PLAY_PORT = 8303;
+const char *const PLAY_MAP = "xc_coop_play"; // maps/xc_coop_play.map on the host
 constexpr uint32_t MAX_MESSAGE = 256 * 1024 * 1024;
 const char *const COOP_FOLDER = "xclient/coop";
 
@@ -482,7 +487,7 @@ void CXcCoop::ResetSync(SShared &Shared)
 bool CXcCoop::BroadcastSavePending(uint32_t MapId) const
 {
 	for(const SPendingSave &Save : m_vSaves)
-		if(Save.m_MapId == MapId && Save.m_Kind != SAVE_TARGET)
+		if(Save.m_MapId == MapId && (Save.m_Kind == SAVE_CHANGE || Save.m_Kind == SAVE_NEW))
 			return true;
 	return false;
 }
@@ -604,6 +609,12 @@ void CXcCoop::Update()
 	}
 	if(m_Role == ROLE_NONE)
 		return;
+
+	if(m_PlayRunAt >= 0.0f && Now() >= m_PlayRunAt)
+	{
+		m_PlayRunAt = -1.0f;
+		RunPlayServer();
+	}
 
 	if(m_State == STATE_ONLINE)
 	{
@@ -1052,6 +1063,13 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			CloseSharedTab(Id, Conn.m_MemberId);
 			return;
 		}
+		if(Type == MSG_PLAY_REQ)
+		{
+			const uint32_t Id = Msg.U32();
+			if(!Msg.m_Error)
+				StartPlay(Id);
+			return;
+		}
 		if(Type == MSG_RESYNC)
 		{
 			SShared *pShared = FindShared(Msg.U32());
@@ -1157,6 +1175,12 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			Broadcast(MSG_RESYNC, Resync.m_vData);
 		}
 	}
+	else if(Type == MSG_PLAY)
+	{
+		const int Port = Msg.U16();
+		if(!Msg.m_Error && Port > 0)
+			JoinPlay(Port);
+	}
 	else if(Type == MSG_CLOSE)
 	{
 		const uint32_t Id = Msg.U32();
@@ -1218,6 +1242,128 @@ void CXcCoop::SendCursor()
 	Cursor.U16(Layer & 0xffff);
 	Cursor.U32(Id);
 	Broadcast(MSG_CURSOR, Cursor.m_vData);
+}
+
+// ---- playing together
+
+void CXcCoop::RequestPlay()
+{
+	if(m_State != STATE_ONLINE)
+		return;
+	const uint32_t Id = MapId(m_pEditor->Map());
+	if(Id == 0)
+		return;
+	if(m_Role == ROLE_HOST)
+	{
+		StartPlay(Id);
+		return;
+	}
+	CCoopPacker Request;
+	Request.U32(Id);
+	Broadcast(MSG_PLAY_REQ, Request.m_vData);
+	m_Notice = "The host starts the server, you join it in a moment";
+}
+
+void CXcCoop::StartPlay(uint32_t MapId)
+{
+	SShared *pShared = FindShared(MapId);
+	if(!pShared || !pShared->m_pMap || m_PlayMapId != 0)
+		return;
+	CEditor &E = *m_pEditor;
+	E.Storage()->CreateFolder("maps", IStorage::TYPE_SAVE);
+	char aPath[IO_MAX_PATH_LENGTH];
+	str_format(aPath, sizeof(aPath), "maps/%s.map", PLAY_MAP);
+	if(E.IsSaving(aPath))
+		return;
+	const size_t Before = E.m_WriterFinishJobs.size();
+	if(!pShared->m_pMap->Save(aPath, [&E](const char *pError) { E.ShowFileDialogError("%s", pError); }) || E.m_WriterFinishJobs.size() == Before)
+		return;
+	SPendingSave Save;
+	Save.m_pJob = E.m_WriterFinishJobs.back();
+	Save.m_Path = aPath;
+	Save.m_MapId = MapId;
+	Save.m_Token = 0;
+	Save.m_Kind = SAVE_PLAY;
+	Save.m_TargetSock = nullptr;
+	Save.m_Replace = false;
+	m_vSaves.push_back(Save);
+	m_PlayMapId = MapId;
+	log_info("xc_coop", "saving map %u to play together", MapId);
+}
+
+// the map is written: change the map of the running local server, or start one
+void CXcCoop::RunPlayServer()
+{
+	CEditor &E = *m_pEditor;
+	CGameClient *pGameClient = (CGameClient *)E.Kernel()->RequestInterface<IGameClient>();
+	char aMapChange[128];
+	str_format(aMapChange, sizeof(aMapChange), "change_map %s", PLAY_MAP);
+	const bool OnLocal = E.Client()->State() == IClient::STATE_ONLINE && net_addr_is_local(&E.Client()->ServerAddress());
+	if(OnLocal && E.Client()->RconAuthed())
+	{
+		// everyone on it reloads the new map by himself
+		E.Client()->Rcon(aMapChange);
+	}
+	else if(pGameClient->m_LocalServer.IsServerRunning() && m_PlayRunAt < -1.5f)
+	{
+		// a server we cannot control: stop it and start a new one in a moment
+		pGameClient->m_LocalServer.KillServer();
+		m_PlayRunAt = Now() + 1.5f;
+		return;
+	}
+	else
+	{
+		char aPort[32];
+		str_format(aPort, sizeof(aPort), "sv_port %d", PLAY_PORT);
+		if(!pGameClient->m_LocalServer.RunServer({"sv_register 0", aPort, aMapChange}))
+		{
+			m_Notice = "The local server could not be started";
+			return;
+		}
+	}
+	CCoopPacker Play;
+	Play.U16(PLAY_PORT);
+	Broadcast(MSG_PLAY, Play.m_vData);
+	Flush();
+	log_info("xc_coop", "playing together on port %d", PLAY_PORT);
+	if(!OnLocal)
+		JoinPlay(-1);
+	else
+	{
+		E.OnClose();
+		g_Config.m_ClEditor = 0;
+	}
+}
+
+// Port -1: the host joins his own server
+void CXcCoop::JoinPlay(int Port)
+{
+	CEditor &E = *m_pEditor;
+	char aAddress[160];
+	if(Port < 0)
+		str_format(aAddress, sizeof(aAddress), "localhost:%d", PLAY_PORT);
+	else
+	{
+		// the host's address, the server's port
+		str_copy(aAddress, m_aAddress);
+		char *pColon = (char *)str_rchr(aAddress, ':');
+		if(pColon)
+			*pColon = '\0';
+		str_format(aAddress + str_length(aAddress), sizeof(aAddress) - str_length(aAddress), ":%d", Port);
+		// already there: the server changes the map by itself
+		char aCurrent[NETADDR_MAXSTRSIZE] = "";
+		if(E.Client()->State() == IClient::STATE_ONLINE)
+			net_addr_str(&E.Client()->ServerAddress(), aCurrent, sizeof(aCurrent), true);
+		if(aCurrent[0] && str_comp(aCurrent, aAddress) == 0)
+		{
+			E.OnClose();
+			g_Config.m_ClEditor = 0;
+			return;
+		}
+	}
+	E.OnClose();
+	g_Config.m_ClEditor = 0;
+	E.Client()->Connect(aAddress);
 }
 
 // ---- map state
@@ -1547,6 +1693,18 @@ void CXcCoop::FinishSaves()
 	{
 		SPendingSave Save = m_vSaves.front();
 		m_vSaves.erase(m_vSaves.begin());
+		if(Save.m_Kind == SAVE_PLAY)
+		{
+			m_PlayMapId = 0;
+			if(Save.m_pJob->ErrorMessage()[0] == '\0')
+			{
+				m_PlayRunAt = -2.0f; // a running server may be stopped once
+				RunPlayServer();
+				if(m_PlayRunAt < -1.5f)
+					m_PlayRunAt = -1.0f;
+			}
+			continue;
+		}
 		SShared *pShared = Save.m_Kind == SAVE_NEW ? FindToken(Save.m_Token) : FindShared(Save.m_MapId);
 		if(!pShared && Save.m_Kind == SAVE_NEW)
 			pShared = FindShared(Save.m_MapId);
