@@ -2023,28 +2023,33 @@ void CHud::OnRender()
 				Graphics()->MapScreenToSize(m_Width, m_Height);
 		};
 		const bool XcHideState = GameClient()->m_XcHud.HidesClassicState(); // XClient: the new HUD shows weapons, jumps and states
+		const bool XcClassic = g_Config.m_XcHudClassic; // XClient: the standard HUD can be turned off as a whole
 		if(GameClient()->m_Snap.m_pLocalCharacter && !GameClient()->m_Snap.m_SpecInfo.m_Active && !(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER))
 		{
-			if(g_Config.m_ClShowhudHealthAmmo && (!XcHideState || GameClient()->m_GameInfo.m_HudHealthArmor))
+			if(XcClassic && g_Config.m_ClShowhudHealthAmmo && (!XcHideState || GameClient()->m_GameInfo.m_HudHealthArmor))
 			{
 				XcShiftBegin();
 				RenderAmmoHealthAndArmor(GameClient()->m_Snap.m_pLocalCharacter);
 				XcShiftEnd();
 			}
-			if(GameClient()->m_Snap.m_aCharacters[GameClient()->m_Snap.m_LocalClientId].m_HasExtendedData && g_Config.m_ClShowhudDDRace && GameClient()->m_GameInfo.m_HudDDRace && !XcHideState)
+			if(GameClient()->m_Snap.m_aCharacters[GameClient()->m_Snap.m_LocalClientId].m_HasExtendedData && g_Config.m_ClShowhudDDRace && GameClient()->m_GameInfo.m_HudDDRace && !XcHideState && XcClassic)
 			{
 				XcShiftBegin();
 				RenderPlayerState(GameClient()->m_Snap.m_LocalClientId);
 				XcShiftEnd();
 			}
-			RenderSpectatorCount();
-			RenderMovementInformation();
-			RenderDDRaceEffects();
+			if(XcClassic)
+			{
+				RenderSpectatorCount();
+				RenderMovementInformation();
+				if(g_Config.m_XcHudClassicEffects)
+					RenderDDRaceEffects();
+			}
 		}
 		else if(GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			int SpectatorId = GameClient()->m_Snap.m_SpecInfo.m_SpectatorId;
-			if(SpectatorId != SPEC_FREEVIEW && g_Config.m_ClShowhudHealthAmmo && (!XcHideState || GameClient()->m_GameInfo.m_HudHealthArmor))
+			if(XcClassic && SpectatorId != SPEC_FREEVIEW && g_Config.m_ClShowhudHealthAmmo && (!XcHideState || GameClient()->m_GameInfo.m_HudHealthArmor))
 			{
 				XcShiftBegin();
 				RenderAmmoHealthAndArmor(&GameClient()->m_Snap.m_aCharacters[SpectatorId].m_Cur);
@@ -2054,32 +2059,46 @@ void CHud::OnRender()
 				GameClient()->m_Snap.m_aCharacters[SpectatorId].m_HasExtendedData &&
 				g_Config.m_ClShowhudDDRace &&
 				(!GameClient()->m_MultiViewActivated || GameClient()->m_MultiViewShowHud) &&
-				GameClient()->m_GameInfo.m_HudDDRace && !XcHideState)
+				GameClient()->m_GameInfo.m_HudDDRace && !XcHideState && XcClassic)
 			{
 				XcShiftBegin();
 				RenderPlayerState(SpectatorId);
 				XcShiftEnd();
 			}
-			RenderMovementInformation();
-			RenderSpectatorHud();
+			if(XcClassic)
+			{
+				RenderMovementInformation();
+				RenderSpectatorHud();
+			}
 		}
 
-		if(g_Config.m_ClShowhudTimer && !GameClient()->m_XcHud.HidesClassicTimer()) // XClient: the new HUD has its own timer
+		// XClient: every part of the standard HUD can be turned off (xc_hud_classic and its parts)
+		const bool XcMessages = XcClassic && g_Config.m_XcHudClassicMessages;
+		if(XcClassic && g_Config.m_ClShowhudTimer && !GameClient()->m_XcHud.HidesClassicTimer()) // XClient: the new HUD has its own timer
 			RenderGameTimer();
-		RenderPauseNotification();
-		RenderSuddenDeath();
-		if(g_Config.m_ClShowhudScore)
+		if(XcMessages)
+		{
+			RenderPauseNotification();
+			RenderSuddenDeath();
+		}
+		if(XcClassic && g_Config.m_ClShowhudScore)
 			RenderScoreHud();
-		RenderDummyActions();
-		RenderWarmupTimer();
-		RenderTextInfo();
+		if(XcClassic)
+			RenderDummyActions();
+		if(XcMessages)
+			RenderWarmupTimer();
+		if(XcClassic)
+			RenderTextInfo();
 		GameClient()->m_TClient.RenderCenterLines();
-		RenderLocalTime((m_Width / 7) * 3);
+		if(XcClassic)
+			RenderLocalTime((m_Width / 7) * 3);
 		if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
 			RenderConnectionWarning();
-		RenderTeambalanceWarning();
-		GameClient()->m_Voting.Render();
-		if(g_Config.m_ClShowRecord)
+		if(XcMessages)
+			RenderTeambalanceWarning();
+		if(g_Config.m_XcHudClassicVote)
+			GameClient()->m_Voting.Render();
+		if(XcClassic && g_Config.m_ClShowRecord)
 			RenderRecord();
 	}
 	RenderCursor();
