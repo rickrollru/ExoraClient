@@ -26,7 +26,7 @@ ColorRGBA CTeeGlow::GlowColor(int ClientId) const
 
 bool CTeeGlow::HasGlow(int ClientId) const
 {
-	return g_Config.m_XcGlow && ShowFor(GameClient(), ClientId, g_Config.m_XcGlowSelf, g_Config.m_XcGlowDummy, g_Config.m_XcGlowOthers);
+	return g_Config.m_XcGlow && !GameClient()->m_FxRenderer.Reduced() && ShowFor(GameClient(), ClientId, g_Config.m_XcGlowSelf, g_Config.m_XcGlowDummy, g_Config.m_XcGlowOthers);
 }
 
 bool CTeeGlow::HasShader(int ClientId) const
@@ -45,7 +45,8 @@ bool CTeeGlow::Begin(int ClientId)
 
 	// the tee, its weapon and room for the glow
 	const vec2 Pos = GameClient()->m_aClients[ClientId].m_RenderPos;
-	const float Extent = 80.0f + GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius;
+	// the blur reaches up to twice the radius (its levels are powers of two)
+	const float Extent = 80.0f + 2.0f * GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius;
 	const float aWorldRect[4] = {Pos.x - Extent, Pos.y - Extent, Pos.x + Extent, Pos.y + Extent};
 	Graphics()->XcCaptureBegin(aWorldRect);
 	return true;

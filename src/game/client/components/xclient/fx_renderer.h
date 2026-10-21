@@ -132,6 +132,9 @@ public:
 
 	// true when shapes are drawn by the render module
 	bool ModuleActive() const;
+	// the FPS guard turned the heavy effects (glow, bloom) off for this session
+	bool Reduced() const { return m_Reduced; }
+	int Quality() const;
 
 	// Queue a world space shape, drawn once per frame after all world effects.
 	void AddWorld(const SFxShape &Shape) { m_vWorld.push_back(Shape); }
@@ -153,6 +156,14 @@ private:
 	std::vector<XcRender::SShapeGpu> m_vAdditive;
 	float m_MenuBlur = 0.0f;
 	float m_LastMenuBlurTime = -1.0f;
+
+	// FPS guard and the performance log (xc_auto_quality, xc_perf_log)
+	bool m_Reduced = false;
+	int m_SlowWindows = 0;
+	double m_WindowTime = 0.0;
+	int m_WindowFrames = 0;
+	float m_WindowWorst = 0.0f;
+	void UpdatePerf();
 
 	void DrawFallback(const std::vector<SFxShape> &vShapes) const;
 	void DrawFallbackShape(const SFxShape &Shape) const;
