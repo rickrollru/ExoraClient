@@ -92,6 +92,8 @@ private:
 	float m_TopHeight = 0.0f;
 	float m_LeftWidth = 0.0f;
 	float m_RightWidth = 0.0f;
+	float m_SplitDrag = 0.0f; // the part of a pixel the panel edge was dragged
+	void RenderPanelSplitters();
 	float m_StatusHeight = 0.0f;
 	float m_DockHeight = 0.0f;
 	// the map view between the panels in editor UI units

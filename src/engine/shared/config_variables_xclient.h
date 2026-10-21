@@ -512,6 +512,8 @@ MACRO_CONFIG_INT(XcEditorGuideSeen, xc_editor_guide_seen, 0, 0, 1, CFGFLAG_CLIEN
 MACRO_CONFIG_INT(XcEditorUi, xc_editor_ui, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The new map editor interface in the Exora Client style (0 = the classic editor)")
 MACRO_CONFIG_INT(XcAspectRatio, xc_aspect_ratio, 0, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Aspect ratio of the game picture in percent of the height (133 = 4:3), stretched to the screen; 0 = the screen's own")
 MACRO_CONFIG_INT(XcEditorScale, xc_editor_scale, 110, 70, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the new map editor interface in percent")
+MACRO_CONFIG_INT(XcEditorLeftWidth, xc_editor_left_width, 270, 180, 700, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the left panel of the map editor (drag its edge)")
+MACRO_CONFIG_INT(XcEditorRightWidth, xc_editor_right_width, 290, 200, 700, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the properties panel of the map editor (drag its edge)")
 MACRO_CONFIG_INT(XcEditorEnvCurves, xc_editor_env_curves, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Experimental: envelopes as one graph with bezier handles, like After Effects")
 MACRO_CONFIG_INT(XcCoopPort, xc_coop_port, 8314, 1024, 65535, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The port of a room for editing a map together")
 MACRO_CONFIG_STR(XcCoopAddress, xc_coop_address, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "The last room address for editing a map together (IP:port)")
