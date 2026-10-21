@@ -47,6 +47,7 @@ void CXcMenu::OnInit()
 	m_VisualsSection = std::clamp(g_Config.m_XcMenuVisualsSection, 0, NUM_VISUALS - 1);
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
+	m_MapPreviews.Init(Graphics(), Storage(), GameClient()->Engine());
 
 	// interface sounds: our own set generated for XClient and the Flower set (data/xclient/sounds)
 	static const char *const s_aapSounds[NUM_UI_SOUND_PACKS][XcUi::NUM_SOUNDS] = {
