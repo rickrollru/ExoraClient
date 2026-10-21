@@ -126,7 +126,21 @@ float CXcEditorUi::UiToPixels() const
 void CXcEditorUi::OnMouseMove(vec2 MousePos)
 {
 	if(m_Gui.IsReady())
-		m_Gui.OnMouseMove(MousePos);
+		m_Gui.OnMouseMove(MousePos + m_HeldOffset);
+}
+
+void CXcEditorUi::OnHeldMouseMove(vec2 Delta)
+{
+	// the drawn mouse stays, ImGui sees it move
+	m_HeldOffset += Delta;
+	OnMouseMove(m_pEditor->Ui()->UpdatedMousePos());
+}
+
+bool CXcEditorUi::HoldMouseWhileDragging(bool Changed)
+{
+	if(ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.0f))
+		m_DragThisFrame = true;
+	return Changed;
 }
 
 void CXcEditorUi::OnInput(const IInput::CEvent &Event)
@@ -362,7 +376,8 @@ void CXcEditorUi::Render()
 		// the classic editor owns the mouse while it drags something, a popup of it is hovered or a dialog is open
 		const bool ClassicBusy = (E.m_Dialog != DIALOG_NONE && E.m_Dialog != DIALOG_FILE) || E.Ui()->IsPopupHovered() || (!m_WantsMouse && !E.Ui()->CheckActiveItem(nullptr));
 		const vec2 Mouse = ClassicBusy ? vec2(-100000.0f, -100000.0f) : E.Ui()->UpdatedMousePos();
-		m_Gui.NewFrame(std::min(E.Client()->RenderFrameTime(), 0.1f), Mouse);
+		m_Gui.NewFrame(std::min(E.Client()->RenderFrameTime(), 0.1f), ClassicBusy ? Mouse : Mouse + m_HeldOffset);
+		m_DragThisFrame = false;
 		// a window that closes itself on Esc this frame must still keep the Esc from the editor
 		const bool PopupOpenAtStart = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
 
@@ -410,6 +425,10 @@ void CXcEditorUi::Render()
 		if(PopupOpenAtStart || ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId) || m_Typing || m_TypingLastFrame)
 			E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE);
 		m_TypingLastFrame = m_Typing;
+		// a number is being dragged: hold the mouse from the next move on; let it go when the drag ends
+		m_HoldMouse = m_DragThisFrame;
+		if(!m_HoldMouse)
+			m_HeldOffset = vec2(0.0f, 0.0f);
 		m_Gui.Render();
 		SetFonts(OldFonts);
 		SetScale(OldScale);

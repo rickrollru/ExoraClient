@@ -67,6 +67,8 @@ public:
 
 	// input from the editor, before the editor UI gets it
 	void OnMouseMove(vec2 MousePos);
+	bool HoldsMouse() const { return m_HoldMouse; }
+	void OnHeldMouseMove(vec2 Delta);
 	void OnInput(const IInput::CEvent &Event);
 	void OpenMapDetails() { m_MapDetailsRequest = true; }
 	// an error or a notice of the editor, shown in a dialog of the new interface
@@ -93,6 +95,11 @@ private:
 	float m_LeftWidth = 0.0f;
 	float m_RightWidth = 0.0f;
 	float m_SplitDrag = 0.0f; // the part of a pixel the panel edge was dragged
+	// dragging a number: the mouse stays where it is, only the value moves (like Blender)
+	bool m_DragThisFrame = false;
+	bool m_HoldMouse = false;
+	vec2 m_HeldOffset = vec2(0.0f, 0.0f);
+	bool HoldMouseWhileDragging(bool Changed = false);
 	void RenderPanelSplitters();
 	float m_StatusHeight = 0.0f;
 	float m_DockHeight = 0.0f;
@@ -274,6 +281,9 @@ private:
 	int m_EnvSelPoint = -1;
 	float m_EnvScroll = 0.0f; // the first second shown
 	float m_EnvView = 5.0f; // how many seconds are shown
+	float m_EnvValuePan = 0.0f; // the graph moved up or down with the held wheel
+	bool m_EnvPanning = false;
+	void PanEnvelopeView(ImVec2 AreaMin, ImVec2 AreaMax, float TrackWidth, float GraphHeight);
 	bool m_EnvDragging = false;
 	CFixedTime m_EnvDragOld;
 	int m_EnvValueOld = 0;
