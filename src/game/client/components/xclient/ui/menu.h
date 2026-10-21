@@ -86,6 +86,16 @@ public:
 
 	bool IsActive() const { return m_Active && g_Config.m_XcNewMenu; }
 	void SetActive(bool Active);
+	// the connecting and loading screens in the style of the menu (menu_status.cpp);
+	// Progress 0..1, -1 = running without a known amount, -2 = no bar.
+	// Returns STATUS_NOT_DRAWN when the classic screen should be drawn instead
+	enum
+	{
+		STATUS_NOT_DRAWN = 0,
+		STATUS_DRAWN,
+		STATUS_BUTTON, // the button under the text was pressed
+	};
+	int RenderStatusScreen(const char *pTitle, const char *pText, const char *pExtra, float Progress, const char *pButton);
 	// opens the new menu on a page (from the classic menu); Section: of the visuals or the settings
 	void OpenAt(int Page, int Section);
 
@@ -229,6 +239,10 @@ private:
 	// big home tile: icon, name and a small note, lifts under the mouse; Glow 0..1 marks an active state
 	bool HomeTile(const char *pId, const char *pIcon, const char *pLabel, const char *pNote, float Width, float Height, float Glow = 0.0f);
 	void RenderMusicCard(); // menu_music.cpp
+	// menu_status.cpp: the "disconnected" and "password" windows over the menu
+	void RenderConnectionPopup();
+	float m_StatusTime = 0.0f;
+	bool m_PasswordFocus = true;
 	// the tee is drawn by DDNet in the middle of the ImGui frame through a draw callback
 	struct STeeDraw
 	{

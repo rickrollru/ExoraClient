@@ -47,7 +47,7 @@ namespace XcUi
 	bool IconButton(const char *pIcon, const char *pTooltip, bool Selected = false);
 	// colored circles to pick one of the given colors
 	bool ColorSwatches(const char *pId, int *pCurrent, const ImVec4 *pColors, int NumColors);
-	bool InputText(const char *pLabel, char *pBuffer, int BufferSize, const char *pHint = nullptr, float Width = 0.0f); // Width 0: all the space left
+	bool InputText(const char *pLabel, char *pBuffer, int BufferSize, const char *pHint = nullptr, float Width = 0.0f, int Flags = 0); // Width 0: all the space left
 	// effect color: accent / own / rainbow / skin modes, swatches and a hue bar for the own color (packed HSL)
 	bool EffectColorPicker(const char *pId, int *pMode, unsigned *pColor);
 	// three chips: show an effect for me, my dummy, other players
