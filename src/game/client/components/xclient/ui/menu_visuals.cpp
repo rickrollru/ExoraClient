@@ -793,6 +793,7 @@ void CXcMenu::RenderVisualsNames()
 		ToggleRow(Tr("Team colors"), "cl_nameplates_teamcolors", &g_Config.m_ClNamePlatesTeamcolors);
 		ToggleRow(Tr("Heart for friends"), "cl_nameplates_friendmark", &g_Config.m_ClNamePlatesFriendMark);
 		ConfigSlider(Tr("Name size"), "cl_nameplates_size", &g_Config.m_ClNamePlatesSize, -50, 100);
+		ConfigSlider(Tr("Letter spacing"), "xc_name_spacing", &g_Config.m_XcNameSpacing, -15, 80, "%d%%");
 		ConfigSlider(Tr("Gap above the tee"), "cl_nameplates_offset", &g_Config.m_ClNamePlatesOffset, 10, 50);
 		ToggleRow(Tr("Clan"), "cl_nameplates_clan", &g_Config.m_ClNamePlatesClan);
 		if(g_Config.m_ClNamePlatesClan)

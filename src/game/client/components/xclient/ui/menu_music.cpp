@@ -207,9 +207,13 @@ void CXcMenu::RenderMusicCard()
 		Music.Next();
 
 	// the volume of the player app: the speaker mutes, the bar drags, the wheel steps by 5%
-	const float Volume = Music.Volume();
-	if(HasTrack && Volume >= 0.0f)
+	// when the player's sound is not found (it is paused, or the app is unknown) the row stays, dimmed
+	const float KnownVolume = Music.Volume();
+	const bool VolumeKnown = KnownVolume >= 0.0f;
+	const float Volume = VolumeKnown ? KnownVolume : 0.0f;
+	if(HasTrack)
 	{
+		ImGui::BeginDisabled(!VolumeKnown);
 		ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
 		static float s_VolumeBeforeMute = 0.5f;
 		ImFont *pSmall = Fonts().m_pSmall;
@@ -237,7 +241,10 @@ void CXcMenu::RenderMusicCard()
 		pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(RowPos.x + (IconWidth - IconDim.x) * 0.5f, RowPos.y + (RowHeight - IconDim.y) * 0.5f), Col(IconHovered ? t.m_Text : t.m_TextSecondary), pSpeaker);
 
 		char aPercent[16];
-		str_format(aPercent, sizeof(aPercent), "%d%%", (int)std::round(Volume * 100.0f));
+		if(VolumeKnown)
+			str_format(aPercent, sizeof(aPercent), "%d%%", (int)std::round(Volume * 100.0f));
+		else
+			str_copy(aPercent, "—");
 		const float PercentWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, "100%").x;
 		const float BarX = RowPos.x + IconWidth + S(10.0f);
 		const float BarWidth = RowWidth - IconWidth - S(20.0f) - PercentWidth;
@@ -259,12 +266,18 @@ void CXcMenu::RenderMusicCard()
 		const float Mid = RowPos.y + RowHeight * 0.5f;
 		const float Shown = Dragging ? MouseLevel : Volume;
 		pDraw->AddRectFilled(ImVec2(BarX, Mid - Thick * 0.5f), ImVec2(BarX + BarWidth, Mid + Thick * 0.5f), Col(t.m_Track), Thick);
-		pDraw->AddRectFilled(ImVec2(BarX, Mid - Thick * 0.5f), ImVec2(BarX + BarWidth * Shown, Mid + Thick * 0.5f), Col(t.m_Accent), Thick);
-		pDraw->AddCircleFilled(ImVec2(BarX + BarWidth * Shown, Mid), S(5.0f) + S(2.0f) * Grow, Col(t.m_Text), 16);
+		if(VolumeKnown)
+		{
+			pDraw->AddRectFilled(ImVec2(BarX, Mid - Thick * 0.5f), ImVec2(BarX + BarWidth * Shown, Mid + Thick * 0.5f), Col(t.m_Accent), Thick);
+			pDraw->AddCircleFilled(ImVec2(BarX + BarWidth * Shown, Mid), S(5.0f) + S(2.0f) * Grow, Col(t.m_Text), 16);
+		}
 		const float PercentTextWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aPercent).x;
 		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(RowPos.x + RowWidth - PercentTextWidth, Mid - pSmall->FontSize * 0.5f), Col(Dragging ? t.m_Text : t.m_TextMuted), aPercent);
 		ImGui::SetCursorScreenPos(ImVec2(RowPos.x, RowPos.y + RowHeight));
 		ImGui::Dummy(ImVec2(RowWidth, 0.0f));
+		ImGui::EndDisabled();
+		if(!VolumeKnown && ImGui::IsMouseHoveringRect(RowPos, ImVec2(RowPos.x + RowWidth, RowPos.y + RowHeight)))
+			ImGui::SetTooltip("%s", Tr("The volume of this player is not found yet: start the music"));
 	}
 	EndCard();
 }
