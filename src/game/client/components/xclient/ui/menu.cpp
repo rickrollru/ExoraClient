@@ -88,6 +88,7 @@ void CXcMenu::PlayUiSoundCallback(void *pUser, int Sound)
 
 void CXcMenu::OnShutdown()
 {
+	UnloadAssetPreviews();
 	if(m_pStatsTask)
 		m_pStatsTask->Abort();
 	m_pStatsTask = nullptr;
@@ -238,8 +239,11 @@ void CXcMenu::UpdateStyle()
 		Fonts.m_pIcons = BackendFonts.m_pIcons;
 		SetFonts(Fonts);
 	}
-	if(m_AppliedTheme != g_Config.m_XcUiTheme || m_AppliedAccent != g_Config.m_XcUiAccent || m_AppliedScale != Scale)
+	// everything the theme is made of, so a change shows at once
+	const unsigned ThemeKey = g_Config.m_XcUiAccentColor ^ (g_Config.m_XcUiTintColor * 31u) ^ ((unsigned)g_Config.m_XcUiTint << 25);
+	if(m_AppliedTheme != g_Config.m_XcUiTheme || m_AppliedAccent != g_Config.m_XcUiAccent || m_AppliedScale != Scale || m_AppliedThemeKey != ThemeKey)
 	{
+		m_AppliedThemeKey = ThemeKey;
 		m_AppliedTheme = g_Config.m_XcUiTheme;
 		m_AppliedAccent = g_Config.m_XcUiAccent;
 		m_AppliedScale = Scale;
@@ -468,9 +472,7 @@ void CXcMenu::OnRender()
 		else
 			HandleBackgroundFile(aDropped);
 	}
-	// texture previews only take video memory while the page is open
-	if(!CaptureAssets)
-		UnloadAssetPreviews();
+	// the small texture previews stay loaded: opening the page again is instant
 	const float Target = m_Active ? 1.0f : 0.0f;
 	const float Speed = AnimationSpeed() > 0.0f ? 6.0f * AnimationSpeed() : 1000.0f;
 	m_OpenAnimation = m_OpenAnimation < Target ? std::min(m_OpenAnimation + Dt * Speed, Target) : std::max(m_OpenAnimation - Dt * Speed, Target);

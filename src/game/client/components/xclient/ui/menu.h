@@ -175,7 +175,8 @@ private:
 	{
 		std::string m_Name;
 		IGraphics::CTextureHandle m_Preview;
-		bool m_Loaded = false;
+		bool m_Loaded = false; // the preview is uploaded (or failed)
+		std::shared_ptr<class CXcAssetPreviewJob> m_pJob; // reads and shrinks the picture in the background
 	};
 	int m_AssetType = ASSET_GAME;
 	std::vector<SAssetEntry> m_avAssets[NUM_ASSET_TYPES];
@@ -226,6 +227,7 @@ private:
 	// last applied style values, the style and fonts are rebuilt when they change
 	int m_AppliedTheme = -1;
 	int m_AppliedAccent = -1;
+	unsigned m_AppliedThemeKey = 0;
 	float m_AppliedScale = -1.0f;
 
 	static void ConToggleMenu(IConsole::IResult *pResult, void *pUserData);

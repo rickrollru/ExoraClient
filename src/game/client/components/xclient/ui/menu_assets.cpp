@@ -13,13 +13,19 @@
 
 #include <engine/client.h>
 #include <engine/external/imgui/imgui.h>
+#include <engine/engine.h>
 #include <engine/external/stb/stb_image.h>
+#include <engine/gfx/image_manipulation.h>
+#include <engine/image.h>
+#include <engine/shared/jobs.h>
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 
 #include <game/client/gameclient.h>
 
 #include <algorithm>
+#include <cstring>
+#include <memory>
 #include <set>
 
 using namespace XcUi;
@@ -72,12 +78,77 @@ int AssetScanCallback(const char *pName, int IsDir, int DirType, void *pUser)
 }
 } // namespace
 
+// Reads a texture set picture and shrinks it to a small preview, off the main thread: the sets are
+// big PNGs (up to 4096 px), decoding and uploading them in the menu frame made the page stutter.
+class CXcAssetPreviewJob : public IJob
+{
+public:
+	IStorage *m_pStorage;
+	std::string m_Path;
+	CImageInfo m_Image;
+	bool m_Success = false;
+
+	CXcAssetPreviewJob(IStorage *pStorage, std::string Path) :
+		m_pStorage(pStorage), m_Path(std::move(Path))
+	{
+		Abortable(true);
+	}
+
+protected:
+	void Run() override
+	{
+		void *pData;
+		unsigned Size;
+		if(!m_pStorage->ReadFile(m_Path.c_str(), IStorage::TYPE_ALL, &pData, &Size))
+			return;
+		int Width, Height, Comp;
+		stbi_uc *pPixels = stbi_load_from_memory((const stbi_uc *)pData, (int)Size, &Width, &Height, &Comp, 4);
+		free(pData);
+		if(!pPixels || State() == IJob::STATE_ABORTED)
+		{
+			if(pPixels)
+				stbi_image_free(pPixels);
+			return;
+		}
+		// a tile is at most ~300 px wide on a 4K screen
+		static constexpr int MAX_SIDE = 512;
+		const float Shrink = std::min(1.0f, (float)MAX_SIDE / std::max(Width, Height));
+		const int NewWidth = std::max(1, (int)(Width * Shrink));
+		const int NewHeight = std::max(1, (int)(Height * Shrink));
+		m_Image.m_Width = NewWidth;
+		m_Image.m_Height = NewHeight;
+		m_Image.m_Format = CImageInfo::FORMAT_RGBA;
+		if(NewWidth != Width || NewHeight != Height)
+		{
+			m_Image.m_pData = ResizeImage(pPixels, Width, Height, NewWidth, NewHeight, 4);
+			stbi_image_free(pPixels);
+		}
+		else
+		{
+			m_Image.Allocate();
+			std::memcpy(m_Image.m_pData, pPixels, (size_t)Width * Height * 4);
+			stbi_image_free(pPixels);
+		}
+		m_Success = m_Image.m_pData != nullptr;
+	}
+};
+
+template<typename TEntry>
+static void UnloadAssetEntries(IGraphics *pGraphics, std::vector<TEntry> &vEntries)
+{
+	for(TEntry &Entry : vEntries)
+	{
+		if(Entry.m_pJob)
+			Entry.m_pJob->Abort();
+		if(Entry.m_Preview.IsValid())
+			pGraphics->UnloadTexture(&Entry.m_Preview);
+	}
+	vEntries.clear();
+}
+
 void CXcMenu::ScanAssets(int Type)
 {
-	for(SAssetEntry &Entry : m_avAssets[Type])
-		if(Entry.m_Loaded)
-			Graphics()->UnloadTexture(&Entry.m_Preview);
-	m_avAssets[Type].clear();
+	UnloadAssetEntries(Graphics(), m_avAssets[Type]);
 
 	std::set<std::string> Names;
 	SScanUser Scan = {&Names};
@@ -101,15 +172,13 @@ void CXcMenu::UnloadAssetPreviews()
 {
 	for(int Type = 0; Type < NUM_ASSET_TYPES; Type++)
 	{
-		for(SAssetEntry &Entry : m_avAssets[Type])
-			if(Entry.m_Loaded)
-				Graphics()->UnloadTexture(&Entry.m_Preview);
-		m_avAssets[Type].clear();
+		UnloadAssetEntries(Graphics(), m_avAssets[Type]);
 		m_aAssetsScanned[Type] = false;
 	}
 }
 
-static IGraphics::CTextureHandle LoadAssetPreview(IGraphics *pGraphics, IStorage *pStorage, int Type, const char *pName)
+// the picture that shows a set: one png, or a folder (entities: one picture per game mod)
+static std::string AssetPreviewPath(IStorage *pStorage, int Type, const char *pName)
 {
 	const char *pFolder = AssetType(Type).m_pFolder;
 	const bool Entities = str_comp(pFolder, "entities") == 0;
@@ -120,13 +189,12 @@ static IGraphics::CTextureHandle LoadAssetPreview(IGraphics *pGraphics, IStorage
 			str_copy(aPath, "editor/entities_clear/ddnet.png");
 		else
 			str_format(aPath, sizeof(aPath), "%s.png", pFolder);
-		return pGraphics->LoadTexture(aPath, IStorage::TYPE_ALL);
+		return aPath;
 	}
-	// a set is either one picture or a folder (entities: one picture per game mod)
 	str_format(aPath, sizeof(aPath), "assets/%s/%s.png", pFolder, pName);
 	if(!pStorage->FileExists(aPath, IStorage::TYPE_ALL))
 		str_format(aPath, sizeof(aPath), "assets/%s/%s/%s.png", pFolder, pName, Entities ? "ddnet" : pFolder);
-	return pGraphics->LoadTexture(aPath, IStorage::TYPE_ALL);
+	return aPath;
 }
 
 void CXcMenu::HandleAssetFile(const char *pPath)
@@ -203,17 +271,33 @@ void CXcMenu::RenderSettingsTextures()
 			ScanAssets(Type);
 		const SAssetType &Asset = AssetType(Type);
 
-		// previews load a few per frame so a big collection does not stall the menu
-		int Budget = 4;
+		// previews are read and shrunk in the background (two at a time), only the small result is uploaded
+		int Running = 0;
+		for(SAssetEntry &Entry : m_avAssets[Type])
+		{
+			if(!Entry.m_pJob || !Entry.m_pJob->Done())
+			{
+				Running += Entry.m_pJob ? 1 : 0;
+				continue;
+			}
+			if(Entry.m_pJob->m_Success)
+				Entry.m_Preview = Graphics()->LoadTextureRawMove(Entry.m_pJob->m_Image, 0, "xclient/asset_preview");
+			Entry.m_pJob = nullptr;
+			Entry.m_Loaded = true;
+		}
+		for(SAssetEntry &Entry : m_avAssets[Type])
+		{
+			if(Running >= 2)
+				break;
+			if(Entry.m_Loaded || Entry.m_pJob)
+				continue;
+			Entry.m_pJob = std::make_shared<CXcAssetPreviewJob>(Storage(), AssetPreviewPath(Storage(), Type, Entry.m_Name.c_str()));
+			GameClient()->Engine()->AddJob(Entry.m_pJob);
+			Running++;
+		}
 		CTileGrid Grid(AvailWidth(), S(Asset.m_Aspect > 1.5f ? 300.0f : 170.0f), S(14.0f));
 		for(SAssetEntry &Entry : m_avAssets[Type])
 		{
-			if(!Entry.m_Loaded && Budget > 0)
-			{
-				Entry.m_Preview = LoadAssetPreview(Graphics(), Storage(), Type, Entry.m_Name.c_str());
-				Entry.m_Loaded = true;
-				Budget--;
-			}
 			Grid.Next();
 			const bool Selected = str_comp(Asset.m_pValue, Entry.m_Name.c_str()) == 0;
 			const char *pName = Entry.m_Name == "default" ? Tr("Default") : Entry.m_Name.c_str();

@@ -1,5 +1,9 @@
 #include "theme.h"
 
+#include <base/color.h>
+
+#include <engine/shared/config.h>
+
 #include <algorithm>
 
 namespace XcUi
@@ -24,6 +28,11 @@ namespace XcUi
 		case ACCENT_RED: return Hex(0xFF4D4D);
 		// monochrome: white on the dark theme, near black on the light one
 		case ACCENT_WHITE: return Dark ? Hex(0xF2F3F5) : Hex(0x15171C);
+		case ACCENT_CUSTOM:
+		{
+			const ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_XcUiAccentColor));
+			return ImVec4(Color.r, Color.g, Color.b, 1.0f);
+		}
 		default: return Hex(0x4F8CFF);
 		}
 	}
@@ -62,6 +71,18 @@ namespace XcUi
 			t.m_TextMuted = Hex(0x7A808C);
 			t.m_Track = ImVec4(0.0f, 0.0f, 0.0f, 0.1f);
 			t.m_Shadow = ImVec4(0.0f, 0.0f, 0.0f, 0.12f);
+		}
+		// own tint: the backgrounds lean toward a color, the alpha stays
+		if(g_Config.m_XcUiTint > 0)
+		{
+			const ColorRGBA Tint = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_XcUiTintColor));
+			const float Amount = g_Config.m_XcUiTint / 100.0f * (t.m_Dark ? 0.3f : 0.18f);
+			for(ImVec4 *pColor : {&t.m_Background, &t.m_Panel, &t.m_Card, &t.m_CardHover})
+			{
+				pColor->x += (Tint.r * (t.m_Dark ? 0.35f : 1.0f) - pColor->x) * Amount;
+				pColor->y += (Tint.g * (t.m_Dark ? 0.35f : 1.0f) - pColor->y) * Amount;
+				pColor->z += (Tint.b * (t.m_Dark ? 0.35f : 1.0f) - pColor->z) * Amount;
+			}
 		}
 		t.m_Accent = AccentColor(Accent, t.m_Dark);
 		// dark text on light accents (white, lime, mint), white text on the others

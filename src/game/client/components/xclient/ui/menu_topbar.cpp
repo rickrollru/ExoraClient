@@ -276,8 +276,12 @@ void CXcMenu::RenderTopBar(float Width)
 	Place(ButtonSize);
 	if(IsOnline())
 	{
-		if(IconButton(XC_ICON_XMARK, Tr("Back to the game (Esc)")))
+		// Esc goes back to the game, the cross leaves the server
+		if(IconButton(XC_ICON_XMARK, Tr("Disconnect")))
+		{
 			SetActive(false);
+			Client()->Disconnect();
+		}
 	}
 	else if(IconButton(XC_ICON_POWER, Tr("Quit")))
 		Client()->Quit();
