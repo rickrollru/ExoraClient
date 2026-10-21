@@ -81,6 +81,7 @@
 #include <game/mapitems.h>
 #include <game/teamscore.h>
 #include <game/version.h>
+#include <game/xc_live_edit.h> // XClient
 
 #include <chrono>
 #include <cmath>
@@ -1129,6 +1130,30 @@ void CGameClient::OnRelease()
 		pComponent->OnRelease();
 }
 
+// XClient: tiles changed by live map editing go into the map data in place (the physics and the drawing read
+// it), the teleporters and switches are counted again and the changed layer is drawn anew
+void CGameClient::XcOnLiveTiles(CUnpacker *pUnpacker)
+{
+	int Group, Layer, CellSize;
+	std::vector<XcLiveEdit::SRun> vRuns;
+	if(!XcLiveEdit::Read(pUnpacker, &Group, &Layer, &CellSize, &vRuns))
+	{
+		log_debug("xc_live", "broken tiles message");
+		return;
+	}
+	if(!XcLiveEdit::Apply(&m_Layers, Group, Layer, CellSize, vRuns, nullptr))
+	{
+		log_debug("xc_live", "tiles for group %d layer %d do not fit this map", Group, Layer);
+		return;
+	}
+	const int OldHighestSwitch = m_Collision.m_HighestSwitchNumber;
+	m_Collision.XcRefresh();
+	if(m_Collision.m_HighestSwitchNumber > OldHighestSwitch)
+		m_GameWorld.m_Core.InitSwitchers(m_Collision.m_HighestSwitchNumber);
+	m_MapLayersBackground.XcMarkDirty(Group, Layer);
+	m_MapLayersForeground.XcMarkDirty(Group, Layer);
+}
+
 void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker, int Conn, bool Dummy)
 {
 	// special messages
@@ -1165,6 +1190,14 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker, int Conn, bool Dumm
 		m_aReceivedTuning[Conn] = true;
 		// apply new tuning
 		m_aTuning[Conn] = NewTuning;
+		return;
+	}
+
+	// XClient: live map editing on our own server, the tiles follow the message id
+	if(MsgId == NETMSGTYPE_SV_XCLIVETILES)
+	{
+		if(!Dummy)
+			XcOnLiveTiles(pUnpacker);
 		return;
 	}
 

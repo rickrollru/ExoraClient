@@ -110,6 +110,7 @@ class CEditor : public IEditor
 {
 	friend class CXcEditorUi; // XClient: the new interface drives the editor
 	friend class CXcCoop; // XClient: editing one map together
+	friend class CXcLiveEdit; // XClient: live map editing
 
 	class IInput *m_pInput = nullptr;
 	class IClient *m_pClient = nullptr;
@@ -260,6 +261,7 @@ public:
 	void OnActivate() override;
 	void OnWindowResize() override;
 	void OnClose() override;
+	void XcBackgroundUpdate() override; // XClient
 	void OnDialogClose();
 	bool HasUnsavedData() const override;
 	void UpdateMentions() override { m_Mentions++; }

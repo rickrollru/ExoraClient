@@ -2900,7 +2900,10 @@ void CClient::Update()
 	if(m_EditorActive)
 		m_pEditor->OnUpdate();
 	else
+	{
+		m_pEditor->XcBackgroundUpdate(); // XClient
 		GameClient()->OnUpdate();
+	}
 
 	if(State() == IClient::STATE_DEMOPLAYBACK)
 	{

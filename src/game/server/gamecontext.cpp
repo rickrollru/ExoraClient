@@ -44,6 +44,7 @@
 #include <game/gamecore.h>
 #include <game/mapitems.h>
 #include <game/version.h>
+#include <game/xc_live_edit.h> // XClient
 
 #include <vector>
 
@@ -1735,6 +1736,8 @@ void CGameContext::ProgressVoteOptions(int ClientId)
 
 void CGameContext::OnClientEnter(int ClientId)
 {
+	XcSendLiveLog(ClientId); // XClient: the map changes made while it is played
+
 	if(m_TeeHistorianActive)
 	{
 		m_TeeHistorian.RecordPlayerReady(ClientId);
@@ -2261,6 +2264,9 @@ void CGameContext::OnMessage(int MsgId, CUnpacker *pUnpacker, int ClientId)
 		case NETMSGTYPE_CL_KILL:
 			OnKillNetMessage(static_cast<CNetMsg_Cl_Kill *>(pRawMsg), ClientId);
 			break;
+		case NETMSGTYPE_CL_XCLIVETILES: // XClient
+			OnXcLiveTilesNetMessage(pUnpacker, ClientId);
+			break;
 		case NETMSGTYPE_CL_ENABLESPECTATORCOUNT:
 			OnEnableSpectatorCountNetMessage(static_cast<CNetMsg_Cl_EnableSpectatorCount *>(pRawMsg), ClientId);
 		default:
@@ -2784,6 +2790,80 @@ void CGameContext::OnShowDistanceNetMessage(const CNetMsg_Cl_ShowDistance *pMsg,
 {
 	CPlayer *pPlayer = m_apPlayers[ClientId];
 	pPlayer->m_ShowDistance = vec2(pMsg->m_X, pMsg->m_Y);
+}
+
+// XClient: live map editing (sv_xc_live_edit): tiles from a player's map editor go into the map and the
+// physics, and on to all players; players who come later get all changes so far
+void CGameContext::OnXcLiveTilesNetMessage(CUnpacker *pUnpacker, int ClientId)
+{
+	if(!g_Config.m_SvXcLiveEdit)
+		return;
+	int Group, Layer, CellSize;
+	std::vector<XcLiveEdit::SRun> vRuns;
+	if(!XcLiveEdit::Read(pUnpacker, &Group, &Layer, &CellSize, &vRuns))
+		return;
+	std::vector<XcLiveEdit::SChange> vChanges;
+	if(!XcLiveEdit::Apply(&m_Layers, Group, Layer, CellSize, vRuns, &vChanges))
+		return;
+	const int OldHighestSwitch = m_Collision.m_HighestSwitchNumber;
+	m_Collision.XcRefresh();
+	// new switch numbers: the switchers are made again (this resets their states)
+	if(m_Collision.m_HighestSwitchNumber > OldHighestSwitch)
+		m_World.m_Core.InitSwitchers(m_Collision.m_HighestSwitchNumber);
+
+	// pickups, doors, lasers... of the changed tiles
+	for(const XcLiveEdit::SChange &Change : vChanges)
+	{
+		const vec2 Pos(Change.m_X * 32.0f + 16.0f, Change.m_Y * 32.0f + 16.0f);
+		if(Change.m_OldIndex >= ENTITY_OFFSET)
+		{
+			m_pController->XcRemoveSpawn(Pos);
+			for(int Type : {CGameWorld::ENTTYPE_PICKUP, CGameWorld::ENTTYPE_LASER})
+			{
+				CEntity *apEnts[8];
+				const int Num = m_World.FindEntities(Pos, 4.0f, apEnts, std::size(apEnts), Type);
+				for(int i = 0; i < Num; i++)
+				{
+					m_World.RemoveEntity(apEnts[i]);
+					apEnts[i]->Destroy();
+				}
+			}
+		}
+		if(Change.m_NewIndex >= ENTITY_OFFSET)
+		{
+			const int Index = Change.m_Y * m_Collision.GetWidth() + Change.m_X;
+			// spawns are only taken at the map start: a live one counts as such
+			const int Entity = Change.m_NewIndex - ENTITY_OFFSET;
+			const bool Initial = Entity >= ENTITY_SPAWN && Entity <= ENTITY_SPAWN_BLUE;
+			if(Change.m_Switch && m_Collision.SwitchLayer())
+				m_pController->OnEntity(Entity, Change.m_X, Change.m_Y, LAYER_SWITCH, m_Collision.SwitchLayer()[Index].m_Flags, Initial, m_Collision.SwitchLayer()[Index].m_Number);
+			else if(Change.m_Front && m_Collision.FrontLayer())
+				m_pController->OnEntity(Entity, Change.m_X, Change.m_Y, LAYER_FRONT, m_Collision.FrontLayer()[Index].m_Flags, Initial);
+			else if(!Change.m_Switch && !Change.m_Front)
+				m_pController->OnEntity(Entity, Change.m_X, Change.m_Y, LAYER_GAME, m_Collision.GameLayer()[Index].m_Flags, Initial);
+		}
+	}
+
+	CPacker Data;
+	Data.Reset();
+	XcLiveEdit::Write(&Data, Group, Layer, CellSize, vRuns);
+	if(Data.Error())
+		return;
+	m_vXcLiveLog.emplace_back(Data.Data(), Data.Data() + Data.Size());
+	CMsgPacker Msg(NETMSGTYPE_SV_XCLIVETILES);
+	Msg.AddRaw(Data.Data(), Data.Size());
+	Server()->SendMsg(&Msg, MSGFLAG_VITAL, -1);
+	(void)ClientId;
+}
+
+void CGameContext::XcSendLiveLog(int ClientId)
+{
+	for(const std::vector<unsigned char> &vData : m_vXcLiveLog)
+	{
+		CMsgPacker Msg(NETMSGTYPE_SV_XCLIVETILES);
+		Msg.AddRaw(vData.data(), (int)vData.size());
+		Server()->SendMsg(&Msg, MSGFLAG_VITAL, ClientId);
+	}
 }
 
 void CGameContext::OnCameraInfoNetMessage(const CNetMsg_Cl_CameraInfo *pMsg, int ClientId)
@@ -4131,6 +4211,7 @@ void CGameContext::RegisterChatCommands()
 
 void CGameContext::OnInit(const void *pPersistentData)
 {
+	m_vXcLiveLog.clear(); // XClient
 	const CPersistentData *pPersistent = (const CPersistentData *)pPersistentData;
 
 	m_pServer = Kernel()->RequestInterface<IServer>();

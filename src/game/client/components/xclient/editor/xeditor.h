@@ -13,6 +13,7 @@
 #include <engine/input.h>
 
 #include "xeditor_coop.h"
+#include "xeditor_live.h"
 
 #include <game/client/components/xclient/ui/imgui_backend.h>
 
@@ -68,6 +69,8 @@ public:
 	// input from the editor, before the editor UI gets it
 	void OnMouseMove(vec2 MousePos);
 	bool HoldsMouse() const { return m_HoldMouse; }
+	// while the editor is closed (playing): editing together and live editing keep running
+	void BackgroundUpdate();
 	void OnHeldMouseMove(vec2 Delta);
 	void OnInput(const IInput::CEvent &Event);
 	void OpenMapDetails() { m_MapDetailsRequest = true; }
@@ -325,6 +328,7 @@ private:
 
 	// editing one map together (xeditor_coop.cpp, the window in xeditor_coop_ui.cpp)
 	CXcCoop m_Coop;
+	CXcLiveEdit m_Live;
 	bool m_CoopRequest = false;
 	char m_aCoopPort[8] = {};
 	char m_aCoopAddress[128] = {};

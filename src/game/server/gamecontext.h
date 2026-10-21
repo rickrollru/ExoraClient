@@ -368,6 +368,10 @@ public:
 	void OnShowOthersNetMessage(const CNetMsg_Cl_ShowOthers *pMsg, int ClientId);
 	void OnShowDistanceNetMessage(const CNetMsg_Cl_ShowDistance *pMsg, int ClientId);
 	void OnCameraInfoNetMessage(const CNetMsg_Cl_CameraInfo *pMsg, int ClientId);
+	// XClient: live map editing
+	void OnXcLiveTilesNetMessage(CUnpacker *pUnpacker, int ClientId);
+	void XcSendLiveLog(int ClientId);
+	std::vector<std::vector<unsigned char>> m_vXcLiveLog;
 	void OnSetSpectatorModeNetMessage(const CNetMsg_Cl_SetSpectatorMode *pMsg, int ClientId);
 	void OnChangeInfoNetMessage(const CNetMsg_Cl_ChangeInfo *pMsg, int ClientId);
 	void OnEmoticonNetMessage(const CNetMsg_Cl_Emoticon *pMsg, int ClientId);

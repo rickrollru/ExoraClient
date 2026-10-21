@@ -2,6 +2,10 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "maplayers.h"
 
+#include <algorithm>
+
+#include <base/time.h>
+
 #include <engine/map.h>
 
 #include <game/client/gameclient.h>
@@ -33,6 +37,7 @@ CCamera *CMapLayers::GetCurCamera()
 
 void CMapLayers::OnMapLoad()
 {
+	m_vXcDirty.clear(); // XClient
 	char aCaption[64 + MAX_MAP_LENGTH];
 	str_format(aCaption, sizeof(aCaption), "%s: %s", Localize("Loading map"), m_pLayers->Map()->BaseName());
 
@@ -52,6 +57,17 @@ void CMapLayers::OnRender()
 {
 	if(m_OnlineOnly && Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+
+	// XClient: tiles changed by live map editing
+	if(!m_vXcDirty.empty() && time_get() - m_XcLastReload > time_freq() / 8)
+	{
+		std::sort(m_vXcDirty.begin(), m_vXcDirty.end());
+		m_vXcDirty.erase(std::unique(m_vXcDirty.begin(), m_vXcDirty.end()), m_vXcDirty.end());
+		for(const auto &[Group, Layer] : m_vXcDirty)
+			m_MapRenderer.XcReloadLayer(Group, Layer);
+		m_vXcDirty.clear();
+		m_XcLastReload = time_get();
+	}
 
 	// dynamic parameters for ingame rendering
 	m_Params.m_EntityOverlayVal = m_Type == RENDERTYPE_FULL_DESIGN ? 0 : g_Config.m_ClOverlayEntities;

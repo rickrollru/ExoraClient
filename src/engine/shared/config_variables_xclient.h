@@ -591,3 +591,6 @@ MACRO_CONFIG_INT(XcCursorSize, xc_cursor_size, 100, 50, 200, CFGFLAG_CLIENT | CF
 MACRO_CONFIG_INT(XcCursorOutline, xc_cursor_outline, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Dark outline around the cursor")
 MACRO_CONFIG_INT(XcCursorGlow, xc_cursor_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Soft light around the cursor")
 MACRO_CONFIG_STR(XcCursorFile, xc_cursor_file, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own cursor picture: a PNG in xclient/cursors (the top left corner points)")
+
+// live map editing (our own server)
+MACRO_CONFIG_INT(SvXcLiveEdit, sv_xc_live_edit, 0, 0, 1, CFGFLAG_SERVER, "Exora Client players can change the map while it is played (map editor, playing together)")
