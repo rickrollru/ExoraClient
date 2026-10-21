@@ -96,6 +96,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##binds", "Key binds", "Click a key and press a new one, Esc cancels", "бинды клавиши кнопки управление binds keys jump hook прыжок хук"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_SOUND, "##volume", "Sound", "Sound and volume", "звук громкость музыка sound volume music"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CHAT, "##chat_look", "Chat", "How the chat looks", "чат сообщения chat messages"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##latency", "Input delay", "Lowest delay of the mouse and keys: VSync, fullscreen, frame queue, synchronous frames", "задержка ввода инпут лаг мышь клавиатура вертикальная синхронизация полноэкранный raw input сырой ввод input lag delay latency mouse keyboard vsync fullscreen sync"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##performance", "Performance", "Low, medium or high in one click, then each effect by hand", "производительность пресет низкое среднее высокое fps лаги performance preset low medium high"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##screen", "Screen", "Window mode and frame rate", "экран окно fps vsync полноэкранный fullscreen window"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##performance", "Effects", "Quality of the render module (OpenGL 3.3)", "эффекты качество bloom свечение quality render"},
