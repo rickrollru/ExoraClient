@@ -213,10 +213,14 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 float CXcMenu::UiScale() const
 {
 	const float Size = g_Config.m_XcUiSize / 100.0f;
+	// the layout needs about 1400 x 860 design pixels: never bigger than what fits the screen,
+	// so small and narrow windows (1280 x 882, 4:3) get the whole menu instead of a cut one
+	const float Fit = std::min(Graphics()->ScreenWidth() / 1400.0f, Graphics()->ScreenHeight() / 860.0f);
 	if(g_Config.m_XcUiScale > 0)
-		return g_Config.m_XcUiScale / 100.0f * Size;
+		return std::max(std::min(g_Config.m_XcUiScale / 100.0f * Size, Fit), 0.5f);
 	// automatic: designed for 1080p, grows on bigger screens
-	return std::clamp(Graphics()->ScreenHeight() / 1080.0f, 0.75f, 3.0f) * Size;
+	const float Auto = Graphics()->ScreenHeight() / 1080.0f;
+	return std::clamp(std::min(Auto * Size, Fit), 0.5f, 3.0f);
 }
 
 void CXcMenu::UpdateStyle()
