@@ -623,8 +623,15 @@ void CXcEditorUi::RenderTopBar()
 	}
 	Right -= S(8.0f) + ButtonSize;
 	ImGui::SetCursorScreenPos(ImVec2(Right, Mid - ButtonSize * 0.5f));
-	if(IconButton("##test", FontIcon::PLAY, Tr("Play the map on a local server"), false, !E.m_QuickActionTestMapLocally.Disabled(), ButtonSize))
-		E.m_QuickActionTestMapLocally.Call();
+	// editing together: everyone plays the tab on the host's local server
+	const bool PlayTogether = m_Coop.State() == CXcCoop::STATE_ONLINE && m_Coop.MapId(E.Map()) != 0;
+	if(IconButton("##test", FontIcon::PLAY, PlayTogether ? Tr("Play this map together: the host starts a local server, everyone joins") : Tr("Play the map on a local server"), m_Coop.PlayStarting(), PlayTogether || !E.m_QuickActionTestMapLocally.Disabled(), ButtonSize))
+	{
+		if(PlayTogether)
+			m_Coop.RequestPlay();
+		else
+			E.m_QuickActionTestMapLocally.Call();
+	}
 	// the size of the interface: a chip with the percent, a click opens − / + and the presets
 	{
 		char aSize[16];
