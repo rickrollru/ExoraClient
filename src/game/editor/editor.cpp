@@ -5074,6 +5074,13 @@ void CEditor::OnWindowResize()
 	Ui()->OnWindowResize();
 }
 
+// XClient: editing together and live editing while the editor is closed (playing the map)
+void CEditor::XcBackgroundUpdate()
+{
+	if(XcNewUi())
+		m_XcUi.BackgroundUpdate();
+}
+
 void CEditor::OnClose()
 {
 	m_ColorPipetteActive = false;

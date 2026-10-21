@@ -12,6 +12,7 @@
 #include <base/vmath.h>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -66,6 +67,8 @@ public:
 	// play the map of the current tab together: the host starts his local server, everyone joins it
 	void RequestPlay();
 	bool PlayStarting() const { return m_PlayMapId != 0; }
+	// the host started playing a tab: live editing sends its blocks to the server (tab, its room id, map name)
+	std::function<void(CEditorMap *, uint32_t, const char *)> m_fnOnPlay;
 
 	int Role() const { return m_Role; }
 	int State() const { return m_State; }
@@ -192,6 +195,7 @@ private:
 
 	// playing together
 	uint32_t m_PlayMapId = 0; // the tab being saved for the server
+	uint32_t m_PlayingMapId = 0; // the tab the server plays
 	float m_PlayRunAt = -1.0f; // the old server was stopped: start the new one then
 	void StartPlay(uint32_t MapId);
 	void RunPlayServer();

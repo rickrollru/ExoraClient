@@ -3,6 +3,8 @@
 #ifndef GAME_SERVER_GAMECONTROLLER_H
 #define GAME_SERVER_GAMECONTROLLER_H
 
+#include <algorithm>
+
 #include <base/dbg.h>
 #include <base/vmath.h>
 
@@ -124,6 +126,12 @@ public:
 			bool?
 	*/
 	virtual bool OnEntity(int Index, int x, int y, int Layer, int Flags, bool Initial, int Number = 0);
+	// XClient: a spawn tile was removed by live map editing
+	void XcRemoveSpawn(vec2 Pos)
+	{
+		for(auto &vSpawns : m_avSpawnPoints)
+			vSpawns.erase(std::remove_if(vSpawns.begin(), vSpawns.end(), [&](vec2 Spawn) { return distance(Spawn, Pos) < 1.0f; }), vSpawns.end());
+	}
 
 	virtual void OnPlayerConnect(class CPlayer *pPlayer);
 	virtual void OnPlayerDisconnect(class CPlayer *pPlayer, const char *pReason);

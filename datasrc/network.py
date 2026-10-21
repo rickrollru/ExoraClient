@@ -667,4 +667,8 @@ Messages = [
 	NetMessageEx("Sv_MapInfo", "map-info@netmsg.ddnet.org", [
 		NetString("m_pDescription"),
 	]),
+
+	# XClient: live map editing on Exora Client's own server, the tiles follow the message (see game/xc_live_edit.h)
+	NetMessageEx("Cl_XcLiveTiles", "live-tiles@exora.client", []),
+	NetMessageEx("Sv_XcLiveTiles", "live-tiles-sv@exora.client", []),
 ]

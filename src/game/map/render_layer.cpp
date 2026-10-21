@@ -968,6 +968,16 @@ void CRenderLayerTile::OnInit(IGraphics *pGraphics, ITextRender *pTextRender, CR
 	}
 }
 
+// XClient: the whole layer may hold tiles now, the upload shrinks the clip again
+void CRenderLayerTile::XcReload()
+{
+	m_LayerClip = CClipRegion(0.0f, 0.0f, m_pLayerTilemap->m_Width * 32.0f, m_pLayerTilemap->m_Height * 32.0f);
+	// the loading callback captured the map loading by reference, it is gone now
+	m_InitCallback.reset();
+	Unload();
+	Init();
+}
+
 void CRenderLayerTile::InitTileData()
 {
 	m_pTiles = GetData<CTile>();

@@ -22,6 +22,7 @@ public:
 	virtual void ResetMentions() = 0;
 	virtual void OnIngameMoved() = 0;
 	virtual void ResetIngameMoved() = 0;
+	virtual void XcBackgroundUpdate() {} // XClient: editing together keeps running while the editor is closed
 };
 
 extern IEditor *CreateEditor();

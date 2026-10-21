@@ -1302,6 +1302,7 @@ void CXcCoop::RunPlayServer()
 	if(OnLocal && E.Client()->RconAuthed())
 	{
 		// everyone on it reloads the new map by himself
+		E.Client()->Rcon("sv_xc_live_edit 1");
 		E.Client()->Rcon(aMapChange);
 	}
 	else if(pGameClient->m_LocalServer.IsServerRunning() && m_PlayRunAt < -1.5f)
@@ -1315,12 +1316,15 @@ void CXcCoop::RunPlayServer()
 	{
 		char aPort[32];
 		str_format(aPort, sizeof(aPort), "sv_port %d", PLAY_PORT);
-		if(!pGameClient->m_LocalServer.RunServer({"sv_register 0", aPort, aMapChange}))
+		if(!pGameClient->m_LocalServer.RunServer({"sv_register 0", "sv_xc_live_edit 1", aPort, aMapChange}))
 		{
 			m_Notice = "The local server could not be started";
 			return;
 		}
 	}
+	// from now on the blocks of the tab go to the server live
+	if(SShared *pPlaying = FindShared(m_PlayingMapId); pPlaying && pPlaying->m_pMap && m_fnOnPlay)
+		m_fnOnPlay(pPlaying->m_pMap, m_PlayingMapId, PLAY_MAP);
 	CCoopPacker Play;
 	Play.U16(PLAY_PORT);
 	Broadcast(MSG_PLAY, Play.m_vData);
@@ -1695,6 +1699,7 @@ void CXcCoop::FinishSaves()
 		m_vSaves.erase(m_vSaves.begin());
 		if(Save.m_Kind == SAVE_PLAY)
 		{
+			m_PlayingMapId = m_PlayMapId;
 			m_PlayMapId = 0;
 			if(Save.m_pJob->ErrorMessage()[0] == '\0')
 			{

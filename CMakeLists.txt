@@ -2708,6 +2708,8 @@ set_src(GAME_SHARED GLOB src/game
   tuning.h
   version.h
   voting.h
+  xc_live_edit.cpp
+  xc_live_edit.h
   # tidy-alphabetical-end
 )
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "src/game/version.h")
@@ -3089,6 +3091,8 @@ if(CLIENT)
     components/xclient/editor/xeditor_coop.cpp
     components/xclient/editor/xeditor_coop.h
     components/xclient/editor/xeditor_coop_ui.cpp
+    components/xclient/editor/xeditor_live.cpp
+    components/xclient/editor/xeditor_live.h
     components/xclient/editor/xeditor_tune.cpp
     components/xclient/hud/xc_chat.cpp
     components/xclient/hud/xc_effects.cpp

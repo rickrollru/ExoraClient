@@ -207,3 +207,11 @@ int CMapRenderer::GetLayerType(const CMapItemLayer *pLayer) const
 		return LAYER_TUNE;
 	return LAYER_DEFAULT_TILESET;
 }
+
+// XClient
+void CMapRenderer::XcReloadLayer(int Group, int Layer)
+{
+	for(auto &pRenderLayer : m_vpRenderLayers)
+		if(pRenderLayer->XcIsLayer(Group, Layer))
+			pRenderLayer->XcReload();
+}
