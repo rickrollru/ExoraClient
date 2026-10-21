@@ -38,6 +38,9 @@ public:
 	void Previous();
 	// jump inside the track, when the player allows it (State().m_CanSeek)
 	void Seek(double Seconds);
+	// the volume of the player 0..1, -1 when it cannot be changed; a new level shows right away
+	float Volume() const;
+	void SetVolume(float Volume);
 
 private:
 	CXcMediaSession m_Session;
@@ -53,6 +56,8 @@ private:
 	// a seek shows right away too, until the player reports the new position
 	double m_SeekTarget = -1.0;
 	double m_SeekStart = 0.0;
+	float m_VolumeTarget = -1.0f;
+	double m_VolumeStart = 0.0;
 
 	static void ConPlayPause(IConsole::IResult *pResult, void *pUserData);
 	static void ConNext(IConsole::IResult *pResult, void *pUserData);

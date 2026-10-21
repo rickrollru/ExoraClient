@@ -24,6 +24,7 @@ struct SXcMediaState
 	double m_Position = -1.0; // seconds, -1 unknown
 	double m_Duration = -1.0;
 	double m_SampleTime = 0.0; // steady clock seconds when m_Position was true
+	float m_Volume = -1.0f; // the volume of the player 0..1, -1 when it cannot be changed
 	uint64_t m_TrackId = 0; // changes with every new track
 
 	// cover art, decoded to RGBA in the worker
@@ -42,6 +43,7 @@ public:
 		COMMAND_NEXT,
 		COMMAND_PREVIOUS,
 		COMMAND_SEEK, // to m_Seconds from the start of the track
+		COMMAND_VOLUME, // to m_Seconds (0..1)
 	};
 	struct SCommand
 	{
@@ -88,5 +90,9 @@ namespace XcMediaPlatform
 	// how often to ask, in seconds
 	double PollInterval();
 }
+
+// Windows: the volume of the app in the system mixer (media_volume_windows.cpp), found by the session app id
+bool XcAppVolumeGet(const std::string &AppId, float *pVolume);
+void XcAppVolumeSet(const std::string &AppId, float Volume);
 
 #endif
