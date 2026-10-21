@@ -76,6 +76,9 @@ public:
 
 	bool IsVisibleInClipRegion(const std::optional<CClipRegion> &ClipRegion) const;
 	int GetGroup() const { return m_GroupId; }
+	// XClient: live map editing changed the tiles of this layer, build its visuals again
+	bool XcIsLayer(int Group, int Layer) const { return !IsGroup() && m_GroupId == Group && m_LayerId == Layer; }
+	virtual void XcReload() {}
 
 protected:
 	int m_GroupId;
@@ -128,6 +131,7 @@ public:
 	virtual int GetDataIndex() const;
 	bool IsValid() const override { return GetRawData() != nullptr; }
 	void Unload() override;
+	void XcReload() override; // XClient
 
 protected:
 	virtual void *GetRawData() const;

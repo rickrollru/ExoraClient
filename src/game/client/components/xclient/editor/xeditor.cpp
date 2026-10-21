@@ -3,6 +3,7 @@
 
 #include "editor_style.h"
 
+#include <base/fs.h>
 #include <base/math.h>
 #include <base/str.h>
 
@@ -107,7 +108,17 @@ void CXcEditorUi::Init(CEditor *pEditor)
 {
 	m_pEditor = pEditor;
 	m_Coop.Init(pEditor);
+	m_Live.Init(pEditor, &m_Coop);
+	m_Coop.m_fnOnPlay = [this](CEditorMap *pMap, uint32_t MapId, const char *pMapName) { m_Live.Start(pMap, MapId, pMapName); };
 	m_Gui.Init(pEditor->Graphics(), pEditor->Input(), pEditor->Storage());
+}
+
+void CXcEditorUi::BackgroundUpdate()
+{
+	if(m_Coop.Role() == CXcCoop::ROLE_NONE && !m_Live.Active())
+		return;
+	UpdateCoop();
+	m_Live.Update();
 }
 
 float CXcEditorUi::Scale() const
@@ -243,6 +254,7 @@ void CXcEditorUi::Render()
 
 	// ---- the shared editing: blocks and maps from the others before anything is drawn
 	UpdateCoop();
+	m_Live.Update();
 
 	// ---- the start of the classic frame
 	E.Graphics()->Clear(0.0f, 0.0f, 0.0f);
@@ -630,7 +642,16 @@ void CXcEditorUi::RenderTopBar()
 		if(PlayTogether)
 			m_Coop.RequestPlay();
 		else
+		{
 			E.m_QuickActionTestMapLocally.Call();
+			// alone: the saved map is played, the blocks drawn from now on go to the server live
+			if(const char *pName = str_startswith(E.Map()->m_aFilename, "maps/"))
+			{
+				char aMapName[IO_MAX_PATH_LENGTH];
+				fs_split_file_extension(pName, aMapName, sizeof(aMapName));
+				m_Live.Start(E.Map(), 0, aMapName);
+			}
+		}
 	}
 	// the size of the interface: a chip with the percent, a click opens − / + and the presets
 	{

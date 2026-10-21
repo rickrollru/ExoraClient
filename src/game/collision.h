@@ -39,6 +39,9 @@ public:
 
 	void Init(CLayers *pLayers);
 	void Unload();
+	// XClient: the tiles changed in place (live map editing): rebuild the teleporter lists and switch numbers,
+	// keeping the state of the doors
+	void XcRefresh();
 	void FillAntibot(CAntibotMapData *pMapData) const;
 
 	bool CheckPoint(float x, float y) const { return IsSolid(round_to_int(x), round_to_int(y)); }

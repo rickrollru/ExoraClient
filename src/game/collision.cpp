@@ -145,6 +145,25 @@ void CCollision::Init(class CLayers *pLayers)
 	}
 }
 
+// XClient
+void CCollision::XcRefresh()
+{
+	if(!m_pLayers)
+		return;
+	std::vector<CDoorTile> vDoors;
+	if(m_pDoor)
+		vDoors.assign(m_pDoor, m_pDoor + (size_t)m_Width * m_Height);
+	Init(m_pLayers);
+	if(m_pDoor && vDoors.size() == (size_t)m_Width * m_Height)
+	{
+		for(size_t i = 0; i < vDoors.size(); i++)
+		{
+			m_pDoor[i].m_Index = vDoors[i].m_Index;
+			m_pDoor[i].m_Flags = vDoors[i].m_Flags;
+		}
+	}
+}
+
 void CCollision::Unload()
 {
 	m_pTiles = nullptr;

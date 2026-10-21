@@ -247,6 +247,7 @@ void CEditor::TestMapLocally()
 			g_Config.m_ClEditor = 0;
 			char aMapChange[IO_MAX_PATH_LENGTH + 64];
 			str_format(aMapChange, sizeof(aMapChange), "change_map %s", aFilenameNoExt);
+			Client()->Rcon("sv_xc_live_edit 1"); // XClient: live map editing
 			Client()->Rcon(aMapChange);
 			return;
 		}
@@ -262,7 +263,7 @@ void CEditor::TestMapLocally()
 	{
 		char aMapChange[IO_MAX_PATH_LENGTH + 64];
 		str_format(aMapChange, sizeof(aMapChange), "change_map %s", aFilenameNoExt);
-		if(pGameClient->m_LocalServer.RunServer({"sv_register 0", aMapChange}))
+		if(pGameClient->m_LocalServer.RunServer({"sv_register 0", "sv_xc_live_edit 1" /* XClient */, aMapChange}))
 		{
 			OnClose();
 			g_Config.m_ClEditor = 0;

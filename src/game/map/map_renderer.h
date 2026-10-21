@@ -17,6 +17,7 @@ public:
 	void Clear();
 	void Load(ERenderType Type, CLayers *pLayers, IMapImages *pMapImages, const IEnvelopeEval *pEnvelopeEval, std::optional<FCallbackMapRendererInit> CallbackMapRendererInitOptional);
 	void Render(const CRenderLayerParams &Params);
+	void XcReloadLayer(int Group, int Layer); // XClient: live map editing
 
 private:
 	int GetLayerType(const CMapItemLayer *pLayer) const;
