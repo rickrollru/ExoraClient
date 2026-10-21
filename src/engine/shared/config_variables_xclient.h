@@ -356,6 +356,7 @@ MACRO_CONFIG_INT(XcTeamArrows, xc_team_arrows, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(XcFriendArrows, xc_friend_arrows, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Arrows at the screen edge pointing to your friends")
 
 // Gradient names above the tees
+MACRO_CONFIG_INT(XcNameSpacing, xc_name_spacing, 0, -15, 80, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Space between the letters of the names over the tees, in percent of the font size")
 MACRO_CONFIG_INT(XcNameGradient, xc_name_gradient, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gradient names (0 = off, 1 = accent, 2 = rainbow, 3 = skin colors, 4 = two own colors)")
 MACRO_CONFIG_COL(XcNameGradientColor1, xc_name_gradient_color1, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "First color of the own name gradient")
 MACRO_CONFIG_COL(XcNameGradientColor2, xc_name_gradient_color2, 15325048, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Second color of the own name gradient")
