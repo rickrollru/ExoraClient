@@ -618,6 +618,28 @@ void CXcMenu::RenderSettingsChat()
 	EndCardGrid();
 }
 
+// A resolution that is not the monitor's own in real fullscreen: the monitor stretches the picture and it gets
+// blurry. The same look stays sharp with the monitor's resolution and the game stretched inside (xc_aspect_ratio)
+void CXcMenu::RenderSharpStretchHint()
+{
+	const ivec2 Desktop = Graphics()->XcDesktopSize();
+	if(g_Config.m_GfxFullscreen != 1 || Desktop.x <= 0 || Desktop.y <= 0)
+		return;
+	const float DesktopAspect = Desktop.x / (float)Desktop.y;
+	const float ModeAspect = g_Config.m_GfxScreenWidth / (float)std::max(g_Config.m_GfxScreenHeight, 1);
+	if(std::abs(DesktopAspect - ModeAspect) < 0.03f && g_Config.m_GfxScreenWidth >= Desktop.x)
+		return;
+	Description(Tr("The resolution is not the monitor's own: the monitor stretches the picture and it gets blurry. The same picture stays sharp with the monitor's resolution and the game stretched inside."));
+	if(Button(Tr("Make it sharp"), true, AvailWidth()))
+	{
+		g_Config.m_XcAspectRatio = (int)std::round(ModeAspect * 100.0f);
+		g_Config.m_GfxScreenWidth = Desktop.x;
+		g_Config.m_GfxScreenHeight = Desktop.y;
+		Graphics()->ResizeToScreen();
+		Toast(Tr("Monitor resolution, the game stretched inside"));
+	}
+}
+
 void CXcMenu::RenderSettingsGraphics()
 {
 	const STheme &t = Theme();
@@ -785,6 +807,7 @@ void CXcMenu::RenderSettingsGraphics()
 		else
 			Description(Tr("Wider than the screen: everything looks thinner, you see more to the sides (up to the limit of the game)"));
 		Description(Tr("Only the game is stretched: the HUD, the chat and the menus stay sharp. The editor always shows the map as it is."));
+		RenderSharpStretchHint();
 		EndCard();
 	}
 

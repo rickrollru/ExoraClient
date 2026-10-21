@@ -422,6 +422,7 @@ private:
 	void RenderSettingsSound();
 	void RenderSettingsChat();
 	void RenderSettingsGraphics();
+	void RenderSharpStretchHint();
 	void RenderSettingsHud();
 	bool OnBindInput(const IInput::CEvent &Event);
 
