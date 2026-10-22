@@ -6,10 +6,12 @@
 
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/xc_tilt.h> // XClient
 
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -203,6 +205,12 @@ public:
 		float m_XcPitch;
 		float m_XcYaw;
 		float m_XcFov;
+		// first person: the camera stands at m_XcEye; only sprites are drawn, turned to the camera at m_XcAnchor
+		bool m_XcFirstPerson;
+		SPoint m_XcEye;
+		bool m_XcBillboard;
+		SPoint m_XcAnchor;
+		SPoint m_XcAnchorScale;
 
 		// clip
 		bool m_ClipEnable;
@@ -754,6 +762,16 @@ public:
 	virtual std::optional<int> ShowMessageBox(const IGraphics::CMessageBox &MessageBox) = 0;
 };
 
+// XClient: the 3D view camera of a draw state
+inline XcTilt::SCamera XcStateCamera(const CCommandBuffer::SState &State)
+{
+	XcTilt::SCamera Cam = XcTilt::FromRect(State.m_XcCoreTL.x, State.m_XcCoreTL.y, State.m_XcCoreBR.x, State.m_XcCoreBR.y, State.m_XcPitch, State.m_XcYaw, State.m_XcFov);
+	Cam.m_Eye = State.m_XcFirstPerson;
+	Cam.m_EyeX = State.m_XcEye.x;
+	Cam.m_EyeY = State.m_XcEye.y;
+	return Cam;
+}
+
 class CGraphics_Threaded : public IEngineGraphics
 {
 	enum class EDrawing
@@ -940,9 +958,14 @@ public:
 	void XcBlurScreen(const XcRender::SBlurSettings &Settings) override;
 	void XcCaptureBegin(const float *pWorldRect) override;
 	void XcCaptureEnd(const XcRender::SGlowSettings &Settings) override;
-	void XcSetTilt(bool On, float Pitch, float Yaw, float Fov) override;
+	void XcSetTilt(bool On, float Pitch, float Yaw, float Fov, bool FirstPerson, vec2 Eye, bool CheckVisible) override;
+	void XcSetVisibilityTest(const std::function<bool(vec2, vec2)> &Fn) override { m_fnXcVisible = Fn; }
+	std::function<bool(vec2, vec2)> m_fnXcVisible;
+	bool m_XcFirstPerson = false;
+	vec2 m_XcEye = vec2(0.0f, 0.0f);
+	bool m_XcCheckVisible = false;
 	bool XcTiltOn() const override { return m_XcTiltOn; }
-	void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog) override;
+	void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog, const float *pSky) override;
 	bool m_XcTiltOn = false;
 	float m_XcTiltPitch = 0.0f, m_XcTiltYaw = 0.0f, m_XcTiltFov = 0.0f;
 	CScreenRect m_XcTiltCore = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);

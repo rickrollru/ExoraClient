@@ -235,6 +235,11 @@ void CXcWorld3D::UpdateColors()
 
 void CXcWorld3D::OnInit()
 {
+	// first person: a sprite is seen when no block stands between it and the eye
+	// and it is not a part of your own tee right at the camera
+	Graphics()->XcSetVisibilityTest([this](vec2 Eye, vec2 Pos) {
+		return distance(Eye, Pos) > 56.0f && !Collision()->IntersectLine(Eye, Pos, nullptr, nullptr);
+	});
 	// the map renderer calls this when it starts the group with the game layer
 	CMapRenderer::ms_fnXcGameGroup = [this]() {
 		if(m_FrameOn && !m_BlocksDrawn)
@@ -257,6 +262,11 @@ void CXcWorld3D::Tilt(bool On)
 	if(!On)
 	{
 		Graphics()->XcSetTilt(false);
+		return;
+	}
+	if(m_FirstPerson)
+	{
+		Graphics()->XcSetTilt(true, m_FpPitch, m_Yaw, std::clamp(g_Config.m_Xc3dFpFov, 50, 120) * pi / 180.0f, true, m_FpEye, m_FrameOn);
 		return;
 	}
 	const float Pitch = -g_Config.m_Xc3dPitch * pi / 180.0f; // positive setting: the camera above, looking down
@@ -288,9 +298,31 @@ void CXcWorld3D::OnRender()
 			m_Dir += ((Speed > 0.0f ? 1.0f : -1.0f) - m_Dir) * (1.0f - std::exp(-Dt * 1.5f));
 	}
 	m_LastCenterX = CenterX;
-	const float Side = g_Config.m_Xc3dFollow ? m_Dir : 1.0f;
-	const float TargetYaw = g_Config.m_Xc3dYaw * pi / 180.0f * Side;
-	m_Yaw = Dt > 0.0f ? m_Yaw + (TargetYaw - m_Yaw) * (1.0f - std::exp(-Dt * 6.0f)) : TargetYaw;
+
+	m_FirstPerson = g_Config.m_Xc3dMode == 1;
+	float TargetYaw;
+	if(m_FirstPerson)
+	{
+		// the camera in the head of the tee looks where you aim: the crosshair stays in the middle of the screen
+		const bool Playing = Client()->State() != IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_pLocalCharacter;
+		const vec2 Tee = Playing ? GameClient()->m_LocalCharacterPos : GameClient()->m_Camera.m_Center;
+		vec2 Aim = Playing ? GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] : vec2(m_Dir * 100.0f, 0.0f);
+		if(length(Aim) < 1.0f)
+			Aim = vec2(m_Dir, 0.0f);
+		if(Playing && std::abs(Aim.x) > 4.0f)
+			m_Dir = Aim.x > 0.0f ? 1.0f : -1.0f;
+		m_FpEye = Tee + vec2(0.0f, -8.0f);
+		m_FpPitch = std::clamp(std::atan2(-Aim.y, std::max(std::abs(Aim.x), 1.0f)), -1.4f, 1.4f);
+		TargetYaw = pi * 0.5f * m_Dir;
+	}
+	else
+	{
+		const float Side = g_Config.m_Xc3dFollow ? m_Dir : 1.0f;
+		TargetYaw = g_Config.m_Xc3dYaw * pi / 180.0f * Side;
+	}
+	// turning around: quick in first person, softer from the side
+	const float TurnSpeed = m_FirstPerson ? 14.0f : 6.0f;
+	m_Yaw = Dt > 0.0f ? m_Yaw + (TargetYaw - m_Yaw) * (1.0f - std::exp(-Dt * TurnSpeed)) : TargetYaw;
 
 	UpdateColors();
 	m_FrameOn = true;
@@ -362,5 +394,8 @@ void CXcWorld3D::DrawBlocks()
 	const float aColor[4] = {Color.r, Color.g, Color.b, 1.0f};
 	const float aColor2[4] = {Color2.r, Color2.g, Color2.b, 1.0f};
 	const float aFog[4] = {0.03f, 0.035f, 0.05f, g_Config.m_Xc3dFog / 100.0f};
-	Graphics()->XcDrawBlocks3D(m_vGrid.data(), x0, y0, W, H, g_Config.m_Xc3dDepth / 100.0f * 32.0f, aColor, aColor2, aFog);
+	// first person: a dark sky behind the blocks, the far blocks fade into it
+	const float aSky[4] = {0.05f, 0.06f, 0.09f, m_FirstPerson ? 1.0f : 0.0f};
+	const float aFpFog[4] = {aSky[0], aSky[1], aSky[2], std::max(aFog[3], 0.3f)};
+	Graphics()->XcDrawBlocks3D(m_vGrid.data(), x0, y0, W, H, g_Config.m_Xc3dDepth / 100.0f * 32.0f, aColor, aColor2, m_FirstPerson ? aFpFog : aFog, aSky);
 }

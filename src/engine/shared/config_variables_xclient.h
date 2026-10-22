@@ -595,6 +595,8 @@ MACRO_CONFIG_STR(XcCursorFile, xc_cursor_file, 64, "", CFGFLAG_CLIENT | CFGFLAG_
 
 // 3D view
 MACRO_CONFIG_INT(Xc3d, xc_3d, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: a tilted camera and blocks with depth (OpenGL 3.3)")
+MACRO_CONFIG_INT(Xc3dMode, xc_3d_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: 0 the camera from the side, 1 first person (the camera in the tee looks where you aim)")
+MACRO_CONFIG_INT(Xc3dFpFov, xc_3d_fp_fov, 85, 50, 120, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view, first person: field of view (degrees)")
 MACRO_CONFIG_INT(Xc3dPitch, xc_3d_pitch, 24, -45, 60, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how much the camera looks down (degrees)")
 MACRO_CONFIG_INT(Xc3dYaw, xc_3d_yaw, 18, 0, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how much the camera looks from the side (degrees)")
 MACRO_CONFIG_INT(Xc3dFollow, xc_3d_follow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: the camera looks from behind the direction you run")

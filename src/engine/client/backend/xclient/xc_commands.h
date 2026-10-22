@@ -81,6 +81,9 @@ namespace XcRender
 		float m_aColor[4]; // blocks
 		float m_aColor2[4]; // unhookable blocks
 		float m_aFog[4]; // the color the far end fades to, alpha: how much
+		float m_ZFrom, m_ZTo; // the depth the sides span
+		float m_FogDistance; // first person: the fog grows with the distance to the eye (0: with the depth)
+		float m_aSky[4]; // alpha 1: the frame behind is covered with this color first
 		unsigned char *m_pGrid; // 4 bytes per cell, see IGraphics::XcDrawBlocks3D
 	};
 

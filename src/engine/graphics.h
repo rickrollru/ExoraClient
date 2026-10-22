@@ -361,11 +361,15 @@ public:
 	virtual void XcCaptureBegin(const float *pWorldRect) = 0;
 	virtual void XcCaptureEnd(const XcRender::SGlowSettings &Settings) = 0;
 	// 3D view: while on, every MapScreen of the world gets the tilted camera (angles in radians), see engine/xc_tilt.h
-	virtual void XcSetTilt(bool On, float Pitch = 0.0f, float Yaw = 0.0f, float Fov = 0.0f) = 0;
+	// FirstPerson: the camera stands at Eye (on the world plane) and only sprites are drawn, turned to it; with
+	// CheckVisible a sprite is only drawn when the test (XcSetVisibilityTest) sees it from the eye
+	virtual void XcSetTilt(bool On, float Pitch = 0.0f, float Yaw = 0.0f, float Fov = 0.0f, bool FirstPerson = false, vec2 Eye = vec2(0.0f, 0.0f), bool CheckVisible = false) = 0;
+	virtual void XcSetVisibilityTest(const std::function<bool(vec2 Eye, vec2 Pos)> &Fn) = 0;
 	virtual bool XcTiltOn() const = 0;
 	// the extruded sides of the blocks: Grid holds W*H cells from cell (X, Y), 4 bytes each: the color of the block
 	// (r, g, b) and its kind (bits 0-1: 0 air, 1 block, 2 unhookable; bit 2: the color is set, else pColor/pColor2)
-	virtual void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog) = 0;
+	// pSky: first person, the color behind everything (the blocks pass covers the frame)
+	virtual void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog, const float *pSky) = 0;
 
 	// TODO: These should perhaps not be virtuals
 	virtual void BlendNone() = 0;
