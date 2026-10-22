@@ -363,7 +363,9 @@ private:
 	std::shared_ptr<SAutomapBuilder> m_pAutomap;
 	bool m_AutomapRequest = false;
 	void RenderAutomapBuilder();
-	void SaveAutomapRules(const XcAutomap::SConfig &Config);
+	void SaveAutomapRules(const XcAutomap::SConfig *pConfig); // the wizard's set, or null: the file as edited by hand
+	void GuessAutomapRoles();
+	void RenderAutomapRules(unsigned long long Texture, float LeftW, float MidW, float BodyH, float Gap);
 
 public:
 	void OpenAutomapBuilder(int Image);
