@@ -1073,3 +1073,5 @@
   mono, pick, star, strokes, вариант «искра» exora_sparkle) — около 3 МБ, нигде не используются. Остался выбранный
   логотип `logo/files/exora_hook_x.png/.svg`. Остальное проверено: файлы кода все в сборке, ресурсы `data/xclient` все
   используются и ставятся, файлы в корне (steam_api.dll, Dockerfile и др.) — из DDNet/TClient.
+- 22.10.2026: Удалены `docs/xclient/discord/channels.md` и `docs/xclient/release/v0.2.md` — тексты для Discord и релиза
+  не нужны в репозитории (владелец публикует их сам, копия — на странице артефакта).
