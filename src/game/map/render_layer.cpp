@@ -285,6 +285,9 @@ void CRenderLayerGroup::Init()
 void CRenderLayerGroup::Render(const CRenderLayerParams &Params)
 {
 	int ParallaxZoom = std::clamp(std::max(m_pGroup->m_ParallaxX, m_pGroup->m_ParallaxY), 0, 100);
+	// XClient: 3D view, the group stands at the depth of its parallax
+	if(g_Config.m_Xc3dLayerDepth)
+		Graphics()->XcSetGroupParallax(m_pGroup->m_ParallaxX == 0 || m_pGroup->m_ParallaxY == 0 ? 0 : (m_pGroup->m_ParallaxX + m_pGroup->m_ParallaxY) / 2);
 	CScreenRect ScreenRect = Graphics()->MapScreenToWorld(Params.m_Center.x, Params.m_Center.y, m_pGroup->m_ParallaxX, m_pGroup->m_ParallaxY, (float)ParallaxZoom,
 		m_pGroup->m_OffsetX, m_pGroup->m_OffsetY, Graphics()->ScreenAspect(), Params.m_Zoom);
 	Graphics()->MapScreen(ScreenRect);
