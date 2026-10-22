@@ -110,6 +110,9 @@ CGraphics_Threaded::CGraphics_Threaded()
 	m_State.m_XcTilt = false; // XClient
 	m_State.m_XcCoreTL = m_State.m_XcCoreBR = vec2(0.0f, 0.0f);
 	m_State.m_XcPitch = m_State.m_XcYaw = m_State.m_XcFov = 0.0f;
+	m_State.m_XcFirstPerson = m_State.m_XcBillboard = false;
+	m_State.m_XcEye = m_State.m_XcAnchor = vec2(0.0f, 0.0f);
+	m_State.m_XcAnchorScale = vec2(1.0f, 1.0f);
 
 	m_CurrentCommandBuffer = 0;
 	m_pCommandBuffer = nullptr;
@@ -222,13 +225,24 @@ void CGraphics_Threaded::MapScreen(const CScreenRect &ScreenRect)
 				Core = CScreenRect(aKnown[2], aKnown[3]);
 		const XcTilt::SCamera Cam = XcTilt::FromRect(Core.m_TopLeft.x, Core.m_TopLeft.y, Core.m_BottomRight.x, Core.m_BottomRight.y, m_XcTiltPitch, m_XcTiltYaw, m_XcTiltFov);
 		float x0, y0, x1, y1;
-		XcTilt::Bounds(Cam, 3.0f, &x0, &y0, &x1, &y1);
+		if(m_XcFirstPerson)
+		{
+			// first person: everything around the eye
+			x0 = m_XcEye.x - XcTilt::FIRST_PERSON_RANGE;
+			y0 = m_XcEye.y - XcTilt::FIRST_PERSON_RANGE;
+			x1 = m_XcEye.x + XcTilt::FIRST_PERSON_RANGE;
+			y1 = m_XcEye.y + XcTilt::FIRST_PERSON_RANGE;
+		}
+		else
+			XcTilt::Bounds(Cam, 3.0f, &x0, &y0, &x1, &y1);
 		m_State.m_XcTilt = true;
 		m_State.m_XcCoreTL = Core.m_TopLeft;
 		m_State.m_XcCoreBR = Core.m_BottomRight;
 		m_State.m_XcPitch = m_XcTiltPitch;
 		m_State.m_XcYaw = m_XcTiltYaw;
 		m_State.m_XcFov = m_XcTiltFov;
+		m_State.m_XcFirstPerson = m_XcFirstPerson;
+		m_State.m_XcEye = m_XcEye;
 		m_State.m_ScreenTL = vec2(std::min(x0, Core.m_TopLeft.x), std::min(y0, Core.m_TopLeft.y));
 		m_State.m_ScreenBR = vec2(std::max(x1, Core.m_BottomRight.x), std::max(y1, Core.m_BottomRight.y));
 		m_XcTiltCore = Core;
@@ -238,7 +252,7 @@ void CGraphics_Threaded::MapScreen(const CScreenRect &ScreenRect)
 }
 
 // XClient: 3D view
-void CGraphics_Threaded::XcSetTilt(bool On, float Pitch, float Yaw, float Fov)
+void CGraphics_Threaded::XcSetTilt(bool On, float Pitch, float Yaw, float Fov, bool FirstPerson, vec2 Eye, bool CheckVisible)
 {
 	const bool WasOn = m_XcTiltOn;
 	const CScreenRect Core = m_State.m_XcTilt ? m_XcTiltCore : GetScreen();
@@ -246,6 +260,9 @@ void CGraphics_Threaded::XcSetTilt(bool On, float Pitch, float Yaw, float Fov)
 	m_XcTiltPitch = Pitch;
 	m_XcTiltYaw = Yaw;
 	m_XcTiltFov = Fov;
+	m_XcFirstPerson = On && FirstPerson;
+	m_XcEye = Eye;
+	m_XcCheckVisible = On && CheckVisible;
 	if(On || WasOn)
 		MapScreen(Core);
 }
@@ -1782,6 +1799,9 @@ void CGraphics_Threaded::RenderQuadContainer(int ContainerIndex, int QuadOffset,
 void CGraphics_Threaded::RenderQuadContainerEx(int ContainerIndex, int QuadOffset, int QuadDrawNum, float X, float Y, float ScaleX, float ScaleY)
 {
 	SQuadContainer &Container = m_vQuadContainers[ContainerIndex];
+	// XClient: first person, a sprite behind a wall is not drawn
+	if(m_State.m_XcTilt && m_State.m_XcFirstPerson && m_XcCheckVisible && m_fnXcVisible && !m_fnXcVisible(m_State.m_XcEye, vec2(X, Y)))
+		return;
 
 	if((int)Container.m_vQuads.size() < QuadOffset + 1)
 		return;
@@ -1809,6 +1829,15 @@ void CGraphics_Threaded::RenderQuadContainerEx(int ContainerIndex, int QuadOffse
 		// XClient: the tilted camera moves and scales the same way
 		Cmd.m_State.m_XcCoreTL = (m_State.m_XcCoreTL - vec2(X, Y)) / vec2(ScaleX, ScaleY);
 		Cmd.m_State.m_XcCoreBR = (m_State.m_XcCoreBR - vec2(X, Y)) / vec2(ScaleX, ScaleY);
+		// first person: the sprite stands at its place, turned to the camera
+		Cmd.m_State.m_XcBillboard = m_State.m_XcFirstPerson;
+		Cmd.m_State.m_XcAnchor = vec2(X, Y);
+		Cmd.m_State.m_XcAnchorScale = vec2(ScaleX, ScaleY);
+		if(m_State.m_XcFirstPerson)
+		{
+			Cmd.m_State.m_XcCoreTL = m_State.m_XcCoreTL;
+			Cmd.m_State.m_XcCoreBR = m_State.m_XcCoreBR;
+		}
 
 		Cmd.m_DrawNum = QuadDrawNum * 6;
 		Cmd.m_pOffset = (void *)(QuadOffset * 6 * sizeof(unsigned int));
@@ -3093,8 +3122,10 @@ void CGraphics_Threaded::XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int Num
 		Cmd.m_ScreenRight = m_State.m_ScreenBR.x;
 		Cmd.m_ScreenBottom = m_State.m_ScreenBR.y;
 		Cmd.m_Tilt = m_State.m_XcTilt;
-		if(Cmd.m_Tilt)
-			XcTilt::Matrix(XcTilt::FromRect(m_State.m_XcCoreTL.x, m_State.m_XcCoreTL.y, m_State.m_XcCoreBR.x, m_State.m_XcCoreBR.y, m_State.m_XcPitch, m_State.m_XcYaw, m_State.m_XcFov), Cmd.m_aTilt, false);
+		if(Cmd.m_Tilt && m_State.m_XcFirstPerson)
+			XcTilt::DiscardMatrix(Cmd.m_aTilt); // first person: only sprites
+		else if(Cmd.m_Tilt)
+			XcTilt::Matrix(XcStateCamera(m_State), Cmd.m_aTilt, false);
 		Cmd.m_NumAlpha = ChunkAlpha;
 		Cmd.m_NumAdditive = ChunkAdditive;
 		Cmd.m_Settings = Settings;
@@ -3155,13 +3186,18 @@ void CGraphics_Threaded::XcCaptureEnd(const XcRender::SGlowSettings &Settings)
 }
 
 // XClient: 3D view, the sides of the blocks around the camera
-void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog)
+void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog, const float *pSky)
 {
 	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcDrawBlocks3D while drawing");
 	if(!m_State.m_XcTilt || W <= 0 || H <= 0)
 		return;
 	XcRender::SCommand_DrawBlocks3D Cmd;
-	XcTilt::Matrix(XcTilt::FromRect(m_State.m_XcCoreTL.x, m_State.m_XcCoreTL.y, m_State.m_XcCoreBR.x, m_State.m_XcCoreBR.y, m_State.m_XcPitch, m_State.m_XcYaw, m_State.m_XcFov), Cmd.m_aMatrix, true);
+	XcTilt::Matrix(XcStateCamera(m_State), Cmd.m_aMatrix, true);
+	// first person: the eye stands in the middle of the blocks' depth, far blocks fade by distance
+	Cmd.m_ZFrom = m_State.m_XcFirstPerson ? -Depth * 0.5f : 0.0f;
+	Cmd.m_ZTo = m_State.m_XcFirstPerson ? Depth * 0.5f : Depth;
+	Cmd.m_FogDistance = m_State.m_XcFirstPerson ? XcTilt::FIRST_PERSON_RANGE * 0.8f : 0.0f;
+	mem_copy(Cmd.m_aSky, pSky, sizeof(Cmd.m_aSky));
 	Cmd.m_X = X;
 	Cmd.m_Y = Y;
 	Cmd.m_W = W;

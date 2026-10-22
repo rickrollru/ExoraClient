@@ -1289,7 +1289,13 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 	if(State.m_XcTilt)
 	{
 		float aTilt[16];
-		XcTilt::Matrix(XcTilt::FromRect(State.m_XcCoreTL.x, State.m_XcCoreTL.y, State.m_XcCoreBR.x, State.m_XcCoreBR.y, State.m_XcPitch, State.m_XcYaw, State.m_XcFov), aTilt, false);
+		const XcTilt::SCamera Cam = XcStateCamera(State);
+		if(!State.m_XcFirstPerson)
+			XcTilt::Matrix(Cam, aTilt, false);
+		else if(State.m_XcBillboard)
+			XcTilt::BillboardMatrix(Cam, State.m_XcAnchor.x, State.m_XcAnchor.y, State.m_XcAnchorScale.x, State.m_XcAnchorScale.y, aTilt);
+		else
+			XcTilt::DiscardMatrix(aTilt); // first person: the flat world is replaced by the blocks
 		glUniformMatrix4fv(pProgram->m_LocPos, 1, false, aTilt);
 		pProgram->m_LastScreenTL = pProgram->m_LastScreenBR = vec2(-1.0f, -1.0f);
 	}

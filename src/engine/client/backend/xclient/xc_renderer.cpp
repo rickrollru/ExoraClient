@@ -261,8 +261,10 @@ static const char *const s_pBlocksVertex = R"(#version 330 core
 uniform mat4 u_Matrix;
 uniform usampler2D u_Grid;
 uniform ivec4 u_Cells; // first cell x, y, number of cells w, h
-uniform float u_Depth;
+uniform vec2 u_ZRange; // the depth the sides span
+uniform float u_FogDistance; // > 0: the fog grows with the distance to the eye
 out float v_Far;
+out float v_Edge;
 flat out float v_Shade;
 flat out int v_Type;
 flat out vec4 v_MapColor; // a: the color is set
@@ -285,6 +287,7 @@ void main()
 	{
 		gl_Position = vec4(0.0, 0.0, 2.0, 1.0); // no face here, outside the depth range
 		v_Far = 0.0;
+		v_Edge = 1.0;
 		v_Shade = 0.0;
 		v_Type = 0;
 		v_MapColor = vec4(0.0);
@@ -295,8 +298,9 @@ void main()
 	const vec2 aCorner[6] = vec2[6](vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
 	vec2 c = aCorner[Corner];
 	vec2 World = (vec2(u_Cells.xy + Pos) + mix(aStart[Face], aEnd[Face], c.x)) * 32.0;
-	gl_Position = u_Matrix * vec4(World, c.y * u_Depth, 1.0);
-	v_Far = c.y;
+	gl_Position = u_Matrix * vec4(World, mix(u_ZRange.x, u_ZRange.y, c.y), 1.0);
+	v_Far = u_FogDistance > 0.0 ? clamp(gl_Position.w / u_FogDistance, 0.0, 1.0) : c.y;
+	v_Edge = u_FogDistance > 0.0 ? min(c.y, 1.0 - c.y) * 2.0 : c.y; // first person: both ends of the depth
 	const float aShade[4] = float[4](1.0, 0.42, 0.68, 0.68);
 	v_Shade = aShade[Face];
 	v_Type = int(Type);
@@ -307,6 +311,7 @@ void main()
 
 static const char *const s_pBlocksFragment = R"(#version 330 core
 in float v_Far;
+in float v_Edge;
 flat in float v_Shade;
 flat in int v_Type;
 flat in vec4 v_MapColor;
@@ -321,7 +326,7 @@ void main()
 		Color.rgb = v_MapColor.rgb;
 	vec3 Rgb = Color.rgb * v_Shade * mix(1.0, 0.7, v_Far);
 	// a thin light line along the front edge, like the bevel of a tile
-	Rgb += vec3(0.08) * (1.0 - smoothstep(0.0, 0.06, v_Far));
+	Rgb += vec3(0.08) * (1.0 - smoothstep(0.0, 0.06, v_Edge));
 	Rgb = mix(Rgb, u_Fog.rgb, u_Fog.a * v_Far);
 	FragColor = vec4(Rgb, Color.a);
 }
@@ -663,7 +668,8 @@ bool CXcRenderer::Init()
 	m_LocBlocksMatrix = glGetUniformLocation(m_BlocksProgram, "u_Matrix");
 	m_LocBlocksGrid = glGetUniformLocation(m_BlocksProgram, "u_Grid");
 	m_LocBlocksCells = glGetUniformLocation(m_BlocksProgram, "u_Cells");
-	m_LocBlocksDepth = glGetUniformLocation(m_BlocksProgram, "u_Depth");
+	m_LocBlocksZRange = glGetUniformLocation(m_BlocksProgram, "u_ZRange");
+	m_LocBlocksFogDistance = glGetUniformLocation(m_BlocksProgram, "u_FogDistance");
 	m_LocBlocksColor = glGetUniformLocation(m_BlocksProgram, "u_Color");
 	m_LocBlocksColor2 = glGetUniformLocation(m_BlocksProgram, "u_Color2");
 	m_LocBlocksFog = glGetUniformLocation(m_BlocksProgram, "u_Fog");
@@ -1307,7 +1313,11 @@ void CXcRenderer::DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, m_Blocks.m_Fbo);
 	glViewport(0, 0, Width, Height);
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	// first person: the sky behind the blocks covers the frame
+	if(pCommand->m_aSky[3] > 0.0f)
+		glClearColor(pCommand->m_aSky[0], pCommand->m_aSky[1], pCommand->m_aSky[2], pCommand->m_aSky[3]);
+	else
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClearDepth(1.0);
 	GLboolean DepthMask;
 	glGetBooleanv(GL_DEPTH_WRITEMASK, &DepthMask);
@@ -1320,7 +1330,8 @@ void CXcRenderer::DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand)
 	glUniformMatrix4fv(m_LocBlocksMatrix, 1, GL_FALSE, pCommand->m_aMatrix);
 	glUniform1i(m_LocBlocksGrid, 0);
 	glUniform4i(m_LocBlocksCells, pCommand->m_X, pCommand->m_Y, pCommand->m_W, pCommand->m_H);
-	glUniform1f(m_LocBlocksDepth, pCommand->m_Depth);
+	glUniform2f(m_LocBlocksZRange, pCommand->m_ZFrom, pCommand->m_ZTo);
+	glUniform1f(m_LocBlocksFogDistance, pCommand->m_FogDistance);
 	glUniform4fv(m_LocBlocksColor, 1, pCommand->m_aColor);
 	glUniform4fv(m_LocBlocksColor2, 1, pCommand->m_aColor2);
 	glUniform4fv(m_LocBlocksFog, 1, pCommand->m_aFog);
