@@ -425,6 +425,8 @@ void CXcEditorUi::Render()
 		RenderMapDetails();
 		RenderThemes();
 		RenderAutomapBuilder();
+		if(!m_pAutomap)
+			RenderWiki(); // over the builder it is drawn inside the builder's window
 		RenderTuneZones();
 		RenderCoop();
 		RenderFileDialog();
@@ -786,6 +788,8 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					m_CoopRequest = true;
 				QuickActionItem(E.m_QuickActionCloseMap, Tr("Close the map"), "Ctrl+F4");
 				ImGui::Separator();
+				if(ImGui::MenuItem(Tr("Editor wiki: automapper...")))
+					OpenWiki();
 				QuickActionItem(E.m_QuickActionShowHelp, Tr("Help (DDNet wiki)"), "F1");
 				QuickActionItem(E.m_QuickActionExit, Tr("Exit the editor"), "Esc");
 				break;
@@ -1998,6 +2002,8 @@ void CXcEditorUi::RenderPalette()
 	vEntries.push_back({Tr("Edit together..."), "Edit together coop", Tr("One map with friends over LAN or Radmin VPN"), false, m_Coop.Role() != CXcCoop::ROLE_NONE, [&]() { m_CoopRequest = true; }});
 	vEntries.push_back({Tr("Properties panel"), "Properties panel", nullptr, false, m_ShowProperties, [&]() { m_ShowProperties = !m_ShowProperties; }});
 	vEntries.push_back({Tr("Hide the interface"), "Hide interface", nullptr, false, false, [&]() { E.m_GuiActive = false; }});
+	vEntries.push_back({Tr("Editor wiki"), "Wiki help automapper rules guide", Tr("Articles about the automapper and its builder, with pictures"), false, false, [&]() { OpenWiki(); }});
+	vEntries.push_back({Tr("Automapper builder..."), "Automapper builder rules", Tr("Make automapper rules for a tileset with the mouse"), false, false, [&]() { OpenAutomapBuilderForSelection(); }});
 	vEntries.push_back({Tr("Editor guide"), "Guide", nullptr, false, false, [&]() {
 				    E.m_XcGuideOpen = true;
 				    E.m_XcGuideStep = 0;

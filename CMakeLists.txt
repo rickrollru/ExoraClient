@@ -3063,6 +3063,8 @@ if(CLIENT)
     components/xclient/editor/automap_rules.cpp
     components/xclient/editor/automap_rules.h
     components/xclient/editor/xeditor_automap.cpp
+    components/xclient/editor/xeditor_wiki.cpp
+    components/xclient/editor/xeditor_wiki_pages.h
     components/xclient/world3d.h
     components/xclient/discord_rpc.cpp
     components/xclient/discord_rpc.h
