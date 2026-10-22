@@ -652,11 +652,23 @@ void CXcMenu::RenderVisualsWorld()
 	{
 		if(!Graphics()->XcRenderAvailable())
 			Description(Tr("Not available: needs OpenGL 3.3"));
-		ConfigSlider(Tr("Camera from above"), "xc_3d_pitch", &g_Config.m_Xc3dPitch, -45, 60, "%d°");
-		ConfigSlider(Tr("Camera from the side"), "xc_3d_yaw", &g_Config.m_Xc3dYaw, 0, 50, "%d°");
-		ToggleRow(Tr("Look from behind the way you run"), "xc_3d_follow", &g_Config.m_Xc3dFollow);
-		ConfigSlider(Tr("Field of view"), "xc_3d_fov", &g_Config.m_Xc3dFov, 20, 100, "%d°");
-		ConfigSlider(Tr("Block depth"), "xc_3d_depth", &g_Config.m_Xc3dDepth, 0, 1200, "%d%%");
+		ParamLabel(Tr("Camera"));
+		const char *apModes[] = {Tr("From the side"), Tr("First person")};
+		ConfigSegmented("##3d_mode", "xc_3d_mode", &g_Config.m_Xc3dMode, apModes, 2);
+		if(g_Config.m_Xc3dMode == 1)
+		{
+			Description(Tr("The camera is in the head of your tee and looks where you aim. Players, weapons and pickups stand in the corridor of blocks; hooks, lasers, names and particles are not shown"));
+			ConfigSlider(Tr("Field of view"), "xc_3d_fp_fov", &g_Config.m_Xc3dFpFov, 50, 120, "%d°");
+			ConfigSlider(Tr("Corridor width"), "xc_3d_depth", &g_Config.m_Xc3dDepth, 0, 1200, "%d%%");
+		}
+		else
+		{
+			ConfigSlider(Tr("Camera from above"), "xc_3d_pitch", &g_Config.m_Xc3dPitch, -45, 60, "%d°");
+			ConfigSlider(Tr("Camera from the side"), "xc_3d_yaw", &g_Config.m_Xc3dYaw, 0, 50, "%d°");
+			ToggleRow(Tr("Look from behind the way you run"), "xc_3d_follow", &g_Config.m_Xc3dFollow);
+			ConfigSlider(Tr("Field of view"), "xc_3d_fov", &g_Config.m_Xc3dFov, 20, 100, "%d°");
+			ConfigSlider(Tr("Block depth"), "xc_3d_depth", &g_Config.m_Xc3dDepth, 0, 1200, "%d%%");
+		}
 		ConfigSlider(Tr("Darkness in the depth"), "xc_3d_fog", &g_Config.m_Xc3dFog, 0, 100, "%d%%");
 		ToggleRow(Tr("Colors of the map"), "xc_3d_map_colors", &g_Config.m_Xc3dMapColors);
 		if(!g_Config.m_Xc3dMapColors)

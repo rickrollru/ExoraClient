@@ -99,7 +99,8 @@ private:
 	int m_LocBlocksMatrix = -1;
 	int m_LocBlocksGrid = -1;
 	int m_LocBlocksCells = -1;
-	int m_LocBlocksDepth = -1;
+	int m_LocBlocksZRange = -1;
+	int m_LocBlocksFogDistance = -1;
 	int m_LocBlocksColor = -1;
 	int m_LocBlocksColor2 = -1;
 	int m_LocBlocksFog = -1;

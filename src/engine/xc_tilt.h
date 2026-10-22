@@ -16,12 +16,103 @@ namespace XcTilt
 		float m_Width, m_Height; // the size of the 2D view at the center
 		float m_Pitch, m_Yaw; // radians
 		float m_Fov; // vertical, radians
+		// first person: the camera stands at this point of the world plane instead of orbiting the center
+		bool m_Eye = false;
+		float m_EyeX = 0.0f, m_EyeY = 0.0f;
 	};
+
+	enum
+	{
+		FIRST_PERSON_RANGE = 1600, // world units around the eye that are drawn
+	};
+	constexpr float FIRST_PERSON_NEAR = 10.0f; // closer than this is cut away (your own tee)
 
 	// the camera from a 2D screen rectangle
 	inline SCamera FromRect(float x0, float y0, float x1, float y1, float Pitch, float Yaw, float Fov)
 	{
-		return {(x0 + x1) * 0.5f, (y0 + y1) * 0.5f, x1 - x0, y1 - y0, Pitch, Yaw, Fov};
+		SCamera Cam;
+		Cam.m_CenterX = (x0 + x1) * 0.5f;
+		Cam.m_CenterY = (y0 + y1) * 0.5f;
+		Cam.m_Width = x1 - x0;
+		Cam.m_Height = y1 - y0;
+		Cam.m_Pitch = Pitch;
+		Cam.m_Yaw = Yaw;
+		Cam.m_Fov = Fov;
+		return Cam;
+	}
+
+	// the camera's rotation: world (x, y down, depth) to camera (right, down, forward), rows
+	inline void Rotation(const SCamera &Cam, float aaRot[3][3])
+	{
+		const float ca = std::cos(Cam.m_Pitch), sa = std::sin(Cam.m_Pitch);
+		const float cb = std::cos(Cam.m_Yaw), sb = std::sin(Cam.m_Yaw);
+		const float aaR[3][3] = {{cb, 0.0f, -sb}, {sb * sa, ca, cb * sa}, {sb * ca, -sa, cb * ca}};
+		for(int r = 0; r < 3; r++)
+			for(int c = 0; c < 3; c++)
+				aaRot[r][c] = aaR[r][c];
+	}
+
+	// first person: world (x, y, depth) to clip space with a depth range, column-major
+	inline void EyeMatrix(const SCamera &Cam, float *pOut)
+	{
+		float aaR[3][3];
+		Rotation(Cam, aaR);
+		const float f = 1.0f / std::tan(Cam.m_Fov * 0.5f);
+		const float aScale[3] = {f * Cam.m_Height / Cam.m_Width, -f, 1.0f};
+		const float aEye[3] = {Cam.m_EyeX, Cam.m_EyeY, 0.0f};
+		float aaRow[4][4] = {};
+		for(int r = 0; r < 3; r++)
+		{
+			const int Dst = r == 2 ? 3 : r; // the forward axis is w
+			for(int c = 0; c < 3; c++)
+			{
+				aaRow[Dst][c] = aScale[r] * aaR[r][c];
+				aaRow[Dst][3] -= aScale[r] * aaR[r][c] * aEye[c];
+			}
+		}
+		const float n = FIRST_PERSON_NEAR, fa = 20000.0f;
+		const float A = (fa + n) / (fa - n), B = -2.0f * fa * n / (fa - n);
+		for(int c = 0; c < 4; c++)
+			aaRow[2][c] = A * aaRow[3][c];
+		aaRow[2][3] += B;
+		for(int r = 0; r < 4; r++)
+			for(int c = 0; c < 4; c++)
+				pOut[c * 4 + r] = aaRow[r][c];
+	}
+
+	// first person: a flat sprite at (X, Y) on the world plane turned to the camera, local coordinates scaled
+	inline void BillboardMatrix(const SCamera &Cam, float X, float Y, float ScaleX, float ScaleY, float *pOut)
+	{
+		float aView[16];
+		EyeMatrix(Cam, aView);
+		float aaR[3][3];
+		Rotation(Cam, aaR);
+		// columns: the camera's right and down in the world, nothing for z, the position
+		float aB[16] = {};
+		for(int i = 0; i < 3; i++)
+		{
+			aB[0 * 4 + i] = aaR[0][i] * ScaleX;
+			aB[1 * 4 + i] = aaR[1][i] * ScaleY;
+		}
+		aB[3 * 4 + 0] = X;
+		aB[3 * 4 + 1] = Y;
+		aB[3 * 4 + 3] = 1.0f;
+		for(int c = 0; c < 4; c++)
+			for(int r = 0; r < 4; r++)
+			{
+				float Sum = 0.0f;
+				for(int k = 0; k < 4; k++)
+					Sum += aView[k * 4 + r] * aB[c * 4 + k];
+				pOut[c * 4 + r] = Sum;
+			}
+	}
+
+	// draws nothing: every vertex lands outside the clip volume
+	inline void DiscardMatrix(float *pOut)
+	{
+		for(int i = 0; i < 16; i++)
+			pOut[i] = 0.0f;
+		pOut[15] = -1.0f;
 	}
 
 	inline float Distance(const SCamera &Cam)
@@ -33,6 +124,11 @@ namespace XcTilt
 	// camera). WithDepth: a real depth range for depth testing, otherwise z is 0 (2D drawing)
 	inline void Matrix(const SCamera &Cam, float *pOut, bool WithDepth)
 	{
+		if(Cam.m_Eye)
+		{
+			EyeMatrix(Cam, pOut);
+			return;
+		}
 		const float d = Distance(Cam);
 		const float ca = std::cos(Cam.m_Pitch), sa = std::sin(Cam.m_Pitch);
 		const float cb = std::cos(Cam.m_Yaw), sb = std::sin(Cam.m_Yaw);

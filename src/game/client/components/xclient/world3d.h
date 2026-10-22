@@ -1,6 +1,8 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_WORLD3D_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_WORLD3D_H
 
+#include <base/vmath.h>
+
 #include <game/client/component.h>
 
 #include <cstdint>
@@ -52,6 +54,9 @@ private:
 	bool m_FrameOn = false; // the tilted part of this frame is being drawn
 	bool m_BlocksDrawn = false;
 	float m_Yaw = 0.0f; // eased, radians
+	bool m_FirstPerson = false; // this frame
+	float m_FpPitch = 0.0f;
+	vec2 m_FpEye = vec2(0.0f, 0.0f);
 	float m_Dir = 1.0f; // eased direction of motion
 	bool m_HasDir = false;
 	float m_LastCenterX = 0.0f;
