@@ -370,9 +370,9 @@ public:
 	virtual float XcPlaneZ() const = 0;
 	virtual bool XcTiltOn() const = 0;
 	// the extruded sides of the blocks: Grid holds W*H cells from cell (X, Y), 4 bytes each: the color of the block
-	// (r, g, b) and its kind (bits 0-1: 0 air, 1 block, 2 unhookable; bit 2: the color is set, else pColor/pColor2)
-	// pSky: first person, the color behind everything (the blocks pass covers the frame)
-	virtual void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog, const float *pSky) = 0;
+	// (r, g, b) and its kind (bits 0-1: 0 air, 1 block, 2 unhookable, 3 freeze; bit 2: the color is set, else
+	// pColor/pColor2/pColor3). pSky: first person, the color behind everything (the blocks pass covers the frame)
+	virtual void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pColor3, const float *pFog, const float *pSky) = 0;
 
 	// TODO: These should perhaps not be virtuals
 	virtual void BlendNone() = 0;
