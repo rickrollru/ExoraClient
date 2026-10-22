@@ -67,7 +67,8 @@ namespace XcAutomap
 	std::string Write(const std::vector<SConfig> &vConfigs);
 
 	// runs a rule set on a grid of tile indices (0 empty); pFlags gets the tile flags (may be null)
-	void Apply(const SConfig &Config, int Width, int Height, std::vector<int> &vIndices, std::vector<int> *pvFlags, unsigned Seed);
+	// pvWriter (may be null): which rule put the tile there, run * 10000 + rule, -1 none
+	void Apply(const SConfig &Config, int Width, int Height, std::vector<int> &vIndices, std::vector<int> *pvFlags, unsigned Seed, std::vector<int> *pvWriter = nullptr);
 
 	// screen corner order of a tile: top left, top right, bottom right, bottom left. The texture coordinates
 	// (0 or 1 within the tile) of each corner for the given flags, exactly as DDNet draws tiles
@@ -111,6 +112,9 @@ namespace XcAutomap
 	bool DeriveRole(const SRoles &Roles, int Role, STile *pOut);
 	// the rule set from roles; Derive: missing roles from turned tiles
 	SConfig Build(const SRoles &Roles, const char *pName, bool Derive);
+	// guesses the roles from the pictures of the tiles: which sides of a tile are see-through (RGBA, 16x16 tiles);
+	// returns how many roles got a tile
+	int GuessRoles(const unsigned char *pRgba, int Width, int Height, SRoles &Roles);
 	// the roles saved in a config built by Build (from its comments), false when it was not
 	bool ReadRoles(const SConfig &Config, SRoles &Roles, bool *pDerive);
 } // namespace XcAutomap
