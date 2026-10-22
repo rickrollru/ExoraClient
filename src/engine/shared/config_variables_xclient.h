@@ -593,5 +593,17 @@ MACRO_CONFIG_INT(XcCursorOutline, xc_cursor_outline, 1, 0, 1, CFGFLAG_CLIENT | C
 MACRO_CONFIG_INT(XcCursorGlow, xc_cursor_glow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Soft light around the cursor")
 MACRO_CONFIG_STR(XcCursorFile, xc_cursor_file, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own cursor picture: a PNG in xclient/cursors (the top left corner points)")
 
+// 3D view
+MACRO_CONFIG_INT(Xc3d, xc_3d, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: a tilted camera and blocks with depth (OpenGL 3.3)")
+MACRO_CONFIG_INT(Xc3dPitch, xc_3d_pitch, 24, -45, 60, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how much the camera looks down (degrees)")
+MACRO_CONFIG_INT(Xc3dYaw, xc_3d_yaw, 18, 0, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how much the camera looks from the side (degrees)")
+MACRO_CONFIG_INT(Xc3dFollow, xc_3d_follow, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: the camera looks from behind the direction you run")
+MACRO_CONFIG_INT(Xc3dFov, xc_3d_fov, 50, 20, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: field of view (degrees)")
+MACRO_CONFIG_INT(Xc3dDepth, xc_3d_depth, 300, 0, 1200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how deep the blocks are (% of a block)")
+MACRO_CONFIG_INT(Xc3dFog, xc_3d_fog, 55, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: the far end of the blocks fades into the dark")
+MACRO_CONFIG_INT(Xc3dMapColors, xc_3d_map_colors, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: the block sides take the colors of the map")
+MACRO_CONFIG_COL(Xc3dColor, xc_3d_color, 923968, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: color of the block sides")
+MACRO_CONFIG_COL(Xc3dColor2, xc_3d_color2, 9971271, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: color of the unhookable block sides")
+
 // live map editing (our own server)
 MACRO_CONFIG_INT(SvXcLiveEdit, sv_xc_live_edit, 0, 0, 1, CFGFLAG_SERVER, "Exora Client players can change the map while it is played (map editor, playing together)")

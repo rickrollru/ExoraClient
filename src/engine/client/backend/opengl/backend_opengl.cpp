@@ -7,6 +7,7 @@
 #include <base/str.h>
 
 #ifndef BACKEND_NO_SDL
+#include <engine/xc_tilt.h> // XClient
 #include <engine/client/backend_sdl.h>
 #endif
 #include <engine/graphics.h>
@@ -1284,7 +1285,15 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 		}
 	}
 
-	if(pProgram->m_LastScreenTL != State.m_ScreenTL || pProgram->m_LastScreenBR != State.m_ScreenBR)
+	// XClient: 3D view, the tilted camera instead of the flat mapping (always uploaded, it moves with every sprite)
+	if(State.m_XcTilt)
+	{
+		float aTilt[16];
+		XcTilt::Matrix(XcTilt::FromRect(State.m_XcCoreTL.x, State.m_XcCoreTL.y, State.m_XcCoreBR.x, State.m_XcCoreBR.y, State.m_XcPitch, State.m_XcYaw, State.m_XcFov), aTilt, false);
+		glUniformMatrix4fv(pProgram->m_LocPos, 1, false, aTilt);
+		pProgram->m_LastScreenTL = pProgram->m_LastScreenBR = vec2(-1.0f, -1.0f);
+	}
+	else if(pProgram->m_LastScreenTL != State.m_ScreenTL || pProgram->m_LastScreenBR != State.m_ScreenBR)
 	{
 		pProgram->m_LastScreenTL = State.m_ScreenTL;
 		pProgram->m_LastScreenBR = State.m_ScreenBR;
@@ -1292,7 +1301,8 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 		// screen mapping
 		// orthographic projection matrix
 		// the z coordinate is the same for every vertex, so just ignore the z coordinate and set it in the shaders
-		float m[2 * 4] = {
+		// XClient: a full 4x4 matrix, the shaders take a mat4 for the 3D view
+		float m[4 * 4] = {
 			2.f / (State.m_ScreenBR.x - State.m_ScreenTL.x),
 			0,
 			0,
@@ -1301,10 +1311,12 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 			(2.f / (State.m_ScreenTL.y - State.m_ScreenBR.y)),
 			0,
 			-((State.m_ScreenTL.y + State.m_ScreenBR.y) / (State.m_ScreenTL.y - State.m_ScreenBR.y)),
+			0, 0, 0, 0,
+			0, 0, 0, 1,
 		};
 
 		// transpose bcs of column-major order of opengl
-		glUniformMatrix4x2fv(pProgram->m_LocPos, 1, true, (float *)&m);
+		glUniformMatrix4fv(pProgram->m_LocPos, 1, true, (float *)&m);
 	}
 }
 
@@ -1321,12 +1333,14 @@ bool CCommandProcessorFragment_OpenGL2::DoAnalyzeStep(size_t CheckCount, size_t 
 
 		pProgram->SetUniform(pProgram->m_LocTextureSampler, Slot);
 
-		float m[2 * 4] = {
+		float m[4 * 4] = {
 			1, 0, 0, 0,
-			0, 1, 0, 0};
+			0, 1, 0, 0,
+			0, 0, 0, 0, // XClient: mat4 in the shaders
+			0, 0, 0, 1};
 
 		// transpose bcs of column-major order of opengl
-		glUniformMatrix4x2fv(pProgram->m_LocPos, 1, true, (float *)&m);
+		glUniformMatrix4fv(pProgram->m_LocPos, 1, true, (float *)&m);
 	}
 	else
 	{

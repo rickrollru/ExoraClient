@@ -819,6 +819,7 @@ void CHud::RenderTeambalanceWarning()
 
 void CHud::RenderCursor()
 {
+	CXcWorld3D::CTiltScope XcTilt(&GameClient()->m_XcWorld3D); // XClient: the crosshair lies on the tilted world
 	const float Scale = (float)g_Config.m_TcCursorScale / 100.0f;
 	if(Scale <= 0.0f)
 		return;

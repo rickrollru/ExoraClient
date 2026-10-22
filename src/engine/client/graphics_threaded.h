@@ -7,6 +7,7 @@
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <mutex>
@@ -195,6 +196,13 @@ public:
 		int m_Texture;
 		SPoint m_ScreenTL;
 		SPoint m_ScreenBR;
+		// XClient: 3D view, the 2D rectangle the tilted camera is built from (the screen rect above is what it sees)
+		bool m_XcTilt;
+		SPoint m_XcCoreTL;
+		SPoint m_XcCoreBR;
+		float m_XcPitch;
+		float m_XcYaw;
+		float m_XcFov;
 
 		// clip
 		bool m_ClipEnable;
@@ -932,6 +940,15 @@ public:
 	void XcBlurScreen(const XcRender::SBlurSettings &Settings) override;
 	void XcCaptureBegin(const float *pWorldRect) override;
 	void XcCaptureEnd(const XcRender::SGlowSettings &Settings) override;
+	void XcSetTilt(bool On, float Pitch, float Yaw, float Fov) override;
+	bool XcTiltOn() const override { return m_XcTiltOn; }
+	void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog) override;
+	bool m_XcTiltOn = false;
+	float m_XcTiltPitch = 0.0f, m_XcTiltYaw = 0.0f, m_XcTiltFov = 0.0f;
+	CScreenRect m_XcTiltCore = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);
+	// the rects GetScreen gave out lately and the views they stand for (a saved rect comes back to MapScreen)
+	std::array<std::array<vec2, 4>, 16> m_aXcTiltKnown = {}; // bounds top left, bottom right, view top left, bottom right
+	int m_XcTiltKnownNext = 0;
 
 	void LinesBegin() override;
 	void LinesEnd() override;

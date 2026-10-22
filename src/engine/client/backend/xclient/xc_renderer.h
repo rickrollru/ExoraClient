@@ -51,6 +51,8 @@ private:
 	unsigned m_UpProgram = 0;
 	unsigned m_CompositeProgram = 0;
 	unsigned m_GlowProgram = 0;
+	unsigned m_BlocksProgram = 0;
+	unsigned m_CopyProgram = 0;
 
 	unsigned m_ShapeVao = 0;
 	unsigned m_QuadVbo = 0;
@@ -91,6 +93,22 @@ private:
 	int m_LocGlowFillScale = -1;
 	int m_LocGlowFillTime = -1;
 	int m_LocGlowKeepShade = -1;
+	int m_LocUseTilt = -1;
+	int m_LocTilt = -1;
+	// 3D view: block sides
+	int m_LocBlocksMatrix = -1;
+	int m_LocBlocksGrid = -1;
+	int m_LocBlocksCells = -1;
+	int m_LocBlocksDepth = -1;
+	int m_LocBlocksColor = -1;
+	int m_LocBlocksColor2 = -1;
+	int m_LocBlocksFog = -1;
+	int m_LocCopyTex = -1;
+	STarget m_Blocks;
+	unsigned m_BlocksDepth = 0;
+	unsigned m_BlocksGrid = 0;
+	int m_BlocksGridW = 0;
+	int m_BlocksGridH = 0;
 
 	// sprite capture for the neon outline
 	STarget m_Capture;
@@ -104,6 +122,7 @@ private:
 	void BlurScreen(const XcRender::SCommand_BlurScreen *pCommand);
 	void CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand);
 	void CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand);
+	void DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand);
 	static float BlurSpread(int Levels);
 	// world rectangle (x0, y0, x1, y1) to a pixel region (x, y, w, h, rows from the bottom) plus a margin
 	static bool WorldToRegion(const float *pScreen, const float *pWorld, int Width, int Height, float Margin, int *pRegion);
