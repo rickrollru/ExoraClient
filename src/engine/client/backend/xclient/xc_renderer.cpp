@@ -1358,6 +1358,9 @@ void CXcRenderer::DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand)
 	if(!m_BlocksGrid)
 		glGenTextures(1, &m_BlocksGrid);
 	glBindTexture(GL_TEXTURE_2D, m_BlocksGrid);
+	// the backend keeps an alignment of 1 for its uploads (the glyphs of the text), put back what was there
+	GLint UnpackAlignment;
+	glGetIntegerv(GL_UNPACK_ALIGNMENT, &UnpackAlignment);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	if(pCommand->m_W > m_BlocksGridW || pCommand->m_H > m_BlocksGridH)
 	{
@@ -1368,7 +1371,7 @@ void CXcRenderer::DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pCommand->m_W, pCommand->m_H, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, pCommand->m_pGrid);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, UnpackAlignment);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, m_Blocks.m_Fbo);
 	glViewport(0, 0, Width, Height);

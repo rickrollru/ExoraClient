@@ -583,6 +583,7 @@ void CXcMenu::RenderSettingsChat()
 		ToggleRow(Tr("Team colors"), "cl_chat_teamcolors", &g_Config.m_ClChatTeamColors);
 		ToggleRow(Tr("System messages"), "cl_show_chat_system", &g_Config.m_ClShowChatSystem);
 		ToggleRow(Tr("New messages slide in"), "xc_chat_anim", &g_Config.m_XcChatAnim);
+		ToggleRow(Tr("Server greeting box on join"), "xc_motd", &g_Config.m_XcMotd);
 		EndCard();
 	}
 	if(!g_Config.m_XcChatNew && BeginCard("##chat_style", Tr("Chat in the HUD style"), Tr("Plates in the theme colors, marks for mentions, team chat and whispers, a framed input"), &g_Config.m_XcChatStyle))
