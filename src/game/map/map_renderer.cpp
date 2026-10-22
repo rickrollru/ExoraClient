@@ -179,6 +179,8 @@ void CMapRenderer::Render(const CRenderLayerParams &Params)
 			ms_fnXcGameGroup();
 	}
 
+	Graphics()->XcSetGroupParallax(100); // XClient
+
 	// Reset clip from last group
 	Graphics()->ClipDisable();
 

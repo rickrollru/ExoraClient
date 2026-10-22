@@ -21,6 +21,7 @@ namespace XcTilt
 		float m_EyeX = 0.0f, m_EyeY = 0.0f;
 		// side view: flat drawing lands this far behind the world plane
 		float m_PlaneZ = 0.0f;
+		float m_PlaneScale = 1.0f; // around the center
 	};
 
 	enum
@@ -145,8 +146,13 @@ namespace XcTilt
 			{sb * ca, -sa, cb * ca, d},
 		};
 		// p = world - center
+		// p = (world - center) * scale, at the depth of the plane
 		for(auto &aR : aRow)
+		{
+			aR[0] *= Cam.m_PlaneScale;
+			aR[1] *= Cam.m_PlaneScale;
 			aR[3] -= aR[0] * cx + aR[1] * cy - aR[2] * Cam.m_PlaneZ;
+		}
 		if(WithDepth)
 		{
 			const float n = d * 0.05f, f = d * 40.0f;
