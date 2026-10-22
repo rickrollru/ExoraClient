@@ -152,7 +152,7 @@ void CMotd::OnMessage(int MsgType, void *pRawMsg)
 		if(!IsActive())
 			m_ShownSince = time_get_nanoseconds();
 		m_ServerMotdUpdateTime = time();
-		if(m_aServerMotd[0] && g_Config.m_ClMotdTime)
+		if(m_aServerMotd[0] && g_Config.m_ClMotdTime && g_Config.m_XcMotd) // XClient: the box can be off
 			m_ServerMotdTime = m_ServerMotdUpdateTime + time_freq() * g_Config.m_ClMotdTime;
 		else
 			m_ServerMotdTime = 0;
