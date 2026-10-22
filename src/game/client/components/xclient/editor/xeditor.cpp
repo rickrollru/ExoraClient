@@ -425,6 +425,7 @@ void CXcEditorUi::Render()
 		RenderMapDetails();
 		RenderThemes();
 		RenderAutomapBuilder();
+		RenderDepthDialog();
 		if(!m_pAutomap)
 			RenderWiki(); // over the builder it is drawn inside the builder's window
 		RenderTuneZones();
@@ -870,6 +871,8 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					m_ThemesRequest = true;
 				if(ImGui::MenuItem(Tr("Automapper builder...")))
 					OpenAutomapBuilderForSelection();
+				if(ImGui::MenuItem(Tr("Make the layer 3D...")))
+					OpenDepthDialog();
 				if(ImGui::MenuItem(Tr("Tune zones...")))
 					m_TuneRequest = true;
 				ImGui::Separator();
@@ -2003,6 +2006,7 @@ void CXcEditorUi::RenderPalette()
 	vEntries.push_back({Tr("Properties panel"), "Properties panel", nullptr, false, m_ShowProperties, [&]() { m_ShowProperties = !m_ShowProperties; }});
 	vEntries.push_back({Tr("Hide the interface"), "Hide interface", nullptr, false, false, [&]() { E.m_GuiActive = false; }});
 	vEntries.push_back({Tr("Editor wiki"), "Wiki help automapper rules guide", Tr("Articles about the automapper and its builder, with pictures"), false, false, [&]() { OpenWiki(); }});
+	vEntries.push_back({Tr("Make the layer 3D..."), "3D depth parallax", Tr("Depth for every player: darker parallax copies of the selected tile layer"), false, false, [&]() { OpenDepthDialog(); }});
 	vEntries.push_back({Tr("Automapper builder..."), "Automapper builder rules", Tr("Make automapper rules for a tileset with the mouse"), false, false, [&]() { OpenAutomapBuilderForSelection(); }});
 	vEntries.push_back({Tr("Editor guide"), "Guide", nullptr, false, false, [&]() {
 				    E.m_XcGuideOpen = true;

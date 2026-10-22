@@ -374,7 +374,17 @@ private:
 	char m_aWikiSearch[64] = "";
 	void RenderWiki();
 
+	// "Make 3D": depth for every player from parallax copies of a layer (xeditor_depth.cpp)
+	bool m_DepthRequest = false;
+	int m_DepthLevels = 6;
+	int m_DepthStep = 1;
+	int m_DepthDark = 10;
+	int m_DepthPiece = 1;
+	void RenderDepthDialog();
+	void MakeDepth(int Levels, int Step, int Dark, int Piece);
+
 public:
+	void OpenDepthDialog();
 	void OpenWiki(const char *pPageId = nullptr);
 	void OpenAutomapBuilder(int Image);
 	void OpenAutomapBuilderForSelection(); // the picture of the selected tile layer, else the selected picture
