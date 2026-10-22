@@ -3060,6 +3060,9 @@ if(CLIENT)
     components/xclient/block_outline.cpp
     components/xclient/block_outline.h
     components/xclient/world3d.cpp
+    components/xclient/editor/automap_rules.cpp
+    components/xclient/editor/automap_rules.h
+    components/xclient/editor/xeditor_automap.cpp
     components/xclient/world3d.h
     components/xclient/discord_rpc.cpp
     components/xclient/discord_rpc.h

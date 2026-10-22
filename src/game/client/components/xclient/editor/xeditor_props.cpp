@@ -277,7 +277,9 @@ void CXcEditorUi::RenderProp(int Kind, int Call, int Index, const SXcCapturedPro
 		const bool HasImage = ImageIndex >= 0 && ImageIndex < (int)pMap->m_vpImages.size();
 		const int Num = HasImage ? pMap->m_vpImages[ImageIndex]->m_Automapper.ConfigNamesNum() : 0;
 		const char *pPreview = (Prop.m_Value >= 0 && Prop.m_Value < Num) ? pMap->m_vpImages[ImageIndex]->m_Automapper.GetConfigName(Prop.m_Value) : Tr("None");
-		ImGui::SetNextItemWidth(ControlWidth);
+		// XClient builder next to the list: make or change rules for this picture
+		const float BuildW = HasImage ? ImGui::GetFrameHeight() : 0.0f;
+		ImGui::SetNextItemWidth(ControlWidth - (HasImage ? BuildW + S(6.0f) : 0.0f));
 		ImGui::BeginDisabled(Num == 0);
 		if(ImGui::BeginCombo("##rule", pPreview, ImGuiComboFlags_HeightLarge))
 		{
@@ -295,6 +297,14 @@ void CXcEditorUi::RenderProp(int Kind, int Call, int Index, const SXcCapturedPro
 		ImGui::EndDisabled();
 		if(Num == 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("%s", Tr("This image has no automapper rules"));
+		if(HasImage)
+		{
+			ImGui::SameLine(0.0f, S(6.0f));
+			if(ImGui::Button("+##am_build", ImVec2(BuildW, BuildW)))
+				OpenAutomapBuilder(ImageIndex);
+			if(ImGui::IsItemHovered())
+				ImGui::SetTooltip("%s", Tr("Automapper builder: make rules for this tileset"));
+		}
 		break;
 	}
 	case PROPTYPE_AUTOMAPPER_REFERENCE:
