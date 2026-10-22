@@ -44,6 +44,8 @@ layout(location = 6) in vec4 a_Outline;
 
 uniform vec4 u_Screen;  // left, top, right, bottom
 uniform float u_Pixel;  // world units per pixel
+uniform int u_UseTilt;  // 3D view: the tilted camera maps the world
+uniform mat4 u_Tilt;
 
 out vec2 v_Local;
 flat out vec2 v_Half;
@@ -67,6 +69,8 @@ void main()
 	vec2 World = a_PosSize.xy + vec2(Local.x * c - Local.y * s, Local.x * s + Local.y * c);
 	vec2 Ndc = (World - u_Screen.xy) / (u_Screen.zw - u_Screen.xy) * 2.0 - 1.0;
 	gl_Position = vec4(Ndc.x, -Ndc.y, 0.0, 1.0);
+	if(u_UseTilt == 1)
+		gl_Position = u_Tilt * vec4(World, 0.0, 1.0);
 
 	v_Local = Local;
 	v_Half = a_PosSize.zw;
@@ -248,6 +252,88 @@ void main()
 	{
 		FragColor = vec4(Rgb, Alpha);
 	}
+}
+)";
+
+// 3D view: the sides of the blocks. One instance per cell of the grid, four faces of two triangles each;
+// a face is only there between a block and air. The face goes from the world plane (z 0) into the depth.
+static const char *const s_pBlocksVertex = R"(#version 330 core
+uniform mat4 u_Matrix;
+uniform usampler2D u_Grid;
+uniform ivec4 u_Cells; // first cell x, y, number of cells w, h
+uniform float u_Depth;
+out float v_Far;
+flat out float v_Shade;
+flat out int v_Type;
+flat out vec4 v_MapColor; // a: the color is set
+
+uint Cell(ivec2 Pos)
+{
+	if(Pos.x < 0 || Pos.y < 0 || Pos.x >= u_Cells.z || Pos.y >= u_Cells.w)
+		return 1u;
+	return texelFetch(u_Grid, Pos, 0).a & 3u;
+}
+
+void main()
+{
+	ivec2 Pos = ivec2(gl_InstanceID % u_Cells.z, gl_InstanceID / u_Cells.z);
+	int Face = gl_VertexID / 6;
+	int Corner = gl_VertexID % 6;
+	const ivec2 aDir[4] = ivec2[4](ivec2(0, -1), ivec2(0, 1), ivec2(-1, 0), ivec2(1, 0)); // top, bottom, left, right
+	uint Type = Cell(Pos);
+	if(Type == 0u || Cell(Pos + aDir[Face]) != 0u)
+	{
+		gl_Position = vec4(0.0, 0.0, 2.0, 1.0); // no face here, outside the depth range
+		v_Far = 0.0;
+		v_Shade = 0.0;
+		v_Type = 0;
+		v_MapColor = vec4(0.0);
+		return;
+	}
+	const vec2 aStart[4] = vec2[4](vec2(0.0, 0.0), vec2(0.0, 1.0), vec2(0.0, 0.0), vec2(1.0, 0.0));
+	const vec2 aEnd[4] = vec2[4](vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0), vec2(1.0, 1.0));
+	const vec2 aCorner[6] = vec2[6](vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
+	vec2 c = aCorner[Corner];
+	vec2 World = (vec2(u_Cells.xy + Pos) + mix(aStart[Face], aEnd[Face], c.x)) * 32.0;
+	gl_Position = u_Matrix * vec4(World, c.y * u_Depth, 1.0);
+	v_Far = c.y;
+	const float aShade[4] = float[4](1.0, 0.42, 0.68, 0.68);
+	v_Shade = aShade[Face];
+	v_Type = int(Type);
+	uvec4 Texel = texelFetch(u_Grid, Pos, 0);
+	v_MapColor = vec4(vec3(Texel.rgb) / 255.0, (Texel.a & 4u) != 0u ? 1.0 : 0.0);
+}
+)";
+
+static const char *const s_pBlocksFragment = R"(#version 330 core
+in float v_Far;
+flat in float v_Shade;
+flat in int v_Type;
+flat in vec4 v_MapColor;
+uniform vec4 u_Color;
+uniform vec4 u_Color2;
+uniform vec4 u_Fog;
+out vec4 FragColor;
+void main()
+{
+	vec4 Color = v_Type == 2 ? u_Color2 : u_Color;
+	if(v_MapColor.a > 0.5)
+		Color.rgb = v_MapColor.rgb;
+	vec3 Rgb = Color.rgb * v_Shade * mix(1.0, 0.7, v_Far);
+	// a thin light line along the front edge, like the bevel of a tile
+	Rgb += vec3(0.08) * (1.0 - smoothstep(0.0, 0.06, v_Far));
+	Rgb = mix(Rgb, u_Fog.rgb, u_Fog.a * v_Far);
+	FragColor = vec4(Rgb, Color.a);
+}
+)";
+
+static const char *const s_pCopyFragment = R"(#version 330 core
+in vec2 v_Uv;
+uniform sampler2D u_Tex;
+out vec4 FragColor;
+void main()
+{
+	FragColor = texture(u_Tex, v_Uv);
 }
 )";
 
@@ -570,8 +656,20 @@ bool CXcRenderer::Init()
 	m_UpProgram = LinkProgram(s_pFullscreenVertex, s_pUpFragment, "kawase_up");
 	m_CompositeProgram = LinkProgram(s_pFullscreenVertex, s_pCompositeFragment, "composite");
 	m_GlowProgram = LinkProgram(s_pFullscreenVertex, s_pGlowFragment, "glow");
-	if(!m_ShapeProgram || !m_DownProgram || !m_UpProgram || !m_CompositeProgram || !m_GlowProgram)
+	m_BlocksProgram = LinkProgram(s_pBlocksVertex, s_pBlocksFragment, "blocks3d");
+	m_CopyProgram = LinkProgram(s_pFullscreenVertex, s_pCopyFragment, "copy");
+	if(!m_ShapeProgram || !m_DownProgram || !m_UpProgram || !m_CompositeProgram || !m_GlowProgram || !m_BlocksProgram || !m_CopyProgram)
 		return false;
+	m_LocBlocksMatrix = glGetUniformLocation(m_BlocksProgram, "u_Matrix");
+	m_LocBlocksGrid = glGetUniformLocation(m_BlocksProgram, "u_Grid");
+	m_LocBlocksCells = glGetUniformLocation(m_BlocksProgram, "u_Cells");
+	m_LocBlocksDepth = glGetUniformLocation(m_BlocksProgram, "u_Depth");
+	m_LocBlocksColor = glGetUniformLocation(m_BlocksProgram, "u_Color");
+	m_LocBlocksColor2 = glGetUniformLocation(m_BlocksProgram, "u_Color2");
+	m_LocBlocksFog = glGetUniformLocation(m_BlocksProgram, "u_Fog");
+	m_LocCopyTex = glGetUniformLocation(m_CopyProgram, "u_Tex");
+	m_LocUseTilt = glGetUniformLocation(m_ShapeProgram, "u_UseTilt");
+	m_LocTilt = glGetUniformLocation(m_ShapeProgram, "u_Tilt");
 	m_LocGlowCapture = glGetUniformLocation(m_GlowProgram, "u_Capture");
 	m_LocGlowBlur = glGetUniformLocation(m_GlowProgram, "u_Blur");
 	m_LocGlowColor = glGetUniformLocation(m_GlowProgram, "u_Color");
@@ -654,6 +752,11 @@ void CXcRenderer::Shutdown()
 	glDeleteProgram(m_UpProgram);
 	glDeleteProgram(m_CompositeProgram);
 	glDeleteProgram(m_GlowProgram);
+	glDeleteProgram(m_BlocksProgram);
+	glDeleteProgram(m_CopyProgram);
+	if(m_BlocksGrid)
+		glDeleteTextures(1, &m_BlocksGrid);
+	m_BlocksGrid = 0;
 	glDeleteBuffers(1, &m_QuadVbo);
 	glDeleteBuffers(1, &m_InstanceVbo);
 	glDeleteVertexArrays(1, &m_ShapeVao);
@@ -722,6 +825,7 @@ bool CXcRenderer::RunCommand(const CCommandBuffer::SCommand *pCommand)
 	case XcRender::CMD_XC_BLUR_SCREEN: BlurScreen(static_cast<const XcRender::SCommand_BlurScreen *>(pCommand)); break;
 	case XcRender::CMD_XC_CAPTURE_BEGIN: CaptureBegin(static_cast<const XcRender::SCommand_CaptureBegin *>(pCommand)); break;
 	case XcRender::CMD_XC_CAPTURE_END: CaptureEnd(static_cast<const XcRender::SCommand_CaptureEnd *>(pCommand)); break;
+	case XcRender::CMD_XC_DRAW_BLOCKS3D: DrawBlocks3D(static_cast<const XcRender::SCommand_DrawBlocks3D *>(pCommand)); break;
 	}
 	return true;
 }
@@ -779,6 +883,14 @@ void CXcRenderer::DestroyTargets()
 			pTargets[i] = STarget();
 		}
 	}
+	if(m_Blocks.m_Fbo)
+		glDeleteFramebuffers(1, &m_Blocks.m_Fbo);
+	if(m_Blocks.m_Texture)
+		glDeleteTextures(1, &m_Blocks.m_Texture);
+	m_Blocks = STarget();
+	if(m_BlocksDepth)
+		glDeleteRenderbuffers(1, &m_BlocksDepth);
+	m_BlocksDepth = 0;
 	if(m_Capture.m_Fbo)
 		glDeleteFramebuffers(1, &m_Capture.m_Fbo);
 	if(m_Capture.m_Texture)
@@ -903,6 +1015,9 @@ void CXcRenderer::DrawShapes(const XcRender::SCommand_DrawShapes *pCommand)
 	glUniform4f(m_LocScreen, pCommand->m_ScreenLeft, pCommand->m_ScreenTop, pCommand->m_ScreenRight, pCommand->m_ScreenBottom);
 	glUniform1f(m_LocPixel, Pixel);
 	glUniform1i(m_LocBloomPass, 0);
+	glUniform1i(m_LocUseTilt, pCommand->m_Tilt ? 1 : 0);
+	if(pCommand->m_Tilt)
+		glUniformMatrix4fv(m_LocTilt, 1, GL_FALSE, pCommand->m_aTilt);
 	glBindVertexArray(m_ShapeVao);
 
 	// regular alpha blending (dust, weather, solid shapes)
@@ -935,8 +1050,8 @@ void CXcRenderer::DrawShapes(const XcRender::SCommand_DrawShapes *pCommand)
 	}
 	const float aScreen[4] = {pCommand->m_ScreenLeft, pCommand->m_ScreenTop, pCommand->m_ScreenRight, pCommand->m_ScreenBottom};
 	const float aWorld[4] = {MinX, MinY, MaxX, MaxY};
-	int aRegion[4];
-	if(!WorldToRegion(aScreen, aWorld, Width, Height, BlurSpread(Levels), aRegion))
+	int aRegion[4] = {0, 0, Width, Height}; // 3D view: the world is not a rectangle on the screen any more
+	if(!pCommand->m_Tilt && !WorldToRegion(aScreen, aWorld, Width, Height, BlurSpread(Levels), aRegion))
 		return;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
@@ -1028,7 +1143,14 @@ void CXcRenderer::CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand)
 		return;
 	const float aScreen[4] = {pCommand->m_ScreenLeft, pCommand->m_ScreenTop, pCommand->m_ScreenRight, pCommand->m_ScreenBottom};
 	// the world rect already has room for the glow, a few pixels more for the filter taps
-	if(!WorldToRegion(aScreen, pCommand->m_aWorldRect, Width, Height, 8.0f, m_aCaptureRegion))
+	if(pCommand->m_Tilt)
+	{
+		// 3D view: the world rect is no rectangle on the screen, take all of it
+		m_aCaptureRegion[0] = m_aCaptureRegion[1] = 0;
+		m_aCaptureRegion[2] = Width;
+		m_aCaptureRegion[3] = Height;
+	}
+	else if(!WorldToRegion(aScreen, pCommand->m_aWorldRect, Width, Height, 8.0f, m_aCaptureRegion))
 		return;
 
 	// targets may be created here, keep DDNet's bindings intact while doing so
@@ -1143,4 +1265,80 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 	glActiveTexture(ActiveTexture);
 }
 
+// 3D view: the sides of the blocks go into their own target with a depth buffer, then over the frame
+void CXcRenderer::DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand)
+{
+	CGlStateGuard Guard;
+	const GLint *pViewport = Guard.Viewport();
+	const int Width = pViewport[2];
+	const int Height = pViewport[3];
+	if(Width <= 0 || Height <= 0 || pCommand->m_W <= 0 || pCommand->m_H <= 0)
+		return;
+	EnsureTargets(Width, Height);
+	if(!m_Blocks.m_Fbo)
+	{
+		CreateTarget(Width, Height, GL_RGBA8, GL_UNSIGNED_BYTE, m_Blocks.m_Fbo, m_Blocks.m_Texture);
+		m_Blocks.m_Width = Width;
+		m_Blocks.m_Height = Height;
+		glGenRenderbuffers(1, &m_BlocksDepth);
+		glBindRenderbuffer(GL_RENDERBUFFER, m_BlocksDepth);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Width, Height);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_BlocksDepth);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	}
+
+	// the cells as an integer texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindSampler(0, 0);
+	if(!m_BlocksGrid)
+		glGenTextures(1, &m_BlocksGrid);
+	glBindTexture(GL_TEXTURE_2D, m_BlocksGrid);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	if(pCommand->m_W > m_BlocksGridW || pCommand->m_H > m_BlocksGridH)
+	{
+		m_BlocksGridW = std::max(pCommand->m_W, m_BlocksGridW);
+		m_BlocksGridH = std::max(pCommand->m_H, m_BlocksGridH);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI, m_BlocksGridW, m_BlocksGridH, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pCommand->m_W, pCommand->m_H, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, pCommand->m_pGrid);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_Blocks.m_Fbo);
+	glViewport(0, 0, Width, Height);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClearDepth(1.0);
+	GLboolean DepthMask;
+	glGetBooleanv(GL_DEPTH_WRITEMASK, &DepthMask);
+	glDepthMask(GL_TRUE);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glDisable(GL_BLEND);
+	glUseProgram(m_BlocksProgram);
+	glUniformMatrix4fv(m_LocBlocksMatrix, 1, GL_FALSE, pCommand->m_aMatrix);
+	glUniform1i(m_LocBlocksGrid, 0);
+	glUniform4i(m_LocBlocksCells, pCommand->m_X, pCommand->m_Y, pCommand->m_W, pCommand->m_H);
+	glUniform1f(m_LocBlocksDepth, pCommand->m_Depth);
+	glUniform4fv(m_LocBlocksColor, 1, pCommand->m_aColor);
+	glUniform4fv(m_LocBlocksColor2, 1, pCommand->m_aColor2);
+	glUniform4fv(m_LocBlocksFog, 1, pCommand->m_aFog);
+	glBindVertexArray(m_EmptyVao);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, 24, pCommand->m_W * pCommand->m_H);
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(DepthMask);
+
+	// over the frame, the frame keeps its alpha
+	glBindFramebuffer(GL_FRAMEBUFFER, Guard.DrawFbo());
+	glViewport(pViewport[0], pViewport[1], pViewport[2], pViewport[3]);
+	glEnable(GL_BLEND);
+	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+	glUseProgram(m_CopyProgram);
+	glUniform1i(m_LocCopyTex, 0);
+	glBindSampler(0, m_Sampler);
+	DrawFullscreen(m_CopyProgram, m_Blocks.m_Texture);
+}
+
 #endif
+

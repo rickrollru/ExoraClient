@@ -9,7 +9,7 @@ uniform sampler2DArray gTextureSampler;
 uniform vec4 gVertColor;
 
 #ifdef TW_TILE_TEXTURED
-noperspective centroid in vec3 TexCoord;
+centroid in vec3 TexCoord;
 #endif
 
 out vec4 FragClr;

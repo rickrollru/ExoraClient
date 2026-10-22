@@ -20,6 +20,7 @@
 #include <engine/shared/config.h>
 #include <engine/shared/jobs.h>
 #include <engine/storage.h>
+#include <engine/xc_tilt.h> // XClient
 
 #include <generated/data_types.h>
 
@@ -106,6 +107,9 @@ CGraphics_Threaded::CGraphics_Threaded()
 	m_State.m_Texture = -1;
 	m_State.m_BlendMode = EBlendMode::ALPHA;
 	m_State.m_WrapMode = EWrapMode::REPEAT;
+	m_State.m_XcTilt = false; // XClient
+	m_State.m_XcCoreTL = m_State.m_XcCoreBR = vec2(0.0f, 0.0f);
+	m_State.m_XcPitch = m_State.m_XcYaw = m_State.m_XcFov = 0.0f;
 
 	m_CurrentCommandBuffer = 0;
 	m_pCommandBuffer = nullptr;
@@ -207,6 +211,43 @@ void CGraphics_Threaded::MapScreen(const CScreenRect &ScreenRect)
 {
 	m_State.m_ScreenTL = ScreenRect.m_TopLeft;
 	m_State.m_ScreenBR = ScreenRect.m_BottomRight;
+	// XClient: 3D view, the camera is built from the 2D rectangle, the screen rect becomes all it sees (culling)
+	m_State.m_XcTilt = false;
+	if(m_XcTiltOn)
+	{
+		// the rect given out by GetScreen comes back (saved and restored): it stands for the same view
+		CScreenRect Core = ScreenRect;
+		for(const auto &aKnown : m_aXcTiltKnown)
+			if(ScreenRect.m_TopLeft == aKnown[0] && ScreenRect.m_BottomRight == aKnown[1] && aKnown[2] != aKnown[3])
+				Core = CScreenRect(aKnown[2], aKnown[3]);
+		const XcTilt::SCamera Cam = XcTilt::FromRect(Core.m_TopLeft.x, Core.m_TopLeft.y, Core.m_BottomRight.x, Core.m_BottomRight.y, m_XcTiltPitch, m_XcTiltYaw, m_XcTiltFov);
+		float x0, y0, x1, y1;
+		XcTilt::Bounds(Cam, 3.0f, &x0, &y0, &x1, &y1);
+		m_State.m_XcTilt = true;
+		m_State.m_XcCoreTL = Core.m_TopLeft;
+		m_State.m_XcCoreBR = Core.m_BottomRight;
+		m_State.m_XcPitch = m_XcTiltPitch;
+		m_State.m_XcYaw = m_XcTiltYaw;
+		m_State.m_XcFov = m_XcTiltFov;
+		m_State.m_ScreenTL = vec2(std::min(x0, Core.m_TopLeft.x), std::min(y0, Core.m_TopLeft.y));
+		m_State.m_ScreenBR = vec2(std::max(x1, Core.m_BottomRight.x), std::max(y1, Core.m_BottomRight.y));
+		m_XcTiltCore = Core;
+		m_aXcTiltKnown[m_XcTiltKnownNext] = {m_State.m_ScreenTL, m_State.m_ScreenBR, Core.m_TopLeft, Core.m_BottomRight};
+		m_XcTiltKnownNext = (m_XcTiltKnownNext + 1) % (int)m_aXcTiltKnown.size();
+	}
+}
+
+// XClient: 3D view
+void CGraphics_Threaded::XcSetTilt(bool On, float Pitch, float Yaw, float Fov)
+{
+	const bool WasOn = m_XcTiltOn;
+	const CScreenRect Core = m_State.m_XcTilt ? m_XcTiltCore : GetScreen();
+	m_XcTiltOn = On;
+	m_XcTiltPitch = Pitch;
+	m_XcTiltYaw = Yaw;
+	m_XcTiltFov = Fov;
+	if(On || WasOn)
+		MapScreen(Core);
 }
 
 CScreenRect CGraphics_Threaded::GetScreen() const
@@ -1765,6 +1806,9 @@ void CGraphics_Threaded::RenderQuadContainerEx(int ContainerIndex, int QuadOffse
 		Cmd.m_State = m_State;
 		Cmd.m_State.m_ScreenTL = CommandScreenRect.m_TopLeft;
 		Cmd.m_State.m_ScreenBR = CommandScreenRect.m_BottomRight;
+		// XClient: the tilted camera moves and scales the same way
+		Cmd.m_State.m_XcCoreTL = (m_State.m_XcCoreTL - vec2(X, Y)) / vec2(ScaleX, ScaleY);
+		Cmd.m_State.m_XcCoreBR = (m_State.m_XcCoreBR - vec2(X, Y)) / vec2(ScaleX, ScaleY);
 
 		Cmd.m_DrawNum = QuadDrawNum * 6;
 		Cmd.m_pOffset = (void *)(QuadOffset * 6 * sizeof(unsigned int));
@@ -3048,6 +3092,9 @@ void CGraphics_Threaded::XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int Num
 		Cmd.m_ScreenTop = m_State.m_ScreenTL.y;
 		Cmd.m_ScreenRight = m_State.m_ScreenBR.x;
 		Cmd.m_ScreenBottom = m_State.m_ScreenBR.y;
+		Cmd.m_Tilt = m_State.m_XcTilt;
+		if(Cmd.m_Tilt)
+			XcTilt::Matrix(XcTilt::FromRect(m_State.m_XcCoreTL.x, m_State.m_XcCoreTL.y, m_State.m_XcCoreBR.x, m_State.m_XcCoreBR.y, m_State.m_XcPitch, m_State.m_XcYaw, m_State.m_XcFov), Cmd.m_aTilt, false);
 		Cmd.m_NumAlpha = ChunkAlpha;
 		Cmd.m_NumAdditive = ChunkAdditive;
 		Cmd.m_Settings = Settings;
@@ -3094,6 +3141,7 @@ void CGraphics_Threaded::XcCaptureBegin(const float *pWorldRect)
 	Cmd.m_ScreenRight = m_State.m_ScreenBR.x;
 	Cmd.m_ScreenBottom = m_State.m_ScreenBR.y;
 	mem_copy(Cmd.m_aWorldRect, pWorldRect, sizeof(Cmd.m_aWorldRect));
+	Cmd.m_Tilt = m_State.m_XcTilt;
 	AddCmd(Cmd);
 }
 
@@ -3103,5 +3151,34 @@ void CGraphics_Threaded::XcCaptureEnd(const XcRender::SGlowSettings &Settings)
 	XcRender::SCommand_CaptureEnd Cmd;
 	Cmd.m_Settings = Settings;
 	AddCmd(Cmd);
+	m_pCommandBuffer->AddRenderCalls(1);
+}
+
+// XClient: 3D view, the sides of the blocks around the camera
+void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcDrawBlocks3D while drawing");
+	if(!m_State.m_XcTilt || W <= 0 || H <= 0)
+		return;
+	XcRender::SCommand_DrawBlocks3D Cmd;
+	XcTilt::Matrix(XcTilt::FromRect(m_State.m_XcCoreTL.x, m_State.m_XcCoreTL.y, m_State.m_XcCoreBR.x, m_State.m_XcCoreBR.y, m_State.m_XcPitch, m_State.m_XcYaw, m_State.m_XcFov), Cmd.m_aMatrix, true);
+	Cmd.m_X = X;
+	Cmd.m_Y = Y;
+	Cmd.m_W = W;
+	Cmd.m_H = H;
+	Cmd.m_Depth = Depth;
+	mem_copy(Cmd.m_aColor, pColor, sizeof(Cmd.m_aColor));
+	mem_copy(Cmd.m_aColor2, pColor2, sizeof(Cmd.m_aColor2));
+	mem_copy(Cmd.m_aFog, pFog, sizeof(Cmd.m_aFog));
+	const size_t Size = (size_t)W * H * 4;
+	const auto Fill = [&](void *pData) {
+		if(pData == nullptr)
+			return false;
+		Cmd.m_pGrid = (unsigned char *)pData;
+		mem_copy(Cmd.m_pGrid, pGrid, Size);
+		return true;
+	};
+	Fill(AllocCommandBufferData(Size));
+	AddCmd(Cmd, [&] { return Fill(m_pCommandBuffer->AllocData(Size)); });
 	m_pCommandBuffer->AddRenderCalls(1);
 }

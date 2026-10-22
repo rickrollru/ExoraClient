@@ -18,11 +18,14 @@ public:
 	void Load(ERenderType Type, CLayers *pLayers, IMapImages *pMapImages, const IEnvelopeEval *pEnvelopeEval, std::optional<FCallbackMapRendererInit> CallbackMapRendererInitOptional);
 	void Render(const CRenderLayerParams &Params);
 	void XcReloadLayer(int Group, int Layer); // XClient: live map editing
+	// XClient: 3D view, called when the group with the game layer starts (block sides under its layers)
+	static std::function<void()> ms_fnXcGameGroup;
 
 private:
 	int GetLayerType(const CMapItemLayer *pLayer) const;
 
 	std::vector<std::unique_ptr<CRenderLayer>> m_vpRenderLayers;
+	int m_XcGameGroup = -1; // XClient
 };
 
 #endif

@@ -90,6 +90,7 @@
 #include "components/xclient/accessory.h"
 #include "components/xclient/ambience.h"
 #include "components/xclient/block_outline.h"
+#include "components/xclient/world3d.h"
 #include "components/xclient/discord_rpc.h" // XClient
 #include "components/xclient/cape.h"
 #include "components/xclient/cosmetics.h"
@@ -278,6 +279,7 @@ public:
 	CXcMotion m_XcMotion;
 	CXcFloaters m_XcFloaters;
 	CXcBlockOutline m_XcBlockOutline;
+	CXcWorld3D m_XcWorld3D;
 	CXcDiscordRpc m_XcDiscordRpc; // XClient
 	CXcAmbience m_XcAmbience;
 	CXcOverTiles m_XcOverTiles;

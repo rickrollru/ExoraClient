@@ -4,7 +4,7 @@ layout (location = 1) in vec4 inColor;
 layout (location = 2) in vec2 inVertexTexCoord;
 #endif
 
-uniform mat4x2 gPos;
+uniform mat4 gPos; // XClient: a full matrix for the 3D view
 
 #ifdef TW_QUAD_GROUPED
 uniform vec2 gOffsets[1];
@@ -16,10 +16,10 @@ uniform int gQuadOffset;
 flat out int QuadIndex;
 #endif
 
-noperspective out vec4 QuadColor;
+out vec4 QuadColor;
 
 #ifdef TW_QUAD_TEXTURED
-noperspective out vec2 TexCoord;
+out vec2 TexCoord;
 #endif
 
 void main()
@@ -45,7 +45,7 @@ void main()
 	QuadIndex = TmpQuadIndex;
 #endif
 
-	gl_Position = vec4(gPos * vec4(FinalPos, 0.0, 1.0), 0.0, 1.0);
+	gl_Position = gPos * vec4(FinalPos, 0.0, 1.0);
 	QuadColor = inColor;
 
 #ifdef TW_QUAD_TEXTURED
