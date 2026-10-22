@@ -135,6 +135,9 @@ void CXcEditorUi::RenderImageCard()
 	}
 	ImGui::Dummy(ImVec2(Box, Box * 0.75f));
 	ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+	if(Button(Tr("Automapper builder"), false, Width))
+		OpenAutomapBuilder(pMap->m_SelectedImage);
+	ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
 
 	// the color correction
 	if(pImage->m_External)

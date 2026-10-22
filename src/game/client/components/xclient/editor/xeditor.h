@@ -27,6 +27,10 @@
 #include <vector>
 
 class CEditor;
+namespace XcAutomap
+{
+	struct SConfig;
+}
 struct ImDrawList;
 
 // While a capture is active, CEditor::DoPropertiesWithState and CEditor::DoButton_Editor draw nothing: they
@@ -354,6 +358,18 @@ private:
 	void SetTuneMessage(int Zone, bool Enter, const char *pMessage);
 	void PaintTuneZone(int Zone);
 
+	// the automapper builder: rules for a tileset made with the mouse (xeditor_automap.cpp)
+	struct SAutomapBuilder;
+	std::shared_ptr<SAutomapBuilder> m_pAutomap;
+	bool m_AutomapRequest = false;
+	void RenderAutomapBuilder();
+	void SaveAutomapRules(const XcAutomap::SConfig &Config);
+
+public:
+	void OpenAutomapBuilder(int Image);
+	void OpenAutomapBuilderForSelection(); // the picture of the selected tile layer, else the selected picture
+
+private:
 	// map themes: a background group with a gradient (xeditor_images.cpp)
 	bool m_ThemesRequest = false;
 	void RenderThemes();
