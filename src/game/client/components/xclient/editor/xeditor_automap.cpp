@@ -174,7 +174,7 @@ static void DrawTile(ImDrawList *pDraw, ImTextureID Texture, int Id, int Flags, 
 }
 
 // the 3x3 picture of a role: the middle block, which neighbors must be blocks and which must be empty
-static void DrawRolePattern(ImDrawList *pDraw, int Role, ImVec2 Min, float Size)
+void XcDrawRolePattern(ImDrawList *pDraw, int Role, ImVec2 Min, float Size)
 {
 	const STheme &t = Theme();
 	const int *pPattern = RolePattern(Role);
@@ -235,7 +235,15 @@ void CXcEditorUi::RenderAutomapBuilder()
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	bool Close = false;
 
-	// the head: what this is, the name of the rule set
+	// the head: what this is, the name of the rule set; the wiki in the corner
+	{
+		const ImVec2 Back = ImGui::GetCursorPos();
+		const float WikiW = S(170.0f);
+		ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - S(20.0f) - WikiW, Back.y));
+		if(Button(Tr("How it works"), false, WikiW))
+			OpenWiki(B.m_Page == 1 ? "am_hand" : "am_start");
+		ImGui::SetCursorPos(Back);
+	}
 	Header(Tr("Automapper builder"));
 	char aInfo[256];
 	str_format(aInfo, sizeof(aInfo), Tr("Tileset \"%s\": pick a role on the left, then click its tile in the picture. The preview on the right shows the rules at once."), B.m_aImageName);
@@ -300,7 +308,7 @@ void CXcEditorUi::RenderAutomapBuilder()
 			if(Selected)
 				pList->AddRect(Min, ImVec2(Min.x + W, Min.y + RowH), Col(t.m_Accent, 0.7f), S(8.0f));
 			const float Pat = S(24.0f);
-			DrawRolePattern(pList, Role, ImVec2(Min.x + S(8.0f), Min.y + (RowH - Pat) * 0.5f), Pat);
+			XcDrawRolePattern(pList, Role, ImVec2(Min.x + S(8.0f), Min.y + (RowH - Pat) * 0.5f), Pat);
 			// the picked tiles, or the turned one the builder would use
 			const std::vector<STile> &vTiles = B.m_Roles.m_avTiles[Role];
 			const float Thumb = S(26.0f);
@@ -546,6 +554,7 @@ void CXcEditorUi::RenderAutomapBuilder()
 	if(!CanSave && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		ImGui::SetTooltip("%s", HandPage ? Tr("Add a rule set first") : Tr("Pick the inside tile first"));
 
+	RenderWiki(); // opened from here: a popup of the builder
 	if(Close)
 	{
 		ImGui::CloseCurrentPopup();

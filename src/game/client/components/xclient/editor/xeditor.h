@@ -367,7 +367,15 @@ private:
 	void GuessAutomapRoles();
 	void RenderAutomapRules(unsigned long long Texture, float LeftW, float MidW, float BodyH, float Gap);
 
+	// the editor wiki (xeditor_wiki.cpp)
+	bool m_WikiRequest = false;
+	int m_WikiPage = 0;
+	bool m_WikiScrollTop = false;
+	char m_aWikiSearch[64] = "";
+	void RenderWiki();
+
 public:
+	void OpenWiki(const char *pPageId = nullptr);
 	void OpenAutomapBuilder(int Image);
 	void OpenAutomapBuilderForSelection(); // the picture of the selected tile layer, else the selected picture
 
