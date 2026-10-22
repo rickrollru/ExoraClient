@@ -424,6 +424,7 @@ void CXcEditorUi::Render()
 			RenderPalette();
 		RenderMapDetails();
 		RenderThemes();
+		RenderAutomapBuilder();
 		RenderTuneZones();
 		RenderCoop();
 		RenderFileDialog();
@@ -863,6 +864,8 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.XcOpenAnimate();
 				if(ImGui::MenuItem(Tr("Background theme...")))
 					m_ThemesRequest = true;
+				if(ImGui::MenuItem(Tr("Automapper builder...")))
+					OpenAutomapBuilderForSelection();
 				if(ImGui::MenuItem(Tr("Tune zones...")))
 					m_TuneRequest = true;
 				ImGui::Separator();
