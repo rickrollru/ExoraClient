@@ -211,6 +211,8 @@ public:
 		bool m_XcBillboard;
 		SPoint m_XcAnchor;
 		SPoint m_XcAnchorScale;
+		// side view: the depth (behind the world plane) of what is drawn, 0 for the map layers
+		float m_XcPlaneZ;
 
 		// clip
 		bool m_ClipEnable;
@@ -769,6 +771,7 @@ inline XcTilt::SCamera XcStateCamera(const CCommandBuffer::SState &State)
 	Cam.m_Eye = State.m_XcFirstPerson;
 	Cam.m_EyeX = State.m_XcEye.x;
 	Cam.m_EyeY = State.m_XcEye.y;
+	Cam.m_PlaneZ = State.m_XcPlaneZ;
 	return Cam;
 }
 
@@ -960,6 +963,12 @@ public:
 	void XcCaptureEnd(const XcRender::SGlowSettings &Settings) override;
 	void XcSetTilt(bool On, float Pitch, float Yaw, float Fov, bool FirstPerson, vec2 Eye, bool CheckVisible) override;
 	void XcSetVisibilityTest(const std::function<bool(vec2, vec2)> &Fn) override { m_fnXcVisible = Fn; }
+	void XcSetPlaneZ(float Z) override
+	{
+		m_XcPlaneZ = Z;
+		m_State.m_XcPlaneZ = Z;
+	}
+	float XcPlaneZ() const override { return m_XcPlaneZ; }
 	std::function<bool(vec2, vec2)> m_fnXcVisible;
 	bool m_XcFirstPerson = false;
 	vec2 m_XcEye = vec2(0.0f, 0.0f);
@@ -969,6 +978,7 @@ public:
 	bool m_XcTiltOn = false;
 	float m_XcTiltPitch = 0.0f, m_XcTiltYaw = 0.0f, m_XcTiltFov = 0.0f;
 	CScreenRect m_XcTiltCore = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);
+	float m_XcPlaneZ = 0.0f;
 	// the rects GetScreen gave out lately and the views they stand for (a saved rect comes back to MapScreen)
 	std::array<std::array<vec2, 4>, 16> m_aXcTiltKnown = {}; // bounds top left, bottom right, view top left, bottom right
 	int m_XcTiltKnownNext = 0;
