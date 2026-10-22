@@ -113,6 +113,7 @@ CGraphics_Threaded::CGraphics_Threaded()
 	m_State.m_XcFirstPerson = m_State.m_XcBillboard = false;
 	m_State.m_XcEye = m_State.m_XcAnchor = vec2(0.0f, 0.0f);
 	m_State.m_XcAnchorScale = vec2(1.0f, 1.0f);
+	m_State.m_XcPlaneZ = 0.0f;
 
 	m_CurrentCommandBuffer = 0;
 	m_pCommandBuffer = nullptr;
@@ -243,6 +244,7 @@ void CGraphics_Threaded::MapScreen(const CScreenRect &ScreenRect)
 		m_State.m_XcFov = m_XcTiltFov;
 		m_State.m_XcFirstPerson = m_XcFirstPerson;
 		m_State.m_XcEye = m_XcEye;
+		m_State.m_XcPlaneZ = m_XcFirstPerson ? 0.0f : m_XcPlaneZ;
 		m_State.m_ScreenTL = vec2(std::min(x0, Core.m_TopLeft.x), std::min(y0, Core.m_TopLeft.y));
 		m_State.m_ScreenBR = vec2(std::max(x1, Core.m_BottomRight.x), std::max(y1, Core.m_BottomRight.y));
 		m_XcTiltCore = Core;
@@ -3192,7 +3194,9 @@ void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y
 	if(!m_State.m_XcTilt || W <= 0 || H <= 0)
 		return;
 	XcRender::SCommand_DrawBlocks3D Cmd;
-	XcTilt::Matrix(XcStateCamera(m_State), Cmd.m_aMatrix, true);
+	XcTilt::SCamera Cam = XcStateCamera(m_State);
+	Cam.m_PlaneZ = 0.0f; // the blocks have their own depth
+	XcTilt::Matrix(Cam, Cmd.m_aMatrix, true);
 	// first person: the eye stands in the middle of the blocks' depth, far blocks fade by distance
 	Cmd.m_ZFrom = m_State.m_XcFirstPerson ? -Depth * 0.5f : 0.0f;
 	Cmd.m_ZTo = m_State.m_XcFirstPerson ? Depth * 0.5f : Depth;

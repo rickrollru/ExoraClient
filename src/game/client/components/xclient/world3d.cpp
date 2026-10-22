@@ -261,9 +261,13 @@ void CXcWorld3D::Tilt(bool On)
 {
 	if(!On)
 	{
+		Graphics()->XcSetPlaneZ(0.0f);
 		Graphics()->XcSetTilt(false);
 		return;
 	}
+	// side view: the tees, items and effects stand in the middle of the blocks' depth, on the floor and not
+	// in front of it; the map layers stay on the front faces (the map renderer puts them back to 0)
+	Graphics()->XcSetPlaneZ(m_FirstPerson ? 0.0f : std::max(g_Config.m_Xc3dDepth, 0) / 100.0f * 32.0f * 0.5f);
 	if(m_FirstPerson)
 	{
 		Graphics()->XcSetTilt(true, m_FpPitch, m_Yaw, std::clamp(g_Config.m_Xc3dFpFov, 50, 120) * pi / 180.0f, true, m_FpEye, m_FrameOn);
