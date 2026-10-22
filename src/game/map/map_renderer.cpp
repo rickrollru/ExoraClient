@@ -159,6 +159,9 @@ void CMapRenderer::Load(ERenderType Type, CLayers *pLayers, IMapImages *pMapImag
 void CMapRenderer::Render(const CRenderLayerParams &Params)
 {
 	CScreenRect ScreenRect = Graphics()->GetScreen();
+	// XClient: 3D view, the map layers lie on the world plane, everything else in the middle of the blocks' depth
+	const float XcPlaneZ = Graphics()->XcPlaneZ();
+	Graphics()->XcSetPlaneZ(0.0f);
 
 	bool DoRenderGroup = true;
 	for(auto &pRenderLayer : m_vpRenderLayers)
@@ -189,7 +192,11 @@ void CMapRenderer::Render(const CRenderLayerParams &Params)
 	{
 		// reset the screen to the default interface
 		Graphics()->MapScreenToInterface(Params.m_Center.x, Params.m_Center.y, Params.m_Zoom);
+		// XClient: the game group has no layers before the game layer, the sides of the blocks still go under the players
+		if(ms_fnXcGameGroup)
+			ms_fnXcGameGroup();
 	}
+	Graphics()->XcSetPlaneZ(XcPlaneZ); // XClient
 }
 
 int CMapRenderer::GetLayerType(const CMapItemLayer *pLayer) const

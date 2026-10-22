@@ -365,6 +365,9 @@ public:
 	// CheckVisible a sprite is only drawn when the test (XcSetVisibilityTest) sees it from the eye
 	virtual void XcSetTilt(bool On, float Pitch = 0.0f, float Yaw = 0.0f, float Fov = 0.0f, bool FirstPerson = false, vec2 Eye = vec2(0.0f, 0.0f), bool CheckVisible = false) = 0;
 	virtual void XcSetVisibilityTest(const std::function<bool(vec2 Eye, vec2 Pos)> &Fn) = 0;
+	// side view: the depth behind the world plane that the next drawing goes to (the map layers stay at 0)
+	virtual void XcSetPlaneZ(float Z) = 0;
+	virtual float XcPlaneZ() const = 0;
 	virtual bool XcTiltOn() const = 0;
 	// the extruded sides of the blocks: Grid holds W*H cells from cell (X, Y), 4 bytes each: the color of the block
 	// (r, g, b) and its kind (bits 0-1: 0 air, 1 block, 2 unhookable; bit 2: the color is set, else pColor/pColor2)
