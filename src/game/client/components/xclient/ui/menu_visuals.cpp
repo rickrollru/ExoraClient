@@ -676,6 +676,7 @@ void CXcMenu::RenderVisualsWorld()
 			ConfigColorRow(Tr("Blocks"), &g_Config.m_Xc3dColor, false);
 			ConfigColorRow(Tr("Unhookable blocks"), &g_Config.m_Xc3dColor2, false);
 		}
+		ToggleRow(Tr("Background layers in depth"), "xc_3d_layer_depth", &g_Config.m_Xc3dLayerDepth);
 		ToggleRow(Tr("Freeze as ice"), "xc_3d_freeze", &g_Config.m_Xc3dFreeze);
 		if(g_Config.m_Xc3dFreeze)
 		{

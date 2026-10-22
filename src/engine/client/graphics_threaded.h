@@ -213,6 +213,7 @@ public:
 		SPoint m_XcAnchorScale;
 		// side view: the depth (behind the world plane) of what is drawn, 0 for the map layers
 		float m_XcPlaneZ;
+		float m_XcPlaneScale; // and that far away it is this much bigger, so the 2D view does not change
 
 		// clip
 		bool m_ClipEnable;
@@ -772,6 +773,7 @@ inline XcTilt::SCamera XcStateCamera(const CCommandBuffer::SState &State)
 	Cam.m_EyeX = State.m_XcEye.x;
 	Cam.m_EyeY = State.m_XcEye.y;
 	Cam.m_PlaneZ = State.m_XcPlaneZ;
+	Cam.m_PlaneScale = State.m_XcPlaneScale;
 	return Cam;
 }
 
@@ -969,6 +971,7 @@ public:
 		m_State.m_XcPlaneZ = Z;
 	}
 	float XcPlaneZ() const override { return m_XcPlaneZ; }
+	void XcSetGroupParallax(int Parallax) override { m_XcGroupParallax = Parallax; }
 	std::function<bool(vec2, vec2)> m_fnXcVisible;
 	bool m_XcFirstPerson = false;
 	vec2 m_XcEye = vec2(0.0f, 0.0f);
@@ -979,6 +982,7 @@ public:
 	float m_XcTiltPitch = 0.0f, m_XcTiltYaw = 0.0f, m_XcTiltFov = 0.0f;
 	CScreenRect m_XcTiltCore = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);
 	float m_XcPlaneZ = 0.0f;
+	int m_XcGroupParallax = 100;
 	// the rects GetScreen gave out lately and the views they stand for (a saved rect comes back to MapScreen)
 	std::array<std::array<vec2, 4>, 16> m_aXcTiltKnown = {}; // bounds top left, bottom right, view top left, bottom right
 	int m_XcTiltKnownNext = 0;

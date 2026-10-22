@@ -368,6 +368,9 @@ public:
 	// side view: the depth behind the world plane that the next drawing goes to (the map layers stay at 0)
 	virtual void XcSetPlaneZ(float Z) = 0;
 	virtual float XcPlaneZ() const = 0;
+	// the parallax of the map group mapped next: below 100 it stands that much deeper, 0 (fixed to the screen) is not
+	// tilted at all; 100 for everything else
+	virtual void XcSetGroupParallax(int Parallax) = 0;
 	virtual bool XcTiltOn() const = 0;
 	// the extruded sides of the blocks: Grid holds W*H cells from cell (X, Y), 4 bytes each: the color of the block
 	// (r, g, b) and its kind (bits 0-1: 0 air, 1 block, 2 unhookable, 3 freeze; bit 2: the color is set, else

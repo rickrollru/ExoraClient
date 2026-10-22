@@ -114,6 +114,7 @@ CGraphics_Threaded::CGraphics_Threaded()
 	m_State.m_XcEye = m_State.m_XcAnchor = vec2(0.0f, 0.0f);
 	m_State.m_XcAnchorScale = vec2(1.0f, 1.0f);
 	m_State.m_XcPlaneZ = 0.0f;
+	m_State.m_XcPlaneScale = 1.0f;
 
 	m_CurrentCommandBuffer = 0;
 	m_pCommandBuffer = nullptr;
@@ -217,6 +218,9 @@ void CGraphics_Threaded::MapScreen(const CScreenRect &ScreenRect)
 	m_State.m_ScreenBR = ScreenRect.m_BottomRight;
 	// XClient: 3D view, the camera is built from the 2D rectangle, the screen rect becomes all it sees (culling)
 	m_State.m_XcTilt = false;
+	// a map group fixed to the screen (weather, overlays of the mapper) stays flat over the frame
+	if(m_XcTiltOn && m_XcGroupParallax <= 0)
+		return;
 	if(m_XcTiltOn)
 	{
 		// the rect given out by GetScreen comes back (saved and restored): it stands for the same view
@@ -245,6 +249,16 @@ void CGraphics_Threaded::MapScreen(const CScreenRect &ScreenRect)
 		m_State.m_XcFirstPerson = m_XcFirstPerson;
 		m_State.m_XcEye = m_XcEye;
 		m_State.m_XcPlaneZ = m_XcFirstPerson ? 0.0f : m_XcPlaneZ;
+		m_State.m_XcPlaneScale = 1.0f;
+		if(!m_XcFirstPerson && m_XcGroupParallax != 100)
+		{
+			// a group that moves slower than the world is that much farther: at the depth where the perspective
+			// moves it like the parallax does, made bigger so the straight view stays as the mapper made it
+			const float Distance = XcTilt::Distance(Cam);
+			const float Z = std::clamp(Distance * (100.0f / m_XcGroupParallax - 1.0f), -Distance * 0.7f, Distance * 15.0f);
+			m_State.m_XcPlaneZ = Z;
+			m_State.m_XcPlaneScale = (Distance + Z) / Distance;
+		}
 		m_State.m_ScreenTL = vec2(std::min(x0, Core.m_TopLeft.x), std::min(y0, Core.m_TopLeft.y));
 		m_State.m_ScreenBR = vec2(std::max(x1, Core.m_BottomRight.x), std::max(y1, Core.m_BottomRight.y));
 		m_XcTiltCore = Core;
