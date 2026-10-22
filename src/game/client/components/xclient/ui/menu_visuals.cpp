@@ -648,6 +648,24 @@ void CXcMenu::RenderVisualsCrosshair()
 void CXcMenu::RenderVisualsWorld()
 {
 	BeginCardGrid("##vis_world", 2);
+	if(BeginCard("##fx_3d", Tr("3D view"), Tr("The camera looks at the map from an angle and the blocks get depth. Only the picture: aiming and physics stay the same"), &g_Config.m_Xc3d))
+	{
+		if(!Graphics()->XcRenderAvailable())
+			Description(Tr("Not available: needs OpenGL 3.3"));
+		ConfigSlider(Tr("Camera from above"), "xc_3d_pitch", &g_Config.m_Xc3dPitch, -45, 60, "%d°");
+		ConfigSlider(Tr("Camera from the side"), "xc_3d_yaw", &g_Config.m_Xc3dYaw, 0, 50, "%d°");
+		ToggleRow(Tr("Look from behind the way you run"), "xc_3d_follow", &g_Config.m_Xc3dFollow);
+		ConfigSlider(Tr("Field of view"), "xc_3d_fov", &g_Config.m_Xc3dFov, 20, 100, "%d°");
+		ConfigSlider(Tr("Block depth"), "xc_3d_depth", &g_Config.m_Xc3dDepth, 0, 1200, "%d%%");
+		ConfigSlider(Tr("Darkness in the depth"), "xc_3d_fog", &g_Config.m_Xc3dFog, 0, 100, "%d%%");
+		ToggleRow(Tr("Colors of the map"), "xc_3d_map_colors", &g_Config.m_Xc3dMapColors);
+		if(!g_Config.m_Xc3dMapColors)
+		{
+			ConfigColorRow(Tr("Blocks"), &g_Config.m_Xc3dColor, false);
+			ConfigColorRow(Tr("Unhookable blocks"), &g_Config.m_Xc3dColor2, false);
+		}
+		EndCard();
+	}
 	if(BeginCard("##fx_items", Tr("Pickups"), Tr("Hearts, armor, weapons and ninja softly glow"), &g_Config.m_XcItemsGlow))
 	{
 		ParamLabel(Tr("Color"));

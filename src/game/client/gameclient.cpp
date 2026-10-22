@@ -139,6 +139,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Rainbow, // TClient
 					      &m_MapSounds,
 					      &m_Censor,
+					      &m_XcWorld3D, // XClient: 3D view, the world below is drawn by the tilted camera
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
 					      &m_BgDraw, // TClient
@@ -188,6 +189,7 @@ void CGameClient::OnConsoleInit()
 					      &m_PlayerIndicator, // TClient
 					      &m_Mod, // TClient
 					      &m_CustomCommunities, // TClient
+					      &m_XcWorld3D.m_End, // XClient: end of the 3D view
 					      &m_XcAmbience, // XClient: time of day, sun rays and fog over the world
 					      &m_ScreenFx, // XClient: color filter and vignette under the HUD
 					      &m_Hud,

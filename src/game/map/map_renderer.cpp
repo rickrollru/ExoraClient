@@ -9,6 +9,8 @@
 
 const int LAYER_DEFAULT_TILESET = -1;
 
+std::function<void()> CMapRenderer::ms_fnXcGameGroup; // XClient
+
 void CMapRenderer::Clear()
 {
 	for(auto &pLayer : m_vpRenderLayers)
@@ -19,6 +21,7 @@ void CMapRenderer::Clear()
 void CMapRenderer::Load(ERenderType Type, CLayers *pLayers, IMapImages *pMapImages, const IEnvelopeEval *pEnvelopeEval, std::optional<FCallbackMapRendererInit> CallbackMapRendererInitOptional)
 {
 	Clear();
+	m_XcGameGroup = -1; // XClient
 
 	std::shared_ptr<CEnvelopeManager> pEnvelopeManager = std::make_shared<CEnvelopeManager>(pEnvelopeEval, pLayers->Map());
 	bool PassedGameLayer = false;
@@ -50,6 +53,8 @@ void CMapRenderer::Load(ERenderType Type, CLayers *pLayers, IMapImages *pMapImag
 			CMapItemLayer *pLayer = pLayers->GetLayer(pGroup->m_StartLayer + LayerId);
 			int LayerType = GetLayerType(pLayer);
 			PassedGameLayer |= LayerType == LAYER_GAME;
+			if(LayerType == LAYER_GAME)
+				m_XcGameGroup = GroupId; // XClient
 
 			if(Type == ERenderType::RENDERTYPE_BACKGROUND_FORCE || Type == ERenderType::RENDERTYPE_BACKGROUND)
 			{
@@ -166,6 +171,9 @@ void CMapRenderer::Render(const CRenderLayerParams &Params)
 
 		if(pRenderLayer->DoRender(Params))
 			pRenderLayer->Render(Params);
+		// XClient: 3D view, the sides of the blocks go under the layers of the game group
+		if(pRenderLayer->IsGroup() && pRenderLayer->GetGroup() == m_XcGameGroup && ms_fnXcGameGroup)
+			ms_fnXcGameGroup();
 	}
 
 	// Reset clip from last group

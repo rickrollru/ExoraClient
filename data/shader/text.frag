@@ -4,8 +4,8 @@ uniform sampler2D gTextOutlineSampler;
 uniform vec4 gVertColor;
 uniform vec4 gVertOutlineColor;
 
-noperspective in vec2 texCoord;
-noperspective in vec4 outVertColor;
+in vec2 texCoord;
+in vec4 outVertColor;
 
 out vec4 FragClr;
 void main()

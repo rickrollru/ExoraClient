@@ -4,8 +4,8 @@ uniform sampler2D gTextureSampler;
 
 uniform vec4 gVerticesColor;
 
-noperspective in vec2 texCoord;
-noperspective in vec4 vertColor;
+in vec2 texCoord;
+in vec4 vertColor;
 
 out vec4 FragClr;
 void main()

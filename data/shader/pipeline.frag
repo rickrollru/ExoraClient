@@ -8,9 +8,9 @@ uniform sampler2DArray gTextureSampler;
 
 #ifdef TW_MODERN_GL
 #ifdef TW_TEXTURED
-noperspective in vec3 oTexCoord;
+in vec3 oTexCoord;
 #endif
-noperspective in vec4 oVertColor;
+in vec4 oVertColor;
 out vec4 FragClr;
 #endif
 

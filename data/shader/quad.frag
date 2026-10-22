@@ -8,14 +8,14 @@ uniform vec4 gVertColors[TW_MAX_QUADS];
 uniform vec4 gVertColors[1];
 #endif
 
-noperspective in vec4 QuadColor;
+in vec4 QuadColor;
 #ifndef TW_QUAD_GROUPED
 flat in int QuadIndex;
 #else
 #define QuadIndex 0
 #endif
 #ifdef TW_QUAD_TEXTURED
-noperspective in vec2 TexCoord;
+in vec2 TexCoord;
 #endif
 
 out vec4 FragClr;
