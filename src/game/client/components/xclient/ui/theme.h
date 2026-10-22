@@ -3,7 +3,7 @@
 
 #include <engine/external/imgui/imgui.h>
 
-// Colors and sizes of the XClient menu, taken from the design spec (CLAUDE.md).
+// Colors and sizes of the XClient menu.
 namespace XcUi
 {
 	enum

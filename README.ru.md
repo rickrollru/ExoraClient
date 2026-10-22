@@ -158,7 +158,6 @@ cmake .. -G Ninja && ninja game-client game-server
 | `src/engine/client/backend/xclient/` | рендер-модуль OpenGL 3.3: SDF-фигуры, bloom, блюр |
 | `src/engine/shared/config_variables_xclient.h` | все настройки `xc_*` |
 | `data/xclient/` | шрифты, звуки, текстуры эффектов, шапки |
-| `CLAUDE.md` | ТЗ и журнал разработки |
 
 Вставки Exora Client в файлы DDNet / TClient помечены комментарием `// XClient` (так проект назывался в коде).
 Документация оригинального TClient: [docs/tclient/README_TClient.md](docs/tclient/README_TClient.md).
