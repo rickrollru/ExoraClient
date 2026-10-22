@@ -265,9 +265,11 @@ namespace XcAutomap
 		}
 	}
 
-	void Apply(const SConfig &Config, int Width, int Height, std::vector<int> &vIndices, std::vector<int> *pvFlags, unsigned Seed)
+	void Apply(const SConfig &Config, int Width, int Height, std::vector<int> &vIndices, std::vector<int> *pvFlags, unsigned Seed, std::vector<int> *pvWriter)
 	{
 		const size_t Cells = (size_t)Width * Height;
+		if(pvWriter)
+			pvWriter->assign(Cells, -1);
 		vIndices.resize(Cells, 0);
 		std::vector<int> vOwnFlags;
 		std::vector<int> &vFlags = pvFlags ? *pvFlags : vOwnFlags;
@@ -325,6 +327,8 @@ namespace XcAutomap
 							continue;
 						vIndices[Cell] = Rule.m_Id;
 						vFlags[Cell] = Rule.m_Flags;
+						if(pvWriter)
+							(*pvWriter)[Cell] = (int)(r * 10000 + i);
 					}
 				}
 			}
@@ -518,6 +522,162 @@ namespace XcAutomap
 			}
 		}
 		return Config;
+	}
+
+	int GuessRoles(const unsigned char *pRgba, int Width, int Height, SRoles &Roles)
+	{
+		Roles = SRoles();
+		const int TileW = Width / 16, TileH = Height / 16;
+		if(!pRgba || TileW < 4 || TileH < 4)
+			return 0;
+		// a part of a tile: how solid it is (average alpha) and its color
+		struct SArea
+		{
+			float m_Alpha = 0.0f;
+			float m_aColor[3] = {0.0f, 0.0f, 0.0f};
+		};
+		const auto &&Area = [&](int Tile, float x0, float y0, float x1, float y1) {
+			const int Bx = (Tile % 16) * TileW, By = (Tile / 16) * TileH;
+			const int Ax0 = Bx + (int)(x0 * TileW), Ax1 = std::max(Ax0 + 1, Bx + (int)(x1 * TileW));
+			const int Ay0 = By + (int)(y0 * TileH), Ay1 = std::max(Ay0 + 1, By + (int)(y1 * TileH));
+			double Alpha = 0.0, aColor[3] = {0.0, 0.0, 0.0};
+			int Count = 0;
+			for(int y = Ay0; y < Ay1; y++)
+			{
+				for(int x = Ax0; x < Ax1; x++, Count++)
+				{
+					const unsigned char *pPixel = &pRgba[((size_t)y * Width + x) * 4];
+					const double a = pPixel[3] / 255.0;
+					Alpha += a;
+					for(int c = 0; c < 3; c++)
+						aColor[c] += pPixel[c] / 255.0 * a;
+				}
+			}
+			SArea Result;
+			Result.m_Alpha = Count ? (float)(Alpha / Count) : 0.0f;
+			for(int c = 0; c < 3; c++)
+				Result.m_aColor[c] = Alpha > 0.0 ? (float)(aColor[c] / Alpha) : 0.0f;
+			return Result;
+		};
+		const auto &&Distance = [](const float *pA, const float *pB) {
+			return std::sqrt((pA[0] - pB[0]) * (pA[0] - pB[0]) + (pA[1] - pB[1]) * (pA[1] - pB[1]) + (pA[2] - pB[2]) * (pA[2] - pB[2]));
+		};
+
+		// the parts measured: 4 sides (their middle, rounded corners do not count) and 4 corners
+		const float Strip = 0.14f;
+		struct STileInfo
+		{
+			float m_Fill;
+			SArea m_All;
+			SArea m_aSide[4]; // top, bottom, left, right
+			SArea m_aCorner[4]; // top left, top right, bottom left, bottom right
+		};
+		std::vector<STileInfo> vInfo(256);
+		for(int Tile = 1; Tile < 256; Tile++)
+		{
+			STileInfo &Info = vInfo[Tile];
+			Info.m_All = Area(Tile, 0.0f, 0.0f, 1.0f, 1.0f);
+			Info.m_Fill = Info.m_All.m_Alpha;
+			Info.m_aSide[0] = Area(Tile, 0.25f, 0.0f, 0.75f, Strip);
+			Info.m_aSide[1] = Area(Tile, 0.25f, 1.0f - Strip, 0.75f, 1.0f);
+			Info.m_aSide[2] = Area(Tile, 0.0f, 0.25f, Strip, 0.75f);
+			Info.m_aSide[3] = Area(Tile, 1.0f - Strip, 0.25f, 1.0f, 0.75f);
+			Info.m_aCorner[0] = Area(Tile, 0.0f, 0.0f, Strip, Strip);
+			Info.m_aCorner[1] = Area(Tile, 1.0f - Strip, 0.0f, 1.0f, Strip);
+			Info.m_aCorner[2] = Area(Tile, 0.0f, 1.0f - Strip, Strip, 1.0f);
+			Info.m_aCorner[3] = Area(Tile, 1.0f - Strip, 1.0f - Strip, 1.0f, 1.0f);
+		}
+
+		// the color of the inside: the first solid tile that looks the same at all its sides and corners
+		// (a fill, not an edge); mappers put the main fill early in the tileset
+		float aInside[3] = {0.0f, 0.0f, 0.0f};
+		bool HasInside = false;
+		for(int Tile = 1; Tile < 256 && !HasInside; Tile++)
+		{
+			const STileInfo &Info = vInfo[Tile];
+			if(Info.m_Fill < 0.97f)
+				continue;
+			float Spread = 0.0f;
+			for(int i = 0; i < 4; i++)
+			{
+				Spread = std::max(Spread, Distance(Info.m_aSide[i].m_aColor, Info.m_All.m_aColor));
+				Spread = std::max(Spread, Distance(Info.m_aCorner[i].m_aColor, Info.m_All.m_aColor));
+			}
+			if(Spread < 0.1f)
+			{
+				std::copy(Info.m_All.m_aColor, Info.m_All.m_aColor + 3, aInside);
+				HasInside = true;
+			}
+		}
+		// a part is "open" when it is see-through, or (with an opaque tileset) when it does not look like the inside
+		const auto &&Open = [&](const SArea &Part) {
+			float Value = 1.0f - Part.m_Alpha;
+			if(HasInside && Part.m_Alpha > 0.5f)
+				Value = std::max(Value, std::clamp((Distance(Part.m_aColor, aInside) - 0.06f) / 0.18f, 0.0f, 1.0f));
+			return Value;
+		};
+
+		struct SCandidate
+		{
+			float m_Score;
+			int m_Tile;
+		};
+		std::vector<SCandidate> avCandidates[NUM_ROLES];
+		for(int Tile = 1; Tile < 256; Tile++)
+		{
+			const STileInfo &Info = vInfo[Tile];
+			if(Info.m_Fill < 0.15f)
+				continue;
+			float aOpen[4], aCorner[4];
+			for(int i = 0; i < 4; i++)
+			{
+				aOpen[i] = Open(Info.m_aSide[i]);
+				aCorner[i] = Open(Info.m_aCorner[i]);
+			}
+			for(int Role = 0; Role < NUM_ROLES; Role++)
+			{
+				const int *pPattern = RolePattern(Role);
+				// a side must be open where the role has an empty neighbor, closed otherwise
+				const int aSide[4] = {pPattern[1], pPattern[7], pPattern[3], pPattern[5]};
+				float Score = 0.0f;
+				for(int i = 0; i < 4; i++)
+				{
+					const float Want = aSide[i] < 0 ? 1.0f : 0.0f;
+					Score += (aOpen[i] - Want) * (aOpen[i] - Want);
+				}
+				// the corners: an inner corner is open only at its diagonal; the inside has no open corner
+				const int aDiagonal[4] = {pPattern[0], pPattern[2], pPattern[6], pPattern[8]};
+				const bool Inner = Role >= ROLE_INNER_TL && Role <= ROLE_INNER_BR;
+				if(Inner || Role == ROLE_INSIDE)
+				{
+					for(int i = 0; i < 4; i++)
+					{
+						const float Want = aDiagonal[i] < 0 ? 1.0f : 0.0f;
+						Score += (aCorner[i] - Want) * (aCorner[i] - Want);
+					}
+				}
+				if(Role == ROLE_INSIDE)
+					Score += (1.0f - Info.m_Fill) * 2.0f + (HasInside ? Distance(Info.m_All.m_aColor, aInside) : 0.0f);
+				if(Score < 0.4f)
+					avCandidates[Role].push_back({Score, Tile});
+			}
+		}
+		int Found = 0;
+		for(int Role = 0; Role < NUM_ROLES; Role++)
+		{
+			std::vector<SCandidate> &vCandidates = avCandidates[Role];
+			std::stable_sort(vCandidates.begin(), vCandidates.end(), [](const SCandidate &a, const SCandidate &b) { return a.m_Score < b.m_Score; });
+			// the best few that are about as good as the best
+			for(const SCandidate &Candidate : vCandidates)
+			{
+				if((int)Roles.m_avTiles[Role].size() >= 3 || Candidate.m_Score > vCandidates[0].m_Score + 0.04f)
+					break;
+				Roles.m_avTiles[Role].push_back({Candidate.m_Tile, 0});
+			}
+			if(!Roles.m_avTiles[Role].empty())
+				Found++;
+		}
+		return Found;
 	}
 
 	bool ReadRoles(const SConfig &Config, SRoles &Roles, bool *pDerive)
