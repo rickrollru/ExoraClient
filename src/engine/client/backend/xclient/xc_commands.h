@@ -80,6 +80,7 @@ namespace XcRender
 		float m_Depth; // world units
 		float m_aColor[4]; // blocks
 		float m_aColor2[4]; // unhookable blocks
+		float m_aColor3[4]; // freeze, alpha: how much it covers
 		float m_aFog[4]; // the color the far end fades to, alpha: how much
 		float m_ZFrom, m_ZTo; // the depth the sides span
 		float m_FogDistance; // first person: the fog grows with the distance to the eye (0: with the depth)

@@ -3188,7 +3188,7 @@ void CGraphics_Threaded::XcCaptureEnd(const XcRender::SGlowSettings &Settings)
 }
 
 // XClient: 3D view, the sides of the blocks around the camera
-void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog, const float *pSky)
+void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pColor3, const float *pFog, const float *pSky)
 {
 	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcDrawBlocks3D while drawing");
 	if(!m_State.m_XcTilt || W <= 0 || H <= 0)
@@ -3209,6 +3209,7 @@ void CGraphics_Threaded::XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y
 	Cmd.m_Depth = Depth;
 	mem_copy(Cmd.m_aColor, pColor, sizeof(Cmd.m_aColor));
 	mem_copy(Cmd.m_aColor2, pColor2, sizeof(Cmd.m_aColor2));
+	mem_copy(Cmd.m_aColor3, pColor3, sizeof(Cmd.m_aColor3));
 	mem_copy(Cmd.m_aFog, pFog, sizeof(Cmd.m_aFog));
 	const size_t Size = (size_t)W * H * 4;
 	const auto Fill = [&](void *pData) {

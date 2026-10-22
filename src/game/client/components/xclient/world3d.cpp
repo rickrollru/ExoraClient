@@ -369,6 +369,7 @@ void CXcWorld3D::DrawBlocks()
 	const int W = std::clamp(x1 - x0, 1, 512), H = std::clamp(y1 - y0, 1, 512);
 	m_vGrid.resize((size_t)W * H * 4);
 	const bool Colors = g_Config.m_Xc3dMapColors && m_ColorsW == MapW && m_ColorsH == MapH;
+	const bool Freeze = g_Config.m_Xc3dFreeze;
 	for(int y = 0; y < H; y++)
 	{
 		// outside the map the border blocks go on, like DDNet draws them
@@ -377,11 +378,18 @@ void CXcWorld3D::DrawBlocks()
 		{
 			const int mx = std::clamp(x0 + x, 0, MapW - 1);
 			const int Index = my * MapW + mx;
-			int Tile = pCollision->GetTileIndex(Index);
-			if(Tile != TILE_SOLID && Tile != TILE_NOHOOK)
-				Tile = pCollision->GetFrontTileIndex(Index);
+			const int Tile = pCollision->GetTileIndex(Index);
+			const int Front = pCollision->GetFrontTileIndex(Index);
+			const auto &&IsFreeze = [](int t) { return t == TILE_FREEZE || t == TILE_DFREEZE || t == TILE_LFREEZE; };
 			uint8_t *pCell = &m_vGrid[((size_t)y * W + x) * 4];
-			pCell[3] = Tile == TILE_SOLID ? 1 : Tile == TILE_NOHOOK ? 2 : 0;
+			if(Tile == TILE_SOLID || Front == TILE_SOLID)
+				pCell[3] = 1;
+			else if(Tile == TILE_NOHOOK || Front == TILE_NOHOOK)
+				pCell[3] = 2;
+			else if(Freeze && (IsFreeze(Tile) || IsFreeze(Front)))
+				pCell[3] = 3;
+			else
+				pCell[3] = 0;
 			if(Colors && m_vColors[(size_t)Index * 4 + 3])
 			{
 				pCell[0] = m_vColors[(size_t)Index * 4 + 0];
@@ -397,9 +405,11 @@ void CXcWorld3D::DrawBlocks()
 	const ColorRGBA Color2 = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_Xc3dColor2));
 	const float aColor[4] = {Color.r, Color.g, Color.b, 1.0f};
 	const float aColor2[4] = {Color2.r, Color2.g, Color2.b, 1.0f};
+	const ColorRGBA Color3 = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_Xc3dFreezeColor));
+	const float aColor3[4] = {Color3.r, Color3.g, Color3.b, g_Config.m_Xc3dFreezeAlpha / 100.0f};
 	const float aFog[4] = {0.03f, 0.035f, 0.05f, g_Config.m_Xc3dFog / 100.0f};
 	// first person: a dark sky behind the blocks, the far blocks fade into it
 	const float aSky[4] = {0.05f, 0.06f, 0.09f, m_FirstPerson ? 1.0f : 0.0f};
 	const float aFpFog[4] = {aSky[0], aSky[1], aSky[2], std::max(aFog[3], 0.3f)};
-	Graphics()->XcDrawBlocks3D(m_vGrid.data(), x0, y0, W, H, g_Config.m_Xc3dDepth / 100.0f * 32.0f, aColor, aColor2, m_FirstPerson ? aFpFog : aFog, aSky);
+	Graphics()->XcDrawBlocks3D(m_vGrid.data(), x0, y0, W, H, g_Config.m_Xc3dDepth / 100.0f * 32.0f, aColor, aColor2, aColor3, m_FirstPerson ? aFpFog : aFog, aSky);
 }

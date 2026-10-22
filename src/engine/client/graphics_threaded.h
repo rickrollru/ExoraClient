@@ -974,7 +974,7 @@ public:
 	vec2 m_XcEye = vec2(0.0f, 0.0f);
 	bool m_XcCheckVisible = false;
 	bool XcTiltOn() const override { return m_XcTiltOn; }
-	void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pFog, const float *pSky) override;
+	void XcDrawBlocks3D(const unsigned char *pGrid, int X, int Y, int W, int H, float Depth, const float *pColor, const float *pColor2, const float *pColor3, const float *pFog, const float *pSky) override;
 	bool m_XcTiltOn = false;
 	float m_XcTiltPitch = 0.0f, m_XcTiltYaw = 0.0f, m_XcTiltFov = 0.0f;
 	CScreenRect m_XcTiltCore = CScreenRect(0.0f, 0.0f, 0.0f, 0.0f);

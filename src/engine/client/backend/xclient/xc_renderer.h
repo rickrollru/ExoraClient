@@ -103,6 +103,8 @@ private:
 	int m_LocBlocksFogDistance = -1;
 	int m_LocBlocksColor = -1;
 	int m_LocBlocksColor2 = -1;
+	int m_LocBlocksColor3 = -1;
+	int m_LocBlocksPass = -1;
 	int m_LocBlocksFog = -1;
 	int m_LocCopyTex = -1;
 	STarget m_Blocks;
