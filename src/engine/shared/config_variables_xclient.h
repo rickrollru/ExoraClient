@@ -606,6 +606,9 @@ MACRO_CONFIG_INT(Xc3dFog, xc_3d_fog, 55, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, 
 MACRO_CONFIG_INT(Xc3dMapColors, xc_3d_map_colors, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: the block sides take the colors of the map")
 MACRO_CONFIG_COL(Xc3dColor, xc_3d_color, 923968, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: color of the block sides")
 MACRO_CONFIG_COL(Xc3dColor2, xc_3d_color2, 9971271, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: color of the unhookable block sides")
+MACRO_CONFIG_INT(Xc3dFreeze, xc_3d_freeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: freeze gets depth too, as see-through ice")
+MACRO_CONFIG_COL(Xc3dFreezeColor, xc_3d_freeze_color, 9728921, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: color of the freeze")
+MACRO_CONFIG_INT(Xc3dFreezeAlpha, xc_3d_freeze_alpha, 45, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how much the freeze covers what is behind it (%)")
 
 // live map editing (our own server)
 MACRO_CONFIG_INT(SvXcLiveEdit, sv_xc_live_edit, 0, 0, 1, CFGFLAG_SERVER, "Exora Client players can change the map while it is played (map editor, playing together)")

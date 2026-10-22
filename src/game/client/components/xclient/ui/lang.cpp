@@ -745,6 +745,8 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"Freeze as ice", "Фриз как лёд"},
+			{"Ice opacity", "Плотность льда"},
 			{"The undo history is cleared. \"Remove 3D\" takes the copies away again.", "История отмены очищается. «Убрать 3D» уберёт копии обратно."},
 			{"%d groups removed", "Удалено групп: %d"},
 			{"Adds %d groups to the map", "Добавит в карту групп: %d"},

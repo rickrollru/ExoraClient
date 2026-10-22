@@ -676,6 +676,12 @@ void CXcMenu::RenderVisualsWorld()
 			ConfigColorRow(Tr("Blocks"), &g_Config.m_Xc3dColor, false);
 			ConfigColorRow(Tr("Unhookable blocks"), &g_Config.m_Xc3dColor2, false);
 		}
+		ToggleRow(Tr("Freeze as ice"), "xc_3d_freeze", &g_Config.m_Xc3dFreeze);
+		if(g_Config.m_Xc3dFreeze)
+		{
+			ConfigColorRow(Tr("Freeze"), &g_Config.m_Xc3dFreezeColor, false);
+			ConfigSlider(Tr("Ice opacity"), "xc_3d_freeze_alpha", &g_Config.m_Xc3dFreezeAlpha, 10, 100, "%d%%");
+		}
 		EndCard();
 	}
 	if(BeginCard("##fx_items", Tr("Pickups"), Tr("Hearts, armor, weapons and ninja softly glow"), &g_Config.m_XcItemsGlow))

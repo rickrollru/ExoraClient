@@ -256,17 +256,24 @@ void main()
 )";
 
 // 3D view: the sides of the blocks. One instance per cell of the grid, four faces of two triangles each;
-// a face is only there between a block and air. The face goes from the world plane (z 0) into the depth.
+// a face is only there between a block and air (or freeze). The face goes from the world plane into the depth.
+// Two passes: the solid blocks, then the freeze as see-through ice. The output is premultiplied.
 static const char *const s_pBlocksVertex = R"(#version 330 core
 uniform mat4 u_Matrix;
 uniform usampler2D u_Grid;
 uniform ivec4 u_Cells; // first cell x, y, number of cells w, h
 uniform vec2 u_ZRange; // the depth the sides span
 uniform float u_FogDistance; // > 0: the fog grows with the distance to the eye
+uniform int u_Pass; // 0 the blocks, 1 the freeze
 out float v_Far;
 out float v_Edge;
+out float v_Depth; // 0 at the front edge, 1 at the back
+out float v_U; // 0..1 along the edge of the face
+out vec2 v_World;
 flat out float v_Shade;
 flat out int v_Type;
+flat out int v_Face;
+flat out vec2 v_Ao; // a wall stands at the start / the end of the edge
 flat out vec4 v_MapColor; // a: the color is set
 
 uint Cell(ivec2 Pos)
@@ -276,6 +283,12 @@ uint Cell(ivec2 Pos)
 	return texelFetch(u_Grid, Pos, 0).a & 3u;
 }
 
+bool Solid(ivec2 Pos)
+{
+	uint Type = Cell(Pos);
+	return Type == 1u || Type == 2u;
+}
+
 void main()
 {
 	ivec2 Pos = ivec2(gl_InstanceID % u_Cells.z, gl_InstanceID / u_Cells.z);
@@ -283,13 +296,22 @@ void main()
 	int Corner = gl_VertexID % 6;
 	const ivec2 aDir[4] = ivec2[4](ivec2(0, -1), ivec2(0, 1), ivec2(-1, 0), ivec2(1, 0)); // top, bottom, left, right
 	uint Type = Cell(Pos);
-	if(Type == 0u || Cell(Pos + aDir[Face]) != 0u)
+	uint Next = Cell(Pos + aDir[Face]);
+	bool Freeze = Type == 3u;
+	// blocks: a face towards air and freeze; freeze: only towards air
+	bool Show = Type != 0u && (u_Pass == 1) == Freeze && (Freeze ? Next == 0u : (Next == 0u || Next == 3u));
+	if(!Show)
 	{
 		gl_Position = vec4(0.0, 0.0, 2.0, 1.0); // no face here, outside the depth range
 		v_Far = 0.0;
 		v_Edge = 1.0;
+		v_Depth = 0.0;
+		v_U = 0.0;
+		v_World = vec2(0.0);
 		v_Shade = 0.0;
 		v_Type = 0;
+		v_Face = 0;
+		v_Ao = vec2(0.0);
 		v_MapColor = vec4(0.0);
 		return;
 	}
@@ -301,9 +323,17 @@ void main()
 	gl_Position = u_Matrix * vec4(World, mix(u_ZRange.x, u_ZRange.y, c.y), 1.0);
 	v_Far = u_FogDistance > 0.0 ? clamp(gl_Position.w / u_FogDistance, 0.0, 1.0) : c.y;
 	v_Edge = u_FogDistance > 0.0 ? min(c.y, 1.0 - c.y) * 2.0 : c.y; // first person: both ends of the depth
-	const float aShade[4] = float[4](1.0, 0.42, 0.68, 0.68);
+	v_Depth = c.y;
+	v_U = c.x;
+	v_World = World;
+	const float aShade[4] = float[4](1.06, 0.45, 0.7, 0.7);
 	v_Shade = aShade[Face];
 	v_Type = int(Type);
+	v_Face = Face;
+	// soft shadow where the face meets a wall: the corners next to it along the edge
+	const ivec2 aAoStart[4] = ivec2[4](ivec2(-1, -1), ivec2(-1, 1), ivec2(-1, -1), ivec2(1, -1));
+	const ivec2 aAoEnd[4] = ivec2[4](ivec2(1, -1), ivec2(1, 1), ivec2(-1, 1), ivec2(1, 1));
+	v_Ao = Freeze ? vec2(0.0) : vec2(Solid(Pos + aAoStart[Face]) ? 1.0 : 0.0, Solid(Pos + aAoEnd[Face]) ? 1.0 : 0.0);
 	uvec4 Texel = texelFetch(u_Grid, Pos, 0);
 	v_MapColor = vec4(vec3(Texel.rgb) / 255.0, (Texel.a & 4u) != 0u ? 1.0 : 0.0);
 }
@@ -312,23 +342,50 @@ void main()
 static const char *const s_pBlocksFragment = R"(#version 330 core
 in float v_Far;
 in float v_Edge;
+in float v_Depth;
+in float v_U;
+in vec2 v_World;
 flat in float v_Shade;
 flat in int v_Type;
+flat in int v_Face;
+flat in vec2 v_Ao;
 flat in vec4 v_MapColor;
 uniform vec4 u_Color;
 uniform vec4 u_Color2;
+uniform vec4 u_Color3;
 uniform vec4 u_Fog;
 out vec4 FragColor;
+
+float Hash(vec2 p)
+{
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
 void main()
 {
-	vec4 Color = v_Type == 2 ? u_Color2 : u_Color;
+	bool Freeze = v_Type == 3;
+	vec4 Color = v_Type == 2 ? u_Color2 : Freeze ? u_Color3 : u_Color;
 	if(v_MapColor.a > 0.5)
-		Color.rgb = v_MapColor.rgb;
-	vec3 Rgb = Color.rgb * v_Shade * mix(1.0, 0.7, v_Far);
-	// a thin light line along the front edge, like the bevel of a tile
-	Rgb += vec3(0.08) * (1.0 - smoothstep(0.0, 0.06, v_Edge));
+		Color.rgb = Freeze ? mix(v_MapColor.rgb, u_Color3.rgb, 0.5) : v_MapColor.rgb;
+	// a fine grain, so a long face is not one flat color
+	float Grain = Hash(floor(v_World / 4.0) + vec2(v_Depth * 9.0, float(v_Face))) - 0.5;
+	// the corner with a wall gets darker
+	float Ao = v_Ao.x * (1.0 - smoothstep(0.0, 0.4, v_U)) + v_Ao.y * smoothstep(0.6, 1.0, v_U);
+	vec3 Rgb = Color.rgb * v_Shade * mix(1.0, 0.75, v_Far) * (1.0 - 0.35 * Ao) * (1.0 + Grain * 0.06);
+	// a light bevel along the front edge, a dark crease along the back one
+	float Front = 1.0 - smoothstep(0.0, 0.06, v_Edge);
+	Rgb += vec3(v_Face == 0 ? 0.12 : 0.07) * Front;
+	Rgb *= 1.0 - 0.22 * smoothstep(0.9, 1.0, v_Depth);
+	float Alpha = Color.a;
+	if(Freeze)
+	{
+		// ice: brighter and more solid along its edges
+		float Rim = max(1.0 - smoothstep(0.0, 0.08, min(v_U, 1.0 - v_U)), 1.0 - smoothstep(0.0, 0.08, min(v_Depth, 1.0 - v_Depth)));
+		Rgb += vec3(0.25) * Rim;
+		Alpha = clamp(Alpha + 0.35 * Rim, 0.0, 1.0);
+	}
 	Rgb = mix(Rgb, u_Fog.rgb, u_Fog.a * v_Far);
-	FragColor = vec4(Rgb, Color.a);
+	FragColor = vec4(Rgb * Alpha, Alpha);
 }
 )";
 
@@ -672,6 +729,8 @@ bool CXcRenderer::Init()
 	m_LocBlocksFogDistance = glGetUniformLocation(m_BlocksProgram, "u_FogDistance");
 	m_LocBlocksColor = glGetUniformLocation(m_BlocksProgram, "u_Color");
 	m_LocBlocksColor2 = glGetUniformLocation(m_BlocksProgram, "u_Color2");
+	m_LocBlocksColor3 = glGetUniformLocation(m_BlocksProgram, "u_Color3");
+	m_LocBlocksPass = glGetUniformLocation(m_BlocksProgram, "u_Pass");
 	m_LocBlocksFog = glGetUniformLocation(m_BlocksProgram, "u_Fog");
 	m_LocCopyTex = glGetUniformLocation(m_CopyProgram, "u_Tex");
 	m_LocUseTilt = glGetUniformLocation(m_ShapeProgram, "u_UseTilt");
@@ -1334,17 +1393,25 @@ void CXcRenderer::DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand)
 	glUniform1f(m_LocBlocksFogDistance, pCommand->m_FogDistance);
 	glUniform4fv(m_LocBlocksColor, 1, pCommand->m_aColor);
 	glUniform4fv(m_LocBlocksColor2, 1, pCommand->m_aColor2);
+	glUniform4fv(m_LocBlocksColor3, 1, pCommand->m_aColor3);
 	glUniform4fv(m_LocBlocksFog, 1, pCommand->m_aFog);
 	glBindVertexArray(m_EmptyVao);
+	glUniform1i(m_LocBlocksPass, 0);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, 24, pCommand->m_W * pCommand->m_H);
+	// the freeze over the blocks behind it, see-through: blended, without writing the depth
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthMask(GL_FALSE);
+	glUniform1i(m_LocBlocksPass, 1);
 	glDrawArraysInstanced(GL_TRIANGLES, 0, 24, pCommand->m_W * pCommand->m_H);
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(DepthMask);
 
-	// over the frame, the frame keeps its alpha
+	// over the frame (premultiplied), the frame keeps its alpha
 	glBindFramebuffer(GL_FRAMEBUFFER, Guard.DrawFbo());
 	glViewport(pViewport[0], pViewport[1], pViewport[2], pViewport[3]);
 	glEnable(GL_BLEND);
-	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+	glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
 	glUseProgram(m_CopyProgram);
 	glUniform1i(m_LocCopyTex, 0);
 	glBindSampler(0, m_Sampler);
