@@ -40,7 +40,8 @@ private:
 		int m_Flags; // what kind of layer, to notice when another layer took its place
 		int m_Image;
 		std::string m_Name;
-		std::vector<uint8_t> m_vCells; // CTile and the extra data per cell
+		std::vector<uint8_t> m_vTiles; // CTile per cell, as last sent
+		std::vector<uint8_t> m_vExtra; // the tele/speedup/switch/tune data per cell
 	};
 
 	CEditor *m_pEditor = nullptr;
@@ -51,6 +52,7 @@ private:
 	std::vector<SSnap> m_vSnaps;
 	std::deque<std::vector<uint8_t>> m_vQueue; // packed tiles, one message each
 	float m_NextDiff = 0.0f;
+	float m_DiffedModified = -1.0f; // the change time of the map at the last look
 	bool m_StructureChanged = false;
 
 	CEditorMap *CurrentMap();

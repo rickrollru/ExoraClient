@@ -339,6 +339,12 @@ private:
 	char m_aCoopError[160] = {};
 	void RenderCoop();
 	void RenderCoopCursors();
+	void RenderCoopTees();
+
+public:
+	void RenderInGame(); // playing together: the cursors of the friends in the world
+
+private:
 	void UpdateCoop();
 
 	// tune zones: every parameter of a zone with an explanation next to it (xeditor_tune.cpp)

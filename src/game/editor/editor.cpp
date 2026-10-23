@@ -4973,7 +4973,8 @@ void CEditor::OnUpdate()
 	});
 
 	MapView()->UpdateMouseWorld();
-	LayerSelector()->UpdateHoveredTiles();
+	if(Input()->ModifierIsPressed()) // XClient: only Ctrl + right click needs it, it maps the screen for every layer
+		LayerSelector()->UpdateHoveredTiles();
 	HandleAutosave();
 	HandleWriterFinishJobs();
 
@@ -5079,6 +5080,12 @@ void CEditor::XcBackgroundUpdate()
 {
 	if(XcNewUi())
 		m_XcUi.BackgroundUpdate();
+}
+
+void CEditor::XcRenderInGame()
+{
+	if(XcNewUi())
+		m_XcUi.RenderInGame();
 }
 
 void CEditor::OnClose()

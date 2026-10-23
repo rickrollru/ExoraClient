@@ -49,7 +49,8 @@ enum
 	MSG_CHECK, // [map][epoch][hash]: the host's state of the map
 	MSG_RESYNC, // [map]: a guest is out of sync and asks for the whole map
 	MSG_PLAY_REQ, // [map]: a guest asks the host to play this map together
-	MSG_PLAY, // [port]: the host's local server is up, join it
+	MSG_PLAY, // [port][map]: the host's local server is up, join it
+	MSG_TEE, // [member][visible][x][y][angle][map][skin][body][feet][custom]: the tee of a member playing the map
 };
 enum
 {
@@ -628,6 +629,13 @@ void CXcCoop::Update()
 					UpdateMap(*pShared, Time);
 		}
 		SendCursor();
+		SendTee();
+	}
+	if(m_State == STATE_ONLINE)
+	{
+		const float Time = Now();
+		EaseTees(m_LastEase > 0.0f ? std::clamp(Time - m_LastEase, 0.0f, 0.1f) : 0.0f);
+		m_LastEase = Time;
 	}
 	Flush();
 }
@@ -635,6 +643,14 @@ void CXcCoop::Update()
 void CXcCoop::UpdateMap(SShared &Shared, float Time)
 {
 	CEditor &E = *m_pEditor;
+	// with the editor closed (playing together) nobody here changes the map, only the blocks of the others come in:
+	// no need to look for own changes, which costs a pass over every layer
+	if(!g_Config.m_ClEditor && Shared.m_pMap->m_LastModifiedTime == Shared.m_SeenModified && Shared.m_LastHash == Shared.m_SyncedHash)
+	{
+		SendVerify(Shared, Time);
+		return;
+	}
+	Shared.m_SeenModified = Shared.m_pMap->m_LastModifiedTime;
 	const uint64_t Hash = StateHash(Shared.m_pMap);
 	if(Hash != Shared.m_LastHash)
 	{
@@ -671,18 +687,22 @@ void CXcCoop::UpdateMap(SShared &Shared, float Time)
 		// a guest's blocks are on the way: its copy differs from the host's for a moment
 		Shared.m_NextVerify = std::max(Shared.m_NextVerify, Time + 1.5f);
 	}
-	// the host: the state of the map for everyone to compare (after the blocks, so they agree)
-	if(m_Role == ROLE_HOST && Time >= Shared.m_NextVerify && m_vpConns.size() > 0)
-	{
-		Shared.m_NextVerify = Time + VERIFY_INTERVAL;
-		CCoopPacker Check;
-		Check.U32(Shared.m_Id);
-		Check.U32(Shared.m_Epoch);
-		const uint64_t Full = FullHash(Shared);
-		Check.U32((uint32_t)Full);
-		Check.U32((uint32_t)(Full >> 32));
-		Broadcast(MSG_CHECK, Check.m_vData);
-	}
+	SendVerify(Shared, Time);
+}
+
+// the host: the state of the map for everyone to compare (after the blocks, so they agree)
+void CXcCoop::SendVerify(SShared &Shared, float Time)
+{
+	if(m_Role != ROLE_HOST || Time < Shared.m_NextVerify || m_vpConns.empty() || Shared.m_Id == 0 || Shared.m_HasIncoming || SendingBlocked(Shared))
+		return;
+	Shared.m_NextVerify = Time + VERIFY_INTERVAL;
+	CCoopPacker Check;
+	Check.U32(Shared.m_Id);
+	Check.U32(Shared.m_Epoch);
+	const uint64_t Full = FullHash(Shared);
+	Check.U32((uint32_t)Full);
+	Check.U32((uint32_t)(Full >> 32));
+	Broadcast(MSG_CHECK, Check.m_vData);
 }
 
 // ---- network
@@ -1041,14 +1061,14 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			Broadcast(MSG_TILES, vRelay, &Conn);
 			return;
 		}
-		if(Type == MSG_CURSOR)
+		if(Type == MSG_CURSOR || Type == MSG_TEE)
 		{
 			if(Size < 1)
 				return;
 			std::vector<uint8_t> vRelay(pData, pData + Size);
 			vRelay[0] = (uint8_t)Conn.m_MemberId;
-			Handle(Conn, -MSG_CURSOR, vRelay.data(), vRelay.size());
-			Broadcast(MSG_CURSOR, vRelay, &Conn);
+			Handle(Conn, -Type, vRelay.data(), vRelay.size());
+			Broadcast(Type, vRelay, &Conn);
 			return;
 		}
 		if(Type == MSG_CLOSE)
@@ -1080,8 +1100,8 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 			}
 			return;
 		}
-		if(Type == -MSG_CURSOR)
-			Type = MSG_CURSOR; // the host shows the cursor too
+		if(Type == -MSG_CURSOR || Type == -MSG_TEE)
+			Type = -Type; // the host shows the cursor and the tee too
 		else if(Type == MSG_BYE)
 		{
 			CloseConn(Conn);
@@ -1178,8 +1198,38 @@ void CXcCoop::Handle(SConn &Conn, int Type, const uint8_t *pData, size_t Size)
 	else if(Type == MSG_PLAY)
 	{
 		const int Port = Msg.U16();
+		if(Msg.Left() >= 4)
+			m_PlayingMapId = Msg.U32();
 		if(!Msg.m_Error && Port > 0)
 			JoinPlay(Port);
+	}
+	else if(Type == MSG_TEE)
+	{
+		const int Id = Msg.U8();
+		const bool Visible = Msg.U8() != 0;
+		const float x = Msg.F32();
+		const float y = Msg.F32();
+		const float Angle = Msg.F32();
+		const uint32_t MapId = Msg.U32();
+		const std::string Skin = Msg.Str();
+		const int Body = (int)Msg.U32();
+		const int Feet = (int)Msg.U32();
+		const bool Custom = Msg.U8() != 0;
+		SMember *pMember = FindMember(Id);
+		if(Msg.m_Error || !pMember || Id == m_SelfId)
+			return;
+		// a tee that shows up jumps to its place, a moving one glides there
+		if(!pMember->m_HasTee || distance(pMember->m_TeeDrawPos, vec2(x, y)) > 600.0f)
+			pMember->m_TeeDrawPos = vec2(x, y);
+		pMember->m_HasTee = Visible;
+		pMember->m_TeeMapId = MapId;
+		pMember->m_TeePos = vec2(x, y);
+		pMember->m_TeeAngle = Angle;
+		pMember->m_Skin = Skin;
+		pMember->m_ColorBody = Body;
+		pMember->m_ColorFeet = Feet;
+		pMember->m_CustomColor = Custom;
+		pMember->m_TeeSeen = Now();
 	}
 	else if(Type == MSG_CLOSE)
 	{
@@ -1242,6 +1292,61 @@ void CXcCoop::SendCursor()
 	Cursor.U16(Layer & 0xffff);
 	Cursor.U32(Id);
 	Broadcast(MSG_CURSOR, Cursor.m_vData);
+}
+
+// playing together: where our tee is, for the editors of the others
+bool CXcCoop::PlayingNow() const
+{
+	CEditor &E = *m_pEditor;
+	return m_PlayingMapId != 0 && !g_Config.m_ClEditor && E.Client()->State() == IClient::STATE_ONLINE &&
+	       str_comp(E.Client()->ServerInfo().m_aMap, PLAY_MAP) == 0;
+}
+
+void CXcCoop::SendTee()
+{
+	CEditor &E = *m_pEditor;
+	const float Time = Now();
+	if(Time < m_NextTee)
+		return;
+	const CGameClient *pGameClient = (const CGameClient *)E.Kernel()->RequestInterface<IGameClient>();
+	const bool Visible = PlayingNow() && pGameClient->m_Snap.m_pLocalCharacter;
+	if(!Visible && !m_TeeShown)
+		return;
+	const vec2 Pos = Visible ? pGameClient->m_LocalCharacterPos : vec2(0.0f, 0.0f);
+	// still: once a second, so a late editor sees it too
+	if(Visible == m_TeeShown && distance(Pos, m_LastTee) < 0.5f && Time - m_LastTeeSent < 1.0f)
+		return;
+	m_NextTee = Time + 0.05f;
+	m_LastTee = Pos;
+	m_LastTeeSent = Time;
+	m_TeeShown = Visible;
+	const vec2 Aim = pGameClient->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+	CCoopPacker Tee;
+	Tee.U8(m_SelfId < 0 ? 0 : m_SelfId);
+	Tee.U8(Visible ? 1 : 0);
+	Tee.F32(Pos.x);
+	Tee.F32(Pos.y);
+	Tee.F32(std::atan2(Aim.y, Aim.x));
+	Tee.U32(m_PlayingMapId);
+	Tee.Str(g_Config.m_ClPlayerSkin);
+	Tee.U32((uint32_t)g_Config.m_ClPlayerColorBody);
+	Tee.U32((uint32_t)g_Config.m_ClPlayerColorFeet);
+	Tee.U8(g_Config.m_ClPlayerUseCustomColor ? 1 : 0);
+	Broadcast(MSG_TEE, Tee.m_vData);
+}
+
+void CXcCoop::EaseTees(float Dt)
+{
+	const float k = 1.0f - std::exp(-Dt * 18.0f);
+	for(SMember &Member : m_vMembers)
+	{
+		if(!Member.m_HasTee)
+			continue;
+		Member.m_TeeDrawPos += (Member.m_TeePos - Member.m_TeeDrawPos) * k;
+		// a member who stopped sending (left the game without a word) fades out
+		if(Now() - Member.m_TeeSeen > 5.0f)
+			Member.m_HasTee = false;
+	}
 }
 
 // ---- playing together
@@ -1327,6 +1432,7 @@ void CXcCoop::RunPlayServer()
 		m_fnOnPlay(pPlaying->m_pMap, m_PlayingMapId, PLAY_MAP);
 	CCoopPacker Play;
 	Play.U16(PLAY_PORT);
+	Play.U32(m_PlayingMapId);
 	Broadcast(MSG_PLAY, Play.m_vData);
 	Flush();
 	log_info("xc_coop", "playing together on port %d", PLAY_PORT);
@@ -1450,24 +1556,24 @@ uint64_t CXcCoop::StateHash(const CEditorMap *pMap) const
 	return h;
 }
 
-// everything, the blocks too: what the host and the guests compare
+// everything, the blocks too: what the host and the guests compare. Both only ask when the snapshot holds the
+// blocks as they are, so the blocks are hashed from it, and a layer only again when its blocks changed
 uint64_t CXcCoop::FullHash(SShared &Shared) const
 {
 	uint64_t h = StateHash(Shared.m_pMap);
-	for(int g = 0; g < (int)Shared.m_pMap->m_vpGroups.size(); g++)
+	for(STileSnap &Snap : Shared.m_vSnaps)
 	{
-		const auto &vpLayers = Shared.m_pMap->m_vpGroups[g]->m_vpLayers;
-		for(int l = 0; l < (int)vpLayers.size(); l++)
+		if(!Snap.m_HashValid)
 		{
-			CLayerTiles *pLayer = TileLayer(Shared.m_pMap, g, l);
-			if(!pLayer || !pLayer->m_pTiles)
-				continue;
-			const size_t Cells = (size_t)pLayer->m_Width * pLayer->m_Height;
-			h = HashBlock(h, (const uint8_t *)pLayer->m_pTiles, Cells * sizeof(CTile));
-			const int Extra = ExtraSize(pLayer);
-			if(Extra && ExtraData(pLayer))
-				h = HashBlock(h, ExtraData(pLayer), Cells * Extra);
+			uint64_t LayerHash = HashBlock(14695981039346656037ull, Snap.m_vTiles.data(), Snap.m_vTiles.size());
+			if(!Snap.m_vExtra.empty())
+				LayerHash = HashBlock(LayerHash, Snap.m_vExtra.data(), Snap.m_vExtra.size());
+			Snap.m_Hash = LayerHash;
+			Snap.m_HashValid = true;
 		}
+		const int aKey[] = {Snap.m_Group, Snap.m_Layer, Snap.m_Width, Snap.m_Height, Snap.m_CellSize};
+		h = Hash(h, aKey, sizeof(aKey));
+		h = Hash(h, &Snap.m_Hash, sizeof(Snap.m_Hash));
 	}
 	return h;
 }
@@ -1577,6 +1683,7 @@ bool CXcCoop::DiffTiles(SShared &Shared, std::vector<uint8_t> &vOut)
 					Out.U32(0);
 				}
 				Runs++;
+				Snap.m_HashValid = false;
 				const size_t Start = (size_t)y * Snap.m_Width + x;
 				Out.U32((uint32_t)Start);
 				Out.U32((uint32_t)(End - x));
@@ -1645,6 +1752,7 @@ void CXcCoop::ApplyTiles(SShared &Shared, const uint8_t *pData, size_t Size, boo
 					std::memcpy(pExtra + Cell * Extra, pCell + sizeof(CTile), Extra);
 				if(pSnap)
 				{
+					pSnap->m_HashValid = false;
 					std::memcpy(pSnap->m_vTiles.data() + Cell * sizeof(CTile), pCell, sizeof(CTile));
 					if(Extra)
 						std::memcpy(pSnap->m_vExtra.data() + Cell * Extra, pCell + sizeof(CTile), Extra);

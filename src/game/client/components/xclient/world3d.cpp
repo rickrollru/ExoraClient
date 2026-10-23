@@ -4,6 +4,7 @@
 #include <base/math.h>
 #include <base/time.h>
 
+#include <engine/editor.h>
 #include <engine/engine.h>
 #include <engine/external/stb/stb_image.h>
 #include <engine/graphics.h>
@@ -335,6 +336,9 @@ void CXcWorld3D::OnRender()
 
 void CXcWorld3D::CEnd::OnRender()
 {
+	// editing together: the cursors of the friends in the editor, over the world
+	if(GameClient()->Editor() && (Client()->State() == IClient::STATE_ONLINE))
+		GameClient()->Editor()->XcRenderInGame();
 	if(!m_pOwner->m_FrameOn)
 		return;
 	m_pOwner->m_FrameOn = false;

@@ -303,6 +303,7 @@ void CXcEditorUi::Render()
 	if(E.m_Mode == MODE_LAYERS)
 	{
 		E.MapView()->Render(m_View);
+		RenderCoopTees();
 		// Ctrl + right click on a tile picks its layer, again: the next layer with a tile there (like the classic editor)
 		if(E.LayerSelector()->SelectByTile())
 		{
