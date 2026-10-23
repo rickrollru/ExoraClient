@@ -174,6 +174,6 @@ The original TClient documentation: [docs/tclient/README_TClient.md](docs/tclien
 
 <div align="center">
 
-Made by Max (**Krutoy**) · Discord: `rickroll.ru`
+Made by **Krutoy** · Discord: `rickroll.ru`
 
 </div>
