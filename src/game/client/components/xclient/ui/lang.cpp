@@ -745,6 +745,8 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"Layer: %s", "Слой: %s"},
+			{"no name", "без имени"},
 			{"Server greeting box on join", "Приветствие сервера при входе"},
 			{"Background layers in depth", "Задние слои карты в глубине"},
 			{"Freeze as ice", "Фриз как лёд"},
