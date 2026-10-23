@@ -261,7 +261,8 @@ public:
 	void OnActivate() override;
 	void OnWindowResize() override;
 	void OnClose() override;
-	void XcBackgroundUpdate() override; // XClient
+	void XcBackgroundUpdate() override;
+	void XcRenderInGame() override; // XClient
 	void OnDialogClose();
 	bool HasUnsavedData() const override;
 	void UpdateMentions() override { m_Mentions++; }

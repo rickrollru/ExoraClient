@@ -5,6 +5,10 @@
 #include <base/str.h>
 
 #include <engine/shared/config.h>
+#include <engine/textrender.h>
+
+#include <game/client/animstate.h>
+#include <game/client/gameclient.h>
 
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
@@ -15,6 +19,7 @@
 #include <engine/external/imgui/imgui.h>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace XcUi;
 
@@ -229,7 +234,7 @@ void CXcEditorUi::RenderCoopCursors()
 	for(const CXcCoop::SMember &Member : m_Coop.Members())
 	{
 		// only the ones in this tab
-		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasCursor || Member.m_MapId != MapId)
+		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasCursor || Member.m_MapId != MapId || Member.m_HasTee)
 			continue;
 		const ImVec2 Pos((Member.m_Cursor.x - Rect.m_TopLeft.x) / Rect.Width() * Display.x, (Member.m_Cursor.y - Rect.m_TopLeft.y) / Rect.Height() * Display.y);
 		const float Alpha = Time - Member.m_LastSeen > 20.0f ? 0.45f : 1.0f;
@@ -274,6 +279,111 @@ void CXcEditorUi::RenderCoopCursors()
 		const float Light = Color.x * 0.3f + Color.y * 0.59f + Color.z * 0.11f;
 		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(PillMin.x + S(7.0f), PillMin.y + S(3.0f)), Col(Light > 0.6f ? ImVec4(0.05f, 0.06f, 0.08f, Alpha) : ImVec4(1.0f, 1.0f, 1.0f, Alpha)), aLabel);
 	}
+	// the friends who play the map: a pill with the name over their tee
+	for(const CXcCoop::SMember &Member : m_Coop.Members())
+	{
+		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasTee || Member.m_TeeMapId != MapId)
+			continue;
+		const vec2 World = Member.m_TeeDrawPos - vec2(0.0f, 46.0f);
+		const ImVec2 Pos((World.x - Rect.m_TopLeft.x) / Rect.Width() * Display.x, (World.y - Rect.m_TopLeft.y) / Rect.Height() * Display.y);
+		const ImVec4 Color = MemberColor(Member.m_Id);
+		char aLabel[128];
+		str_format(aLabel, sizeof(aLabel), "%s · %s", Member.m_Name.c_str(), Tr("playing"));
+		const ImVec2 TextSize = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aLabel);
+		const ImVec2 PillMin(Pos.x - TextSize.x * 0.5f - S(7.0f), Pos.y - TextSize.y - S(6.0f));
+		const ImVec2 PillMax(Pos.x + TextSize.x * 0.5f + S(7.0f), Pos.y);
+		pDraw->AddRectFilled(PillMin, PillMax, Col(Color), S(6.0f));
+		const float Light = Color.x * 0.3f + Color.y * 0.59f + Color.z * 0.11f;
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(PillMin.x + S(7.0f), PillMin.y + S(3.0f)), Col(Light > 0.6f ? ImVec4(0.05f, 0.06f, 0.08f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f)), aLabel);
+	}
 	pDraw->PopClipRect();
+}
+
+// the friends who play the map, drawn with their skin where their tee is (under the panels of the editor)
+void CXcEditorUi::RenderCoopTees()
+{
+	CEditor &E = *m_pEditor;
+	const uint32_t MapId = m_Coop.MapId(E.Map());
+	if(m_Coop.State() != CXcCoop::STATE_ONLINE || MapId == 0)
+		return;
+	CLayerGroup *pGame = nullptr;
+	for(const auto &pGroup : E.Map()->m_vpGroups)
+		if(pGroup->m_GameGroup)
+			pGame = pGroup.get();
+	if(!pGame)
+		return;
+	CGameClient *pGameClient = (CGameClient *)E.Kernel()->RequestInterface<IGameClient>();
+	bool Mapped = false;
+	for(const CXcCoop::SMember &Member : m_Coop.Members())
+	{
+		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasTee || Member.m_TeeMapId != MapId)
+			continue;
+		if(!Mapped)
+		{
+			pGame->MapScreen();
+			Mapped = true;
+		}
+		CTeeRenderInfo Info;
+		Info.Apply(pGameClient->m_Skins.Find(Member.m_Skin.c_str()));
+		Info.ApplyColors(Member.m_CustomColor, Member.m_ColorBody, Member.m_ColorFeet);
+		Info.m_Size = 64.0f;
+		pGameClient->RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, direction(Member.m_TeeAngle), Member.m_TeeDrawPos);
+	}
+	if(Mapped)
+		E.Ui()->MapScreen();
+}
+
+// in the game, playing the map together: the cursors of the friends who edit it, in the world
+void CXcEditorUi::RenderInGame()
+{
+	if(m_Coop.State() != CXcCoop::STATE_ONLINE || !m_Coop.PlayingNow())
+		return;
+	CEditor &E = *m_pEditor;
+	CGameClient *pGameClient = (CGameClient *)E.Kernel()->RequestInterface<IGameClient>();
+	IGraphics *pGraphics = E.Graphics();
+	ITextRender *pTextRender = E.TextRender();
+	const float Time = E.Client()->GlobalTime();
+	bool Mapped = false;
+	for(const CXcCoop::SMember &Member : m_Coop.Members())
+	{
+		// only the ones in the editor with the played map open, who moved lately
+		if(Member.m_Id == m_Coop.SelfId() || !Member.m_HasCursor || Member.m_HasTee || Member.m_MapId != m_Coop.PlayingMapId() || Time - Member.m_LastSeen > 30.0f)
+			continue;
+		if(!Mapped)
+		{
+			pGraphics->MapScreenToInterface(pGameClient->m_Camera.m_Center.x, pGameClient->m_Camera.m_Center.y, pGameClient->m_Camera.m_Zoom);
+			Mapped = true;
+		}
+		const unsigned Rgb = CXcCoop::MemberColor(Member.m_Id);
+		const ColorRGBA Color(((Rgb >> 16) & 0xff) / 255.0f, ((Rgb >> 8) & 0xff) / 255.0f, (Rgb & 0xff) / 255.0f, 1.0f);
+		const vec2 p = Member.m_Cursor;
+		const float s = 1.6f; // world units per pixel of the arrow
+		// an arrow like the system cursor: a dark rim, then the color
+		pGraphics->TextureClear();
+		pGraphics->TrianglesBegin();
+		for(int Pass = 0; Pass < 2; Pass++)
+		{
+			const float Grow = Pass == 0 ? 1.8f : 0.0f;
+			pGraphics->SetColor(Pass == 0 ? ColorRGBA(0.04f, 0.04f, 0.06f, 0.9f) : Color);
+			const IGraphics::CFreeformItem aItems[] = {
+				IGraphics::CFreeformItem(p.x - Grow, p.y - Grow * 2.0f, p.x - Grow, p.y + (17.0f + Grow) * s, p.x + (13.0f + Grow * 1.5f) * s, p.y + (12.0f + Grow * 0.5f) * s, p.x + 4.5f * s, p.y + 13.0f * s),
+				IGraphics::CFreeformItem(p.x + (4.5f - Grow * 0.5f) * s, p.y + 11.0f * s, p.x + (7.5f + Grow * 0.5f) * s, p.y + (11.0f - Grow * 0.3f) * s, p.x + (8.0f - Grow * 0.4f) * s, p.y + (20.0f + Grow * 0.5f) * s, p.x + (11.0f + Grow * 0.5f) * s, p.y + (18.5f + Grow * 0.3f) * s),
+			};
+			pGraphics->QuadsDrawFreeform(aItems, (int)std::size(aItems));
+		}
+		pGraphics->TrianglesEnd();
+		// the name and what he does
+		char aLabel[128];
+		str_format(aLabel, sizeof(aLabel), "%s · %s", Member.m_Name.c_str(), Tr("editing"));
+		const float FontSize = 14.0f;
+		const float Width = pTextRender->TextWidth(FontSize, aLabel);
+		const vec2 LabelPos = p + vec2(14.0f * s, 20.0f * s);
+		pGraphics->TextureClear();
+		pGraphics->DrawRect(LabelPos.x, LabelPos.y, Width + 12.0f, FontSize + 8.0f, Color.WithAlpha(0.9f), IGraphics::CORNER_ALL, 6.0f);
+		const float Light = Color.r * 0.3f + Color.g * 0.59f + Color.b * 0.11f;
+		pTextRender->TextColor(Light > 0.6f ? ColorRGBA(0.05f, 0.06f, 0.08f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+		pTextRender->Text(LabelPos.x + 6.0f, LabelPos.y + 4.0f, FontSize, aLabel);
+		pTextRender->TextColor(pTextRender->DefaultTextColor());
+	}
 }
 

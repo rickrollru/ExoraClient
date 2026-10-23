@@ -52,6 +52,17 @@ public:
 		int m_Group = -1;
 		int m_Layer = -1;
 		float m_LastSeen = 0.0f; // when the cursor moved
+		// playing the map together: the member's tee on the server, as he sees it
+		bool m_HasTee = false;
+		uint32_t m_TeeMapId = 0; // the tab that is played
+		vec2 m_TeePos = vec2(0.0f, 0.0f); // the last position heard
+		vec2 m_TeeDrawPos = vec2(0.0f, 0.0f); // eased towards it every frame
+		float m_TeeAngle = 0.0f; // where he aims
+		std::string m_Skin;
+		int m_ColorBody = 0;
+		int m_ColorFeet = 0;
+		bool m_CustomColor = false;
+		float m_TeeSeen = 0.0f;
 	};
 
 	void Init(CEditor *pEditor) { m_pEditor = pEditor; }
@@ -78,6 +89,10 @@ public:
 	const std::vector<SMember> &Members() const { return m_vMembers; }
 	// the room id of a shared map tab, 0 for a tab that is not shared (yet)
 	uint32_t MapId(const CEditorMap *pMap) const;
+	// the tab played together on the server, 0 when none
+	uint32_t PlayingMapId() const { return m_PlayingMapId; }
+	// playing it now: online on the server of the room with the editor closed
+	bool PlayingNow() const;
 	int NumSharedMaps() const { return (int)m_vpShared.size(); }
 	// a message for the user after the session ended (or empty)
 	std::string TakeNotice();
@@ -103,6 +118,8 @@ private:
 		int m_CellSize;
 		std::vector<uint8_t> m_vTiles; // CTile per cell
 		std::vector<uint8_t> m_vExtra; // the tele/speedup/switch/tune data per cell
+		uint64_t m_Hash = 0; // of the cells above, while m_HashValid
+		bool m_HashValid = false;
 	};
 	// one shared map tab and how far it is in sync
 	struct SShared
@@ -115,6 +132,7 @@ private:
 		std::vector<STileSnap> m_vSnaps; // the tile layers as they were last sent or received
 		uint64_t m_SyncedHash = 0;
 		uint64_t m_LastHash = 0;
+		float m_SeenModified = -1.0f; // the change time of the map at the last look for own changes
 		float m_HashChangeTime = 0.0f;
 		bool m_ProposalPending = false; // a guest sent its change and waits for the host to take it
 		// a whole map that came in while the user was dragging something: loaded when the mouse is free
@@ -167,6 +185,10 @@ private:
 	float m_NextCheck = 0.0f;
 	float m_LastActivity = 0.0f;
 	float m_NextCursor = 0.0f;
+	float m_NextTee = 0.0f;
+	float m_LastTeeSent = 0.0f;
+	vec2 m_LastTee = vec2(-1.0f, -1.0f);
+	bool m_TeeShown = false; // the others see our tee
 	vec2 m_LastCursor = vec2(-1.0f, -1.0f);
 	int m_LastCursorGroup = -2;
 	int m_LastCursorLayer = -2;
@@ -221,6 +243,7 @@ private:
 
 	uint64_t StateHash(const CEditorMap *pMap) const;
 	uint64_t FullHash(SShared &Shared) const;
+	void SendVerify(SShared &Shared, float Time);
 	void TakeSnapshot(SShared &Shared);
 	bool DiffTiles(SShared &Shared, std::vector<uint8_t> &vOut);
 	bool TilesDirty(const SShared &Shared) const;
@@ -232,6 +255,9 @@ private:
 	void LoadIncomingMap(SShared &Shared);
 	void CloseSharedTab(uint32_t Id, int ByMember);
 	void SendCursor();
+	void SendTee();
+	void EaseTees(float Dt);
+	float m_LastEase = 0.0f;
 	void UpdateMap(SShared &Shared, float Time);
 };
 
