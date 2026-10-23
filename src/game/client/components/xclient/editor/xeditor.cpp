@@ -13,6 +13,7 @@
 #include <engine/shared/config.h>
 
 #include <game/client/components/xclient/hud/xc_hud.h>
+#include <game/client/components/xclient/ui/feedback.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
 #include <game/client/components/xclient/ui/widgets.h>
@@ -300,7 +301,22 @@ void CXcEditorUi::Render()
 	// ---- the map
 	E.RenderBackground(m_View, E.m_CheckerTexture, XcEditorStyle::CheckerSize(), XcEditorStyle::CheckerBrightness());
 	if(E.m_Mode == MODE_LAYERS)
+	{
 		E.MapView()->Render(m_View);
+		// Ctrl + right click on a tile picks its layer, again: the next layer with a tile there (like the classic editor)
+		if(E.LayerSelector()->SelectByTile())
+		{
+			if(E.Map()->m_SelectedGroup >= 0 && E.Map()->m_SelectedGroup < (int)E.Map()->m_vpGroups.size())
+				E.Map()->m_vpGroups[E.Map()->m_SelectedGroup]->m_Collapse = false;
+			m_TreeScrollToSelection = true;
+			if(std::shared_ptr<CLayer> pLayer = E.Map()->SelectedLayer(0))
+			{
+				char aMsg[128];
+				str_format(aMsg, sizeof(aMsg), Tr("Layer: %s"), pLayer->m_aName[0] ? pLayer->m_aName : Tr("no name"));
+				XcUi::Toast(aMsg, XcUi::TOAST_INFO);
+			}
+		}
+	}
 	else if(E.m_Mode == MODE_IMAGES)
 		E.RenderSelectedImage(m_View);
 
@@ -1331,6 +1347,11 @@ void CXcEditorUi::RenderLayersTree()
 					continue;
 				Gap(DRAG_LAYER, g, i);
 				const bool Selected = g == pMap->m_SelectedGroup && std::find(pMap->m_vSelectedLayers.begin(), pMap->m_vSelectedLayers.end(), i) != pMap->m_vSelectedLayers.end();
+				if(Selected && m_TreeScrollToSelection)
+				{
+					ImGui::SetScrollHereY(0.5f);
+					m_TreeScrollToSelection = false;
+				}
 				ImGui::PushID(i);
 				const bool DimLayer = m_DragKind == DRAG_LAYER && m_DragGroup == g && m_DragLayer == i;
 				if(DimLayer)

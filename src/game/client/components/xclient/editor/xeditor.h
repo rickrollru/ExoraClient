@@ -376,6 +376,7 @@ private:
 
 	// "Make 3D": depth for every player from parallax copies of a layer (xeditor_depth.cpp)
 	bool m_DepthRequest = false;
+	bool m_TreeScrollToSelection = false; // the layer was picked on the map: the tree shows it
 	int m_DepthLevels = 6;
 	int m_DepthStep = 1;
 	int m_DepthDark = 10;
