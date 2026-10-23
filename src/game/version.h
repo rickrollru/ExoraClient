@@ -25,6 +25,10 @@ extern const char *GIT_SHORTREV_HASH;
 #define TCLIENT_VERSION "10.9.0"
 #endif
 
+// XClient: the name and version the servers see (the version string of the client, shown on their sites)
+#define XCLIENT_NAME "Exora Client"
+#define XCLIENT_VERSION "0.2"
+
 // custom
 #define CLIENT_NAME "TClient"
 #define CLIENT_RELEASE_VERSION TCLIENT_VERSION

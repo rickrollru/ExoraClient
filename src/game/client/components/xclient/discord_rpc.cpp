@@ -525,10 +525,22 @@ std::string CXcDiscordRpc::BuildActivity()
 		Writer.BeginArray();
 		Writer.BeginObject();
 		Writer.WriteAttribute("label");
-		Writer.WriteStrValue("Exora Client");
+		Writer.WriteStrValue("Exora Client Discord");
 		Writer.WriteAttribute("url");
 		Writer.WriteStrValue(g_Config.m_XcLinkDiscord);
 		Writer.EndObject();
+		// and where to get the client (at most two buttons, a label up to 32 letters)
+		if(str_startswith(g_Config.m_XcLinkGithub, "https://"))
+		{
+			char aReleases[300];
+			str_format(aReleases, sizeof(aReleases), "%s/releases/latest", g_Config.m_XcLinkGithub);
+			Writer.BeginObject();
+			Writer.WriteAttribute("label");
+			Writer.WriteStrValue("Download Exora Client");
+			Writer.WriteAttribute("url");
+			Writer.WriteStrValue(aReleases);
+			Writer.EndObject();
+		}
 		Writer.EndArray();
 	}
 	Writer.EndObject();
