@@ -174,6 +174,6 @@ cmake .. -G Ninja && ninja game-client game-server
 
 <div align="center">
 
-Сделано Максом (**Крутой**) · Discord: `rickroll.ru`
+Сделано **Крутой** · Discord: `rickroll.ru`
 
 </div>
