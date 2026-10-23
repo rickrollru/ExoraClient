@@ -17,6 +17,8 @@
 #include <game/editor/mapitems/layer_tele.h>
 #include <game/editor/mapitems/layer_tiles.h>
 #include <game/editor/mapitems/layer_tune.h>
+#include <engine/shared/config.h>
+
 #include <game/xc_live_edit.h>
 
 #include <generated/protocol.h>
@@ -67,24 +69,20 @@ CLayerTiles *TileLayer(CEditorMap *pMap, int Group, int Layer)
 	return static_cast<CLayerTiles *>(vpLayers[Layer].get());
 }
 
-// the cells of a layer as they travel: CTile, then the extra data
-void ReadCells(CLayerTiles *pLayer, std::vector<uint8_t> &vOut)
+// the cells of a layer, kept apart: the tiles and the extra data
+void ReadLayer(CLayerTiles *pLayer, std::vector<uint8_t> &vTiles, std::vector<uint8_t> &vExtra)
 {
 	const int Extra = ExtraSize(pLayer);
-	const int CellSize = sizeof(CTile) + Extra;
 	const size_t Cells = (size_t)pLayer->m_Width * pLayer->m_Height;
-	vOut.resize(Cells * CellSize);
-	const uint8_t *pExtra = Extra ? ExtraData(pLayer) : nullptr;
-	for(size_t i = 0; i < Cells; i++)
+	const uint8_t *pTiles = (const uint8_t *)pLayer->m_pTiles;
+	vTiles.assign(pTiles, pTiles + Cells * sizeof(CTile));
+	vExtra.clear();
+	if(Extra)
 	{
-		std::memcpy(&vOut[i * CellSize], &pLayer->m_pTiles[i], sizeof(CTile));
-		if(Extra)
-		{
-			if(pExtra)
-				std::memcpy(&vOut[i * CellSize + sizeof(CTile)], pExtra + i * Extra, Extra);
-			else
-				std::memset(&vOut[i * CellSize + sizeof(CTile)], 0, Extra);
-		}
+		if(const uint8_t *pExtra = ExtraData(pLayer))
+			vExtra.assign(pExtra, pExtra + Cells * Extra);
+		else
+			vExtra.assign(Cells * Extra, 0);
 	}
 }
 } // namespace
@@ -144,15 +142,18 @@ void CXcLiveEdit::TakeSnapshot(CEditorMap *pMap)
 			Snap.m_Flags = LayerFlags(pLayer);
 			Snap.m_Image = pLayer->m_Image;
 			Snap.m_Name = pLayer->m_aName;
-			ReadCells(pLayer, Snap.m_vCells);
+			ReadLayer(pLayer, Snap.m_vTiles, Snap.m_vExtra);
 			m_vSnaps.push_back(std::move(Snap));
 		}
 	}
 }
 
+// the changed cells since the last look, straight from the layers: whole rows are compared first, a map that did not
+// change costs one memcmp per row
 void CXcLiveEdit::Diff(CEditorMap *pMap)
 {
-	std::vector<uint8_t> vNow;
+	std::vector<uint8_t> vPacked;
+	vPacked.reserve(XcLiveEdit::MAX_MESSAGE_DATA);
 	for(SSnap &Snap : m_vSnaps)
 	{
 		CLayerTiles *pLayer = TileLayer(pMap, Snap.m_Group, Snap.m_Layer);
@@ -163,14 +164,17 @@ void CXcLiveEdit::Diff(CEditorMap *pMap)
 			m_StructureChanged = true;
 			continue;
 		}
-		ReadCells(pLayer, vNow);
-		if(std::memcmp(vNow.data(), Snap.m_vCells.data(), vNow.size()) == 0)
+		const int Extra = Snap.m_CellSize - (int)sizeof(CTile);
+		const uint8_t *pTiles = (const uint8_t *)pLayer->m_pTiles;
+		const uint8_t *pExtra = Extra ? ExtraData(pLayer) : nullptr;
+		if(Extra && !pExtra)
 			continue;
+		const size_t RowTiles = (size_t)Snap.m_Width * sizeof(CTile);
+		const size_t RowExtra = (size_t)Snap.m_Width * Extra;
 
 		// runs of changed cells, packed into messages under the size limit
 		const int CellSize = Snap.m_CellSize;
 		const int MaxCells = XcLiveEdit::MAX_MESSAGE_DATA / CellSize;
-		const int Cells = Snap.m_Width * Snap.m_Height;
 		std::vector<XcLiveEdit::SRun> vRuns;
 		int Bytes = 0;
 		const auto FlushMessage = [&]() {
@@ -182,27 +186,49 @@ void CXcLiveEdit::Diff(CEditorMap *pMap)
 			if(!Packer.Error())
 				m_vQueue.emplace_back(Packer.Data(), Packer.Data() + Packer.Size());
 			vRuns.clear();
+			vPacked.clear();
 			Bytes = 0;
 		};
-		int i = 0;
-		while(i < Cells)
+		const auto Changed = [&](size_t i) {
+			return std::memcmp(pTiles + i * sizeof(CTile), Snap.m_vTiles.data() + i * sizeof(CTile), sizeof(CTile)) != 0 ||
+			       (Extra && std::memcmp(pExtra + i * Extra, Snap.m_vExtra.data() + i * Extra, Extra) != 0);
+		};
+		for(int y = 0; y < Snap.m_Height; y++)
 		{
-			if(std::memcmp(&vNow[(size_t)i * CellSize], &Snap.m_vCells[(size_t)i * CellSize], CellSize) == 0)
-			{
-				i++;
+			if(std::memcmp(pTiles + y * RowTiles, Snap.m_vTiles.data() + y * RowTiles, RowTiles) == 0 &&
+				(!Extra || std::memcmp(pExtra + y * RowExtra, Snap.m_vExtra.data() + y * RowExtra, RowExtra) == 0))
 				continue;
+			int x = 0;
+			while(x < Snap.m_Width)
+			{
+				const size_t Start = (size_t)y * Snap.m_Width + x;
+				if(!Changed(Start))
+				{
+					x++;
+					continue;
+				}
+				int End = x + 1;
+				while(End < Snap.m_Width && End - x < MaxCells && Changed((size_t)y * Snap.m_Width + End))
+					End++;
+				const int Count = End - x;
+				if(Bytes + Count * CellSize + 16 > XcLiveEdit::MAX_MESSAGE_DATA)
+					FlushMessage();
+				// the cells as they travel: CTile, then the extra data; the snapshot takes them
+				const size_t PackedAt = vPacked.size();
+				for(size_t i = Start; i < Start + Count; i++)
+				{
+					vPacked.insert(vPacked.end(), pTiles + i * sizeof(CTile), pTiles + (i + 1) * sizeof(CTile));
+					std::memcpy(Snap.m_vTiles.data() + i * sizeof(CTile), pTiles + i * sizeof(CTile), sizeof(CTile));
+					if(Extra)
+					{
+						vPacked.insert(vPacked.end(), pExtra + i * Extra, pExtra + (i + 1) * Extra);
+						std::memcpy(Snap.m_vExtra.data() + i * Extra, pExtra + i * Extra, Extra);
+					}
+				}
+				vRuns.push_back({(int)Start, Count, vPacked.data() + PackedAt});
+				Bytes += Count * CellSize + 8;
+				x = End;
 			}
-			int End = i + 1;
-			while(End < Cells && End - i < MaxCells && std::memcmp(&vNow[(size_t)End * CellSize], &Snap.m_vCells[(size_t)End * CellSize], CellSize) != 0)
-				End++;
-			const int Count = End - i;
-			if(Bytes + Count * CellSize + 16 > XcLiveEdit::MAX_MESSAGE_DATA)
-				FlushMessage();
-			// the snapshot keeps the sent cells, the run points into it
-			std::memcpy(&Snap.m_vCells[(size_t)i * CellSize], &vNow[(size_t)i * CellSize], (size_t)Count * CellSize);
-			vRuns.push_back({i, Count, &Snap.m_vCells[(size_t)i * CellSize]});
-			Bytes += Count * CellSize + 8;
-			i = End;
 		}
 		FlushMessage();
 	}
@@ -226,11 +252,17 @@ void CXcLiveEdit::Update()
 	if(!OnServer)
 		return;
 	const float Now = pClient->GlobalTime();
-	if(Now >= m_NextDiff)
+	// with the editor closed (playing) the map only changes by the blocks of the friends, which mark it as changed:
+	// it is only looked at then; with the editor open every 0.1 s
+	const bool EditorOpen = g_Config.m_ClEditor;
+	if(Now >= m_NextDiff && (EditorOpen || pMap->m_LastModifiedTime != m_DiffedModified))
 	{
 		m_NextDiff = Now + 0.1f;
 		if(m_vQueue.size() < 64)
+		{
+			m_DiffedModified = pMap->m_LastModifiedTime;
 			Diff(pMap);
+		}
 	}
 	// a big fill goes out over a few frames, the server must not take it for a flood
 	for(int Sent = 0; Sent < 12 && !m_vQueue.empty(); Sent++)
