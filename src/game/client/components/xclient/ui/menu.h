@@ -334,6 +334,8 @@ private:
 	void RenderVisualsCosmetics();
 	void RenderHatEditor(float Size);
 	void HandleHatFile(const char *pPath);
+	bool m_CapesScanned = false;
+	void CapePreview(const char *pId);
 	bool m_HatsScanned = false;
 	bool m_WeatherScanned = false;
 	char m_aWeatherPath[512] = {};

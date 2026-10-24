@@ -701,11 +701,14 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	// the tiny avatar in the top bar stays without the hat, it would stick out of the bar
 	const bool Extras = !Dummy && !Data.m_aSkin[0];
 	const bool Hat = Extras && g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
-	if(Extras && g_Config.m_XcCapeSelf && Max.y - Min.y > 64.0f)
+	const bool Cloth = Extras && (g_Config.m_XcCapeSelf || g_Config.m_XcScarfSelf) && Max.y - Min.y > 64.0f;
+	if(Cloth)
 		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, ImGui::GetStyle().Alpha, Client()->GlobalTime());
 	if(Hat && g_Config.m_XcHatBehind)
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
+	if(Cloth && g_Config.m_XcScarfSelf)
+		GameClient()->m_XcCape.RenderPreviewFront(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha);
 	if(Hat && !g_Config.m_XcHatBehind)
 	{
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
