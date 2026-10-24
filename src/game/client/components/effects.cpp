@@ -62,6 +62,8 @@ void CEffects::DamageIndicator(vec2 Pos, vec2 Dir, float Alpha)
 
 void CEffects::PowerupShine(vec2 Pos, vec2 Size, float Alpha)
 {
+	if(g_Config.m_XcReplaceNinjaShine) // XClient: the stock effect can be hidden
+		return;
 	if(!m_Add50hz)
 		return;
 
@@ -112,6 +114,8 @@ void CEffects::FreezingFlakes(vec2 Pos, vec2 Size, float Alpha)
 
 void CEffects::SparkleTrail(vec2 Pos, float Alpha)
 {
+	if(g_Config.m_XcReplaceSparkle) // XClient: the stock effect can be hidden
+		return;
 	if(!m_Add50hz)
 		return;
 
@@ -283,6 +287,8 @@ void CEffects::PlayerDeath(vec2 Pos, int ClientId, float Alpha)
 
 void CEffects::Confetti(vec2 Pos, float Alpha)
 {
+	if(g_Config.m_XcReplaceConfetti) // XClient: the stock effect can be hidden
+		return;
 	ColorRGBA Red(1.0f, 0.4f, 0.4f);
 	ColorRGBA Green(0.4f, 1.0f, 0.4f);
 	ColorRGBA Blue(0.4f, 0.4f, 1.0f);
@@ -338,7 +344,7 @@ void CEffects::Confetti(vec2 Pos, float Alpha)
 void CEffects::Explosion(vec2 Pos, float Alpha)
 {
 	// XClient: a grenade close to your tee shakes the camera
-	if(distance(Pos, GameClient()->m_LocalCharacterPos) < 260.0f)
+	if(g_Config.m_XcShakeExplosion && distance(Pos, GameClient()->m_LocalCharacterPos) < 260.0f)
 		GameClient()->m_ScreenFx.Shake(0.55f);
 	GameClient()->m_WorldFx.Explosion(Pos);
 	// add to flow

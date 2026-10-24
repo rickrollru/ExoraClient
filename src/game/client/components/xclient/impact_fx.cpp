@@ -26,8 +26,12 @@ void CXcImpactFx::OnReset()
 
 bool CXcImpactFx::ShowFor(int Owner) const
 {
-	if(g_Config.m_XcImpactFx == IMPACT_OFF)
-		return false;
+	return g_Config.m_XcImpactFx != IMPACT_OFF && ShowTargets(Owner);
+}
+
+// the self / dummy / others choice of the card, also for the flash at the gun (it does not need the hits)
+bool CXcImpactFx::ShowTargets(int Owner) const
+{
 	// shots of the map (turrets) count as others
 	if(!in_range(Owner, MAX_CLIENTS - 1))
 		return g_Config.m_XcImpactOthers;
@@ -152,13 +156,52 @@ void CXcImpactFx::Impact(vec2 Pos, vec2 Dir, vec2 Normal, int Weapon, int Owner)
 	}
 }
 
+void CXcImpactFx::PlayerHit(vec2 Pos, vec2 Dir)
+{
+	if(g_Config.m_XcHitPlayerFx == 0)
+		return;
+	const FxTune::CScope TuneScope(FxTune::IMPACT);
+	const ColorRGBA Main = EffectColor(GameClient(), g_Config.m_XcImpactColorMode, g_Config.m_XcImpactColor, -1);
+	if(g_Config.m_XcHitPlayerFx == 1)
+	{
+		// a ring that pops on the tee
+		CXcParticles::SParticle Ring;
+		Ring.m_Type = CXcParticles::EType::RING;
+		Ring.m_Pos = Pos;
+		Ring.m_LifeSpan = 0.3f;
+		Ring.m_StartSize = 10.0f;
+		Ring.m_EndSize = 46.0f;
+		Ring.m_Thickness = 4.0f;
+		Ring.m_Color = Main;
+		m_Particles.Add(Ring);
+		return;
+	}
+	// sparks or stars flying on in the direction of the hit
+	const bool Stars = g_Config.m_XcHitPlayerFx == 3;
+	const float BaseAngle = angle(length(Dir) > 0.0f ? Dir : vec2(0.0f, -1.0f));
+	for(int i = 0; i < (Stars ? 4 : 7); i++)
+	{
+		CXcParticles::SParticle Particle;
+		Particle.m_Type = Stars ? CXcParticles::EType::STAR : CXcParticles::EType::SPARK;
+		Particle.m_Pos = Pos;
+		Particle.m_Vel = direction(BaseAngle + random_float(-0.9f, 0.9f)) * random_float(140.0f, 380.0f);
+		Particle.m_Gravity = Stars ? 300.0f : 800.0f;
+		Particle.m_LifeSpan = random_float(0.25f, 0.45f);
+		Particle.m_StartSize = Stars ? random_float(11.0f, 16.0f) : random_float(5.0f, 8.0f);
+		Particle.m_Rot = random_float(0.0f, 2.0f * pi);
+		Particle.m_RotSpeed = Stars ? random_float(-6.0f, 6.0f) : 0.0f;
+		Particle.m_Color = i % 3 == 0 ? ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f) : Main;
+		m_Particles.Add(Particle);
+	}
+}
+
 void CXcImpactFx::Projectile(int ItemId, vec2 Pos, vec2 Vel, int Weapon, int Owner, float Age, float Speed)
 {
 	auto It = m_Shots.find(ItemId);
 	if(It == m_Shots.end())
 	{
 		// a new bullet: a flash at the gun if it was just shot (an old one may only have come into view)
-		if(g_Config.m_XcImpactMuzzle && Age < 0.08f && Weapon != WEAPON_GRENADE && ShowFor(Owner) && length(Vel) > 0.001f)
+		if(g_Config.m_XcImpactMuzzle && Age < 0.08f && Weapon != WEAPON_GRENADE && ShowTargets(Owner) && length(Vel) > 0.001f)
 			Muzzle(Pos, normalize(Vel), Weapon, Owner);
 		m_Shots[ItemId] = {Pos, Vel, Weapon, Owner, m_Frame, Speed};
 		return;
@@ -168,7 +211,7 @@ void CXcImpactFx::Projectile(int ItemId, vec2 Pos, vec2 Vel, int Weapon, int Own
 
 void CXcImpactFx::Laser(vec2 From, vec2 To, int StartTick, int Owner, int Type)
 {
-	if(!ShowFor(Owner) || distance(From, To) < 1.0f)
+	if((g_Config.m_XcImpactFx == IMPACT_OFF && !g_Config.m_XcImpactMuzzle) || !ShowTargets(Owner) || distance(From, To) < 1.0f)
 		return;
 	const long long Key = ((long long)(Owner + 1) << 40) ^ ((long long)Type << 32) ^ (unsigned)StartTick;
 	auto It = m_Lasers.find(Key);
@@ -176,7 +219,7 @@ void CXcImpactFx::Laser(vec2 From, vec2 To, int StartTick, int Owner, int Type)
 	if(New && g_Config.m_XcImpactMuzzle && Client()->GameTick(g_Config.m_ClDummy) - StartTick < 3)
 		Muzzle(From, normalize(To - From), WEAPON_LASER, Owner);
 	// every new end point is a hit, when there is a block right there
-	if(New || distance(It->second.m_To, To) > 1.0f)
+	if(g_Config.m_XcImpactFx != IMPACT_OFF && (New || distance(It->second.m_To, To) > 1.0f))
 	{
 		const vec2 Dir = normalize(To - From);
 		vec2 Col, Before;

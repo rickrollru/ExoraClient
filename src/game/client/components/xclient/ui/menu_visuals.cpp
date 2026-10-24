@@ -340,21 +340,33 @@ void CXcMenu::RenderVisualsGeneral()
 		Description(Tr("Jumps, rings, freeze, death, finish and accessories. Hats placed behind the tee stay behind"));
 		EndCard();
 	}
-	if(BeginCard("##fx_stock", Tr("Stock effects"), Tr("Hide the standard game effects so only ours stay, sounds remain")))
+	if(BeginCard("##fx_juice", Tr("Juice"), Tr("Screen flashes and camera shake. Which events use them is chosen in the card of each event")))
 	{
-		ToggleRow(Tr("Hammer hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
-		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
-		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
-		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
-		ToggleRow(Tr("Orange stars on hits"), "xc_replace_damage", &g_Config.m_XcReplaceDamage);
-		ToggleRow(Tr("Muzzle flash of the gun, shotgun and ninja"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
-		ToggleRow(Tr("Bullet sprites of the gun and shotgun"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
-		ToggleRow(Tr("Double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
-		ToggleRow(Tr("Skid smoke when turning"), "xc_replace_skid", &g_Config.m_XcReplaceSkid);
-		ToggleRow(Tr("Purple spawn smoke"), "xc_replace_spawn", &g_Config.m_XcReplaceSpawn);
-		ToggleRow(Tr("Blood on death"), "xc_replace_death", &g_Config.m_XcReplaceDeath);
-		ToggleRow(Tr("Snowflakes on frozen tees"), "xc_replace_freeze", &g_Config.m_XcReplaceFreeze);
-		Description(Tr("Turn on our effect for the same event in its card, otherwise nothing is shown"));
+		ToggleRow(Tr("Screen flash"), "xc_screen_flash", &g_Config.m_XcScreenFlash);
+		ConfigSlider(Tr("Flash strength"), "xc_screen_flash_strength", &g_Config.m_XcScreenFlashStrength, 5, 100, "%d%%");
+		ToggleRow(Tr("Camera shake"), "xc_camera_shake", &g_Config.m_XcCameraShake);
+		ConfigSlider(Tr("Shake strength"), "xc_camera_shake_strength", &g_Config.m_XcCameraShakeStrength, 10, 300, "%d%%");
+		Description(Tr("Only the picture moves, aim and movement stay the same"));
+		EndCard();
+	}
+	if(BeginCard("##fx_stock", Tr("Stock effects"), Tr("The standard game effects are shown or hidden in the card of each event. Here all at once")))
+	{
+		int *apStock[] = {&g_Config.m_XcReplaceHammer, &g_Config.m_XcReplaceExplosion, &g_Config.m_XcReplaceLaser, &g_Config.m_XcReplaceTrails, &g_Config.m_XcReplaceDamage, &g_Config.m_XcReplaceMuzzle, &g_Config.m_XcReplaceBullets, &g_Config.m_XcReplaceAirJump, &g_Config.m_XcReplaceSkid, &g_Config.m_XcReplaceSpawn, &g_Config.m_XcReplaceDeath, &g_Config.m_XcReplaceFreeze, &g_Config.m_XcReplaceConfetti, &g_Config.m_XcReplaceNinjaShine, &g_Config.m_XcReplaceSparkle};
+		int Hidden = 0;
+		for(int *pValue : apStock)
+			Hidden += *pValue ? 1 : 0;
+		char aCount[128];
+		str_format(aCount, sizeof(aCount), Tr("Hidden: %d of %d"), Hidden, (int)std::size(apStock));
+		Description(aCount);
+		const float Half = (AvailWidth() - S(8.0f)) * 0.5f;
+		if(Button(Tr("Hide all"), false, Half))
+			for(int *pValue : apStock)
+				*pValue = 1;
+		ImGui::SameLine(0.0f, S(8.0f));
+		if(Button(Tr("Show all"), false, Half))
+			for(int *pValue : apStock)
+				*pValue = 0;
+		Description(Tr("Sounds stay. Hide a standard effect and turn ours on, or the event shows nothing"));
 		EndCard();
 	}
 	EndCardGrid();
@@ -399,12 +411,24 @@ void CXcMenu::RenderVisualsTee()
 		TargetChips("##jelly_targets", &g_Config.m_XcJellySelf, &g_Config.m_XcJellyDummy, &g_Config.m_XcJellyOthers);
 		EndCard();
 	}
-	if(BeginCard("##fx_freeze", Tr("Freeze"), Tr("An icy aura around frozen tees and shards when the ice breaks"), &g_Config.m_XcFreezeFx))
+	if(BeginCard("##fx_freeze", Tr("Freeze"), Tr("Everything that happens when a tee freezes, stays frozen and thaws")))
 	{
-		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);
+		ToggleRow(Tr("Icy aura while frozen"), "xc_freeze_fx", &g_Config.m_XcFreezeFx);
 		ToggleRow(Tr("Shards on freeze and unfreeze"), "xc_freeze_burst", &g_Config.m_XcFreezeBurst);
+		EffectColorPicker("##freeze_color", &g_Config.m_XcFreezeColorMode, &g_Config.m_XcFreezeColor);
+		ToggleRow(Tr("Hide the standard snowflakes"), "xc_replace_freeze", &g_Config.m_XcReplaceFreeze);
+		ToggleRow(Tr("Countdown stars over the tee"), "cl_freeze_stars", &g_Config.m_ClFreezeStars);
+		ToggleRow(Tr("Screen flash when you freeze"), "xc_flash_freeze", &g_Config.m_XcFlashFreeze);
+		ToggleRow(Tr("Camera shake when you freeze"), "xc_shake_freeze", &g_Config.m_XcShakeFreeze);
+		ToggleRow(Tr("Sound on freeze and unfreeze"), "xc_event_sound_freeze", &g_Config.m_XcEventSoundFreeze);
 		TargetChips("##freeze_targets", &g_Config.m_XcFreezeSelf, &g_Config.m_XcFreezeDummy, &g_Config.m_XcFreezeOthers);
 		ParticleTuning(FxTune::FREEZE);
+		EndCard();
+	}
+	if(BeginCard("##fx_ninja", Tr("Ninja and invincible"), Tr("The standard shine of the ninja sword and the sparkles of invincible tees")))
+	{
+		ToggleRow(Tr("Hide the shine of the ninja sword"), "xc_replace_ninja_shine", &g_Config.m_XcReplaceNinjaShine);
+		ToggleRow(Tr("Hide the sparkles of invincible tees"), "xc_replace_sparkle", &g_Config.m_XcReplaceSparkle);
 		EndCard();
 	}
 	EndCardGrid();
@@ -445,11 +469,57 @@ void CXcMenu::RenderVisualsMovement()
 		if(g_Config.m_XcJumpFx == 1 && g_Config.m_XcFxStyle)
 			ConfigSlider(Tr("Duration"), "xc_jump_fx_duration", &g_Config.m_XcJumpFxDuration, 200, 3000, "%d ms");
 		ToggleRow(Tr("Also on double jumps"), "xc_jump_fx_air", &g_Config.m_XcJumpFxAir);
-		ToggleRow(Tr("Ring on landing"), "xc_land_fx", &g_Config.m_XcLandFx);
-		ToggleRow(Tr("Dust when running"), "xc_run_dust", &g_Config.m_XcRunDust);
+		ToggleRow(Tr("Hide the standard double jump puffs"), "xc_replace_air_jump", &g_Config.m_XcReplaceAirJump);
 		TargetChips("##jump_targets", &g_Config.m_XcJumpFxSelf, &g_Config.m_XcJumpFxDummy, &g_Config.m_XcJumpFxOthers);
 		ParticleTuning(FxTune::JUMP);
+		EndCard();
+	}
+	if(BeginCard("##fx_land", Tr("Landing"), Tr("A ring on the ground after a high fall"), &g_Config.m_XcLandFx))
+	{
+		Description(Tr("Color, size and players as for the jumps"));
+		EndCard();
+	}
+	if(BeginCard("##fx_run", Tr("Running"), Tr("Dust under the feet of a fast tee"), &g_Config.m_XcRunDust))
+	{
+		ToggleRow(Tr("Hide the standard skid smoke"), "xc_replace_skid", &g_Config.m_XcReplaceSkid);
+		Description(Tr("Color and players as for the jumps"));
 		ParticleTuning(FxTune::DUST);
+		EndCard();
+	}
+	const char *apHooks[] = {Tr("Chain"), Tr("Line"), Tr("Glow")};
+	if(StyleCard("##fx_hook", Tr("Hook"), Tr("Colored chain, clean line or a glowing beam"), "xc_hook_style", &g_Config.m_XcHookStyle, apHooks, 3))
+	{
+		EffectColorPicker("##hook_color", &g_Config.m_XcHookColorMode, &g_Config.m_XcHookColor);
+		ConfigSlider(Tr("Width"), "xc_hook_width", &g_Config.m_XcHookWidth, 25, 300, "%d%%");
+		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_hook_hit", Tr("Hook grabs"), Tr("What shows where the hook catches a block or a player, or bounces off an unhookable block")))
+	{
+		const char *apHits[] = {Tr("Nothing"), Tr("Ring"), Tr("Sparks"), Tr("Stars")};
+		ParamLabel(Tr("Grabs a block"));
+		ConfigSegmented("##hook_hit", "xc_hook_hit_fx", &g_Config.m_XcHookHitFx, apHits, 4);
+		ParamLabel(Tr("Grabs a player"));
+		ConfigSegmented("##hook_hit_player", "xc_hook_hit_player_fx", &g_Config.m_XcHookHitPlayerFx, apHits, 4);
+		ParamLabel(Tr("Bounces off an unhookable block"));
+		ConfigSegmented("##hook_nohook", "xc_hook_nohook_fx", &g_Config.m_XcHookNohookFx, apHits, 4);
+		Description(Tr("In the color of the hook, the unhookable one in red. Players as for the hook"));
+		ParticleTuning(FxTune::HOOK);
+		EndCard();
+	}
+	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
+	{
+		const char *apModes[] = {Tr("Off"), Tr("When aiming"), Tr("Always")};
+		ParamLabel(Tr("My line"));
+		ConfigSegmented("##hook_coll_own", "cl_show_hook_coll_own", &g_Config.m_ClShowHookCollOwn, apModes, 3);
+		ParamLabel(Tr("Other players"));
+		ConfigSegmented("##hook_coll_other", "cl_show_hook_coll_other", &g_Config.m_ClShowHookCollOther, apModes, 3);
+		ConfigSlider(Tr("My line width"), "cl_hook_coll_size", &g_Config.m_ClHookCollSize, 0, 20);
+		ConfigSlider(Tr("Others' line width"), "cl_hook_coll_size_other", &g_Config.m_ClHookCollSizeOther, 0, 20);
+		ConfigSlider(Tr("Visibility"), "cl_hook_coll_alpha", &g_Config.m_ClHookCollAlpha, 0, 100, "%d%%");
+		ConfigColorRow(Tr("Catches nothing"), &g_Config.m_ClHookCollColorNoColl, false);
+		ConfigColorRow(Tr("Catches a wall"), &g_Config.m_ClHookCollColorHookableColl, false);
+		ConfigColorRow(Tr("Catches a player"), &g_Config.m_ClHookCollColorTeeColl, false);
 		EndCard();
 	}
 	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Fast tees leave a soft smear of copies behind them"), &g_Config.m_XcMotionBlur))
@@ -503,30 +573,6 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 void CXcMenu::RenderVisualsWeapons()
 {
 	BeginCardGrid("##vis_weapons", 2);
-	const char *apHooks[] = {Tr("Chain"), Tr("Line"), Tr("Glow")};
-	if(StyleCard("##fx_hook", Tr("Hook"), Tr("Colored chain, clean line or a glowing beam"), "xc_hook_style", &g_Config.m_XcHookStyle, apHooks, 3))
-	{
-		EffectColorPicker("##hook_color", &g_Config.m_XcHookColorMode, &g_Config.m_XcHookColor);
-		ConfigSlider(Tr("Width"), "xc_hook_width", &g_Config.m_XcHookWidth, 25, 300, "%d%%");
-		ParamLabel(Tr("When the hook grabs"));
-		const char *apHits[] = {Tr("Nothing"), Tr("Ring"), Tr("Sparks"), Tr("Stars")};
-		ConfigSegmented("##hook_hit", "xc_hook_hit_fx", &g_Config.m_XcHookHitFx, apHits, 4);
-		TargetChips("##hook_targets", &g_Config.m_XcHookSelf, &g_Config.m_XcHookDummy, &g_Config.m_XcHookOthers);
-		ParticleTuning(FxTune::HOOK);
-		EndCard();
-	}
-	if(BeginCard("##stock_weapons", Tr("Standard weapon effects"), Tr("Hide what the game draws for shots, so only our effects stay")))
-	{
-		ToggleRow(Tr("Orange stars on hits"), "xc_replace_damage", &g_Config.m_XcReplaceDamage);
-		ToggleRow(Tr("Muzzle flash of the gun, shotgun and ninja"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
-		ToggleRow(Tr("Bullet sprites of the gun and shotgun"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
-		ToggleRow(Tr("Smoke trails of bullets and grenades"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
-		ToggleRow(Tr("Rifle and shotgun lasers"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
-		ToggleRow(Tr("Grenade explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
-		ToggleRow(Tr("Hammer hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
-		Description(Tr("Our bullet glow, hits on blocks and explosions are in the cards next to it"));
-		EndCard();
-	}
 	if(BeginCard("##weapon_view", Tr("Weapon in the hand"), Tr("Where the weapon sits, its size and how the hammer swings. Only the picture"), &g_Config.m_XcWeaponView))
 	{
 		ParamLabel(Tr("Hammer swing"));
@@ -541,37 +587,37 @@ void CXcMenu::RenderVisualsWeapons()
 		ToggleRow(Tr("Also for other players"), "xc_weapon_view_others", &g_Config.m_XcWeaponViewOthers);
 		EndCard();
 	}
-	if(BeginCard("##hook_line", Tr("Hook aim line"), Tr("The line that shows where your hook would catch")))
+	if(BeginCard("##fx_shots", Tr("Shots"), Tr("A flash at the gun, light around bullets and grenades, comet tails")))
 	{
-		const char *apModes[] = {Tr("Off"), Tr("When aiming"), Tr("Always")};
-		ParamLabel(Tr("My line"));
-		ConfigSegmented("##hook_coll_own", "cl_show_hook_coll_own", &g_Config.m_ClShowHookCollOwn, apModes, 3);
-		ParamLabel(Tr("Other players"));
-		ConfigSegmented("##hook_coll_other", "cl_show_hook_coll_other", &g_Config.m_ClShowHookCollOther, apModes, 3);
-		ConfigSlider(Tr("My line width"), "cl_hook_coll_size", &g_Config.m_ClHookCollSize, 0, 20);
-		ConfigSlider(Tr("Others' line width"), "cl_hook_coll_size_other", &g_Config.m_ClHookCollSizeOther, 0, 20);
-		ConfigSlider(Tr("Visibility"), "cl_hook_coll_alpha", &g_Config.m_ClHookCollAlpha, 0, 100, "%d%%");
-		ConfigColorRow(Tr("Catches nothing"), &g_Config.m_ClHookCollColorNoColl, false);
-		ConfigColorRow(Tr("Catches a wall"), &g_Config.m_ClHookCollColorHookableColl, false);
-		ConfigColorRow(Tr("Catches a player"), &g_Config.m_ClHookCollColorTeeColl, false);
-		EndCard();
-	}
-	if(BeginCard("##fx_projectiles", Tr("Bullets and lasers"), Tr("Light around shots, comet tails and glowing lasers")))
-	{
+		ToggleRow(Tr("Flash at the gun"), "xc_impact_muzzle", &g_Config.m_XcImpactMuzzle);
 		ToggleRow(Tr("Glow around bullets and grenades"), "xc_projectile_glow", &g_Config.m_XcProjectileGlow);
 		ToggleRow(Tr("Comet tail"), "xc_projectile_trail", &g_Config.m_XcProjectileTrail);
+		ToggleRow(Tr("Hide the standard muzzle flash"), "xc_replace_muzzle", &g_Config.m_XcReplaceMuzzle);
+		ToggleRow(Tr("Hide the standard bullets"), "xc_replace_bullets", &g_Config.m_XcReplaceBullets);
+		ToggleRow(Tr("Hide the standard smoke trails"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
+		ParamLabel(Tr("Color of bullets and lasers"));
+		const char *apModes[] = {Tr("By type"), Tr("Accent"), Tr("Own"), Tr("Rainbow")};
+		ConfigSegmented("##shots_color_mode", "xc_items_color_mode", &g_Config.m_XcItemsColorMode, apModes, 4);
+		if(g_Config.m_XcItemsColorMode == 2)
+		{
+			int Mode = 1; // the picker's own color part
+			EffectColorPicker("##shots_color", &Mode, &g_Config.m_XcItemsColor);
+		}
+		Description(Tr("The same colors as the pickups. The flash at the gun is shown for the players of the bullet hits"));
+		EndCard();
+	}
+	if(BeginCard("##fx_projectiles", Tr("Lasers"), Tr("Glow along rifle and shotgun lasers, or our own beam")))
+	{
 		ToggleRow(Tr("Laser glow"), "xc_laser_glow", &g_Config.m_XcLaserGlow);
-		ToggleRow(Tr("Own laser beam instead of the stock one"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
-		ToggleRow(Tr("Hide the stock smoke trails"), "xc_replace_trails", &g_Config.m_XcReplaceTrails);
 		ConfigSlider(Tr("Laser glow strength"), "xc_laser_glow_strength", &g_Config.m_XcLaserGlowStrength, 10, 250, "%d%%");
-		Description(Tr("The color is set in the Pickups card under World"));
+		ToggleRow(Tr("Own beam instead of the standard one"), "xc_replace_laser", &g_Config.m_XcReplaceLaser);
 		EndCard();
 	}
 	const char *apHammer[] = {Tr("Ring"), Tr("Sparks"), Tr("Stars")};
 	if(StyleCard("##fx_hammer", Tr("Hammer hit"), Tr("A flash where the hammer lands"), "xc_hammer_fx", &g_Config.m_XcHammerFx, apHammer, 3))
 	{
 		EffectColorPicker("##hammer_color", &g_Config.m_XcHammerColorMode, &g_Config.m_XcHammerColor);
-		ToggleRow(Tr("Hide the stock hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
+		ToggleRow(Tr("Hide the standard hit"), "xc_replace_hammer", &g_Config.m_XcReplaceHammer);
 		ParticleTuning(FxTune::HAMMER);
 		EndCard();
 	}
@@ -580,19 +626,26 @@ void CXcMenu::RenderVisualsWeapons()
 	{
 		EffectColorPicker("##explosion_color", &g_Config.m_XcExplosionColorMode, &g_Config.m_XcExplosionColor);
 		ConfigSlider(Tr("Size"), "xc_explosion_size", &g_Config.m_XcExplosionSize, 25, 250, "%d%%");
-		ToggleRow(Tr("Hide the stock explosion"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		ToggleRow(Tr("Hide the standard explosion and smoke"), "xc_replace_explosion", &g_Config.m_XcReplaceExplosion);
+		ToggleRow(Tr("Camera shake near explosions"), "xc_shake_explosion", &g_Config.m_XcShakeExplosion);
 		ParticleTuning(FxTune::EXPLOSION);
 		EndCard();
 	}
 	const char *apImpacts[] = {Tr("Sparks"), Tr("Sparks and dust"), Tr("Stars")};
-	if(StyleCard("##fx_impact", Tr("Bullet hits"), Tr("Sparks where a bullet or a laser hits a block, a flash where a shot starts"), "xc_impact_fx", &g_Config.m_XcImpactFx, apImpacts, 3))
+	if(StyleCard("##fx_impact", Tr("Hits on blocks"), Tr("Sparks where a bullet or a laser hits a block"), "xc_impact_fx", &g_Config.m_XcImpactFx, apImpacts, 3))
 	{
-		ToggleRow(Tr("Flash at the gun"), "xc_impact_muzzle", &g_Config.m_XcImpactMuzzle);
 		ToggleRow(Tr("Color of the weapon"), "xc_impact_weapon_color", &g_Config.m_XcImpactWeaponColor);
 		if(!g_Config.m_XcImpactWeaponColor)
 			EffectColorPicker("##impact_color", &g_Config.m_XcImpactColorMode, &g_Config.m_XcImpactColor);
 		TargetChips("##impact_targets", &g_Config.m_XcImpactSelf, &g_Config.m_XcImpactDummy, &g_Config.m_XcImpactOthers);
 		ParticleTuning(FxTune::IMPACT);
+		EndCard();
+	}
+	const char *apPlayerHits[] = {Tr("Ring"), Tr("Sparks"), Tr("Stars")};
+	if(StyleCard("##fx_hit_player", Tr("Hits on players"), Tr("A flash where a shot or the hammer hits a tee"), "xc_hit_player_fx", &g_Config.m_XcHitPlayerFx, apPlayerHits, 3))
+	{
+		ToggleRow(Tr("Hide the standard orange stars"), "xc_replace_damage", &g_Config.m_XcReplaceDamage);
+		Description(Tr("In the color of the hits on blocks"));
 		EndCard();
 	}
 	EndCardGrid();
@@ -698,7 +751,7 @@ void CXcMenu::RenderVisualsWorld()
 		ConfigSlider(Tr("Size"), "xc_items_glow_size", &g_Config.m_XcItemsGlowSize, 25, 250, "%d%%");
 		ConfigSlider(Tr("Brightness"), "xc_items_glow_strength", &g_Config.m_XcItemsGlowStrength, 10, 250, "%d%%");
 		ToggleRow(Tr("Sparkles"), "xc_items_sparkles", &g_Config.m_XcItemsSparkles);
-		Description(Tr("Bullets, grenades and lasers use the same colors"));
+		Description(Tr("Bullets, grenades and lasers use the same colors (Weapons > Shots)"));
 		ParticleTuning(FxTune::ITEMS);
 		EndCard();
 	}
@@ -756,6 +809,9 @@ void CXcMenu::RenderVisualsEvents()
 		EffectColorPicker("##finish_color", &g_Config.m_XcFinishColorMode, &g_Config.m_XcFinishColor);
 		ConfigSlider(Tr("Amount"), "xc_finish_amount", &g_Config.m_XcFinishAmount, 25, 300, "%d%%");
 		ToggleRow(Tr("Banner with the time and records"), "xc_finish_banner", &g_Config.m_XcFinishBanner);
+		ToggleRow(Tr("Hide the standard confetti"), "xc_replace_confetti", &g_Config.m_XcReplaceConfetti);
+		ToggleRow(Tr("Screen flash"), "xc_flash_finish", &g_Config.m_XcFlashFinish);
+		ToggleRow(Tr("Sound at the finish and for records"), "xc_event_sound_finish", &g_Config.m_XcEventSoundFinish);
 		TargetChips("##finish_targets", &g_Config.m_XcFinishSelf, &g_Config.m_XcFinishDummy, &g_Config.m_XcFinishOthers);
 		const int Local = GameClient()->m_Snap.m_LocalClientId;
 		if(IsOnline() && Local >= 0 && GameClient()->m_Snap.m_aCharacters[Local].m_Active)
@@ -775,36 +831,39 @@ void CXcMenu::RenderVisualsEvents()
 		EndCard();
 	}
 	const char *apDeath[] = {Tr("Shards"), Tr("Sparks"), Tr("Ash"), Tr("Lightning"), Tr("Soul"), Tr("Hearts"), Tr("Pixels")};
-	if(StyleCard("##fx_death", Tr("Death and spawn"), Tr("A tee bursts into pieces, rings close in where it appears again"), "xc_death_fx", &g_Config.m_XcDeathFx, apDeath, 7))
+	if(StyleCard("##fx_death", Tr("Death"), Tr("A tee bursts into pieces"), "xc_death_fx", &g_Config.m_XcDeathFx, apDeath, 7))
 	{
 		EffectColorPicker("##death_color", &g_Config.m_XcDeathColorMode, &g_Config.m_XcDeathColor);
-		ToggleRow(Tr("Rings on spawn"), "xc_spawn_fx", &g_Config.m_XcSpawnFx);
 		ToggleRow(Tr("Mark where you died last"), "xc_death_marker", &g_Config.m_XcDeathMarker);
 		if(g_Config.m_XcDeathMarker)
 			ConfigSlider(Tr("Mark stays"), "xc_death_marker_time", &g_Config.m_XcDeathMarkerTime, 2, 60, "%d s");
+		ToggleRow(Tr("Hide the standard blood"), "xc_replace_death", &g_Config.m_XcReplaceDeath);
+		ToggleRow(Tr("Screen flash when you die"), "xc_flash_death", &g_Config.m_XcFlashDeath);
+		ToggleRow(Tr("Camera shake when you die"), "xc_shake_death", &g_Config.m_XcShakeDeath);
+		ToggleRow(Tr("Sound when you die"), "xc_event_sound_death", &g_Config.m_XcEventSoundDeath);
 		TargetChips("##death_targets", &g_Config.m_XcDeathSelf, &g_Config.m_XcDeathDummy, &g_Config.m_XcDeathOthers);
 		ParticleTuning(FxTune::DEATH);
+		EndCard();
+	}
+	if(BeginCard("##fx_spawn", Tr("Spawn"), Tr("Rings close in where a tee appears"), &g_Config.m_XcSpawnFx))
+	{
+		EffectColorPicker("##spawn_color", &g_Config.m_XcSpawnColorMode, &g_Config.m_XcSpawnColor);
+		ToggleRow(Tr("Hide the standard purple smoke"), "xc_replace_spawn", &g_Config.m_XcReplaceSpawn);
+		TargetChips("##spawn_targets", &g_Config.m_XcSpawnSelf, &g_Config.m_XcSpawnDummy, &g_Config.m_XcSpawnOthers);
 		EndCard();
 	}
 	if(BeginCard("##fx_teleport", Tr("Teleports"), Tr("A flash where your tee or dummy leaves and arrives"), &g_Config.m_XcTeleportFx))
 	{
 		EffectColorPicker("##teleport_color", &g_Config.m_XcTeleportColorMode, &g_Config.m_XcTeleportColor);
+		ToggleRow(Tr("Sound when you are teleported"), "xc_event_sound_teleport", &g_Config.m_XcEventSoundTeleport);
 		ParticleTuning(FxTune::TELEPORT);
 		EndCard();
 	}
 	if(BeginCard("##fx_checkpoint", Tr("Checkpoints"), Tr("A ring and rising sparks when your tee passes a time checkpoint"), &g_Config.m_XcCheckpointFx))
 	{
 		EffectColorPicker("##checkpoint_color", &g_Config.m_XcCheckpointColorMode, &g_Config.m_XcCheckpointColor);
+		ToggleRow(Tr("Screen flash"), "xc_flash_checkpoint", &g_Config.m_XcFlashCheckpoint);
 		ParticleTuning(FxTune::CHECKPOINT);
-		EndCard();
-	}
-	if(BeginCard("##fx_juice", Tr("Juice"), Tr("Screen flashes and camera shake on freeze, death, finish and explosions")))
-	{
-		ToggleRow(Tr("Screen flash"), "xc_screen_flash", &g_Config.m_XcScreenFlash);
-		ConfigSlider(Tr("Flash strength"), "xc_screen_flash_strength", &g_Config.m_XcScreenFlashStrength, 5, 100, "%d%%");
-		ToggleRow(Tr("Camera shake"), "xc_camera_shake", &g_Config.m_XcCameraShake);
-		ConfigSlider(Tr("Shake strength"), "xc_camera_shake_strength", &g_Config.m_XcCameraShakeStrength, 10, 300, "%d%%");
-		Description(Tr("Only the picture moves, aim and movement stay the same"));
 		EndCard();
 	}
 	if(BeginCard("##fx_dummy_arrow", Tr("Arrows to players"), Tr("Glowing arrows at the screen edge show where the dummy, team mates and friends are")))

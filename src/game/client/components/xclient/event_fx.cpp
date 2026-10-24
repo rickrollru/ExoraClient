@@ -102,7 +102,8 @@ void CXcEventFx::OnMessage(int MsgType, void *pRawMsg)
 	if(!IsOwn(ClientId))
 		return;
 	PlayEventSound(pMsg->m_RecordPersonal || pMsg->m_RecordServer ? EVENT_SOUND_RECORD : EVENT_SOUND_FINISH);
-	GameClient()->m_ScreenFx.Flash(pMsg->m_RecordServer || pMsg->m_RecordPersonal ? ColorRGBA(1.0f, 0.8f, 0.3f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), 0.9f);
+	if(g_Config.m_XcFlashFinish)
+		GameClient()->m_ScreenFx.Flash(pMsg->m_RecordServer || pMsg->m_RecordPersonal ? ColorRGBA(1.0f, 0.8f, 0.3f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), 0.9f);
 	if(!g_Config.m_XcFinishBanner)
 		return;
 	char aTime[32];
@@ -221,8 +222,10 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 	const FxTune::CScope TuneScope(FxTune::DEATH);
 	if(ClientId >= 0 && ClientId == GameClient()->m_aLocalIds[g_Config.m_ClDummy])
 	{
-		GameClient()->m_ScreenFx.Flash(ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f), 0.8f);
-		GameClient()->m_ScreenFx.Shake(0.9f);
+		if(g_Config.m_XcFlashDeath)
+			GameClient()->m_ScreenFx.Flash(ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f), 0.8f);
+		if(g_Config.m_XcShakeDeath)
+			GameClient()->m_ScreenFx.Shake(0.9f);
 	}
 	if(IsOwn(ClientId))
 		PlayEventSound(EVENT_SOUND_DEATH);
@@ -372,7 +375,23 @@ void CXcEventFx::PlayerSpawn(vec2 Pos)
 	const FxTune::CScope TuneScope(FxTune::DEATH);
 	if(!g_Config.m_XcSpawnFx)
 		return;
-	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcDeathColorMode == 3 ? 0 : g_Config.m_XcDeathColorMode, g_Config.m_XcDeathColor, -1);
+	// the spawn event has only a place: the tee standing there is the one who appeared
+	int ClientId = -1;
+	float Best = 64.0f;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(!GameClient()->m_Snap.m_aCharacters[i].m_Active)
+			continue;
+		const float Dist = distance(GameClient()->m_aClients[i].m_RenderPos, Pos);
+		if(Dist < Best)
+		{
+			Best = Dist;
+			ClientId = i;
+		}
+	}
+	if(ClientId >= 0 && (!ShowFor(GameClient(), ClientId, g_Config.m_XcSpawnSelf, g_Config.m_XcSpawnDummy, g_Config.m_XcSpawnOthers) || PlayerAlpha(GameClient(), ClientId) <= 0.0f))
+		return;
+	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcSpawnColorMode, g_Config.m_XcSpawnColor, ClientId);
 	for(int i = 0; i < 2; i++)
 	{
 		CXcParticles::SParticle Ring;
@@ -425,7 +444,8 @@ void CXcEventFx::CheckpointFlash(vec2 Pos, int ClientId, bool Controlled)
 		m_Particles.Add(Spark);
 	}
 	if(Controlled)
-		GameClient()->m_ScreenFx.Flash(Color, 0.25f);
+		if(g_Config.m_XcFlashCheckpoint)
+			GameClient()->m_ScreenFx.Flash(Color, 0.25f);
 }
 
 void CXcEventFx::TeleportFlash(vec2 From, vec2 To, int ClientId)
@@ -620,8 +640,10 @@ void CXcEventFx::OnRender()
 			PlayEventSound(Frozen ? EVENT_SOUND_FREEZE : EVENT_SOUND_UNFREEZE);
 			if(Frozen)
 			{
-				GameClient()->m_ScreenFx.Flash(ColorRGBA(0.45f, 0.8f, 1.0f, 1.0f), 0.7f);
-				GameClient()->m_ScreenFx.Shake(0.35f);
+				if(g_Config.m_XcFlashFreeze)
+					GameClient()->m_ScreenFx.Flash(ColorRGBA(0.45f, 0.8f, 1.0f, 1.0f), 0.7f);
+				if(g_Config.m_XcShakeFreeze)
+					GameClient()->m_ScreenFx.Shake(0.35f);
 			}
 		}
 		m_aWasFrozen[i] = Frozen;

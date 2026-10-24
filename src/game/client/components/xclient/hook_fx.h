@@ -59,7 +59,7 @@ private:
 	mutable std::vector<SFxShape> m_vLineShapes;
 	mutable std::vector<CXcSprites::SSprite> m_vLineSprites;
 
-	void EmitHit(vec2 Pos, vec2 AwayDir);
+	void EmitHit(vec2 Pos, vec2 AwayDir, int Style, ColorRGBA Main);
 };
 
 #endif
