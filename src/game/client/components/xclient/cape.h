@@ -2,6 +2,7 @@
 #define GAME_CLIENT_COMPONENTS_XCLIENT_CAPE_H
 
 #include "ui/backgrounds.h"
+#include "xc_particles.h"
 
 #include <base/color.h>
 #include <base/vmath.h>
@@ -44,6 +45,12 @@ public:
 	};
 	enum
 	{
+		LOOK_ENERGY = 0,
+		LOOK_NEON,
+		LOOK_CLOTH,
+	};
+	enum
+	{
 		PATTERN_PLAIN = 0,
 		PATTERN_STRIPES,
 		PATTERN_GRADIENT,
@@ -69,6 +76,7 @@ private:
 		vec2 m_aPoints[ROWS][COLS];
 		vec2 m_aPrev[ROWS][COLS];
 		float m_Accumulator = 0.0f;
+		vec2 m_Axis = vec2(1.0f, 0.0f); // the shoulder line, across the cape
 	};
 	struct STail
 	{
@@ -83,6 +91,7 @@ private:
 		vec2 m_LastPos = vec2(0.0f, 0.0f);
 		vec2 m_Vel = vec2(0.0f, 0.0f); // smoothed speed of the tee
 		bool m_HasLast = false;
+		float m_SparkCarry = 0.0f;
 		vec2 m_Pull = vec2(0.0f, 0.0f); // the hook pulls the tee this way
 		SCloth m_Cloth;
 		STail m_aTails[MAX_TAILS];
@@ -100,6 +109,7 @@ private:
 	float m_aPreviewTime[NUM_PREVIEWS] = {};
 
 	CXcBackgrounds m_Pictures;
+	CXcParticles m_Particles;
 
 	bool LooksLeft(int ClientId) const;
 	void UpdateMotion(SState &State, vec2 Pos, float Dt, bool Jumped) const;
@@ -107,13 +117,19 @@ private:
 	// cape
 	float ColumnLength(int Col) const;
 	void SimulateCloth(SState &State, vec2 Pos, float Scale, float Dt, float Time, bool Collide) const;
-	void RenderCloth(const SState &State, float Scale, int ClientId, float Alpha);
+	void RenderCloth(const SState &State, float Scale, int ClientId, float Alpha, float Time, bool Preview);
+	void EmitSparks(SState &State, float Scale, int ClientId, float Dt);
+
+	// the light of the effect style: a glowing line along points, and a band with soft or bright edges
+	void GlowLine(const vec2 *pPoints, int Num, const ColorRGBA *pColors, float Width, float Strength, bool Preview) const;
+	void RenderStrip(const vec2 *pCenter, const float *pHalf, int Num, const ColorRGBA *pSegColors, const float *pWave, int Look, float Scale, float Alpha, bool Preview) const;
+	static float WaveAt(float t, float Time);
 
 	// scarf
 	vec2 KnotPos(vec2 Pos, float Scale, float Back) const;
 	void SimulateTail(STail &Tail, const SState &State, int Index, vec2 Anchor, float Scale, float Dt, float Time, bool Collide) const;
-	void RenderTails(const SState &State, float Scale, int ClientId, float Alpha) const;
-	void RenderWrap(vec2 Pos, float Scale, float Back, int ClientId, float Alpha) const;
+	void RenderTails(const SState &State, float Scale, int ClientId, float Alpha, float Time, bool Preview) const;
+	void RenderWrap(vec2 Pos, float Scale, float Back, int ClientId, float Alpha, float Time, bool Preview) const;
 
 	ColorRGBA ScarfColor(int ClientId, float t) const;
 	void Collide(vec2 &Point, vec2 &Prev) const;

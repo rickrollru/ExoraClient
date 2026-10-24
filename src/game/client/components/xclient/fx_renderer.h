@@ -27,6 +27,7 @@ enum EGroup
 	WEATHER,
 	FLOATERS,
 	ARROW,
+	CAPE,
 	NUM_GROUPS,
 };
 struct SScale
