@@ -537,6 +537,24 @@ void CXcMenu::RenderVisualsMovement()
 	EndCardGrid();
 }
 
+// a stage with your tee wearing the cape and the scarf; the eyes follow the mouse, so the cloth swings over
+void CXcMenu::CapePreview(const char *pId)
+{
+	const STheme &t = Theme();
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	const float Height = S(170.0f);
+	const ImVec2 Min = ImGui::GetCursorScreenPos();
+	const ImVec2 Max(Min.x + AvailWidth(), Min.y + Height);
+	ImGui::InvisibleButton(pId, ImVec2(AvailWidth(), Height));
+	pDraw->AddRectFilled(Min, Max, Col(t.m_Track), S(12.0f));
+	const ImVec2 Mid((Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f);
+	pDraw->AddCircleFilled(Mid, Height * 0.36f, Col(t.m_Accent, 0.08f), 64);
+	const float Rect = Height * 0.85f;
+	AddTeePreview(pDraw, ImVec2(Mid.x - Rect * 0.5f, Mid.y - Rect * 0.5f), ImVec2(Mid.x + Rect * 0.5f, Mid.y + Rect * 0.5f));
+	if(!g_Config.m_XcCapeSelf && !g_Config.m_XcScarfSelf)
+		Description(Tr("Turn on \"Mine\" below to see it here"));
+}
+
 void CXcMenu::RenderVisualsCosmeticsExtra()
 {
 	BeginCardGrid("##vis_cosmetics_extra", 2);
@@ -556,15 +574,89 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 		TargetChips("##accessory_targets", &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryDummy, &g_Config.m_XcAccessoryOthers);
 		EndCard();
 	}
-	const char *apCapes[] = {Tr("Cape"), Tr("Scarf")};
-	if(StyleCard("##fx_cape", Tr("Cape"), Tr("A cloth cape or a scarf that flies behind the tee"), "xc_cape", &g_Config.m_XcCape, apCapes, 2))
+	if(BeginCard("##fx_cape", Tr("Cape"), Tr("Cloth that hangs from the shoulders, flaps on jumps and streams away from the hook"), &g_Config.m_XcCape))
 	{
+		CapePreview("##cape_preview");
+		ParamLabel(Tr("Shape"));
+		const char *apShapes[] = {Tr("Classic"), Tr("Pointed"), Tr("Ragged"), Tr("Royal")};
+		ConfigSegmented("##cape_shape", "xc_cape_shape", &g_Config.m_XcCapeShape, apShapes, 4);
+		ParamLabel(Tr("Outer side"));
 		EffectColorPicker("##cape_color", &g_Config.m_XcCapeColorMode, &g_Config.m_XcCapeColor);
+		ParamLabel(Tr("Inner side"));
+		const char *apInner[] = {Tr("Darker"), Tr("Own")};
+		ConfigSegmented("##cape_inner", "xc_cape_inner_mode", &g_Config.m_XcCapeInnerMode, apInner, 2);
+		if(g_Config.m_XcCapeInnerMode)
+			ConfigColorRow(Tr("Inner color"), &g_Config.m_XcCapeInnerColor, false);
+		ParamLabel(Tr("Pattern"));
+		const char *apPatterns[] = {Tr("Plain"), Tr("Stripes"), Tr("Gradient"), Tr("Picture")};
+		ConfigSegmented("##cape_pattern", "xc_cape_pattern", &g_Config.m_XcCapePattern, apPatterns, 4);
+		if(g_Config.m_XcCapePattern == CXcCape::PATTERN_PICTURE)
+		{
+			CXcBackgrounds &Pictures = GameClient()->m_XcCape.Pictures();
+			if(!m_CapesScanned)
+			{
+				Pictures.Refresh();
+				m_CapesScanned = true;
+			}
+			std::vector<const char *> vpNames;
+			int Selected = -1;
+			for(const CXcBackgrounds::SEntry &Entry : Pictures.Entries())
+			{
+				if(str_comp(Entry.m_Name.c_str(), g_Config.m_XcCapeFile) == 0)
+					Selected = (int)vpNames.size();
+				vpNames.push_back(Entry.m_Name.c_str());
+			}
+			if(vpNames.empty())
+				Description(Tr("Put a png or gif into the folder, the picture is stretched over the cape"));
+			else
+			{
+				int Choice = Selected;
+				ChoiceChips("##cape_files", &Choice, vpNames.data(), (int)vpNames.size());
+				if(Choice != Selected && Choice >= 0)
+					SetConfigString("xc_cape_file", vpNames[Choice]);
+			}
+			const float Half = (AvailWidth() - S(8.0f)) * 0.5f;
+			if(Button(Tr("Open folder"), false, Half))
+			{
+				Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
+				Storage()->CreateFolder(Pictures.Folder(), IStorage::TYPE_SAVE);
+				char aFolder[IO_MAX_PATH_LENGTH];
+				Storage()->GetCompletePath(IStorage::TYPE_SAVE, Pictures.Folder(), aFolder, sizeof(aFolder));
+				Client()->ViewFile(aFolder);
+			}
+			ImGui::SameLine(0.0f, S(8.0f));
+			if(Button(Tr("Refresh"), false, Half))
+				m_CapesScanned = false;
+		}
+		ParamLabel(Tr("Trim"));
+		const char *apTrims[] = {Tr("None"), Tr("Edge"), Tr("Fur")};
+		ConfigSegmented("##cape_trim", "xc_cape_trim", &g_Config.m_XcCapeTrim, apTrims, 3);
+		if(g_Config.m_XcCapeTrim == 1)
+			ConfigColorRow(Tr("Edge color"), &g_Config.m_XcCapeTrimColor, false);
 		ConfigSlider(Tr("Length"), "xc_cape_length", &g_Config.m_XcCapeLength, 50, 200, "%d%%");
 		ConfigSlider(Tr("Width"), "xc_cape_width", &g_Config.m_XcCapeWidth, 50, 200, "%d%%");
 		ConfigSlider(Tr("Wind"), "xc_cape_wind", &g_Config.m_XcCapeWind, 0, 200, "%d%%");
+		ConfigSlider(Tr("Reaction to jumps and the hook"), "xc_cape_react", &g_Config.m_XcCapeReact, 0, 200, "%d%%");
 		ConfigSlider(Tr("Opacity"), "xc_cape_alpha", &g_Config.m_XcCapeAlpha, 10, 100, "%d%%");
 		TargetChips("##cape_targets", &g_Config.m_XcCapeSelf, &g_Config.m_XcCapeDummy, &g_Config.m_XcCapeOthers);
+		EndCard();
+	}
+	if(BeginCard("##fx_scarf", Tr("Scarf"), Tr("A knitted scarf around the neck, its ends fly behind the tee"), &g_Config.m_XcScarf))
+	{
+		CapePreview("##scarf_preview");
+		EffectColorPicker("##scarf_color", &g_Config.m_XcScarfColorMode, &g_Config.m_XcScarfColor);
+		ToggleRow(Tr("Knitted stripes"), "xc_scarf_stripes", &g_Config.m_XcScarfStripes);
+		if(g_Config.m_XcScarfStripes)
+			ConfigColorRow(Tr("Stripe color"), &g_Config.m_XcScarfStripeColor, false);
+		ParamLabel(Tr("Ends"));
+		const char *apTails[] = {Tr("One"), Tr("Two")};
+		const int aTailValues[] = {1, 2};
+		ConfigSegmented("##scarf_tails", "xc_scarf_tails", &g_Config.m_XcScarfTails, apTails, 2, aTailValues);
+		ToggleRow(Tr("Fringe at the ends"), "xc_scarf_fringe", &g_Config.m_XcScarfFringe);
+		ConfigSlider(Tr("Length"), "xc_scarf_length", &g_Config.m_XcScarfLength, 50, 200, "%d%%");
+		ConfigSlider(Tr("Wind"), "xc_scarf_wind", &g_Config.m_XcScarfWind, 0, 200, "%d%%");
+		Description(Tr("Reaction to jumps and the hook as for the cape"));
+		TargetChips("##scarf_targets", &g_Config.m_XcScarfSelf, &g_Config.m_XcScarfDummy, &g_Config.m_XcScarfOthers);
 		EndCard();
 	}
 	EndCardGrid();

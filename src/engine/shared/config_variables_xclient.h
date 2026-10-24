@@ -475,7 +475,15 @@ MACRO_CONFIG_INT(XcHatOthers, xc_hat_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 
 // Accessory on the tee
 // Cape or scarf with cloth physics behind the tee
-MACRO_CONFIG_INT(XcCape, xc_cape, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape behind the tee (0 = off, 1 = cape, 2 = scarf)")
+MACRO_CONFIG_INT(XcCape, xc_cape, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape behind the tee (0 = off, 1 = on; 2 = old scarf value, turns into xc_scarf)")
+MACRO_CONFIG_INT(XcCapeShape, xc_cape_shape, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape shape (0 = classic, 1 = pointed, 2 = ragged, 3 = royal with a collar)")
+MACRO_CONFIG_INT(XcCapeInnerMode, xc_cape_inner_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Inner side of the cape (0 = darker outer color, 1 = own color)")
+MACRO_CONFIG_COL(XcCapeInnerColor, xc_cape_inner_color, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the inner side of the cape") // black
+MACRO_CONFIG_INT(XcCapeTrim, xc_cape_trim, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape trim (0 = none, 1 = edge, 2 = fur)")
+MACRO_CONFIG_COL(XcCapeTrimColor, xc_cape_trim_color, 2023321, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the cape edge") // gold
+MACRO_CONFIG_INT(XcCapePattern, xc_cape_pattern, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape pattern (0 = plain, 1 = stripes, 2 = gradient to the inner color, 3 = own picture)")
+MACRO_CONFIG_STR(XcCapeFile, xc_cape_file, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own cape picture or gif, a file in xclient/capes")
+MACRO_CONFIG_INT(XcCapeReact, xc_cape_react, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the cape reacts to jumps, the hook and speed in percent")
 MACRO_CONFIG_INT(XcCapeColorMode, xc_cape_color_mode, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcCapeColor, xc_cape_color, 65407, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the cape") // red
 MACRO_CONFIG_INT(XcCapeLength, xc_cape_length, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Length of the cape in percent")
@@ -485,6 +493,18 @@ MACRO_CONFIG_INT(XcCapeAlpha, xc_cape_alpha, 100, 10, 100, CFGFLAG_CLIENT | CFGF
 MACRO_CONFIG_INT(XcCapeSelf, xc_cape_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on yourself")
 MACRO_CONFIG_INT(XcCapeDummy, xc_cape_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on your dummy")
 MACRO_CONFIG_INT(XcCapeOthers, xc_cape_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on other players")
+MACRO_CONFIG_INT(XcScarf, xc_scarf, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Knitted scarf around the neck of the tee")
+MACRO_CONFIG_INT(XcScarfColorMode, xc_scarf_color_mode, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Scarf color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_COL(XcScarfColor, xc_scarf_color, 65407, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the scarf") // red
+MACRO_CONFIG_INT(XcScarfStripes, xc_scarf_stripes, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Knitted stripes on the scarf")
+MACRO_CONFIG_COL(XcScarfStripeColor, xc_scarf_stripe_color, 255, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the scarf stripes") // white
+MACRO_CONFIG_INT(XcScarfTails, xc_scarf_tails, 2, 1, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Number of scarf ends")
+MACRO_CONFIG_INT(XcScarfFringe, xc_scarf_fringe, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fringe at the ends of the scarf")
+MACRO_CONFIG_INT(XcScarfLength, xc_scarf_length, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Length of the scarf ends in percent")
+MACRO_CONFIG_INT(XcScarfWind, xc_scarf_wind, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the scarf flutters in percent")
+MACRO_CONFIG_INT(XcScarfSelf, xc_scarf_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the scarf on yourself")
+MACRO_CONFIG_INT(XcScarfDummy, xc_scarf_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the scarf on your dummy")
+MACRO_CONFIG_INT(XcScarfOthers, xc_scarf_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the scarf on other players")
 MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
 MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")
 MACRO_CONFIG_INT(XcAccessoryHeight, xc_accessory_height, 100, 30, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Height of the cone hat in percent")

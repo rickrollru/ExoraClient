@@ -159,6 +159,7 @@ void CGameClient::OnConsoleInit()
 					      &m_XcHatsBehind, // XClient: wings and capes behind the tees
 					      &m_XcCosmeticsBehind, // XClient: 3D wings and backpacks behind the tees
 					      &m_Players,
+					      &m_XcCape.m_Front, // XClient: the scarf around the neck, over the tee
 					      &m_JumpFx, // XClient
 					      &m_WorldFx, // XClient: freeze and hammer effects
 					      &m_XcEventFx, // XClient: finish, death, spawn and teleport effects, dummy arrow
