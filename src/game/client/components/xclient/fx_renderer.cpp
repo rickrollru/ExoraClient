@@ -132,6 +132,7 @@ SScale For(int Group)
 		{&g_Config.m_XcFxglowWeather, &g_Config.m_XcFxglowWeatherSize},
 		{&g_Config.m_XcFxglowFloaters, &g_Config.m_XcFxglowFloatersSize},
 		{&g_Config.m_XcFxglowArrow, &g_Config.m_XcFxglowArrowSize},
+		{&g_Config.m_XcFxglowCape, &g_Config.m_XcFxglowCapeSize},
 	};
 	SScale Scale;
 	Scale.m_Strength = g_Config.m_XcFxglowAll / 100.0f;

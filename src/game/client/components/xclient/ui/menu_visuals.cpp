@@ -289,6 +289,7 @@ void CXcMenu::RenderVisualsGeneral()
 			{Tr("Weather"), "xc_fxglow_weather", &g_Config.m_XcFxglowWeather, "xc_fxglow_weather_size", &g_Config.m_XcFxglowWeatherSize},
 			{Tr("Floating lights"), "xc_fxglow_floaters", &g_Config.m_XcFxglowFloaters, "xc_fxglow_floaters_size", &g_Config.m_XcFxglowFloatersSize},
 			{Tr("Dummy arrow"), "xc_fxglow_arrow", &g_Config.m_XcFxglowArrow, "xc_fxglow_arrow_size", &g_Config.m_XcFxglowArrowSize},
+			{Tr("Cape and scarf"), "xc_fxglow_cape", &g_Config.m_XcFxglowCape, "xc_fxglow_cape_size", &g_Config.m_XcFxglowCapeSize},
 		};
 		constexpr int NUM_GROUPS = (int)std::size(aGroups);
 		const char *apNames[NUM_GROUPS];
@@ -577,6 +578,9 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 	if(BeginCard("##fx_cape", Tr("Cape"), Tr("Cloth that hangs from the shoulders, flaps on jumps and streams away from the hook"), &g_Config.m_XcCape))
 	{
 		CapePreview("##cape_preview");
+		const char *apLooks[] = {Tr("Energy"), Tr("Neon"), Tr("Cloth")};
+		ParamLabel(Tr("Look"));
+		ConfigSegmented("##cape_look", "xc_cape_look", &g_Config.m_XcCapeLook, apLooks, 3);
 		ParamLabel(Tr("Shape"));
 		const char *apShapes[] = {Tr("Classic"), Tr("Pointed"), Tr("Ragged"), Tr("Royal")};
 		ConfigSegmented("##cape_shape", "xc_cape_shape", &g_Config.m_XcCapeShape, apShapes, 4);
@@ -637,6 +641,10 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 		ConfigSlider(Tr("Width"), "xc_cape_width", &g_Config.m_XcCapeWidth, 50, 200, "%d%%");
 		ConfigSlider(Tr("Wind"), "xc_cape_wind", &g_Config.m_XcCapeWind, 0, 200, "%d%%");
 		ConfigSlider(Tr("Reaction to jumps and the hook"), "xc_cape_react", &g_Config.m_XcCapeReact, 0, 200, "%d%%");
+		ToggleRow(Tr("Wave of light"), "xc_cape_wave", &g_Config.m_XcCapeWave);
+		ToggleRow(Tr("Sparks at speed"), "xc_cape_sparks", &g_Config.m_XcCapeSparks);
+		ConfigSlider(Tr("Glow strength"), "xc_fxglow_cape", &g_Config.m_XcFxglowCape, 0, 300, "%d%%");
+		ConfigSlider(Tr("Glow size"), "xc_fxglow_cape_size", &g_Config.m_XcFxglowCapeSize, 25, 300, "%d%%");
 		ConfigSlider(Tr("Opacity"), "xc_cape_alpha", &g_Config.m_XcCapeAlpha, 10, 100, "%d%%");
 		TargetChips("##cape_targets", &g_Config.m_XcCapeSelf, &g_Config.m_XcCapeDummy, &g_Config.m_XcCapeOthers);
 		EndCard();
@@ -644,6 +652,9 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 	if(BeginCard("##fx_scarf", Tr("Scarf"), Tr("A knitted scarf around the neck, its ends fly behind the tee"), &g_Config.m_XcScarf))
 	{
 		CapePreview("##scarf_preview");
+		const char *apScarfLooks[] = {Tr("Energy"), Tr("Neon"), Tr("Knitted")};
+		ParamLabel(Tr("Look"));
+		ConfigSegmented("##scarf_look", "xc_scarf_look", &g_Config.m_XcScarfLook, apScarfLooks, 3);
 		EffectColorPicker("##scarf_color", &g_Config.m_XcScarfColorMode, &g_Config.m_XcScarfColor);
 		ToggleRow(Tr("Knitted stripes"), "xc_scarf_stripes", &g_Config.m_XcScarfStripes);
 		if(g_Config.m_XcScarfStripes)
@@ -655,7 +666,7 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 		ToggleRow(Tr("Fringe at the ends"), "xc_scarf_fringe", &g_Config.m_XcScarfFringe);
 		ConfigSlider(Tr("Length"), "xc_scarf_length", &g_Config.m_XcScarfLength, 50, 200, "%d%%");
 		ConfigSlider(Tr("Wind"), "xc_scarf_wind", &g_Config.m_XcScarfWind, 0, 200, "%d%%");
-		Description(Tr("Reaction to jumps and the hook as for the cape"));
+		Description(Tr("Reaction to jumps, the wave of light, sparks and glow as for the cape"));
 		TargetChips("##scarf_targets", &g_Config.m_XcScarfSelf, &g_Config.m_XcScarfDummy, &g_Config.m_XcScarfOthers);
 		EndCard();
 	}

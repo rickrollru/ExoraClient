@@ -108,6 +108,8 @@ MACRO_CONFIG_INT(XcFxglowFloaters, xc_fxglow_floaters, 100, 0, 300, CFGFLAG_CLIE
 MACRO_CONFIG_INT(XcFxglowFloatersSize, xc_fxglow_floaters_size, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow size of floating lights in percent")
 MACRO_CONFIG_INT(XcFxglowArrow, xc_fxglow_arrow, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow strength of the dummy arrow in percent (0 = no glow)")
 MACRO_CONFIG_INT(XcFxglowArrowSize, xc_fxglow_arrow_size, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow size of the dummy arrow in percent")
+MACRO_CONFIG_INT(XcFxglowCape, xc_fxglow_cape, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow strength of the cape and the scarf in percent (0 = no glow)")
+MACRO_CONFIG_INT(XcFxglowCapeSize, xc_fxglow_cape_size, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow size of the cape and the scarf in percent")
 MACRO_CONFIG_INT(XcMenuBlur, xc_menu_blur, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Blur the game behind the menu")
 
 // New menu (ImGui)
@@ -476,6 +478,9 @@ MACRO_CONFIG_INT(XcHatOthers, xc_hat_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 // Accessory on the tee
 // Cape or scarf with cloth physics behind the tee
 MACRO_CONFIG_INT(XcCape, xc_cape, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape behind the tee (0 = off, 1 = on; 2 = old scarf value, turns into xc_scarf)")
+MACRO_CONFIG_INT(XcCapeLook, xc_cape_look, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look of the cape (0 = energy: made of light, 1 = neon: dark cloth with a glowing edge, 2 = cloth with a soft glow)")
+MACRO_CONFIG_INT(XcCapeSparks, xc_cape_sparks, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sparks fly off the edge of the cape and the scarf at speed")
+MACRO_CONFIG_INT(XcCapeWave, xc_cape_wave, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "A wave of light runs down the cape and the scarf")
 MACRO_CONFIG_INT(XcCapeShape, xc_cape_shape, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Cape shape (0 = classic, 1 = pointed, 2 = ragged, 3 = royal with a collar)")
 MACRO_CONFIG_INT(XcCapeInnerMode, xc_cape_inner_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Inner side of the cape (0 = darker outer color, 1 = own color)")
 MACRO_CONFIG_COL(XcCapeInnerColor, xc_cape_inner_color, 0, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the inner side of the cape") // black
@@ -494,6 +499,7 @@ MACRO_CONFIG_INT(XcCapeSelf, xc_cape_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAV
 MACRO_CONFIG_INT(XcCapeDummy, xc_cape_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on your dummy")
 MACRO_CONFIG_INT(XcCapeOthers, xc_cape_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the cape on other players")
 MACRO_CONFIG_INT(XcScarf, xc_scarf, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Knitted scarf around the neck of the tee")
+MACRO_CONFIG_INT(XcScarfLook, xc_scarf_look, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look of the scarf (0 = energy, 1 = neon, 2 = knitted cloth with a soft glow)")
 MACRO_CONFIG_INT(XcScarfColorMode, xc_scarf_color_mode, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Scarf color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
 MACRO_CONFIG_COL(XcScarfColor, xc_scarf_color, 65407, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the scarf") // red
 MACRO_CONFIG_INT(XcScarfStripes, xc_scarf_stripes, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Knitted stripes on the scarf")
