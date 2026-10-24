@@ -55,9 +55,16 @@ private:
 	CXcParticles m_Particles;
 
 	bool ShowFor(int Owner) const;
+	bool ShowTargets(int Owner) const;
 	ColorRGBA Color(int Weapon, int Owner) const;
 	void Muzzle(vec2 Pos, vec2 Dir, int Weapon, int Owner);
 	void Impact(vec2 Pos, vec2 Dir, vec2 Normal, int Weapon, int Owner);
+
+public:
+	// a shot or the hammer hit a player (the damage event: a place and a direction, no owner)
+	void PlayerHit(vec2 Pos, vec2 Dir);
+
+private:
 	// direction out of the block that was hit at Pos, coming from Before
 	vec2 WallNormal(vec2 Pos, vec2 Before) const;
 };

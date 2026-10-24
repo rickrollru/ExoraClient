@@ -1570,7 +1570,9 @@ void CGameClient::ProcessEvents()
 			vec2 DamageIndPos = vec2(pEvent->m_X, pEvent->m_Y);
 			if(!m_PredictedWorld.CheckPredictedEventHandled(CGameWorld::CPredictedEvent(Item.m_Type, DamageIndPos, -1, Client()->GameTick(g_Config.m_ClDummy), pEvent->m_Angle)))
 			{
-				m_Effects.DamageIndicator(vec2(pEvent->m_X, pEvent->m_Y), direction(pEvent->m_Angle / 256.0f), Alpha);
+				if(!g_Config.m_XcReplaceDamage) // XClient: the stars of hits can be hidden (not the freeze countdown)
+					m_Effects.DamageIndicator(vec2(pEvent->m_X, pEvent->m_Y), direction(pEvent->m_Angle / 256.0f), Alpha);
+				m_ImpactFx.PlayerHit(vec2(pEvent->m_X, pEvent->m_Y), direction(pEvent->m_Angle / 256.0f)); // XClient
 			}
 		}
 		else if(Item.m_Type == NETEVENTTYPE_EXPLOSION)
@@ -4393,7 +4395,9 @@ void CGameClient::HandlePredictedEvents(const int Tick)
 			}
 			else if(EventsIterator->m_EventId == NETEVENTTYPE_DAMAGEIND)
 			{
-				m_Effects.DamageIndicator(EventsIterator->m_Pos, direction(EventsIterator->m_ExtraInfo / 256.0f), Alpha);
+				if(!g_Config.m_XcReplaceDamage) // XClient
+					m_Effects.DamageIndicator(EventsIterator->m_Pos, direction(EventsIterator->m_ExtraInfo / 256.0f), Alpha);
+				m_ImpactFx.PlayerHit(EventsIterator->m_Pos, direction(EventsIterator->m_ExtraInfo / 256.0f)); // XClient
 			}
 
 			EventsIterator->m_Handled = true;

@@ -19,7 +19,7 @@ CDamageInd::CDamageInd()
 
 void CDamageInd::Create(vec2 Pos, vec2 Dir, float Alpha)
 {
-	if(m_NumItems >= MAX_ITEMS || g_Config.m_XcReplaceDamage) // XClient: xc_replace_damage hides the stars
+	if(m_NumItems >= MAX_ITEMS)
 		return;
 
 	CItem *pItem = &m_aItems[m_NumItems];
