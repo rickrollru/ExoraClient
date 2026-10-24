@@ -74,9 +74,9 @@ private:
 	{
 		bool m_Valid = false;
 		vec2 m_aPoints[ROWS][COLS];
-		vec2 m_aPrev[ROWS][COLS];
 		float m_Accumulator = 0.0f;
-		vec2 m_Axis = vec2(1.0f, 0.0f); // the shoulder line, across the cape
+		vec2 m_aSpine[ROWS]; // the middle line, simulated
+		vec2 m_aSpinePrev[ROWS];
 	};
 	struct STail
 	{

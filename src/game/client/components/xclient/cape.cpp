@@ -108,11 +108,7 @@ void CXcCape::UpdateMotion(SState &State, vec2 Pos, float Dt, bool Jumped) const
 	if(Jumped && React > 0.0f)
 	{
 		for(int r = 1; r < ROWS; r++)
-		{
-			const float t = (float)r / (ROWS - 1);
-			for(int c = 0; c < COLS; c++)
-				State.m_Cloth.m_aPrev[r][c] -= vec2(State.m_Back * 1.5f, 4.0f) * t * React;
-		}
+			State.m_Cloth.m_aSpinePrev[r] -= vec2(State.m_Back * 1.5f, 4.0f) * ((float)r / (ROWS - 1)) * React;
 		for(STail &Tail : State.m_aTails)
 			for(int i = 1; i < TAIL_POINTS; i++)
 				Tail.m_aPrev[i] -= vec2(State.m_Back * 1.0f, 3.0f) * ((float)i / (TAIL_POINTS - 1)) * React;
@@ -159,10 +155,12 @@ void CXcCape::Collide(vec2 &Point, vec2 &Prev) const
 
 void CXcCape::SimulateCloth(SState &State, vec2 Pos, float Scale, float Dt, float Time, bool Collide) const
 {
+	// The middle line of the cape is a chain (verlet). The cloth is built around it with the width always
+	// across the line, so in this side view the cape never folds into a thin edge; ripples run over it.
 	SCloth &Cloth = State.m_Cloth;
 	const bool Royal = g_Config.m_XcCapeShape == SHAPE_ROYAL;
 	const float Width = g_Config.m_XcCapeWidth / 100.0f;
-	const float Length = (Royal ? 66.0f : 56.0f) * Scale * g_Config.m_XcCapeLength / 100.0f;
+	const float Length = (Royal ? 62.0f : 52.0f) * Scale * g_Config.m_XcCapeLength / 100.0f;
 	const float Segment = Length / (ROWS - 1);
 	const float TopWidth = (Royal ? 20.0f : 14.0f) * Width * Scale;
 	const float BottomWidth = (Royal ? 38.0f : 30.0f) * Width * Scale;
@@ -171,67 +169,22 @@ void CXcCape::SimulateCloth(SState &State, vec2 Pos, float Scale, float Dt, floa
 	const float Speed = std::min(length(State.m_Vel) / 900.0f, 1.5f) * React;
 	// the shoulders: a bit behind the middle of the body, a little above it
 	const vec2 Neck = Pos + vec2(State.m_Back * 11.0f, -8.0f) * Scale;
-	// the shoulder line stays across the cape: a cape flying straight back turns its face to the camera
-	// instead of folding into a thin edge
-	if(Cloth.m_Valid)
-	{
-		vec2 Bottom(0.0f, 0.0f);
-		for(int c = 0; c < COLS; c++)
-			Bottom += Cloth.m_aPoints[ROWS - 1][c] / (float)COLS;
-		const vec2 Dir = Bottom - Neck;
-		if(length(Dir) > 1.0f)
-		{
-			vec2 Axis = normalize(vec2(-Dir.y, Dir.x));
-			if(dot(Axis, Cloth.m_Axis) < 0.0f)
-				Axis = -Axis;
-			Cloth.m_Axis = normalize(mix(Cloth.m_Axis, Axis, SmoothFactor(14.0f, Dt)));
-		}
-	}
-	else
-		Cloth.m_Axis = vec2(1.0f, 0.0f);
-	const vec2 Axis = Cloth.m_Axis;
-	auto TopPoint = [&](int c) { return Neck + Axis * ((2.0f * c / (COLS - 1) - 1.0f) * TopWidth * 0.5f); };
+	vec2 *pSpine = Cloth.m_aSpine;
+	vec2 *pPrev = Cloth.m_aSpinePrev;
 
-	if(!Cloth.m_Valid || distance(Cloth.m_aPoints[0][COLS / 2], Neck) > 300.0f)
+	if(!Cloth.m_Valid || distance(pSpine[0], Neck) > 300.0f)
 	{
 		// starts hanging behind the tee (also after a teleport)
 		for(int r = 0; r < ROWS; r++)
-			for(int c = 0; c < COLS; c++)
-			{
-				const float t = (float)r / (ROWS - 1);
-				Cloth.m_aPoints[r][c] = TopPoint(c) + vec2(State.m_Back * 0.4f, 1.0f) * Segment * r + vec2((2.0f * c / (COLS - 1) - 1.0f) * (BottomWidth - TopWidth) * 0.5f * t, 0.0f);
-				Cloth.m_aPrev[r][c] = Cloth.m_aPoints[r][c];
-			}
+		{
+			pSpine[r] = Neck + normalize(vec2(State.m_Back * 0.5f, 1.0f)) * Segment * r;
+			pPrev[r] = pSpine[r];
+		}
 		Cloth.m_Valid = true;
 		Cloth.m_Accumulator = 0.0f;
 	}
-
-	float aRowWidth[ROWS];
-	for(int r = 0; r < ROWS; r++)
-		aRowWidth[r] = mix(TopWidth, BottomWidth, (float)r / (ROWS - 1)) / (COLS - 1);
-	float aColumn[COLS];
-	for(int c = 0; c < COLS; c++)
-		aColumn[c] = Segment * ColumnLength(c);
-
-	auto Relax = [](vec2 &a, vec2 &b, float Rest, bool PinnedA, float Stiffness) {
-		const vec2 Delta = b - a;
-		const float Dist = length(Delta);
-		if(Dist <= 0.0001f)
-			return;
-		const vec2 Fix = Delta * ((Dist - Rest) / Dist) * Stiffness;
-		if(PinnedA)
-			b -= Fix;
-		else
-		{
-			a += Fix * 0.5f;
-			b -= Fix * 0.5f;
-		}
-	};
-
 	Cloth.m_Accumulator = std::min(Cloth.m_Accumulator + Dt, 0.1f);
-	vec2 aStart[COLS];
-	for(int c = 0; c < COLS; c++)
-		aStart[c] = Cloth.m_aPoints[0][c];
+	const vec2 Start = pSpine[0];
 	const int NumSteps = (int)(Cloth.m_Accumulator / STEP);
 	int Steps = 0;
 	while(Cloth.m_Accumulator >= STEP)
@@ -239,63 +192,77 @@ void CXcCape::SimulateCloth(SState &State, vec2 Pos, float Scale, float Dt, floa
 		Cloth.m_Accumulator -= STEP;
 		Steps++;
 		// the shoulders follow the tee smoothly between the frames
-		const float Follow = (float)Steps / std::max(NumSteps, 1);
-		for(int c = 0; c < COLS; c++)
-		{
-			Cloth.m_aPoints[0][c] = mix(aStart[c], TopPoint(c), Follow);
-			Cloth.m_aPrev[0][c] = Cloth.m_aPoints[0][c];
-		}
+		pSpine[0] = mix(Start, Neck, (float)Steps / std::max(NumSteps, 1));
+		pPrev[0] = pSpine[0];
 		for(int r = 1; r < ROWS; r++)
 		{
 			const float t = (float)r / (ROWS - 1);
-			for(int c = 0; c < COLS; c++)
-			{
-				vec2 Force(0.0f, 1500.0f * Scale);
-				// the cloth likes to fly a bit backwards and flutters, more at the free end and at speed
-				Force.x += State.m_Back * 1300.0f * Scale;
-				const float Flutter = Wind * t * Scale * (1.0f + Speed * 1.5f);
-				Force.x += std::sin(Time * 2.3f + r * 0.7f + c * 0.4f) * 260.0f * Flutter;
-				Force.y += std::sin(Time * 3.1f + r * 1.1f - c * 0.6f) * 180.0f * Flutter;
-				// the hook pulls the tee, the cape streams away from it
-				Force -= State.m_Pull * 1600.0f * React * t * Scale;
-				vec2 &Point = Cloth.m_aPoints[r][c];
-				const vec2 Velocity = (Point - Cloth.m_aPrev[r][c]) * 0.97f;
-				Cloth.m_aPrev[r][c] = Point;
-				Point += Velocity + Force * STEP * STEP;
-			}
+			vec2 Force(0.0f, 1500.0f * Scale);
+			// the cloth likes to fly a bit backwards and flutters, more at the free end and at speed
+			Force.x += State.m_Back * 1100.0f * Scale;
+			const float Flutter = Wind * t * Scale * (1.0f + Speed * 1.5f);
+			Force.x += std::sin(Time * 2.3f + r * 0.7f) * 260.0f * Flutter;
+			Force.y += std::sin(Time * 3.1f + r * 1.1f) * 180.0f * Flutter;
+			// the hook pulls the tee, the cape streams away from it
+			Force -= State.m_Pull * 1600.0f * React * t * Scale;
+			const vec2 Velocity = (pSpine[r] - pPrev[r]) * 0.97f;
+			pPrev[r] = pSpine[r];
+			pSpine[r] += Velocity + Force * STEP * STEP;
 		}
-		for(int Iteration = 0; Iteration < 3; Iteration++)
+		for(int Iteration = 0; Iteration < 4; Iteration++)
 		{
 			for(int r = 1; r < ROWS; r++)
 			{
-				for(int c = 0; c < COLS; c++)
+				const vec2 Delta = pSpine[r] - pSpine[r - 1];
+				const float Dist = length(Delta);
+				if(Dist <= 0.0001f)
+					continue;
+				const vec2 Fix = Delta * ((Dist - Segment) / Dist);
+				if(r == 1)
+					pSpine[r] -= Fix; // the shoulders do not move
+				else
 				{
-					Relax(Cloth.m_aPoints[r - 1][c], Cloth.m_aPoints[r][c], aColumn[c], r == 1, 1.0f);
-					if(c > 0)
-					{
-						Relax(Cloth.m_aPoints[r][c - 1], Cloth.m_aPoints[r][c], aRowWidth[r], false, 1.0f);
-						// shear: keeps the cells from folding flat
-						const float Diagonal = std::sqrt(aRowWidth[r] * aRowWidth[r] + aColumn[c] * aColumn[c]);
-						Relax(Cloth.m_aPoints[r - 1][c - 1], Cloth.m_aPoints[r][c], Diagonal, r == 1, 0.4f);
-						Relax(Cloth.m_aPoints[r - 1][c], Cloth.m_aPoints[r][c - 1], Diagonal, r == 1, 0.4f);
-					}
+					pSpine[r] -= Fix * 0.5f;
+					pSpine[r - 1] += Fix * 0.5f;
 				}
 			}
 		}
 		if(Collide)
 		{
 			for(int r = 1; r < ROWS; r++)
-				for(int c = 0; c < COLS; c++)
-					this->Collide(Cloth.m_aPoints[r][c], Cloth.m_aPrev[r][c]);
+				this->Collide(pSpine[r], pPrev[r]);
 			// cloth does not stretch: a point stuck behind a corner pulls no further than a bit over its length
 			for(int r = 1; r < ROWS; r++)
-				for(int c = 0; c < COLS; c++)
-				{
-					const vec2 Delta = Cloth.m_aPoints[r][c] - Cloth.m_aPoints[r - 1][c];
-					const float Dist = length(Delta);
-					if(Dist > aColumn[c] * 1.2f)
-						Cloth.m_aPoints[r][c] = Cloth.m_aPoints[r - 1][c] + Delta * (aColumn[c] * 1.2f / Dist);
-				}
+			{
+				const vec2 Delta = pSpine[r] - pSpine[r - 1];
+				const float Dist = length(Delta);
+				if(Dist > Segment * 1.15f)
+					pSpine[r] = pSpine[r - 1] + Delta * (Segment * 1.15f / Dist);
+			}
+		}
+	}
+
+	// the cloth around the line: across it, as wide as the tee faces away (turning folds it over), with ripples
+	auto SpineAt = [&](float s, vec2 *pDir) {
+		const float f = std::clamp(s, 0.0f, 1.0f) * (ROWS - 1);
+		const int i = std::min((int)f, ROWS - 2);
+		const float u = f - i;
+		*pDir = normalize(pSpine[i + 1] - pSpine[i]);
+		return mix(pSpine[i], pSpine[i + 1], u);
+	};
+	for(int r = 0; r < ROWS; r++)
+	{
+		const float t = (float)r / (ROWS - 1);
+		for(int c = 0; c < COLS; c++)
+		{
+			const float u = 2.0f * c / (COLS - 1) - 1.0f;
+			const float s = t * ColumnLength(c);
+			vec2 Dir;
+			const vec2 Center = SpineAt(s, &Dir);
+			const vec2 Normal(-Dir.y, Dir.x);
+			const float Half = mix(TopWidth, BottomWidth, s) * 0.5f;
+			const float Ripple = std::sin(Time * 5.0f + r * 0.9f + c * 1.7f) * (0.6f + Speed) * Scale * s * Wind;
+			Cloth.m_aPoints[r][c] = Center + Normal * (u * Half * State.m_Back) + Dir * Ripple + Normal * Ripple * 0.5f;
 		}
 	}
 }
@@ -590,9 +557,8 @@ void CXcCape::RenderCloth(const SState &State, float Scale, int ClientId, float 
 		{
 			vec2 aCell[4];
 			Corners(r, c, aCell);
-			// a cell turned over shows the inner side of the cape
-			const vec2 A = aCell[1] - aCell[0], B = aCell[2] - aCell[0];
-			const bool Inside = A.x * B.y - A.y * B.x < 0.0f;
+			// while the tee turns around the cape folds over and shows its inner side
+			const bool Inside = std::abs(State.m_Back) < 0.35f;
 			const ColorRGBA *pColors = Inside || Stripe ? aInner : aOuter;
 			ColorRGBA aCorner[4];
 			for(int k = 0; k < 4; k++)
