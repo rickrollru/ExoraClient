@@ -245,7 +245,8 @@ void CWorldFx::OnRender()
 	{
 		SFreezeState &State = m_aFreeze[ClientId];
 		const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
-		const bool Visible = g_Config.m_XcFreezeFx && GameClient()->m_Snap.m_aCharacters[ClientId].m_Active &&
+		// the aura and the shards are turned on each on its own
+		const bool Visible = (g_Config.m_XcFreezeFx || g_Config.m_XcFreezeBurst) && GameClient()->m_Snap.m_aCharacters[ClientId].m_Active &&
 				     ShowFor(GameClient(), ClientId, g_Config.m_XcFreezeSelf, g_Config.m_XcFreezeDummy, g_Config.m_XcFreezeOthers);
 		const float Alpha = Visible ? PlayerAlpha(GameClient(), ClientId) : 0.0f;
 		const bool Frozen = Visible && (Data.m_FreezeEnd != 0 || Data.m_RegularPredicted.m_FreezeEnd != 0);
@@ -253,7 +254,7 @@ void CWorldFx::OnRender()
 		if(Frozen != State.m_Frozen && Visible && Alpha > 0.0f && g_Config.m_XcFreezeBurst)
 			FreezeBurst(Pos, ClientId, !Frozen);
 		State.m_Frozen = Frozen;
-		if(!Frozen || Alpha <= 0.0f)
+		if(!Frozen || Alpha <= 0.0f || !g_Config.m_XcFreezeFx)
 			continue;
 
 		// ice aura: cold light, a slowly turning frost ring and snow drifting down

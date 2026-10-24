@@ -169,11 +169,10 @@ void CHookFx::RenderLine(vec2 PlayerPos, vec2 HookPos, float Alpha) const
 	Graphics()->QuadsEnd();
 }
 
-void CHookFx::EmitHit(vec2 Pos, vec2 AwayDir)
+void CHookFx::EmitHit(vec2 Pos, vec2 AwayDir, int Style, ColorRGBA Main)
 {
 	const FxTune::CScope TuneScope(FxTune::HOOK);
-	const ColorRGBA Main = Color(1.0f);
-	switch(g_Config.m_XcHookHitFx)
+	switch(Style)
 	{
 	case HIT_RING:
 	{
@@ -191,7 +190,7 @@ void CHookFx::EmitHit(vec2 Pos, vec2 AwayDir)
 	case HIT_SPARKS:
 	case HIT_STARS:
 	{
-		const bool Stars = g_Config.m_XcHookHitFx == HIT_STARS;
+		const bool Stars = Style == HIT_STARS;
 		const int Num = Stars ? 5 : 9;
 		const float BaseAngle = angle(AwayDir);
 		for(int i = 0; i < Num; i++)
@@ -223,7 +222,8 @@ void CHookFx::OnRender()
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
 		SState &State = m_aStates[ClientId];
-		if(g_Config.m_XcHookHitFx == HIT_OFF || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||
+		const bool AnyHit = g_Config.m_XcHookHitFx != HIT_OFF || g_Config.m_XcHookHitPlayerFx != HIT_OFF || g_Config.m_XcHookNohookFx != HIT_OFF;
+		if(!AnyHit || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||
 			!ShowFor(GameClient(), ClientId, g_Config.m_XcHookSelf, g_Config.m_XcHookDummy, g_Config.m_XcHookOthers) ||
 			PlayerAlpha(GameClient(), ClientId) <= 0.0f)
 		{
@@ -238,12 +238,28 @@ void CHookFx::OnRender()
 		if(State.m_Valid && Char.m_HookState == HOOK_GRABBED && State.m_HookState != HOOK_GRABBED && State.m_Cooldown <= 0.0f)
 		{
 			vec2 HookPos = vec2(Char.m_HookX, Char.m_HookY);
-			if(in_range(Char.m_HookedPlayer, MAX_CLIENTS - 1))
+			const bool Player = in_range(Char.m_HookedPlayer, MAX_CLIENTS - 1);
+			if(Player)
 				HookPos = GameClient()->m_aClients[Char.m_HookedPlayer].m_RenderPos;
 			const vec2 ToPlayer = Data.m_RenderPos - HookPos;
-			EmitHit(HookPos, length(ToPlayer) > 0.0f ? normalize(ToPlayer) : vec2(0.0f, -1.0f));
+			// a block and a player each have their own effect
+			EmitHit(HookPos, length(ToPlayer) > 0.0f ? normalize(ToPlayer) : vec2(0.0f, -1.0f), Player ? g_Config.m_XcHookHitPlayerFx : g_Config.m_XcHookHitFx, Color(1.0f));
 			// prediction can flip the hook state back and forth for a moment
 			State.m_Cooldown = 0.15f;
+		}
+		// the hook flew into an unhookable block and bounces back: a reddish puff where it hit
+		else if(State.m_Valid && Char.m_HookState == HOOK_RETRACT_START && State.m_HookState == HOOK_FLYING && State.m_Cooldown <= 0.0f && g_Config.m_XcHookNohookFx != HIT_OFF)
+		{
+			const vec2 HookPos = vec2(Char.m_HookX, Char.m_HookY);
+			bool Nohook = false;
+			for(int i = 0; i < 9 && !Nohook; i++)
+				Nohook = Collision()->GetCollisionAt(HookPos.x + (i % 3 - 1) * 18.0f, HookPos.y + (i / 3 - 1) * 18.0f) == TILE_NOHOOK;
+			if(Nohook)
+			{
+				const vec2 ToPlayer = Data.m_RenderPos - HookPos;
+				EmitHit(HookPos, length(ToPlayer) > 0.0f ? normalize(ToPlayer) : vec2(0.0f, -1.0f), g_Config.m_XcHookNohookFx, ColorRGBA(1.0f, 0.36f, 0.36f, 1.0f));
+				State.m_Cooldown = 0.15f;
+			}
 		}
 		State.m_Valid = true;
 		State.m_HookState = Char.m_HookState;

@@ -45,8 +45,9 @@ void CJumpFx::OnRender()
 
 void CJumpFx::UpdatePlayers(float Dt)
 {
-	// the card toggle turns off everything in it: the jump, the landing ring and the dust
-	const bool AnyEnabled = g_Config.m_XcJumpFx != JUMP_FX_OFF;
+	// the jump, the landing ring and the dust are turned on and off each on its own
+	const bool JumpEnabled = g_Config.m_XcJumpFx != JUMP_FX_OFF;
+	const bool AnyEnabled = JumpEnabled || g_Config.m_XcLandFx || g_Config.m_XcRunDust;
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
 		SPlayerState &State = m_aPlayers[ClientId];
@@ -80,7 +81,7 @@ void CJumpFx::UpdatePlayers(float Dt)
 		const bool AirJumpStarted = (Char.m_Jumped & 2) && !(State.m_Jumped & 2);
 		// a frozen tee does not jump: the jump flags it gets while frozen are not jumps
 		const bool Frozen = Data.m_FreezeEnd != 0 || Data.m_RegularPredicted.m_FreezeEnd != 0 || Data.m_DeepFrozen;
-		if(!Frozen)
+		if(!Frozen && JumpEnabled)
 		{
 			if(AirJumpStarted)
 			{
