@@ -411,6 +411,19 @@ void CXcEditorUi::StartSolve(int TowerDepth, const char *pLevel, bool Forgiving,
 	const std::shared_ptr<CLayerTele> &pTele = E.Map()->m_pTeleLayer;
 	m_pSolveJob = XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal);
 	m_SolveIdeal = Ideal;
+	// the name for the log, without the hash maps downloaded from a server carry (Name_<64 hex digits>)
+	fs_split_file_extension(fs_filename(E.Map()->m_aFilename), m_aSolveMap, sizeof(m_aSolveMap));
+	const int Length = str_length(m_aSolveMap);
+	if(Length > 65 && m_aSolveMap[Length - 65] == '_')
+	{
+		bool Hex = true;
+		for(int i = Length - 64; i < Length; i++)
+			Hex &= (m_aSolveMap[i] >= '0' && m_aSolveMap[i] <= '9') || (m_aSolveMap[i] >= 'a' && m_aSolveMap[i] <= 'f');
+		if(Hex)
+			m_aSolveMap[Length - 65] = '\0';
+	}
+	if(!m_aSolveMap[0])
+		str_copy(m_aSolveMap, "unnamed");
 	m_SolveTowerDepth = TowerDepth;
 	m_pSolveTowerLevel = pLevel;
 	if(!m_pSolveJob->m_HasStart || !m_pSolveJob->m_HasGoal)
@@ -433,10 +446,7 @@ void CXcEditorUi::UpdateSolve()
 	// in xclient/bot_logs (to run many maps one after another); a summary line at the end with the numbers the
 	// difficulty is judged from
 	{
-		char aMap[128];
-		fs_split_file_extension(fs_filename(E.Map()->m_aFilename), aMap, sizeof(aMap));
-		if(!aMap[0])
-			str_copy(aMap, "unnamed");
+		const char *aMap = m_aSolveMap;
 		std::vector<float> vSorted = Result.m_vDifficulty;
 		std::sort(vSorted.begin(), vSorted.end());
 		const int n = (int)vSorted.size();
