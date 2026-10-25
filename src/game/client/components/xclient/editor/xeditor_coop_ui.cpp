@@ -4,6 +4,7 @@
 
 #include <game/client/components/xclient/ui/feedback.h>
 
+#include <base/fs.h>
 #include <base/io.h>
 #include <base/str.h>
 
@@ -428,14 +429,45 @@ void CXcEditorUi::UpdateSolve()
 	CEditor &E = *m_pEditor;
 	m_SolveResult = std::move(m_pSolveJob->m_Result);
 	const XcSolver::SResult &Result = m_SolveResult;
-	// the report for the mapper to send: xclient/bot_log.txt in the save folder
+	// the report for the mapper to send: xclient/bot_log.txt in the save folder, and a copy named after the map
+	// in xclient/bot_logs (to run many maps one after another); a summary line at the end with the numbers the
+	// difficulty is judged from
 	{
-		E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
-		IOHANDLE File = E.Storage()->OpenFile("xclient/bot_log.txt", IOFLAG_WRITE, IStorage::TYPE_SAVE);
-		if(File)
+		char aMap[128];
+		fs_split_file_extension(fs_filename(E.Map()->m_aFilename), aMap, sizeof(aMap));
+		if(!aMap[0])
+			str_copy(aMap, "unnamed");
+		std::vector<float> vSorted = Result.m_vDifficulty;
+		std::sort(vSorted.begin(), vSorted.end());
+		const int n = (int)vSorted.size();
+		float Sum = 0.0f;
+		int Hard = 0;
+		for(float d : vSorted)
 		{
-			io_write(File, Result.m_Log.data(), Result.m_Log.size());
-			io_close(File);
+			Sum += d;
+			Hard += d >= 0.8f ? 1 : 0;
+		}
+		float Length = 0.0f;
+		for(size_t i = 1; i < Result.m_vPath.size(); i++)
+			Length += distance(Result.m_vPath[i - 1], Result.m_vPath[i]);
+		char aSummary[512];
+		str_format(aSummary, sizeof(aSummary), "\nSUMMARY map %s | %s | time %.2f s | way %d cells | points %d | difficulty mean %.3f p50 %.3f p90 %.3f hard share %.3f | precise search %d | not passed %d | tries %d\n",
+			aMap, Result.m_Found ? "finished" : "not finished", Result.m_Ticks / 50.0f, (int)(Length / 32.0f), n,
+			n ? Sum / n : 0.0f, n ? vSorted[n / 2] : 0.0f, n ? vSorted[n * 9 / 10] : 0.0f, n ? (float)Hard / n : 0.0f,
+			Result.m_Repairs, (int)Result.m_vStuck.size(), Result.m_Explored);
+		E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
+		E.Storage()->CreateFolder("xclient/bot_logs", IStorage::TYPE_SAVE);
+		char aPath[IO_MAX_PATH_LENGTH];
+		str_format(aPath, sizeof(aPath), "xclient/bot_logs/%s.txt", aMap);
+		for(const char *pPath : {"xclient/bot_log.txt", (const char *)aPath})
+		{
+			IOHANDLE File = E.Storage()->OpenFile(pPath, IOFLAG_WRITE, IStorage::TYPE_SAVE);
+			if(File)
+			{
+				io_write(File, Result.m_Log.data(), Result.m_Log.size());
+				io_write(File, aSummary, str_length(aSummary));
+				io_close(File);
+			}
 		}
 	}
 	m_vSolvePath = Result.m_vPath;

@@ -1109,6 +1109,7 @@ void CSearch::Run()
 				const SNode &R = vNodes[Repaired];
 				Log("try %d: hint %d reached by the precise search (from the %d. place tried), at %.0f %.0f, game time %.2f s\n", Result.m_Explored, R.m_Stage, Tried, R.m_State.m_Pos.x / 32.0f, R.m_State.m_Pos.y / 32.0f, R.m_Steps / 50.0f);
 				MaxStage = std::max(MaxStage, R.m_Stage);
+				Result.m_Repairs++;
 				AtMaxStage = 0;
 				SinceStage = 0;
 				SinceProgress = 0;
@@ -1704,6 +1705,7 @@ static void RunPieces(XcSolver::CJob &Job)
 		Out.m_Jumps += R.m_Jumps;
 		Out.m_Explored += R.m_Explored;
 		Out.m_HintsPassed += R.m_HintsPassed;
+		Out.m_Repairs += R.m_Repairs;
 		Out.m_Closest = R.m_Closest;
 		Out.m_Found = R.m_Found;
 		if(R.m_Found || Job.m_Cancel)
