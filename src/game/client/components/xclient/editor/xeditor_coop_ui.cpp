@@ -540,10 +540,18 @@ void CXcEditorUi::RenderSolveHeat()
 		return;
 	pGroup->MapScreen();
 	IGraphics *pGraphics = E.Graphics();
-	uint16_t Max = 1;
+	// the cells along the way, by how much work their stretch took (already on a log scale): green for the
+	// easiest tenth of this map, red for the hardest twentieth, yellow between; walls and freeze stay clear (from
+	// the lowest to the highest value most of 70s came out the same orange)
+	std::vector<uint16_t> vSorted;
 	for(uint16_t Heat : Result.m_vHeat)
-		Max = std::max(Max, Heat);
-	const float LogMax = std::log2(1.0f + Max);
+		if(Heat)
+			vSorted.push_back(Heat);
+	if(vSorted.empty())
+		return;
+	std::sort(vSorted.begin(), vSorted.end());
+	const float Min = vSorted[vSorted.size() / 10], Max = vSorted[vSorted.size() * 95 / 100];
+	const float Range = std::max(1.0f, Max - Min);
 	pGraphics->TextureClear();
 	pGraphics->QuadsBegin();
 	for(int y = 0; y < Result.m_Height; y++)
@@ -552,22 +560,22 @@ void CXcEditorUi::RenderSolveHeat()
 			const uint16_t Heat = Result.m_vHeat[y * Result.m_Width + x];
 			if(!Heat)
 				continue;
-			const float t = std::log2(1.0f + Heat) / LogMax;
-			pGraphics->SetColor(std::min(1.0f, t * 2.0f), std::min(1.0f, 2.0f - t * 2.0f), 0.15f, 0.35f);
+			const float t = std::clamp(((float)Heat - Min) / Range, 0.0f, 1.0f);
+			pGraphics->SetColor(std::min(1.0f, t * 2.0f), std::min(1.0f, 2.0f - t * 2.0f), 0.15f, 0.45f);
 			const IGraphics::CQuadItem Quad(x * 32.0f, y * 32.0f, 32.0f, 32.0f);
 			pGraphics->QuadsDrawTL(&Quad, 1);
 		}
-	// the way: red where it is one cell wide or freeze is right next to it, yellow when tight, green with room
-	for(size_t i = 0; i + 1 < m_vSolvePath.size() && i < Result.m_vRoom.size(); i++)
+	// the way itself as a thin white line over the colours (colouring it by room as well mixed up two meanings
+	// of red)
+	pGraphics->SetColor(1.0f, 1.0f, 1.0f, 0.7f);
+	for(size_t i = 0; i + 1 < m_vSolvePath.size(); i++)
 	{
-		const int Room = Result.m_vRoom[i];
-		pGraphics->SetColor(Room <= 1 ? ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f) : Room == 2 ? ColorRGBA(1.0f, 0.85f, 0.2f, 1.0f) : ColorRGBA(0.3f, 1.0f, 0.5f, 1.0f));
 		const vec2 a = m_vSolvePath[i], b = m_vSolvePath[i + 1];
 		const vec2 Dir = b - a;
 		const float Len = length(Dir);
 		if(Len < 0.01f)
 			continue;
-		const vec2 Side = vec2(-Dir.y, Dir.x) / Len * 3.0f;
+		const vec2 Side = vec2(-Dir.y, Dir.x) / Len * 1.5f;
 		const IGraphics::CFreeformItem Item(a + Side, b + Side, a - Side, b - Side);
 		pGraphics->QuadsDrawFreeform(&Item, 1);
 	}
