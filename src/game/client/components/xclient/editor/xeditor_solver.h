@@ -65,6 +65,7 @@ struct SVariant
 	bool m_AimAround = true; // also one aimed hook in each of 8 directions (to brake and turn)
 	bool m_WideFixed = true; // fixed hook directions also sideways, not only upwards
 	float m_TickWeight = 5.0f; // how much being quick counts against getting closer
+	int m_RingFreeze = 0; // near freeze also hooks all around, this many directions evenly (0: off)
 	size_t m_MaxNodes = 6000000; // places kept, for the memory
 };
 
