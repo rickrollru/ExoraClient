@@ -34,6 +34,7 @@ struct SResult
 	int m_Jumps = 0; // jumps used
 	int m_Explored = 0; // tries looked at
 	int m_HintsPassed = 0; // hints passed by the best way
+	int m_Repairs = 0; // hints reached only by the precise search
 	vec2 m_Closest = vec2(0.0f, 0.0f); // where it got closest to the goal when not found
 
 	int m_Width = 0;
