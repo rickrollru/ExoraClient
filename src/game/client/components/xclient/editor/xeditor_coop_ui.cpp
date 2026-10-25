@@ -408,7 +408,7 @@ void CXcEditorUi::StartSolve(int TowerDepth, const char *pLevel, bool Forgiving,
 	const std::shared_ptr<CLayerFront> &pFront = E.Map()->m_pFrontLayer;
 	m_vSolvePath.clear();
 	const std::shared_ptr<CLayerTele> &pTele = E.Map()->m_pTeleLayer;
-	m_pSolveJob = XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 150000, m_vSolveHints, TowerDepth, Forgiving, Ideal);
+	m_pSolveJob = XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal);
 	m_SolveIdeal = Ideal;
 	m_SolveTowerDepth = TowerDepth;
 	m_pSolveTowerLevel = pLevel;

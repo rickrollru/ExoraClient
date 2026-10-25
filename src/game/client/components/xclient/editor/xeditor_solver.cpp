@@ -191,6 +191,8 @@ private:
 	mutable bool m_TouchedFreeze = false; // the soft check: this tick passed freeze
 	void Log(const char *pFormat, ...);
 	void LogGrid(vec2 Center, const std::vector<vec2> &vPath) const;
+	// a precise search for a place the main one does not get through: see the function
+	int Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest);
 	// the blocks a hook reaches from a cell: like a player, the bot hooks real blocks, not just a few directions
 	struct SHookSpot
 	{
@@ -360,11 +362,14 @@ void CSearch::BuildTeles()
 
 void CSearch::HandleTiles(vec2 From, CCharacterCore &Core, int &TeleCheckpoint, int &FreezeTicks, bool &Unfrozen, bool &Dead, bool &Done) const
 {
+	// every pixel along the way, like the server (CCollision::GetMapIndices), and the end too: checking every
+	// 8 pixels let a way clip the corner of a freeze cell that the server counts (a replay of a 70s run)
 	const vec2 To = Core.m_Pos;
-	const int Num = (int)(distance(From, To) / 8.0f) + 1;
+	const float Length = distance(From, To);
+	const int Num = (int)Length + 1;
 	for(int i = 0; i <= Num; i++)
 	{
-		const vec2 Pos = mix(From, To, (float)i / Num);
+		const vec2 Pos = i == Num || Length == 0.0f ? To : mix(From, To, i / Length);
 		if(DeadlyAt(Pos))
 		{
 			Dead = true;
@@ -620,6 +625,128 @@ void CSearch::AutoHints()
 	m_Job.m_Result.m_vAutoHints = m_Job.m_vHints;
 }
 
+// A precise search from one try of the main search to the next hint: steps of 2 ticks, the hook in 36 directions
+// all around, only in a box around the place, and the tee must not touch freeze. The main search cannot afford
+// that many choices everywhere; here it finds what the main one does not (on 70s a corridor one cell high that
+// turns up into a shaft between freeze: a brute force like this got through in a few hundred steps). The way it
+// finds goes into the main search as tries of its own, so the run stays one piece. Returns the last try, or -1.
+int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest)
+{
+	struct SLocal
+	{
+		SState m_State;
+		int m_Parent;
+		XcSolver::SStep m_Step;
+		int m_Ticks;
+		int m_Stage;
+	};
+	const SNode &Start = vNodes[From];
+	const vec2 Target = m_Job.m_vHints[std::min(TargetStage - 1, (int)m_Job.m_vHints.size() - 1)];
+	const vec2 BoxMin(std::min(Start.m_State.m_Pos.x, Target.x) - 8 * 32.0f, std::min(Start.m_State.m_Pos.y, Target.y) - 8 * 32.0f);
+	const vec2 BoxMax(std::max(Start.m_State.m_Pos.x, Target.x) + 8 * 32.0f, std::max(Start.m_State.m_Pos.y, Target.y) + 8 * 32.0f);
+	std::vector<SLocal> vLocal;
+	vLocal.push_back({Start.m_State, -1, Start.m_Step, 0, Start.m_Stage});
+	using TEntry = std::pair<float, int>;
+	std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Open;
+	Open.push({0.0f, 0});
+	std::unordered_set<uint64_t> Seen;
+	CWorldCore World;
+	CCharacterCore Core;
+	Core.Init(&World, &m_Collision);
+	Core.Reset();
+	Core.m_Id = 0;
+	World.m_apCharacters[0] = &Core;
+	int Found = -1;
+	for(int Expanded = 0; !Open.empty() && Expanded < Budget && Found < 0; Expanded++)
+	{
+		const int Index = Open.top().second;
+		Open.pop();
+		const SLocal Node = vLocal[Index];
+		const bool Hooking = Node.m_State.m_HookState == HOOK_GRABBED || Node.m_State.m_HookState == HOOK_FLYING;
+		for(int Dir = -1; Dir <= 1 && Found < 0; Dir++)
+			for(int Jump = 0; Jump <= 1 && Found < 0; Jump++)
+				for(int Hook = -2; Hook < 36 && Found < 0; Hook++)
+				{
+					if(Hook == -1 && !Hooking)
+						continue;
+					XcSolver::SStep Step = {Dir, Jump != 0, Hook == -2 ? 0 : (Hook == -1 ? 1 : 2), Hook >= 0 ? direction(Hook * 2.0f * pi / 36.0f) * 100.0f : vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f, 2};
+					Load(Core, Node.m_State);
+					int TeleCheckpoint = Node.m_State.m_TeleCheckpoint;
+					int FreezeTicks = 0;
+					bool Dead = false, Done = false;
+					for(int t = 0; t < 2 && !Dead && !Done; t++)
+					{
+						CNetObj_PlayerInput &Input = Core.m_Input;
+						Input.m_Direction = Step.m_Direction;
+						Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
+						if(Step.m_Hook == 0)
+							Input.m_Hook = 0;
+						else if(Step.m_Hook == 2)
+							Input.m_Hook = t == 0 && Node.m_State.m_Input.m_Hook ? 0 : 1;
+						if(Step.m_Hook != 1)
+						{
+							Input.m_TargetX = (int)Step.m_Target.x;
+							Input.m_TargetY = (int)Step.m_Target.y;
+						}
+						const vec2 PrevPos = Core.m_Pos;
+						Core.Tick(true);
+						Core.Move();
+						Core.Quantize();
+						if(Core.m_Pos.x < BoxMin.x || Core.m_Pos.y < BoxMin.y || Core.m_Pos.x > BoxMax.x || Core.m_Pos.y > BoxMax.y)
+						{
+							Dead = true;
+							break;
+						}
+						bool Unfrozen = false;
+						HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
+						if(FreezeTicks > 0)
+							Dead = true;
+					}
+					if(Dead)
+						continue;
+					SState New;
+					Save(Core, New);
+					New.m_TeleCheckpoint = TeleCheckpoint;
+					New.m_FreezeTicks = 0;
+					New.m_FreezeTouch = 0;
+					int Stage = Node.m_Stage;
+					while(Stage < (int)m_Job.m_vHints.size() && (distance(New.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, New.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
+						Stage++;
+					uint64_t Key = ((uint64_t)(int)(New.m_Pos.x / 3.0f) << 48) ^ ((uint64_t)(int)(New.m_Pos.y / 3.0f) << 32) ^ ((uint64_t)(int)(New.m_Vel.x + 64.0f) << 24) ^ ((uint64_t)(int)(New.m_Vel.y + 64.0f) << 16) ^ ((uint64_t)(New.m_HookState & 15) << 8) ^ (uint64_t)(New.m_Jumped & 3);
+					if(New.m_HookState == HOOK_GRABBED)
+						Key ^= ((uint64_t)(int)(New.m_HookPos.x / 8.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 8.0f) * 40503ull);
+					if(!Seen.insert(Key).second)
+						continue;
+					vLocal.push_back({New, Index, Step, Node.m_Ticks + 2, Stage});
+					Closest = std::min(Closest, Stage >= TargetStage ? 0.0f : Heuristic(New.m_Pos, Stage));
+					if(Done || Stage >= TargetStage)
+						Found = (int)vLocal.size() - 1;
+					else
+						Open.push({Heuristic(New.m_Pos, Stage) + (Node.m_Ticks + 2) * 3.0f, (int)vLocal.size() - 1});
+				}
+	}
+	if(Found < 0)
+		return -1;
+	// the way found becomes tries of the main search, each the child of the one before
+	std::vector<int> vChain;
+	for(int i = Found; i > 0; i = vLocal[i].m_Parent)
+		vChain.push_back(i);
+	std::reverse(vChain.begin(), vChain.end());
+	int Parent = From;
+	for(int i : vChain)
+	{
+		SNode Child;
+		Child.m_State = vLocal[i].m_State;
+		Child.m_Parent = Parent;
+		Child.m_Step = vLocal[i].m_Step;
+		Child.m_Steps = Start.m_Steps + vLocal[i].m_Ticks;
+		Child.m_Stage = vLocal[i].m_Stage;
+		vNodes.push_back(Child);
+		Parent = (int)vNodes.size() - 1;
+	}
+	return Parent;
+}
+
 void CSearch::Run()
 {
 	XcSolver::SResult &Result = m_Job.m_Result;
@@ -806,6 +933,7 @@ void CSearch::Run()
 	// the search goes on hint by hint: once a few tries reached the next hint, the tries behind it are dropped;
 	// a hint that cannot be reached for long is skipped
 	int MaxStage = 0, AtMaxStage = 0, SinceStage = 0, SkipStage = 0;
+	bool RepairTried = false;
 	// the tries left behind wait here: when every try ahead ends in a dead end, they come back
 	std::vector<TEntry> vReserve;
 	// tries before this hint go to the reserve as they come out of the queue (going through the whole queue
@@ -846,8 +974,79 @@ void CSearch::Run()
 		SinceProgress++;
 		const SNode Node = vNodes[Index];
 		vRegionTries[Region(Node.m_State.m_Pos)]++;
-		if(++SinceStage > 25000 && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size())
+		if(++SinceStage > 25000 && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size() && !RepairTried)
 		{
+			// stuck at this hint: first the precise search, from the tries closest to it (different places and
+			// speeds, the best of each first)
+			RepairTried = true;
+			const vec2 Next = m_Job.m_vHints[MaxStage];
+			std::vector<std::pair<float, int>> vCandidates;
+			for(int i = 0; i < (int)vNodes.size(); i++)
+			{
+				const SNode &N = vNodes[i];
+				if(N.m_Stage < MaxStage - 1 || N.m_Stage > MaxStage || N.m_State.m_FreezeTicks > 0 || distance(N.m_State.m_Pos, Next) > 12 * 32.0f)
+					continue;
+				vCandidates.push_back({Heuristic(N.m_State.m_Pos, MaxStage), i});
+			}
+			std::sort(vCandidates.begin(), vCandidates.end());
+			std::unordered_set<uint64_t> Kinds;
+			std::vector<int> vPicked;
+			for(const auto &[Score, i] : vCandidates)
+			{
+				const SState &St = vNodes[i].m_State;
+				// one per cell and rough speed: the closest tries are often the lost ones (flying fast into the
+				// freeze at the top of a shaft), the way on starts lower and slower
+				const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 6.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 6.0f + 32.0f) << 4);
+				if(Kinds.insert(Kind).second && vPicked.size() < 80)
+					vPicked.push_back(i);
+			}
+			// a quick look from many places, then longer ones from the best few (getting round a bend into a
+			// shaft one cell wide took the precise search 10000 to 130000 steps on 70s)
+			int Tried = 0, Repaired = -1;
+			// each pass goes on from the places the one before got closest from
+			const int aPassPlaces[] = {80, 8, 3};
+			const int aPassBudget[] = {3000, 40000, 200000};
+			std::vector<std::pair<float, int>> vOrder;
+			for(int i : vPicked)
+				vOrder.push_back({0.0f, i});
+			for(int Pass = 0; Pass < 3 && Repaired < 0; Pass++)
+			{
+				std::vector<std::pair<float, int>> vNext;
+				for(int k = 0; k < std::min(aPassPlaces[Pass], (int)vOrder.size()) && Repaired < 0 && !m_Job.m_Cancel; k++)
+				{
+					Tried++;
+					float Closest = FAR;
+					Repaired = Repair(vOrder[k].second, MaxStage + 1, vNodes, aPassBudget[Pass], Closest);
+					vNext.push_back({Closest, vOrder[k].second});
+				}
+				std::stable_sort(vNext.begin(), vNext.end());
+				vOrder = vNext;
+			}
+			if(Repaired >= 0)
+			{
+				const SNode &R = vNodes[Repaired];
+				Log("try %d: hint %d reached by the precise search (from the %d. place tried), at %.0f %.0f, game time %.2f s\n", Result.m_Explored, R.m_Stage, Tried, R.m_State.m_Pos.x / 32.0f, R.m_State.m_Pos.y / 32.0f, R.m_Steps / 50.0f);
+				MaxStage = std::max(MaxStage, R.m_Stage);
+				AtMaxStage = 0;
+				SinceStage = 0;
+				SinceProgress = 0;
+				RepairTried = false;
+				BestNode = Repaired;
+				BestDistance = Heuristic(R.m_State.m_Pos, R.m_Stage);
+				Open.push({-1.0f, Repaired});
+				if(FinishAt(R.m_State.m_Pos))
+				{
+					Goal = Repaired;
+					break;
+				}
+				continue;
+			}
+			Log("try %d: the precise search did not get to hint %d either (%d places tried)\n", Result.m_Explored, MaxStage + 1, Tried);
+			SinceStage = 25001;
+		}
+		if(SinceStage > 25000 && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size())
+		{
+			RepairTried = false;
 			// this hint does not work out: aim at the next one
 			SkipStage = MaxStage + 1;
 			SinceStage = 0;
@@ -881,8 +1080,49 @@ void CSearch::Run()
 		// far too many places kept: the memory would run out
 		if(vNodes.size() > Variant.m_MaxNodes)
 		{
-			pStopReason = "out of memory for places";
-			break;
+			// clean up: keep only the tries at the front (this hint and the one before) and the ways that lead to
+			// them; everything left behind goes (on 70s the memory ran out at hint 198 of 235, not a hard place)
+			std::vector<TEntry> vKeep;
+			while(!Open.empty())
+			{
+				if(vNodes[Open.top().second].m_Stage >= MaxStage - 1)
+					vKeep.push_back(Open.top());
+				Open.pop();
+			}
+			for(const TEntry &Entry : vReserve)
+				if(vNodes[Entry.second].m_Stage >= MaxStage - 1)
+					vKeep.push_back(Entry);
+			vReserve.clear();
+			std::vector<int> vNewIndex(vNodes.size(), -1);
+			auto Mark = [&](int i) {
+				for(; i >= 0 && vNewIndex[i] == -1; i = vNodes[i].m_Parent)
+					vNewIndex[i] = -2;
+			};
+			for(const TEntry &Entry : vKeep)
+				Mark(Entry.second);
+			Mark(BestNode);
+			Mark(Index);
+			std::deque<SNode> vKept;
+			for(int i = 0; i < (int)vNodes.size(); i++)
+				if(vNewIndex[i] == -2)
+				{
+					vNewIndex[i] = (int)vKept.size();
+					SNode N = vNodes[i];
+					N.m_Parent = N.m_Parent >= 0 ? vNewIndex[N.m_Parent] : -1;
+					vKept.push_back(N);
+				}
+			for(const TEntry &Entry : vKeep)
+				Open.push({Entry.first, vNewIndex[Entry.second]});
+			BestNode = vNewIndex[BestNode];
+			Log("try %d: memory cleaned up, %d of %d places kept\n", Result.m_Explored, (int)vKept.size(), (int)vNodes.size());
+			vNodes.swap(vKept);
+			vKept = std::deque<SNode>();
+			if(vNodes.size() > Variant.m_MaxNodes * 3 / 4)
+			{
+				pStopReason = "out of memory for places";
+				break;
+			}
+			continue;
 		}
 		if(Node.m_Steps >= MAX_TICKS)
 			continue;
@@ -895,6 +1135,14 @@ void CSearch::Run()
 		vNodeSteps = Fine ? vFineSteps : vSteps;
 		if(!m_Job.m_Ideal)
 			AddAimedHooks(Node.m_State.m_Pos, Node.m_Stage, Fine ? Variant.m_AimFreeze : Variant.m_Aim, vNodeSteps);
+		// near freeze a ring of hooks in every direction: the corridor one cell high on 70s that turns up into a
+		// shaft between freeze is passed with hooks at angles no block "pulls best" towards (a brute force over
+		// 36 directions found it at once)
+		if(Fine && Variant.m_RingFreeze > 0)
+			for(int i = 0; i < Variant.m_RingFreeze; i++)
+				for(int Dir = -1; Dir <= 1; Dir++)
+					for(int Jump = 0; Jump <= 1; Jump++)
+						vNodeSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / Variant.m_RingFreeze) * 100.0f});
 		for(const XcSolver::SStep &Step : vNodeSteps)
 		{
 			if(Step.m_Hook == 1 && !Hooking)
