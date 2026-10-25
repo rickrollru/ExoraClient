@@ -304,6 +304,18 @@ void CXcEditorUi::Render()
 	{
 		E.MapView()->Render(m_View);
 		RenderCoopTees();
+		// another map opened: the hints, the way and the heat map of the last one do not belong to it (a run on
+		// a map came with 312 hints left from another one)
+		if(m_SolveMapKey != E.Map()->m_aFilename)
+		{
+			m_SolveMapKey = E.Map()->m_aFilename;
+			m_vSolveHints.clear();
+			m_vSolvePath.clear();
+			m_vSolveHeat.clear();
+			m_SolveResult = {};
+			m_aSolveSummary[0] = '\0';
+			m_IdealRoute = {};
+		}
 		UpdateSolve();
 		RenderSolvePath();
 		RenderIdealRoute();

@@ -1062,11 +1062,14 @@ void CSearch::Run()
 			// speeds, the best of each first)
 			RepairTried = true;
 			const vec2 Next = m_Job.m_vHints[MaxStage];
+			const vec2 BestPos = vNodes[BestNode].m_State.m_Pos;
 			std::vector<std::pair<float, int>> vCandidates;
 			for(int i = 0; i < (int)vNodes.size(); i++)
 			{
 				const SNode &N = vNodes[i];
-				if(N.m_Stage < MaxStage - 1 || N.m_Stage > MaxStage || N.m_State.m_FreezeTicks > 0 || distance(N.m_State.m_Pos, Next) > 12 * 32.0f)
+				// near the next hint, or near the best place so far (a hint far from the way had no tries near it at
+				// all, and the precise search gave up before it started)
+				if(N.m_Stage < MaxStage - 1 || N.m_Stage > MaxStage || N.m_State.m_FreezeTicks > 0 || (distance(N.m_State.m_Pos, Next) > 12 * 32.0f && distance(N.m_State.m_Pos, BestPos) > 6 * 32.0f))
 					continue;
 				vCandidates.push_back({Heuristic(N.m_State.m_Pos, MaxStage), i});
 			}

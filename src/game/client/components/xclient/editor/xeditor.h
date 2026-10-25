@@ -356,6 +356,8 @@ private:
 	const char *m_pSolveTowerLevel = "";
 	// help for the bot: points the way passes in order, set by clicks while the mode is on
 	std::vector<vec2> m_vSolveHints;
+	std::string m_SolveMapKey; // the map the hints and the result belong to: another map clears them
+	char m_aSolveMap[128] = ""; // the name of the map the running search is on, for its log
 	bool m_HintMode = false;
 	void RenderSolveHints();
 	// the ideal route: through the hints without physics, a dot flies along it
