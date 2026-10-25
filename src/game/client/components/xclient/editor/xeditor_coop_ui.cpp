@@ -439,6 +439,34 @@ void CXcEditorUi::UpdateSolve()
 		}
 	}
 	m_vSolvePath = Result.m_vPath;
+	// the heat map: the raw difficulty of each point (the share of small mistakes there that freeze) jumps from
+	// step to step, so it is smoothed along the way, then spread from the easiest twentieth of this map to the
+	// hardest (on 70s nearly all of it is hard, and an absolute scale made it all red)
+	{
+		const std::vector<float> &vRaw = Result.m_vDifficulty;
+		const int n = (int)vRaw.size(), Win = 8;
+		std::vector<float> vSmooth(n, 0.0f);
+		for(int i = 0; i < n; i++)
+		{
+			float Sum = 0.0f, Weights = 0.0f;
+			for(int j = -Win; j <= Win; j++)
+			{
+				const float w = std::exp(-0.5f * (j / (Win * 0.5f)) * (j / (Win * 0.5f)));
+				Sum += vRaw[std::clamp(i + j, 0, n - 1)] * w;
+				Weights += w;
+			}
+			vSmooth[i] = Sum / Weights;
+		}
+		m_vSolveHeat.assign(n, 0.0f);
+		if(n > 0)
+		{
+			std::vector<float> vSorted = vSmooth;
+			std::sort(vSorted.begin(), vSorted.end());
+			const float Lo = vSorted[n * 5 / 100], Hi = vSorted[std::min(n - 1, n * 95 / 100)];
+			for(int i = 0; i < n; i++)
+				m_vSolveHeat[i] = std::clamp((vSmooth[i] - Lo) / std::max(0.001f, Hi - Lo), 0.0f, 1.0f);
+		}
+	}
 	m_SolveFound = Result.m_Found;
 	if(Result.m_Found && !m_SolveIdeal)
 		m_SolveHumanTicks = Result.m_Ticks;
@@ -540,42 +568,26 @@ void CXcEditorUi::RenderSolveHeat()
 		return;
 	pGroup->MapScreen();
 	IGraphics *pGraphics = E.Graphics();
-	// the cells along the way, by how much work their stretch took (already on a log scale): green for the
-	// easiest tenth of this map, red for the hardest twentieth, yellow between; walls and freeze stay clear (from
-	// the lowest to the highest value most of 70s came out the same orange)
-	std::vector<uint16_t> vSorted;
-	for(uint16_t Heat : Result.m_vHeat)
-		if(Heat)
-			vSorted.push_back(Heat);
-	if(vSorted.empty())
-		return;
-	std::sort(vSorted.begin(), vSorted.end());
-	const float Min = vSorted[vSorted.size() / 10], Max = vSorted[vSorted.size() * 95 / 100];
-	const float Range = std::max(1.0f, Max - Min);
+	// the way as a thick band coloured by how hard each point is (see UpdateSolve): green the easiest of this map,
+	// yellow, red the hardest
+	auto Colour = [](float d) {
+		return ColorRGBA(std::min(1.0f, d * 2.0f), std::min(1.0f, 2.0f - d * 2.0f), 0.15f, 0.9f);
+	};
+	const std::vector<int> &vBreaks = Result.m_vBreaks;
 	pGraphics->TextureClear();
 	pGraphics->QuadsBegin();
-	for(int y = 0; y < Result.m_Height; y++)
-		for(int x = 0; x < Result.m_Width; x++)
-		{
-			const uint16_t Heat = Result.m_vHeat[y * Result.m_Width + x];
-			if(!Heat)
-				continue;
-			const float t = std::clamp(((float)Heat - Min) / Range, 0.0f, 1.0f);
-			pGraphics->SetColor(std::min(1.0f, t * 2.0f), std::min(1.0f, 2.0f - t * 2.0f), 0.15f, 0.45f);
-			const IGraphics::CQuadItem Quad(x * 32.0f, y * 32.0f, 32.0f, 32.0f);
-			pGraphics->QuadsDrawTL(&Quad, 1);
-		}
-	// the way itself as a thin white line over the colours (colouring it by room as well mixed up two meanings
-	// of red)
-	pGraphics->SetColor(1.0f, 1.0f, 1.0f, 0.7f);
-	for(size_t i = 0; i + 1 < m_vSolvePath.size(); i++)
+	for(size_t i = 0; i + 1 < m_vSolvePath.size() && i + 1 < m_vSolveHeat.size(); i++)
 	{
+		if(std::find(vBreaks.begin(), vBreaks.end(), (int)i + 1) != vBreaks.end())
+			continue;
 		const vec2 a = m_vSolvePath[i], b = m_vSolvePath[i + 1];
 		const vec2 Dir = b - a;
 		const float Len = length(Dir);
 		if(Len < 0.01f)
 			continue;
-		const vec2 Side = vec2(-Dir.y, Dir.x) / Len * 1.5f;
+		const vec2 Side = vec2(-Dir.y, Dir.x) / Len * 7.0f;
+		const ColorRGBA ca = Colour(m_vSolveHeat[i]), cb = Colour(m_vSolveHeat[i + 1]);
+		pGraphics->SetColor4(ca, cb, ca, cb);
 		const IGraphics::CFreeformItem Item(a + Side, b + Side, a - Side, b - Side);
 		pGraphics->QuadsDrawFreeform(&Item, 1);
 	}
@@ -649,7 +661,7 @@ void CXcEditorUi::RenderSolvePath()
 		E.TextRender()->Text(Screen.w * 0.5f - Width * 0.5f, 34.0f, FontSize, m_aSolveSummary);
 		E.TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	}
-	if(m_ShowHeat && !m_SolveResult.m_vHeat.empty())
+	if(m_ShowHeat && !m_SolveResult.m_vDifficulty.empty())
 	{
 		RenderSolveHeat();
 		return;

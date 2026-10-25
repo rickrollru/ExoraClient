@@ -349,6 +349,7 @@ private:
 	XcSolver::SResult m_SolveResult; // the last result: heat map, room along the way, tower spots
 	bool m_ShowHeat = false;
 	int m_SolveTowerDepth = 0; // the running search looks for tower skips
+	std::vector<float> m_vSolveHeat; // the heat map: per point of the way, 0 the easiest of this map, 1 the hardest
 	char m_aSolveSummary[160] = ""; // the time of the last run, shown over the map while its way is shown
 	bool m_SolveIdeal = false; // the running search is the ideal (not human) run
 	int m_SolveHumanTicks = -1; // the time of the last finished human-like run, to compare with the ideal one

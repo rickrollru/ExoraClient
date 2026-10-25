@@ -195,8 +195,9 @@ private:
 	mutable bool m_TouchedFreeze = false; // the soft check: this tick passed freeze
 	void Log(const char *pFormat, ...);
 	void LogGrid(vec2 Center, const std::vector<vec2> &vPath) const;
+	// one step with the strict check: false when it ends in freeze, death or out of the map
+	bool StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core);
 	// a precise search for a place the main one does not get through: see the function
-	int m_RepairWork = 0; // steps it took, for the heat map (each weighs about two tries of the main search)
 	int Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest);
 	// the blocks a hook reaches from a cell: like a player, the bot hooks real blocks, not just a few directions
 	struct SHookSpot
@@ -654,6 +655,45 @@ void CSearch::AutoHints()
 	m_Job.m_Result.m_vAutoHints = m_Job.m_vHints;
 }
 
+bool CSearch::StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core)
+{
+	Load(Core, State);
+	int TeleCheckpoint = State.m_TeleCheckpoint, FreezeTicks = 0;
+	bool Dead = false, Done = false;
+	const bool Held = State.m_Input.m_Hook != 0;
+	for(int t = 0; t < Step.m_Ticks && !Dead && !Done; t++)
+	{
+		CNetObj_PlayerInput &Input = Core.m_Input;
+		Input.m_Direction = Step.m_Direction;
+		Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
+		if(Step.m_Hook == 0)
+			Input.m_Hook = 0;
+		else if(Step.m_Hook == 2)
+			Input.m_Hook = t == 0 && Held ? 0 : 1;
+		if(Step.m_Hook != 1)
+		{
+			Input.m_TargetX = (int)Step.m_Target.x;
+			Input.m_TargetY = (int)Step.m_Target.y;
+		}
+		const vec2 PrevPos = Core.m_Pos;
+		Core.Tick(true);
+		Core.Move();
+		Core.Quantize();
+		if(Core.m_Pos.x < 0.0f || Core.m_Pos.y < 0.0f || Core.m_Pos.x >= m_Job.m_Width * 32.0f || Core.m_Pos.y >= m_Job.m_Height * 32.0f)
+			return false;
+		bool Unfrozen = false;
+		HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
+		if(FreezeTicks > 0)
+			return false;
+	}
+	if(Dead)
+		return false;
+	Save(Core, State);
+	State.m_TeleCheckpoint = TeleCheckpoint;
+	State.m_FreezeTicks = 0;
+	return true;
+}
+
 // A precise search from one try of the main search to the next hint: steps of 2 ticks, the hook in 36 directions
 // all around, only in a box around the place, and the tee must not touch freeze. The main search cannot afford
 // that many choices everywhere; here it finds what the main one does not (on 70s a corridor one cell high that
@@ -691,7 +731,6 @@ int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Bu
 	int Found = -1;
 	for(int Expanded = 0; !Open.empty() && Expanded < Budget && Found < 0; Expanded++)
 	{
-		m_RepairWork++;
 		const int Index = Open.top().second;
 		Open.pop();
 		const SLocal Node = vLocal[Index];
@@ -967,9 +1006,6 @@ void CSearch::Run()
 	// a pocket that only looks close to the finish and goes on elsewhere
 	const int RegionW = m_Job.m_Width / 4 + 1, RegionH = m_Job.m_Height / 4 + 1;
 	std::vector<uint32_t> vRegionTries((size_t)RegionW * RegionH, 0);
-	// the heat map: how much work each stretch of the way (from one hint to the next) took; painted along the
-	// way at the end (counting the tries in each cell made freeze and wide places red, where the bot only roamed)
-	std::vector<float> vStageWork(m_Job.m_vHints.size() + 2, 0.0f);
 	auto Region = [&](vec2 Pos) {
 		return std::clamp((int)(Pos.y / 128.0f), 0, RegionH - 1) * RegionW + std::clamp((int)(Pos.x / 128.0f), 0, RegionW - 1);
 	};
@@ -1072,8 +1108,6 @@ void CSearch::Run()
 			{
 				const SNode &R = vNodes[Repaired];
 				Log("try %d: hint %d reached by the precise search (from the %d. place tried), at %.0f %.0f, game time %.2f s\n", Result.m_Explored, R.m_Stage, Tried, R.m_State.m_Pos.x / 32.0f, R.m_State.m_Pos.y / 32.0f, R.m_Steps / 50.0f);
-				vStageWork[std::min(R.m_Stage, (int)vStageWork.size() - 1)] += SinceProgress + 2.0f * m_RepairWork;
-				m_RepairWork = 0;
 				MaxStage = std::max(MaxStage, R.m_Stage);
 				AtMaxStage = 0;
 				SinceStage = 0;
@@ -1323,8 +1357,6 @@ void CSearch::Run()
 			}
 			if(Stage > MaxStage)
 			{
-				vStageWork[std::min(Stage, (int)vStageWork.size() - 1)] += SinceProgress + 2.0f * m_RepairWork;
-				m_RepairWork = 0;
 				Log("try %d: hint %d reached at %.0f %.0f, game time %.2f s\n", Result.m_Explored, Stage, New.m_Pos.x / 32.0f, New.m_Pos.y / 32.0f, Child.m_Steps / 50.0f);
 				MaxStage = Stage;
 				AtMaxStage = 0;
@@ -1385,43 +1417,6 @@ void CSearch::Run()
 	}
 	Result.m_Width = m_Job.m_Width;
 	Result.m_Height = m_Job.m_Height;
-	// the stretch it did not finish: the work spent on it so far
-	if(Goal < 0)
-		vStageWork[std::min(vNodes[Last].m_Stage + 1, (int)vStageWork.size() - 1)] += SinceProgress + 2.0f * m_RepairWork;
-	else
-		vStageWork[vStageWork.size() - 1] += SinceProgress + 2.0f * m_RepairWork;
-	{
-		// each point of the way gets the work of the stretch it is on (towards the next hint), on the free cells
-		// around it; a log scale, so one very hard place does not make the rest look all the same
-		Result.m_vHeat.assign((size_t)m_Job.m_Width * m_Job.m_Height, 0);
-		std::vector<int> vChain;
-		for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
-			vChain.push_back(i);
-		for(size_t k = 0; k + 1 < vChain.size(); k++)
-		{
-			const SNode &To = vNodes[vChain[k]], &From = vNodes[vChain[k + 1]];
-			const int Stretch = std::min(Goal >= 0 && k == 0 ? (int)vStageWork.size() - 1 : From.m_Stage + 1, (int)vStageWork.size() - 1);
-			const uint16_t Value = (uint16_t)std::clamp(std::log2(1.0f + vStageWork[Stretch]) * 1000.0f, 1.0f, 65535.0f);
-			const int Num = (int)(distance(From.m_State.m_Pos, To.m_State.m_Pos) / 16.0f) + 1;
-			for(int n = 0; n <= Num; n++)
-			{
-				const vec2 Pos = mix(From.m_State.m_Pos, To.m_State.m_Pos, (float)n / Num);
-				const int cx = (int)(Pos.x / 32.0f), cy = (int)(Pos.y / 32.0f);
-				for(int y = cy - 1; y <= cy + 1; y++)
-					for(int x = cx - 1; x <= cx + 1; x++)
-					{
-						if(x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
-							continue;
-						const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-						if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f))
-							continue;
-						uint16_t &Heat = Result.m_vHeat[y * m_Job.m_Width + x];
-						Heat = std::max(Heat, Value);
-					}
-			}
-		}
-	}
-
 	// room along the way: the nearest wall or freeze around each point, in cells (up to 4)
 	auto Blocks = [&](int x, int y) {
 		const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
@@ -1440,6 +1435,80 @@ void CSearch::Run()
 						break;
 					}
 		Result.m_vRoom.push_back((uint8_t)Room);
+	}
+
+	// how hard each point of the way is: small mistakes at that step (the hook a little off, the other direction,
+	// a jump), then the bot's own inputs on; the more of them end in freeze within half a second, the more precise
+	// the place (it counted the tries spent on each stretch before, which said more about the search than about
+	// the map)
+	{
+		std::vector<int> vChain;
+		for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
+			vChain.push_back(i);
+		std::reverse(vChain.begin(), vChain.end());
+		std::vector<float> vRaw(vChain.size(), -1.0f);
+		CWorldCore World;
+		CCharacterCore Core;
+		Core.Init(&World, &m_Collision);
+		Core.Reset();
+		Core.m_Solo = true;
+		Core.m_Id = 0;
+		World.m_apCharacters[0] = &Core;
+		// the steps after a mistake, until half a second has passed: false when the tee ends in freeze
+		auto Survives = [&](size_t k, const XcSolver::SStep &First) {
+			SState State = vNodes[vChain[k]].m_State;
+			if(!StepAlive(State, First, Core))
+				return false;
+			int Ticks = First.m_Ticks;
+			for(size_t j = k + 2; j < vChain.size() && Ticks < 25; j++)
+			{
+				const XcSolver::SStep &Step = vNodes[vChain[j]].m_Step;
+				if(!StepAlive(State, Step, Core))
+					return false;
+				Ticks += Step.m_Ticks;
+			}
+			return true;
+		};
+		for(size_t k = 0; k + 1 < vChain.size(); k++)
+		{
+			const XcSolver::SStep &Step = vNodes[vChain[k + 1]].m_Step;
+			// the bot's own way may touch freeze (the soft check): nothing to compare with there
+			if(!Survives(k, Step))
+				continue;
+			std::vector<XcSolver::SStep> vMistakes;
+			for(int Dir = -1; Dir <= 1; Dir++)
+				if(Dir != Step.m_Direction)
+				{
+					XcSolver::SStep M = Step;
+					M.m_Direction = Dir;
+					vMistakes.push_back(M);
+				}
+			XcSolver::SStep Jump = Step;
+			Jump.m_Jump = !Step.m_Jump;
+			vMistakes.push_back(Jump);
+			if(Step.m_Hook == 2)
+				for(float Off : {-10.0f, -5.0f, 5.0f, 10.0f})
+				{
+					XcSolver::SStep M = Step;
+					M.m_Target = rotate(Step.m_Target, Off);
+					vMistakes.push_back(M);
+				}
+			else if(Step.m_Hook == 1)
+			{
+				XcSolver::SStep M = Step;
+				M.m_Hook = 0;
+				vMistakes.push_back(M);
+			}
+			int Lost = 0;
+			for(const XcSolver::SStep &M : vMistakes)
+				Lost += Survives(k, M) ? 0 : 1;
+			vRaw[k + 1] = (float)Lost / vMistakes.size();
+		}
+		// the steps it could not judge (the way itself touched freeze, or the very first point) take the one before
+		for(size_t i = 0; i < vRaw.size(); i++)
+			if(vRaw[i] < 0.0f)
+				vRaw[i] = i > 0 ? vRaw[i - 1] : 0.0f;
+		Result.m_vDifficulty = vRaw;
 	}
 
 	// tower skips: where the way stood on a frozen tee or hooked one
@@ -1621,10 +1690,8 @@ static void RunPieces(XcSolver::CJob &Job)
 		{
 			Out.m_Width = R.m_Width;
 			Out.m_Height = R.m_Height;
-			Out.m_vHeat.assign(R.m_vHeat.size(), 0);
 		}
-		for(size_t i = 0; i < R.m_vHeat.size() && i < Out.m_vHeat.size(); i++)
-			Out.m_vHeat[i] = std::max(Out.m_vHeat[i], R.m_vHeat[i]);
+		Out.m_vDifficulty.insert(Out.m_vDifficulty.end(), R.m_vDifficulty.begin(), R.m_vDifficulty.end());
 		if(!R.m_vPath.empty())
 			Out.m_vBreaks.push_back((int)Out.m_vPath.size());
 		Out.m_vPath.insert(Out.m_vPath.end(), R.m_vPath.begin(), R.m_vPath.end());
