@@ -928,7 +928,7 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.Storage()->GetCompletePath(IStorage::TYPE_SAVE, "xclient", aFolder, sizeof(aFolder));
 					E.Client()->ViewFile(aFolder);
 				}
-				if(ImGui::MenuItem(Tr("Bot: heat map"), nullptr, m_ShowHeat, !m_SolveResult.m_vHeat.empty()))
+				if(ImGui::MenuItem(Tr("Bot: heat map"), nullptr, m_ShowHeat, !m_SolveResult.m_vDifficulty.empty()))
 					m_ShowHeat = !m_ShowHeat;
 				if(ImGui::BeginMenu(Tr("Bot: look for tower skips"), !m_pSolveJob))
 				{

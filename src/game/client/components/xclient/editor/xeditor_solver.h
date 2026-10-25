@@ -36,10 +36,10 @@ struct SResult
 	int m_HintsPassed = 0; // hints passed by the best way
 	vec2 m_Closest = vec2(0.0f, 0.0f); // where it got closest to the goal when not found
 
-	// the heat map: tries spent in each cell (many tries: a hard place)
 	int m_Width = 0;
 	int m_Height = 0;
-	std::vector<uint16_t> m_vHeat;
+	// the heat map: how hard each point of m_vPath is, 0..1 (the share of small mistakes there that end in freeze)
+	std::vector<float> m_vDifficulty;
 	// how much room the way has at each point: cells to the nearest wall or freeze (1: a one cell gap)
 	std::vector<uint8_t> m_vRoom;
 	// tower skips: cells of frozen tees the way stood on or hooked
