@@ -200,7 +200,7 @@ void CLayerTiles::Render(const CEditorMap *pRenderMap)
 	if(m_RenderOverlays)
 	{
 		int OverlayRenderFlags = (g_Config.m_ClTextEntitiesEditor ? OVERLAYRENDERFLAG_TEXT : 0) | OVERLAYRENDERFLAG_EDITOR;
-		if(m_HasTele)
+		if(m_HasTele && !static_cast<CLayerTele *>(this)->XcRenderOverlay(OverlayRenderFlags)) // XClient: numbers above 255
 			Editor()->RenderMap()->RenderTeleOverlay(static_cast<CLayerTele *>(this)->m_pTeleTile, m_Width, m_Height, 32.0f, OverlayRenderFlags);
 		if(m_HasSpeedup)
 			Editor()->RenderMap()->RenderSpeedupOverlay(static_cast<CLayerSpeedup *>(this)->m_pSpeedupTile, m_Width, m_Height, 32.0f, OverlayRenderFlags);

@@ -111,6 +111,7 @@ void CLayerTele::BrushDraw(CLayer *pBrush, vec2 WorldPos)
 				m_pTeleTile[TgtIndex].m_Type,
 				m_pTiles[TgtIndex].m_Index};
 
+			bool XcExt = false; // XClient
 			if((Editor()->IsAllowPlaceUnusedTiles() || IsValidTeleTile(pTeleLayer->m_pTiles[SrcIndex].m_Index)) && pTeleLayer->m_pTiles[SrcIndex].m_Index != TILE_AIR)
 			{
 				bool IsCheckpoint = IsTeleTileCheckpoint(pTeleLayer->m_pTiles[SrcIndex].m_Index);
@@ -143,11 +144,14 @@ void CLayerTele::BrushDraw(CLayer *pBrush, vec2 WorldPos)
 					else
 					{
 						m_pTeleTile[TgtIndex].m_Number = IsCheckpoint ? Editor()->m_TeleCheckpointNumber : Editor()->m_TeleNumber;
+						XcExt = !IsCheckpoint; // XClient
 					}
 				}
 
 				m_pTeleTile[TgtIndex].m_Type = pTeleLayer->m_pTiles[SrcIndex].m_Index;
 				m_pTiles[TgtIndex].m_Index = pTeleLayer->m_pTiles[SrcIndex].m_Index;
+				if(XcExt) // XClient: numbers above 255
+					XcConvertExt(TgtIndex);
 			}
 			else
 			{
@@ -167,6 +171,7 @@ void CLayerTele::BrushDraw(CLayer *pBrush, vec2 WorldPos)
 			RecordStateChange(fx, fy, Previous, Current);
 		}
 	FlagModified(sx, sy, pTeleLayer->m_Width, pTeleLayer->m_Height);
+	XcSyncRings(sx, sy, pTeleLayer->m_Width, pTeleLayer->m_Height); // XClient
 }
 
 void CLayerTele::RecordStateChange(int x, int y, STeleTileStateChange::SData Previous, STeleTileStateChange::SData Current)
@@ -286,7 +291,10 @@ void CLayerTele::FillSelection(bool Empty, CLayer *pBrush, CUIRect Rect)
 						m_pTeleTile[TgtIndex].m_Number = 255;
 					}
 					else if(!IsCheckpoint && ((pLt->m_pTeleTile[SrcIndex].m_Number == 0 && Editor()->m_TeleNumber) || Editor()->m_TeleNumber != pLt->m_TeleNumber))
+					{
 						m_pTeleTile[TgtIndex].m_Number = Editor()->m_TeleNumber;
+						XcConvertExt(TgtIndex); // XClient: numbers above 255
+					}
 					else if(IsCheckpoint && ((pLt->m_pTeleTile[SrcIndex].m_Number == 0 && Editor()->m_TeleCheckpointNumber) || Editor()->m_TeleCheckpointNumber != pLt->m_TeleCheckpointNumber))
 						m_pTeleTile[TgtIndex].m_Number = Editor()->m_TeleCheckpointNumber;
 					else
@@ -309,6 +317,7 @@ void CLayerTele::FillSelection(bool Empty, CLayer *pBrush, CUIRect Rect)
 		}
 	}
 	FlagModified(sx, sy, w, h);
+	XcSyncRings(sx, sy, w, h); // XClient
 }
 
 int CLayerTele::FindNextFreeNumber(bool Checkpoint) const

@@ -788,6 +788,7 @@ public:
 	unsigned char m_TeleNumber;
 	unsigned char m_TeleCheckpointNumber;
 	unsigned char m_ViewTeleNumber;
+	int m_XcTeleExt = 0; // XClient: the brush number is 255 + this (a check teleporter pair), 0 for a plain one
 
 	unsigned char m_TuningNumber;
 	unsigned char m_ViewTuning;

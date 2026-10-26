@@ -37,6 +37,16 @@ public:
 	bool ContainsElementWithId(int Id, bool Checkpoint) const;
 	void GetPos(int Number, int Offset, int &TeleX, int &TeleY);
 
+	// XClient: teleporter numbers 256..509 as check teleporter pairs (xclient/editor/xeditor_teleext.cpp)
+	enum
+	{
+		XC_TELE_EXT_MAX = 254,
+	};
+	void XcConvertExt(int Index);
+	void XcSyncRings(int sx, int sy, int w, int h);
+	int XcFindFreeExt() const;
+	bool XcRenderOverlay(int OverlayRenderFlags);
+
 	int m_GotoTeleOffset;
 	ivec2 m_GotoTeleLastPos;
 

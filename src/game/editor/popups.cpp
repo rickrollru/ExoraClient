@@ -2403,6 +2403,7 @@ CUi::EPopupMenuFunctionResult CEditor::PopupTele(void *pContext, CUIRect View, b
 	static int s_PreviousTeleNumber;
 	static int s_PreviousCheckpointNumber;
 	static int s_PreviousViewTeleNumber;
+	static int s_PreviousXcTeleExt = 0; // XClient
 
 	CUIRect NumberPicker;
 	CUIRect FindEmptySlot;
@@ -2457,8 +2458,11 @@ CUi::EPopupMenuFunctionResult CEditor::PopupTele(void *pContext, CUIRect View, b
 			if(TeleNumber != -1)
 			{
 				pEditor->m_TeleNumber = TeleNumber;
+				pEditor->m_XcTeleExt = 0; // XClient
 				pEditor->AdjustBrushSpecialTiles(false, 0, 0);
 			}
+			else if(int Ext = pEditor->Map()->m_pTeleLayer->XcFindFreeExt(); Ext != -1) // XClient: past 255
+				pEditor->m_XcTeleExt = Ext;
 		}
 
 		static int s_NextFreeCheckpointPid = 0;
@@ -2484,7 +2488,7 @@ CUi::EPopupMenuFunctionResult CEditor::PopupTele(void *pContext, CUIRect View, b
 	// number picker
 	{
 		CProperty aProps[] = {
-			{"Number", pEditor->m_TeleNumber, PROPTYPE_INT, 1, 255},
+			{"Number", pEditor->m_XcTeleExt ? 255 + pEditor->m_XcTeleExt : pEditor->m_TeleNumber, PROPTYPE_INT, 1, 255 + CLayerTele::XC_TELE_EXT_MAX}, // XClient: up to 509
 			{"Checkpoint", pEditor->m_TeleCheckpointNumber, PROPTYPE_INT, 1, 255},
 			{"View", pEditor->m_ViewTeleNumber, PROPTYPE_INT, 1, 255},
 			{nullptr},
@@ -2496,7 +2500,12 @@ CUi::EPopupMenuFunctionResult CEditor::PopupTele(void *pContext, CUIRect View, b
 		int Prop = pEditor->DoProperties(&NumberPicker, aProps, s_aIds, &NewVal, s_vColors);
 		if(Prop == PROP_TELE)
 		{
-			pEditor->m_TeleNumber = (NewVal - 1 + 255) % 255 + 1;
+			// XClient: 256..509 are check teleporter pairs
+			const int Max = 255 + CLayerTele::XC_TELE_EXT_MAX;
+			NewVal = (NewVal - 1 + Max) % Max + 1;
+			pEditor->m_XcTeleExt = NewVal > 255 ? NewVal - 255 : 0;
+			if(NewVal <= 255)
+				pEditor->m_TeleNumber = NewVal;
 			pEditor->AdjustBrushSpecialTiles(false, 0, 0);
 		}
 		else if(Prop == PROP_TELE_CP)
@@ -2507,7 +2516,9 @@ CUi::EPopupMenuFunctionResult CEditor::PopupTele(void *pContext, CUIRect View, b
 		else if(Prop == PROP_TELE_VIEW)
 			pEditor->m_ViewTeleNumber = (NewVal - 1 + 255) % 255 + 1;
 
-		if(s_PreviousTeleNumber == 1 || s_PreviousTeleNumber != pEditor->m_TeleNumber)
+		if(pEditor->m_XcTeleExt && s_PreviousXcTeleExt != pEditor->m_XcTeleExt) // XClient: the pairs take the numbers of the check teleporters
+			s_vColors[PROP_TELE] = pEditor->Map()->m_pTeleLayer->ContainsElementWithId(pEditor->m_XcTeleExt, true) ? ColorRGBA(1, 0.5f, 0.5f, 0.5f) : ColorRGBA(0.5f, 1, 0.5f, 0.5f);
+		else if(!pEditor->m_XcTeleExt && (s_PreviousXcTeleExt || s_PreviousTeleNumber == 1 || s_PreviousTeleNumber != pEditor->m_TeleNumber))
 			s_vColors[PROP_TELE] = pEditor->Map()->m_pTeleLayer->ContainsElementWithId(pEditor->m_TeleNumber, false) ? ColorRGBA(1, 0.5f, 0.5f, 0.5f) : ColorRGBA(0.5f, 1, 0.5f, 0.5f);
 
 		if(s_PreviousCheckpointNumber == 1 || s_PreviousCheckpointNumber != pEditor->m_TeleCheckpointNumber)
@@ -2518,6 +2529,7 @@ CUi::EPopupMenuFunctionResult CEditor::PopupTele(void *pContext, CUIRect View, b
 	}
 
 	s_PreviousTeleNumber = pEditor->m_TeleNumber;
+	s_PreviousXcTeleExt = pEditor->m_XcTeleExt; // XClient
 	s_PreviousCheckpointNumber = pEditor->m_TeleCheckpointNumber;
 	s_PreviousViewTeleNumber = pEditor->m_ViewTeleNumber;
 

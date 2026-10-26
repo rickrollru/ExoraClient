@@ -9,1750 +9,1762 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#include <set>
-#include <cmath>
 #include <deque>
 #include <queue>
+#include <set>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace
 {
-// a decision every few ticks: often enough for gores timing, few enough to search
-constexpr int STEP_TICKS = 5;
-// near freeze every 2 ticks: dropping into a narrow shaft lined with freeze needs that precision
-constexpr int FINE_STEP_TICKS = 2;
-constexpr int MAX_TICKS = 50 * 60 * 10; // ten minutes
-constexpr int FREEZE_TICKS = 50 * 3; // sv_freeze_delay
-// tries without the next hint before the precise search is called (25000 before: on 70s the waiting took a
-// quarter of all the tries; with 3000 the whole map went from 6.5 to under 5 minutes)
-constexpr int REPAIR_AFTER = 3000;
-constexpr float FAR = 1e9f;
+	// a decision every few ticks: often enough for gores timing, few enough to search
+	constexpr int STEP_TICKS = 5;
+	// near freeze every 2 ticks: dropping into a narrow shaft lined with freeze needs that precision
+	constexpr int FINE_STEP_TICKS = 2;
+	constexpr int MAX_TICKS = 50 * 60 * 10; // ten minutes
+	constexpr int FREEZE_TICKS = 50 * 3; // sv_freeze_delay
+	// tries without the next hint before the precise search is called (25000 before: on 70s the waiting took a
+	// quarter of all the tries; with 3000 the whole map went from 6.5 to under 5 minutes)
+	constexpr int REPAIR_AFTER = 3000;
+	constexpr float FAR = 1e9f;
 
-// the part of the character core that changes while it moves, small enough to keep many of them
-struct SState
-{
-	vec2 m_Pos;
-	vec2 m_Vel;
-	vec2 m_HookPos;
-	vec2 m_HookDir;
-	vec2 m_HookTeleBase;
-	int m_HookTick;
-	int m_HookState;
-	int m_Jumped;
-	int m_JumpedTotal;
-	int m_Jumps;
-	bool m_NewHook;
-	bool m_LeftWall;
-	int m_Colliding;
-	CNetObj_PlayerInput m_Input;
-	int m_TeleCheckpoint = 0; // the last tele checkpoint passed (not part of the core)
-	int m_FreezeTicks = 0; // frozen for so long still: no input
-	int m_FreezeTouch = 0; // the soft check: ticks in a row the middle of the tee was in freeze
-	bool m_ThawOk = false; // frozen in a freeze wall the map leads through: thawing out is the way
-};
-
-struct SNode
-{
-	SState m_State;
-	int m_Parent;
-	XcSolver::SStep m_Step;
-	int m_Steps; // ticks since the start
-	int m_Stage; // hints passed
-};
-
-void Save(const CCharacterCore &Core, SState &State)
-{
-	State.m_Pos = Core.m_Pos;
-	State.m_Vel = Core.m_Vel;
-	State.m_HookPos = Core.m_HookPos;
-	State.m_HookDir = Core.m_HookDir;
-	State.m_HookTeleBase = Core.m_HookTeleBase;
-	State.m_HookTick = Core.m_HookTick;
-	State.m_HookState = Core.m_HookState;
-	State.m_Jumped = Core.m_Jumped;
-	State.m_JumpedTotal = Core.m_JumpedTotal;
-	State.m_Jumps = Core.m_Jumps;
-	State.m_NewHook = Core.m_NewHook;
-	State.m_LeftWall = Core.m_LeftWall;
-	State.m_Colliding = Core.m_Colliding;
-	State.m_Input = Core.m_Input;
-}
-
-void Load(CCharacterCore &Core, const SState &State)
-{
-	Core.m_Pos = State.m_Pos;
-	Core.m_Vel = State.m_Vel;
-	Core.m_HookPos = State.m_HookPos;
-	Core.m_HookDir = State.m_HookDir;
-	Core.m_HookTeleBase = State.m_HookTeleBase;
-	Core.m_HookTick = State.m_HookTick;
-	Core.m_HookState = State.m_HookState;
-	Core.m_Jumped = State.m_Jumped;
-	Core.m_JumpedTotal = State.m_JumpedTotal;
-	Core.m_Jumps = State.m_Jumps;
-	Core.m_NewHook = State.m_NewHook;
-	Core.m_LeftWall = State.m_LeftWall;
-	Core.m_Colliding = State.m_Colliding;
-	Core.m_Input = State.m_Input;
-}
-
-class CSearch
-{
-public:
-	explicit CSearch(XcSolver::CJob &Job) :
-		m_Job(Job) {}
-
-	void Run();
-
-private:
-	XcSolver::CJob &m_Job;
-	CCollision m_Collision;
-	// the way through free cells, in pixels: to each hint and the last one to the finish
-	std::vector<std::vector<float>> m_vvFields;
-	std::vector<float> m_vRest; // from reaching target k on: the way left after it
-
-	int Tile(const std::vector<CTile> &vTiles, int x, int y) const
+	// the part of the character core that changes while it moves, small enough to keep many of them
+	struct SState
 	{
-		if(vTiles.empty() || x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
-			return 0;
-		return vTiles[y * m_Job.m_Width + x].m_Index;
-	}
-	// death and deep freeze end a try; freeze only freezes: the tee flies on and an unfreeze tile or 3 s
-	// out of the freeze free it (maps lead through freeze into unfreeze)
-	static bool Deadly(int Index) { return Index == TILE_DEATH || Index == TILE_DFREEZE; }
-	static bool Freezes(int Index) { return Index == TILE_FREEZE || Index == TILE_LFREEZE; }
-	static bool Unfreezes(int Index) { return Index == TILE_UNFREEZE || Index == TILE_DUNFREEZE; }
-	bool FreezeAt(vec2 Pos) const
-	{
-		const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
-		return Freezes(Tile(m_Job.m_vGame, x, y)) || Freezes(Tile(m_Job.m_vFront, x, y));
-	}
-	bool UnfreezeAt(vec2 Pos) const
-	{
-		const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
-		return Unfreezes(Tile(m_Job.m_vGame, x, y)) || Unfreezes(Tile(m_Job.m_vFront, x, y));
-	}
-	bool DeadlyAt(vec2 Pos) const
-	{
-		const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
-		return Deadly(Tile(m_Job.m_vGame, x, y)) || Deadly(Tile(m_Job.m_vFront, x, y));
-	}
-	bool FinishAt(vec2 Pos) const
-	{
-		const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
-		return Tile(m_Job.m_vGame, x, y) == TILE_FINISH || Tile(m_Job.m_vFront, x, y) == TILE_FINISH;
-	}
-	float Field(int Target, vec2 Pos) const
-	{
-		const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-		return m_vvFields[Target][y * m_Job.m_Width + x];
-	}
-	float Heuristic(vec2 Pos, int Stage) const
-	{
-		float Value = Field(Stage, Pos);
-		// a hint in a wall or behind one: straight to it
-		if(Value >= FAR && Stage < (int)m_Job.m_vHints.size())
-			Value = distance(Pos, m_Job.m_vHints[Stage]);
-		return Value >= FAR ? FAR : Value + m_vRest[Stage];
-	}
-	void BuildField(std::vector<float> &vField, int Hint);
-	std::vector<float> m_vStepCost; // per cell for the fields, 0: blocked
-	// freeze "doors": a freeze cell left in a direction (bit k: aDx/aDy[k] below) that reaches an unfreeze within a
-	// few cells, so passing it that way is a way of the map (Afternight: a freeze wall with unfreeze right behind
-	// it, made to be passed from one side only)
-	std::vector<uint8_t> m_vDoor;
-	static constexpr uint8_t DOOR_FALL = 0x10; // a long fall into an unfreeze below
-	void BuildDoors();
-	// a tele back to the checkpoint: no way through there for the routes (SolarSystem: a line of them all round
-	// each planet; the route went straight through it into space)
-	bool SendsBack(int x, int y) const
-	{
-		if(m_Job.m_vTele.empty())
-			return false;
-		const int Type = m_Job.m_vTele[y * m_Job.m_Width + x].m_Type;
-		return m_Job.m_vTele[y * m_Job.m_Width + x].m_Number > 0 && (Type == TILE_TELECHECKIN || Type == TILE_TELECHECKINEVIL);
-	}
-	// the physics where the tee is, before each tick (the server: CCharacter::HandleTuneLayer)
-	void ApplyTune(CCharacterCore &Core) const
-	{
-		if(m_Job.m_vTuning.empty())
-			return;
-		int Zone = 0;
-		if(!m_Job.m_vTune.empty())
-		{
-			const int x = std::clamp((int)(Core.m_Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Core.m_Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-			const CTuneTile &Tile = m_Job.m_vTune[y * m_Job.m_Width + x];
-			Zone = Tile.m_Type ? Tile.m_Number : 0;
-		}
-		Core.m_Tuning = m_Job.m_vTuning[Zone];
-	}
-	// freeze walls the map leads through (no way around them, no unfreeze behind): the tee flies through
-	// frozen and thaws out (Afternight: a dozen walls one cell thick); around the cells where the shortest way to
-	// the finish crosses freeze
-	std::vector<uint8_t> m_vThawOk;
-	void BuildThawOk();
-	float FreezeCost(int Cell, int Dir) const { return m_vDoor[Cell] & (1 << Dir) ? 32.0f * 3.0f : 32.0f * 400.0f; }
-
-	// teleports: where each number comes out, and the cells of the ins (for the distances)
-	std::vector<std::vector<vec2>> m_vvTeleOuts; // [number - 1]
-	std::vector<std::vector<vec2>> m_vvCheckOuts; // [number - 1]
-	std::vector<std::vector<int>> m_vvTeleIns; // [number - 1] cells of normal and evil ins
-	void BuildTeles();
-	// without hints of the mapper: a route through the free cells that keeps to the middle of the ways and away
-	// from freeze, with a hint every few cells along it; the search goes from one to the next
-	void AutoHints();
-	const CTeleTile *TeleAt(vec2 Pos) const
-	{
-		if(m_Job.m_vTele.empty())
-			return nullptr;
-		const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
-		if(x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
-			return nullptr;
-		const CTeleTile &Tile = m_Job.m_vTele[y * m_Job.m_Width + x];
-		return Tile.m_Type ? &Tile : nullptr;
-	}
-	// one tick along the way of the middle of the tee, like the server: freeze, teleports, the finish
-	void HandleTiles(vec2 From, CCharacterCore &Core, int &TeleCheckpoint, int &FreezeTicks, bool &Unfrozen, bool &Dead, bool &Done, bool *pThawOk = nullptr) const;
-
-	// the report
-	enum
-	{
-		END_DEATH = 0, // a death or deep freeze tile
-		END_OUT, // out of the map
-		END_THAW, // thawed out by waiting after freeze
-		END_STUCK, // came to rest in freeze
-		NUM_ENDS,
+		vec2 m_Pos;
+		vec2 m_Vel;
+		vec2 m_HookPos;
+		vec2 m_HookDir;
+		vec2 m_HookTeleBase;
+		int m_HookTick;
+		int m_HookState;
+		int m_Jumped;
+		int m_JumpedTotal;
+		int m_Jumps;
+		bool m_NewHook;
+		bool m_LeftWall;
+		int m_Colliding;
+		CNetObj_PlayerInput m_Input;
+		int m_TeleCheckpoint = 0; // the last tele checkpoint passed (not part of the core)
+		int m_FreezeTicks = 0; // frozen for so long still: no input
+		int m_FreezeTouch = 0; // the soft check: ticks in a row the middle of the tee was in freeze
+		bool m_ThawOk = false; // frozen in a freeze wall the map leads through: thawing out is the way
 	};
-	mutable int m_aEnds[NUM_ENDS] = {};
-	mutable bool m_TouchedFreeze = false; // the soft check: this tick passed freeze
-	void Log(const char *pFormat, ...);
-	void LogGrid(vec2 Center, const std::vector<vec2> &vPath) const;
-	// one step with the strict check: false when it ends in freeze, death or out of the map
-	bool StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core);
-	// a precise search for a place the main one does not get through: see the function
-	int Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest);
-	// the blocks a hook reaches from a cell: like a player, the bot hooks real blocks, not just a few directions
-	struct SHookSpot
-	{
-		vec2 m_Hit; // where the hook grabs
-		vec2 m_Before; // the free place just before it
-	};
-	std::unordered_map<int, std::vector<SHookSpot>> m_HookSpots;
-	const std::vector<SHookSpot> &HookSpots(vec2 Pos);
-	void AddAimedHooks(vec2 Pos, int Stage, int Count, std::vector<XcSolver::SStep> &vSteps);
-	std::vector<uint8_t> m_vNearFreeze; // freeze or death within two cells
-	std::vector<uint8_t> m_vCellTiles; // the cell has death, freeze, unfreeze, the finish or a teleport
-	bool NearFreeze(vec2 Pos) const
-	{
-		const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-		return m_vNearFreeze[y * m_Job.m_Width + x] != 0;
-	}
-};
 
-const std::vector<CSearch::SHookSpot> &CSearch::HookSpots(vec2 Pos)
-{
-	const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-	const int Cell = y * m_Job.m_Width + x;
-	auto It = m_HookSpots.find(Cell);
-	if(It != m_HookSpots.end())
-		return It->second;
-	// rays from the middle of the cell, one spot per block hit (the hook reaches 380 px)
-	std::vector<SHookSpot> &vSpots = m_HookSpots[Cell];
-	const vec2 Center(x * 32.0f + 16.0f, y * 32.0f + 16.0f);
-	int LastBlock = -1;
-	for(int i = 0; i < 72; i++)
-	{
-		const vec2 Dir = direction(i * 2.0f * pi / 72.0f);
-		vec2 Hit, Before;
-		if(m_Collision.IntersectLine(Center, Center + Dir * 370.0f, &Hit, &Before) != TILE_SOLID)
-			continue;
-		const vec2 Inside = Hit + Dir * 2.0f;
-		const int Block = (int)(Inside.y / 32.0f) * m_Job.m_Width + (int)(Inside.x / 32.0f);
-		if(Block == LastBlock)
-			continue;
-		LastBlock = Block;
-		vSpots.push_back({Inside, Before});
-	}
-	return vSpots;
-}
-
-void CSearch::AddAimedHooks(vec2 Pos, int Stage, int Count, std::vector<XcSolver::SStep> &vSteps)
-{
-	// the blocks that pull best towards the way ahead, and besides one block in each direction around: hooks that
-	// brake or turn are needed too (a 70s report: the bot flew past a drop between freeze because the hook to the
-	// wall behind was never tried), but only those lost the precise forward hooks a corridor needs (next report)
-	const std::vector<SHookSpot> &vSpots = HookSpots(Pos);
-	std::vector<std::pair<float, int>> vOrder;
-	for(int i = 0; i < (int)vSpots.size(); i++)
-		if(distance(vSpots[i].m_Hit, Pos) <= 375.0f)
-			vOrder.push_back({Heuristic(vSpots[i].m_Before, Stage), i});
-	std::sort(vOrder.begin(), vOrder.end());
-	std::vector<float> vChosen;
-	auto Add = [&](int i) {
-		const float Angle = angle(vSpots[i].m_Hit - Pos);
-		for(float Other : vChosen)
-		{
-			float Diff = std::fabs(Angle - Other);
-			if(Diff > pi)
-				Diff = 2.0f * pi - Diff;
-			if(Diff < 4.0f * pi / 180.0f)
-				return;
-		}
-		vChosen.push_back(Angle);
-	};
-	for(const auto &Entry : vOrder)
-	{
-		if((int)vChosen.size() >= Count)
-			break;
-		Add(Entry.second);
-	}
-	// one per direction: the best of each of 8 sectors (sorted already, so the first in a sector is its best)
-	bool aTaken[8] = {};
-	for(const auto &Entry : vOrder)
-	{
-		if(!m_Job.m_Variant.m_AimAround)
-			break;
-		const int k = std::clamp((int)((angle(vSpots[Entry.second].m_Hit - Pos) + pi) / (2.0f * pi) * 8.0f), 0, 7);
-		if(aTaken[k])
-			continue;
-		aTaken[k] = true;
-		Add(Entry.second);
-	}
-	for(float Angle : vChosen)
-		for(int Dir = -1; Dir <= 1; Dir++)
-			for(int Jump = 0; Jump <= 1; Jump++)
-				vSteps.push_back({Dir, Jump != 0, 2, direction(Angle) * 100.0f});
-}
-
-// Hint -1: from the finish line
-void CSearch::BuildDoors()
-{
-	const int w = m_Job.m_Width, h = m_Job.m_Height;
-	m_vDoor.assign((size_t)w * h, 0);
-	const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
-	for(int y = 0; y < h; y++)
-		for(int x = 0; x < w; x++)
-		{
-			if(!Freezes(Tile(m_Job.m_vGame, x, y)) && !Freezes(Tile(m_Job.m_vFront, x, y)))
-				continue;
-			for(int d = 0; d < 4; d++)
-				for(int k = 1; k <= 4; k++)
-				{
-					const int nx = x + aDx[d] * k, ny = y + aDy[d] * k;
-					if(nx < 0 || ny < 0 || nx >= w || ny >= h)
-						break;
-					const int g = Tile(m_Job.m_vGame, nx, ny), f = Tile(m_Job.m_vFront, nx, ny);
-					if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f))
-						break;
-					if(Unfreezes(g) || Unfreezes(f))
-					{
-						m_vDoor[y * w + x] |= 1 << d;
-						break;
-					}
-				}
-			// a long fall into an unfreeze: frozen, the tee drops straight down (Afternight: a freeze shaft one cell
-			// wide, 38 cells down to the unfreeze, the way on is to fly into it from the side); a way whichever way
-			// the tee comes in, up to 64 cells (a drop that long takes under 2 s, less than the freeze lasts)
-			for(int k = 1; k <= 64; k++)
-			{
-				if(y + k >= h)
-					break;
-				const int g = Tile(m_Job.m_vGame, x, y + k), f = Tile(m_Job.m_vFront, x, y + k);
-				if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f))
-					break;
-				if(Unfreezes(g) || Unfreezes(f))
-				{
-					m_vDoor[y * w + x] |= 0x0f | DOOR_FALL;
-					break;
-				}
-			}
-		}
-}
-
-void CSearch::BuildThawOk()
-{
-	const int w = m_Job.m_Width, h = m_Job.m_Height;
-	m_vThawOk.assign((size_t)w * h, 0);
-	if(m_Job.m_Forgiving)
-		return;
-	const std::vector<float> &vField = m_vvFields.back();
-	int Cell = std::clamp((int)(m_Job.m_Start.y / 32.0f), 0, h - 1) * w + std::clamp((int)(m_Job.m_Start.x / 32.0f), 0, w - 1);
-	if(vField[Cell] >= FAR)
-		return;
-	const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
-	for(int Guard = 0; Guard < w * h && vField[Cell] > 0.0f; Guard++)
-	{
-		const int x = Cell % w, y = Cell / w;
-		int Next = -1, Dir = 0;
-		float Best = vField[Cell];
-		for(int d = 0; d < 4; d++)
-		{
-			const int nx = x + aDx[d], ny = y + aDy[d];
-			if(nx >= 0 && ny >= 0 && nx < w && ny < h && vField[ny * w + nx] < Best)
-			{
-				Best = vField[ny * w + nx];
-				Next = ny * w + nx;
-				Dir = d;
-			}
-		}
-		if(Next < 0)
-		{
-			if(!m_Job.m_vTele.empty() && (m_Job.m_vTele[Cell].m_Type == TILE_TELEIN || m_Job.m_vTele[Cell].m_Type == TILE_TELEINEVIL) && m_Job.m_vTele[Cell].m_Number > 0 && !m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1].empty())
-			{
-				const vec2 Out = m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1][0];
-				Cell = (int)(Out.y / 32.0f) * w + (int)(Out.x / 32.0f);
-				continue;
-			}
-			break;
-		}
-		// freeze on the way that is not a door: the whole wall around it, up to 10 cells away (the way over it may
-		// be anywhere along the wall: on Afternight the tee goes through low and falls down a shaft behind it)
-		if(m_vStepCost[Next] > 32.0f && !(m_vDoor[Next] & (1 << Dir)) && !m_vThawOk[Next])
-		{
-			std::deque<std::pair<int, int>> Fill = {{Next, 0}};
-			m_vThawOk[Next] = 1;
-			while(!Fill.empty())
-			{
-				const auto [c, Depth] = Fill.front();
-				Fill.pop_front();
-				if(Depth >= 10)
-					continue;
-				for(int d = 0; d < 4; d++)
-				{
-					const int ax = c % w + aDx[d], ay = c / w + aDy[d];
-					if(ax < 0 || ay < 0 || ax >= w || ay >= h || m_vStepCost[ay * w + ax] <= 32.0f || m_vThawOk[ay * w + ax])
-						continue;
-					m_vThawOk[ay * w + ax] = 1;
-					Fill.push_back({ay * w + ax, Depth + 1});
-				}
-			}
-		}
-		Cell = Next;
-	}
-	const int Walls = (int)std::count(m_vThawOk.begin(), m_vThawOk.end(), 1);
-	if(Walls > 0)
-		Log("freeze the shortest way crosses (flying through frozen is allowed there): %d cells\n", Walls);
-	// the falls into an unfreeze last longer than the precise search lets a tee stay frozen: allowed there too
-	for(size_t i = 0; i < m_vDoor.size(); i++)
-		if(m_vDoor[i] & DOOR_FALL)
-			m_vThawOk[i] = 1;
-}
-
-void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
-{
-	const int w = m_Job.m_Width, h = m_Job.m_Height;
-	vDistance.assign((size_t)w * h, FAR);
-	// Dijkstra: every cell is settled once (a plain queue went over the same cells again and again, a free cell
-	// costing 32 and a freeze one 12800, and building the fields took most of the time of a short search)
-	using TEntry = std::pair<float, int>;
-	std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Queue;
-	if(Hint >= 0)
-	{
-		const vec2 Pos = m_Job.m_vHints[Hint];
-		const int i = std::clamp((int)(Pos.y / 32.0f), 0, h - 1) * w + std::clamp((int)(Pos.x / 32.0f), 0, w - 1);
-		vDistance[i] = 0.0f;
-		Queue.push({0.0f, i});
-	}
-	else
-		for(int i = 0; i < w * h; i++)
-			if(m_Job.m_vGame[i].m_Index == TILE_FINISH || (!m_Job.m_vFront.empty() && m_Job.m_vFront[i].m_Index == TILE_FINISH))
-			{
-				vDistance[i] = 0.0f;
-				Queue.push({0.0f, i});
-			}
-	// what it costs to step into each cell: 0 blocked, through freeze is possible but much harder (once per map)
-	if(m_vStepCost.empty())
-	{
-		m_vStepCost.assign((size_t)w * h, 0.0f);
-		for(int y = 0; y < h; y++)
-			for(int x = 0; x < w; x++)
-			{
-				const int Game = Tile(m_Job.m_vGame, x, y), Front = Tile(m_Job.m_vFront, x, y);
-				if(Game == TILE_SOLID || Game == TILE_NOHOOK || Deadly(Game) || Deadly(Front) || SendsBack(x, y))
-					continue;
-				m_vStepCost[y * w + x] = Freezes(Game) || Freezes(Front) ? 32.0f * 400.0f : 32.0f;
-			}
-	}
-	while(!Queue.empty())
-	{
-		const auto [Dist, i] = Queue.top();
-		Queue.pop();
-		if(Dist > vDistance[i])
-			continue;
-		const int x = i % w, y = i / w;
-		// the way back through a teleport: from its out to every in of the number
-		if(!m_Job.m_vTele.empty() && m_Job.m_vTele[i].m_Type == TILE_TELEOUT && m_Job.m_vTele[i].m_Number > 0)
-			for(int In : m_vvTeleIns[m_Job.m_vTele[i].m_Number - 1])
-				if(vDistance[In] > Dist + 32.0f)
-				{
-					vDistance[In] = Dist + 32.0f;
-					Queue.push({vDistance[In], In});
-				}
-		const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
-		for(int d = 0; d < 4; d++)
-		{
-			const int nx = x + aDx[d], ny = y + aDy[d];
-			if(nx < 0 || ny < 0 || nx >= w || ny >= h)
-				continue;
-			const int n = ny * w + nx;
-			if(m_vStepCost[n] == 0.0f)
-				continue;
-			// the tee goes from n to i: the other way round than d (d ^ 1)
-			const float Next = Dist + (m_vStepCost[n] > 32.0f ? FreezeCost(n, d ^ 1) : m_vStepCost[n]);
-			if(vDistance[n] <= Next)
-				continue;
-			vDistance[n] = Next;
-			Queue.push({Next, n});
-		}
-	}
-}
-
-void CSearch::BuildTeles()
-{
-	m_vvTeleOuts.assign(256, {});
-	m_vvCheckOuts.assign(256, {});
-	m_vvTeleIns.assign(256, {});
-	for(size_t i = 0; i < m_Job.m_vTele.size(); i++)
-	{
-		const CTeleTile &Tile = m_Job.m_vTele[i];
-		if(Tile.m_Number == 0)
-			continue;
-		const vec2 Center((i % m_Job.m_Width) * 32.0f + 16.0f, (i / m_Job.m_Width) * 32.0f + 16.0f);
-		if(Tile.m_Type == TILE_TELEOUT)
-			m_vvTeleOuts[Tile.m_Number - 1].push_back(Center);
-		else if(Tile.m_Type == TILE_TELECHECKOUT)
-			m_vvCheckOuts[Tile.m_Number - 1].push_back(Center);
-		else if(Tile.m_Type == TILE_TELEIN || Tile.m_Type == TILE_TELEINEVIL)
-			m_vvTeleIns[Tile.m_Number - 1].push_back((int)i);
-	}
-}
-
-void CSearch::HandleTiles(vec2 From, CCharacterCore &Core, int &TeleCheckpoint, int &FreezeTicks, bool &Unfrozen, bool &Dead, bool &Done, bool *pThawOk) const
-{
-	// every pixel along the way, like the server (CCollision::GetMapIndices), and the end too: checking every
-	// 8 pixels let a way clip the corner of a freeze cell that the server counts (a replay of a 70s run)
-	const vec2 To = Core.m_Pos;
-	const float Length = distance(From, To);
-	const int Num = (int)Length + 1;
-	int LastCell = -2;
-	for(int i = 0; i <= Num; i++)
-	{
-		const vec2 Pos = i == Num || Length == 0.0f ? To : mix(From, To, i / Length);
-		// the same cell as the pixel before, or a cell with nothing in it: nothing to do (most of the pixels)
-		const int cx = (int)std::floor(Pos.x / 32.0f), cy = (int)std::floor(Pos.y / 32.0f);
-		const int Cell = cx < 0 || cy < 0 || cx >= m_Job.m_Width || cy >= m_Job.m_Height ? -1 : cy * m_Job.m_Width + cx;
-		if(Cell == LastCell)
-			continue;
-		LastCell = Cell;
-		if(Cell < 0 || !m_vCellTiles[Cell])
-			continue;
-		if(DeadlyAt(Pos))
-		{
-			Dead = true;
-			m_aEnds[END_DEATH]++;
-			return;
-		}
-		if(UnfreezeAt(Pos))
-		{
-			Unfrozen = FreezeTicks > 0;
-			FreezeTicks = 0;
-		}
-		else if(FreezeAt(Pos))
-		{
-			if(m_Job.m_Forgiving)
-				m_TouchedFreeze = true;
-			else
-			{
-				FreezeTicks = FREEZE_TICKS;
-				if(pThawOk)
-					*pThawOk = !m_vThawOk.empty() && m_vThawOk[Cell];
-			}
-		}
-		if(FinishAt(Pos))
-		{
-			Done = true;
-			return;
-		}
-		const CTeleTile *pTele = TeleAt(Pos);
-		if(!pTele || pTele->m_Number == 0)
-			continue;
-		const int Number = pTele->m_Number;
-		auto ResetHook = [&]() {
-			Core.SetHookedPlayer(-1);
-			Core.m_HookState = HOOK_RETRACTED;
-			Core.m_HookPos = Core.m_Pos;
-		};
-		switch(pTele->m_Type)
-		{
-		case TILE_TELECHECK:
-			TeleCheckpoint = Number;
-			break;
-		case TILE_TELEIN:
-		case TILE_TELEINEVIL:
-			// the server picks one of the outs at random, the bot takes the first
-			if(!m_vvTeleOuts[Number - 1].empty())
-			{
-				Core.m_Pos = m_vvTeleOuts[Number - 1][0];
-				if(pTele->m_Type == TILE_TELEINEVIL)
-					Core.m_Vel = vec2(0.0f, 0.0f);
-				ResetHook();
-				return;
-			}
-			break;
-		case TILE_TELECHECKIN:
-		case TILE_TELECHECKINEVIL:
-		{
-			// back to the last checkpoint that has an out, else to the spawn
-			vec2 Target = m_Job.m_Start;
-			for(int k = TeleCheckpoint - 1; k >= 0; k--)
-				if(!m_vvCheckOuts[k].empty())
-				{
-					Target = m_vvCheckOuts[k][0];
-					break;
-				}
-			Core.m_Pos = Target;
-			if(pTele->m_Type == TILE_TELECHECKINEVIL)
-				Core.m_Vel = vec2(0.0f, 0.0f);
-			ResetHook();
-			return;
-		}
-		default:
-			break;
-		}
-	}
-}
-
-void CSearch::Log(const char *pFormat, ...)
-{
-	char aBuf[512];
-	va_list Args;
-	va_start(Args, pFormat);
-	std::vsnprintf(aBuf, sizeof(aBuf), pFormat, Args);
-	va_end(Args);
-	m_Job.m_Result.m_Log += aBuf;
-}
-
-// the cells around a place as text: # wall, N unhookable, F freeze, D death, u unfreeze, T tele in, O tele out,
-// S start, E finish, h hint, * the way of the bot, f its way through freeze, @ the place
-void CSearch::LogGrid(vec2 Center, const std::vector<vec2> &vPath) const
-{
-	const int cx = (int)(Center.x / 32.0f), cy = (int)(Center.y / 32.0f);
-	std::vector<uint8_t> vOnPath((size_t)m_Job.m_Width * m_Job.m_Height, 0);
-	for(const vec2 &Pos : vPath)
-	{
-		const int x = (int)(Pos.x / 32.0f), y = (int)(Pos.y / 32.0f);
-		if(x >= 0 && y >= 0 && x < m_Job.m_Width && y < m_Job.m_Height)
-			vOnPath[y * m_Job.m_Width + x] = 1;
-	}
-	std::string &Out = m_Job.m_Result.m_Log;
-	char aBuf[64];
-	str_format(aBuf, sizeof(aBuf), "cells %d..%d x, %d..%d y\n", cx - 35, cx + 35, cy - 18, cy + 18);
-	Out += aBuf;
-	for(int y = cy - 18; y <= cy + 18; y++)
-	{
-		for(int x = cx - 35; x <= cx + 35; x++)
-		{
-			const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-			const CTeleTile *pTele = TeleAt(vec2(x * 32.0f + 16.0f, y * 32.0f + 16.0f));
-			bool Hint = false;
-			for(const vec2 &H : m_Job.m_vHints)
-				if((int)(H.x / 32.0f) == x && (int)(H.y / 32.0f) == y)
-					Hint = true;
-			char c = '.';
-			if(x == cx && y == cy)
-				c = '@';
-			else if(x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
-				c = ' ';
-			else if(vOnPath[y * m_Job.m_Width + x])
-				c = Freezes(g) || Freezes(f) ? 'f' : '*'; // f: the way goes through freeze there
-			else if(Hint)
-				c = 'h';
-			else if(g == TILE_SOLID)
-				c = '#';
-			else if(g == TILE_NOHOOK)
-				c = 'N';
-			else if(Freezes(g) || Freezes(f))
-				c = 'F';
-			else if(Deadly(g) || Deadly(f))
-				c = 'D';
-			else if(Unfreezes(g) || Unfreezes(f))
-				c = 'u';
-			else if(g == TILE_FINISH || f == TILE_FINISH)
-				c = 'E';
-			else if(g == TILE_START || f == TILE_START)
-				c = 'S';
-			else if(pTele && (pTele->m_Type == TILE_TELEIN || pTele->m_Type == TILE_TELEINEVIL))
-				c = 'T';
-			else if(pTele && pTele->m_Type == TILE_TELEOUT)
-				c = 'O';
-			Out += c;
-		}
-		Out += '\n';
-	}
-}
-
-void CSearch::AutoHints()
-{
-	const int w = m_Job.m_Width, h = m_Job.m_Height;
-	auto Blocks = [&](int x, int y) {
-		if(x < 0 || y < 0 || x >= w || y >= h)
-			return true;
-		const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-		return g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f) || SendsBack(x, y);
-	};
-	// room of each free cell: cells to the nearest wall or freeze, up to 3
-	std::vector<uint8_t> vRoom((size_t)w * h, 0);
-	for(int y = 0; y < h; y++)
-		for(int x = 0; x < w; x++)
-		{
-			if(Blocks(x, y))
-				continue;
-			int Room = 3;
-			for(int r = 1; r < 3 && Room == 3; r++)
-				for(int dy = -r; dy <= r && Room == 3; dy++)
-					for(int dx = -r; dx <= r; dx++)
-						if((std::abs(dx) == r || std::abs(dy) == r) && Blocks(x + dx, y + dy))
-						{
-							Room = r;
-							break;
-						}
-			vRoom[y * w + x] = (uint8_t)Room;
-		}
-	// distances from the finish, narrow cells cost more so the route keeps to the middle
-	std::vector<float> vDistance((size_t)w * h, FAR);
-	std::deque<int> Queue;
-	for(int i = 0; i < w * h; i++)
-		if(m_Job.m_vGame[i].m_Index == TILE_FINISH || (!m_Job.m_vFront.empty() && m_Job.m_vFront[i].m_Index == TILE_FINISH))
-		{
-			vDistance[i] = 0.0f;
-			Queue.push_back(i);
-		}
-	auto Cost = [&](int n, int Dir) {
-		const int x = n % w, y = n / w;
-		const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-		if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || SendsBack(x, y))
-			return FAR;
-		// through freeze only when there is no other way (some maps lead through freeze into unfreeze)
-		if(Freezes(g) || Freezes(f))
-			return FreezeCost(n, Dir);
-		return 32.0f * (vRoom[n] == 1 ? 4.0f : vRoom[n] == 2 ? 1.6f : 1.0f);
-	};
-	while(!Queue.empty())
-	{
-		const int i = Queue.front();
-		Queue.pop_front();
-		const int x = i % w, y = i / w;
-		if(!m_Job.m_vTele.empty() && m_Job.m_vTele[i].m_Type == TILE_TELEOUT && m_Job.m_vTele[i].m_Number > 0)
-			for(int In : m_vvTeleIns[m_Job.m_vTele[i].m_Number - 1])
-				if(vDistance[In] > vDistance[i] + 32.0f)
-				{
-					vDistance[In] = vDistance[i] + 32.0f;
-					Queue.push_back(In);
-				}
-		const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
-		for(int d = 0; d < 4; d++)
-		{
-			const int nx = x + aDx[d], ny = y + aDy[d];
-			if(nx < 0 || ny < 0 || nx >= w || ny >= h)
-				continue;
-			const int n = ny * w + nx;
-			const float c = Cost(n, d ^ 1);
-			if(c >= FAR || vDistance[n] <= vDistance[i] + c)
-				continue;
-			vDistance[n] = vDistance[i] + c;
-			Queue.push_back(n);
-		}
-	}
-	// walk down from the spawn to the finish
-	int Cell = std::clamp((int)(m_Job.m_Start.y / 32.0f), 0, h - 1) * w + std::clamp((int)(m_Job.m_Start.x / 32.0f), 0, w - 1);
-	if(vDistance[Cell] >= FAR)
-		return;
-	std::vector<int> vRoute;
-	for(int Guard = 0; Guard < w * h && vDistance[Cell] > 0.0f; Guard++)
-	{
-		vRoute.push_back(Cell);
-		const int x = Cell % w, y = Cell / w;
-		int Next = -1;
-		float Best = vDistance[Cell];
-		const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
-		for(int d = 0; d < 4; d++)
-		{
-			const int nx = x + aDx[d], ny = y + aDy[d];
-			if(nx >= 0 && ny >= 0 && nx < w && ny < h && vDistance[ny * w + nx] < Best)
-			{
-				Best = vDistance[ny * w + nx];
-				Next = ny * w + nx;
-			}
-		}
-		if(Next < 0)
-		{
-			// a teleport in: go on at its out
-			if(!m_Job.m_vTele.empty() && (m_Job.m_vTele[Cell].m_Type == TILE_TELEIN || m_Job.m_vTele[Cell].m_Type == TILE_TELEINEVIL) && m_Job.m_vTele[Cell].m_Number > 0 && !m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1].empty())
-			{
-				const vec2 Out = m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1][0];
-				Next = (int)(Out.y / 32.0f) * w + (int)(Out.x / 32.0f);
-			}
-			else
-				break;
-		}
-		Cell = Next;
-	}
-	// a hint every 6 cells of the route; each hint keeps its own distances, so a big map gets fewer of them
-	const int MaxHints = std::clamp(50000000 / std::max(w * h, 1), 16, 400);
-	const int Spacing = std::max(6, (int)vRoute.size() / MaxHints + 1);
-	for(size_t i = Spacing; i + Spacing / 2 < vRoute.size(); i += Spacing)
-		m_Job.m_vHints.push_back(vec2((vRoute[i] % w) * 32.0f + 16.0f, (vRoute[i] / w) * 32.0f + 16.0f));
-	m_Job.m_Result.m_vAutoHints = m_Job.m_vHints;
-}
-
-bool CSearch::StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core)
-{
-	Load(Core, State);
-	int TeleCheckpoint = State.m_TeleCheckpoint, FreezeTicks = 0;
-	bool Dead = false, Done = false;
-	const bool Held = State.m_Input.m_Hook != 0;
-	for(int t = 0; t < Step.m_Ticks && !Dead && !Done; t++)
-	{
-		CNetObj_PlayerInput &Input = Core.m_Input;
-		Input.m_Direction = Step.m_Direction;
-		Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
-		if(Step.m_Hook == 0)
-			Input.m_Hook = 0;
-		else if(Step.m_Hook == 2)
-			Input.m_Hook = t == 0 && Held ? 0 : 1;
-		if(Step.m_Hook != 1)
-		{
-			Input.m_TargetX = (int)Step.m_Target.x;
-			Input.m_TargetY = (int)Step.m_Target.y;
-		}
-		const vec2 PrevPos = Core.m_Pos;
-		ApplyTune(Core);
-		Core.Tick(true);
-		Core.Move();
-		Core.Quantize();
-		if(Core.m_Pos.x < 0.0f || Core.m_Pos.y < 0.0f || Core.m_Pos.x >= m_Job.m_Width * 32.0f || Core.m_Pos.y >= m_Job.m_Height * 32.0f)
-			return false;
-		bool Unfrozen = false;
-		HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
-		if(FreezeTicks > 0)
-			return false;
-	}
-	if(Dead)
-		return false;
-	Save(Core, State);
-	State.m_TeleCheckpoint = TeleCheckpoint;
-	State.m_FreezeTicks = 0;
-	return true;
-}
-
-// A precise search from one try of the main search to the next hint: steps of 2 ticks, the hook in 36 directions
-// all around, only in a box around the place, and the tee must not touch freeze. The main search cannot afford
-// that many choices everywhere; here it finds what the main one does not (on 70s a corridor one cell high that
-// turns up into a shaft between freeze: a brute force like this got through in a few hundred steps). The way it
-// finds goes into the main search as tries of its own, so the run stays one piece. Returns the last try, or -1.
-int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest)
-{
-	struct SLocal
+	struct SNode
 	{
 		SState m_State;
 		int m_Parent;
 		XcSolver::SStep m_Step;
-		int m_Ticks;
-		int m_Stage;
+		int m_Steps; // ticks since the start
+		int m_Stage; // hints passed
 	};
-	const SNode &Start = vNodes[From];
-	const vec2 Target = m_Job.m_vHints[std::min(TargetStage - 1, (int)m_Job.m_vHints.size() - 1)];
-	const vec2 BoxMin(std::min(Start.m_State.m_Pos.x, Target.x) - 8 * 32.0f, std::min(Start.m_State.m_Pos.y, Target.y) - 8 * 32.0f);
-	const vec2 BoxMax(std::max(Start.m_State.m_Pos.x, Target.x) + 8 * 32.0f, std::max(Start.m_State.m_Pos.y, Target.y) + 8 * 32.0f);
-	std::vector<SLocal> vLocal;
-	vLocal.push_back({Start.m_State, -1, Start.m_Step, 0, Start.m_Stage});
-	using TEntry = std::pair<float, int>;
-	std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Open;
-	Open.push({0.0f, 0});
-	std::unordered_set<uint64_t> Seen;
-	CWorldCore World;
-	CCharacterCore Core;
-	Core.Init(&World, &m_Collision);
-	Core.Reset();
-	// alone on the map: no checks against other players on every pixel of every move (most of the time went
-	// there), the way the tee moves does not change
-	Core.m_Solo = true;
-	Core.m_Id = 0;
-	World.m_apCharacters[0] = &Core;
-	int Found = -1;
-	for(int Expanded = 0; !Open.empty() && Expanded < Budget && Found < 0; Expanded++)
+
+	void Save(const CCharacterCore &Core, SState &State)
 	{
-		const int Index = Open.top().second;
-		Open.pop();
-		const SLocal Node = vLocal[Index];
-		const bool Hooking = Node.m_State.m_HookState == HOOK_GRABBED || Node.m_State.m_HookState == HOOK_FLYING;
-		// no jump left in the air: pressing it changes nothing
-		const bool NoJump = (Node.m_State.m_Jumped & 2) && !m_Collision.IsOnGround(Node.m_State.m_Pos, CCharacterCore::PhysicalSize());
-		for(int Dir = -1; Dir <= 1 && Found < 0; Dir++)
-			for(int Jump = 0; Jump <= 1 && Found < 0; Jump++)
-				for(int Hook = -2; Hook < 36 && Found < 0; Hook++)
+		State.m_Pos = Core.m_Pos;
+		State.m_Vel = Core.m_Vel;
+		State.m_HookPos = Core.m_HookPos;
+		State.m_HookDir = Core.m_HookDir;
+		State.m_HookTeleBase = Core.m_HookTeleBase;
+		State.m_HookTick = Core.m_HookTick;
+		State.m_HookState = Core.m_HookState;
+		State.m_Jumped = Core.m_Jumped;
+		State.m_JumpedTotal = Core.m_JumpedTotal;
+		State.m_Jumps = Core.m_Jumps;
+		State.m_NewHook = Core.m_NewHook;
+		State.m_LeftWall = Core.m_LeftWall;
+		State.m_Colliding = Core.m_Colliding;
+		State.m_Input = Core.m_Input;
+	}
+
+	void Load(CCharacterCore &Core, const SState &State)
+	{
+		Core.m_Pos = State.m_Pos;
+		Core.m_Vel = State.m_Vel;
+		Core.m_HookPos = State.m_HookPos;
+		Core.m_HookDir = State.m_HookDir;
+		Core.m_HookTeleBase = State.m_HookTeleBase;
+		Core.m_HookTick = State.m_HookTick;
+		Core.m_HookState = State.m_HookState;
+		Core.m_Jumped = State.m_Jumped;
+		Core.m_JumpedTotal = State.m_JumpedTotal;
+		Core.m_Jumps = State.m_Jumps;
+		Core.m_NewHook = State.m_NewHook;
+		Core.m_LeftWall = State.m_LeftWall;
+		Core.m_Colliding = State.m_Colliding;
+		Core.m_Input = State.m_Input;
+	}
+
+	class CSearch
+	{
+	public:
+		explicit CSearch(XcSolver::CJob &Job) :
+			m_Job(Job) {}
+
+		void Run();
+
+	private:
+		XcSolver::CJob &m_Job;
+		CCollision m_Collision;
+		// the way through free cells, in pixels: to each hint and the last one to the finish
+		std::vector<std::vector<float>> m_vvFields;
+		std::vector<float> m_vRest; // from reaching target k on: the way left after it
+
+		int Tile(const std::vector<CTile> &vTiles, int x, int y) const
+		{
+			if(vTiles.empty() || x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
+				return 0;
+			return vTiles[y * m_Job.m_Width + x].m_Index;
+		}
+		// death and deep freeze end a try; freeze only freezes: the tee flies on and an unfreeze tile or 3 s
+		// out of the freeze free it (maps lead through freeze into unfreeze)
+		static bool Deadly(int Index) { return Index == TILE_DEATH || Index == TILE_DFREEZE; }
+		static bool Freezes(int Index) { return Index == TILE_FREEZE || Index == TILE_LFREEZE; }
+		static bool Unfreezes(int Index) { return Index == TILE_UNFREEZE || Index == TILE_DUNFREEZE; }
+		bool FreezeAt(vec2 Pos) const
+		{
+			const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
+			return Freezes(Tile(m_Job.m_vGame, x, y)) || Freezes(Tile(m_Job.m_vFront, x, y));
+		}
+		bool UnfreezeAt(vec2 Pos) const
+		{
+			const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
+			return Unfreezes(Tile(m_Job.m_vGame, x, y)) || Unfreezes(Tile(m_Job.m_vFront, x, y));
+		}
+		bool DeadlyAt(vec2 Pos) const
+		{
+			const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
+			return Deadly(Tile(m_Job.m_vGame, x, y)) || Deadly(Tile(m_Job.m_vFront, x, y));
+		}
+		bool FinishAt(vec2 Pos) const
+		{
+			const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
+			return Tile(m_Job.m_vGame, x, y) == TILE_FINISH || Tile(m_Job.m_vFront, x, y) == TILE_FINISH;
+		}
+		float Field(int Target, vec2 Pos) const
+		{
+			const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
+			return m_vvFields[Target][y * m_Job.m_Width + x];
+		}
+		float Heuristic(vec2 Pos, int Stage) const
+		{
+			float Value = Field(Stage, Pos);
+			// a hint in a wall or behind one: straight to it
+			if(Value >= FAR && Stage < (int)m_Job.m_vHints.size())
+				Value = distance(Pos, m_Job.m_vHints[Stage]);
+			return Value >= FAR ? FAR : Value + m_vRest[Stage];
+		}
+		void BuildField(std::vector<float> &vField, int Hint);
+		std::vector<float> m_vStepCost; // per cell for the fields, 0: blocked
+		// freeze "doors": a freeze cell left in a direction (bit k: aDx/aDy[k] below) that reaches an unfreeze within a
+		// few cells, so passing it that way is a way of the map (Afternight: a freeze wall with unfreeze right behind
+		// it, made to be passed from one side only)
+		std::vector<uint8_t> m_vDoor;
+		static constexpr uint8_t DOOR_FALL = 0x10; // a long fall into an unfreeze below
+		void BuildDoors();
+		// a tele back to the checkpoint: no way through there for the routes (SolarSystem: a line of them all round
+		// each planet; the route went straight through it into space)
+		bool SendsBack(int x, int y) const
+		{
+			if(m_Job.m_vTele.empty())
+				return false;
+			const int Type = m_Job.m_vTele[y * m_Job.m_Width + x].m_Type;
+			const int Number = m_Job.m_vTele[y * m_Job.m_Width + x].m_Number;
+			if(Number <= 0 || (Type != TILE_TELECHECKIN && Type != TILE_TELECHECKINEVIL))
+				return false;
+			// a teleporter numbered above 255 (a ring of tele checkpoints round it): it leads on, not back
+			for(int dy = -1; dy <= 1; dy++)
+				for(int dx = -1; dx <= 1; dx++)
 				{
-					if(Hook == -1 && !Hooking)
-						continue;
-					if(Jump && NoJump)
-						continue;
-					if(Node.m_State.m_FreezeTicks > 0 && (Dir != 0 || Jump || Hook != -2))
-						continue; // frozen: the input does nothing
-					XcSolver::SStep Step = {Dir, Jump != 0, Hook == -2 ? 0 : (Hook == -1 ? 1 : 2), Hook >= 0 ? direction(Hook * 2.0f * pi / 36.0f) * 100.0f : vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f, 2};
-					Load(Core, Node.m_State);
-					int TeleCheckpoint = Node.m_State.m_TeleCheckpoint;
-					int FreezeTicks = Node.m_State.m_FreezeTicks;
-					bool ThawOk = Node.m_State.m_ThawOk;
-					bool Dead = false, Done = false;
-					for(int t = 0; t < 2 && !Dead && !Done; t++)
+					const int nx = x + dx, ny = y + dy;
+					if(nx >= 0 && ny >= 0 && nx < m_Job.m_Width && ny < m_Job.m_Height && m_Job.m_vTele[ny * m_Job.m_Width + nx].m_Type == TILE_TELECHECK && m_Job.m_vTele[ny * m_Job.m_Width + nx].m_Number == Number)
+						return false;
+				}
+			return true;
+		}
+		// the physics where the tee is, before each tick (the server: CCharacter::HandleTuneLayer)
+		void ApplyTune(CCharacterCore &Core) const
+		{
+			if(m_Job.m_vTuning.empty())
+				return;
+			int Zone = 0;
+			if(!m_Job.m_vTune.empty())
+			{
+				const int x = std::clamp((int)(Core.m_Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Core.m_Pos.y / 32.0f), 0, m_Job.m_Height - 1);
+				const CTuneTile &Tile = m_Job.m_vTune[y * m_Job.m_Width + x];
+				Zone = Tile.m_Type ? Tile.m_Number : 0;
+			}
+			Core.m_Tuning = m_Job.m_vTuning[Zone];
+		}
+		// freeze walls the map leads through (no way around them, no unfreeze behind): the tee flies through
+		// frozen and thaws out (Afternight: a dozen walls one cell thick); around the cells where the shortest way to
+		// the finish crosses freeze
+		std::vector<uint8_t> m_vThawOk;
+		void BuildThawOk();
+		float FreezeCost(int Cell, int Dir) const { return m_vDoor[Cell] & (1 << Dir) ? 32.0f * 3.0f : 32.0f * 400.0f; }
+
+		// teleports: where each number comes out, and the cells of the ins (for the distances)
+		std::vector<std::vector<vec2>> m_vvTeleOuts; // [number - 1]
+		std::vector<std::vector<vec2>> m_vvCheckOuts; // [number - 1]
+		std::vector<std::vector<int>> m_vvTeleIns; // [number - 1] cells of normal and evil ins
+		void BuildTeles();
+		// without hints of the mapper: a route through the free cells that keeps to the middle of the ways and away
+		// from freeze, with a hint every few cells along it; the search goes from one to the next
+		void AutoHints();
+		const CTeleTile *TeleAt(vec2 Pos) const
+		{
+			if(m_Job.m_vTele.empty())
+				return nullptr;
+			const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
+			if(x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
+				return nullptr;
+			const CTeleTile &Tile = m_Job.m_vTele[y * m_Job.m_Width + x];
+			return Tile.m_Type ? &Tile : nullptr;
+		}
+		// one tick along the way of the middle of the tee, like the server: freeze, teleports, the finish
+		void HandleTiles(vec2 From, CCharacterCore &Core, int &TeleCheckpoint, int &FreezeTicks, bool &Unfrozen, bool &Dead, bool &Done, bool *pThawOk = nullptr) const;
+
+		// the report
+		enum
+		{
+			END_DEATH = 0, // a death or deep freeze tile
+			END_OUT, // out of the map
+			END_THAW, // thawed out by waiting after freeze
+			END_STUCK, // came to rest in freeze
+			NUM_ENDS,
+		};
+		mutable int m_aEnds[NUM_ENDS] = {};
+		mutable bool m_TouchedFreeze = false; // the soft check: this tick passed freeze
+		void Log(const char *pFormat, ...);
+		void LogGrid(vec2 Center, const std::vector<vec2> &vPath) const;
+		// one step with the strict check: false when it ends in freeze, death or out of the map
+		bool StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core);
+		// a precise search for a place the main one does not get through: see the function
+		int Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest);
+		// the blocks a hook reaches from a cell: like a player, the bot hooks real blocks, not just a few directions
+		struct SHookSpot
+		{
+			vec2 m_Hit; // where the hook grabs
+			vec2 m_Before; // the free place just before it
+		};
+		std::unordered_map<int, std::vector<SHookSpot>> m_HookSpots;
+		const std::vector<SHookSpot> &HookSpots(vec2 Pos);
+		void AddAimedHooks(vec2 Pos, int Stage, int Count, std::vector<XcSolver::SStep> &vSteps);
+		std::vector<uint8_t> m_vNearFreeze; // freeze or death within two cells
+		std::vector<uint8_t> m_vCellTiles; // the cell has death, freeze, unfreeze, the finish or a teleport
+		bool NearFreeze(vec2 Pos) const
+		{
+			const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
+			return m_vNearFreeze[y * m_Job.m_Width + x] != 0;
+		}
+	};
+
+	const std::vector<CSearch::SHookSpot> &CSearch::HookSpots(vec2 Pos)
+	{
+		const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
+		const int Cell = y * m_Job.m_Width + x;
+		auto It = m_HookSpots.find(Cell);
+		if(It != m_HookSpots.end())
+			return It->second;
+		// rays from the middle of the cell, one spot per block hit (the hook reaches 380 px)
+		std::vector<SHookSpot> &vSpots = m_HookSpots[Cell];
+		const vec2 Center(x * 32.0f + 16.0f, y * 32.0f + 16.0f);
+		int LastBlock = -1;
+		for(int i = 0; i < 72; i++)
+		{
+			const vec2 Dir = direction(i * 2.0f * pi / 72.0f);
+			vec2 Hit, Before;
+			if(m_Collision.IntersectLine(Center, Center + Dir * 370.0f, &Hit, &Before) != TILE_SOLID)
+				continue;
+			const vec2 Inside = Hit + Dir * 2.0f;
+			const int Block = (int)(Inside.y / 32.0f) * m_Job.m_Width + (int)(Inside.x / 32.0f);
+			if(Block == LastBlock)
+				continue;
+			LastBlock = Block;
+			vSpots.push_back({Inside, Before});
+		}
+		return vSpots;
+	}
+
+	void CSearch::AddAimedHooks(vec2 Pos, int Stage, int Count, std::vector<XcSolver::SStep> &vSteps)
+	{
+		// the blocks that pull best towards the way ahead, and besides one block in each direction around: hooks that
+		// brake or turn are needed too (a 70s report: the bot flew past a drop between freeze because the hook to the
+		// wall behind was never tried), but only those lost the precise forward hooks a corridor needs (next report)
+		const std::vector<SHookSpot> &vSpots = HookSpots(Pos);
+		std::vector<std::pair<float, int>> vOrder;
+		for(int i = 0; i < (int)vSpots.size(); i++)
+			if(distance(vSpots[i].m_Hit, Pos) <= 375.0f)
+				vOrder.push_back({Heuristic(vSpots[i].m_Before, Stage), i});
+		std::sort(vOrder.begin(), vOrder.end());
+		std::vector<float> vChosen;
+		auto Add = [&](int i) {
+			const float Angle = angle(vSpots[i].m_Hit - Pos);
+			for(float Other : vChosen)
+			{
+				float Diff = std::fabs(Angle - Other);
+				if(Diff > pi)
+					Diff = 2.0f * pi - Diff;
+				if(Diff < 4.0f * pi / 180.0f)
+					return;
+			}
+			vChosen.push_back(Angle);
+		};
+		for(const auto &Entry : vOrder)
+		{
+			if((int)vChosen.size() >= Count)
+				break;
+			Add(Entry.second);
+		}
+		// one per direction: the best of each of 8 sectors (sorted already, so the first in a sector is its best)
+		bool aTaken[8] = {};
+		for(const auto &Entry : vOrder)
+		{
+			if(!m_Job.m_Variant.m_AimAround)
+				break;
+			const int k = std::clamp((int)((angle(vSpots[Entry.second].m_Hit - Pos) + pi) / (2.0f * pi) * 8.0f), 0, 7);
+			if(aTaken[k])
+				continue;
+			aTaken[k] = true;
+			Add(Entry.second);
+		}
+		for(float Angle : vChosen)
+			for(int Dir = -1; Dir <= 1; Dir++)
+				for(int Jump = 0; Jump <= 1; Jump++)
+					vSteps.push_back({Dir, Jump != 0, 2, direction(Angle) * 100.0f});
+	}
+
+	// Hint -1: from the finish line
+	void CSearch::BuildDoors()
+	{
+		const int w = m_Job.m_Width, h = m_Job.m_Height;
+		m_vDoor.assign((size_t)w * h, 0);
+		const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
+		for(int y = 0; y < h; y++)
+			for(int x = 0; x < w; x++)
+			{
+				if(!Freezes(Tile(m_Job.m_vGame, x, y)) && !Freezes(Tile(m_Job.m_vFront, x, y)))
+					continue;
+				for(int d = 0; d < 4; d++)
+					for(int k = 1; k <= 4; k++)
 					{
-						CNetObj_PlayerInput &Input = Core.m_Input;
-						Input.m_Direction = Step.m_Direction;
-						Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
-						if(Step.m_Hook == 0)
-							Input.m_Hook = 0;
-						else if(Step.m_Hook == 2)
-							Input.m_Hook = t == 0 && Node.m_State.m_Input.m_Hook ? 0 : 1;
-						if(Step.m_Hook != 1)
+						const int nx = x + aDx[d] * k, ny = y + aDy[d] * k;
+						if(nx < 0 || ny < 0 || nx >= w || ny >= h)
+							break;
+						const int g = Tile(m_Job.m_vGame, nx, ny), f = Tile(m_Job.m_vFront, nx, ny);
+						if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f))
+							break;
+						if(Unfreezes(g) || Unfreezes(f))
 						{
-							Input.m_TargetX = (int)Step.m_Target.x;
-							Input.m_TargetY = (int)Step.m_Target.y;
-						}
-						if(FreezeTicks > 0)
-						{
-							Input.m_Direction = 0;
-							Input.m_Jump = 0;
-							Input.m_Hook = 0;
-						}
-						const vec2 PrevPos = Core.m_Pos;
-						ApplyTune(Core);
-						Core.Tick(true);
-						Core.Move();
-						Core.Quantize();
-						if(Core.m_Pos.x < BoxMin.x || Core.m_Pos.y < BoxMin.y || Core.m_Pos.x > BoxMax.x || Core.m_Pos.y > BoxMax.y)
-						{
-							Dead = true;
+							m_vDoor[y * w + x] |= 1 << d;
 							break;
 						}
-						const bool WasFrozen = FreezeTicks > 0;
-						if(FreezeTicks > 0)
-							FreezeTicks--;
-						bool Unfrozen = false;
-						HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done, &ThawOk);
-						// through freeze only into an unfreeze close behind it (a freeze door), within half a second,
-						// or through a freeze wall the map leads through
-						if(FreezeTicks > 0 && FreezeTicks < FREEZE_TICKS - 25 && !ThawOk)
-							Dead = true;
-						if(WasFrozen && FreezeTicks == 0 && !Unfrozen && !ThawOk)
-							Dead = true;
-						if(FreezeTicks > 0 && length(Core.m_Vel) < 0.5f && FreezeAt(Core.m_Pos))
-							Dead = true;
 					}
-					if(Dead)
-						continue;
-					SState New;
-					Save(Core, New);
-					New.m_TeleCheckpoint = TeleCheckpoint;
-					New.m_FreezeTicks = FreezeTicks;
-					New.m_FreezeTouch = 0;
-					New.m_ThawOk = ThawOk && FreezeTicks > 0;
-					int Stage = Node.m_Stage;
-					while(FreezeTicks == 0 && Stage < (int)m_Job.m_vHints.size() && (distance(New.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, New.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
-						Stage++;
-					uint64_t Key = ((uint64_t)(int)(New.m_Pos.x / 3.0f) << 48) ^ ((uint64_t)(int)(New.m_Pos.y / 3.0f) << 32) ^ ((uint64_t)(int)(New.m_Vel.x + 64.0f) << 24) ^ ((uint64_t)(int)(New.m_Vel.y + 64.0f) << 16) ^ ((uint64_t)(New.m_HookState & 15) << 8) ^ (uint64_t)(New.m_Jumped & 3) ^ ((uint64_t)(FreezeTicks > 0) << 4);
-					if(New.m_HookState == HOOK_GRABBED)
-						Key ^= ((uint64_t)(int)(New.m_HookPos.x / 8.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 8.0f) * 40503ull);
-					// a hook still in the air: where it flies (before, hooks thrown every way were one try until they
-					// caught, so only hooks catching within 2 ticks, 5 cells, were really tried)
-					else if(New.m_HookState == HOOK_FLYING)
-						Key ^= ((uint64_t)(int)(New.m_HookDir.x * 32.0f + 64.0f) * 0x9e3779b97f4a7c15ull) ^ ((uint64_t)(int)(New.m_HookDir.y * 32.0f + 64.0f) * 0xc2b2ae3d27d4eb4full);
-					if(!Seen.insert(Key).second)
-						continue;
-					vLocal.push_back({New, Index, Step, Node.m_Ticks + 2, Stage});
-					Closest = std::min(Closest, Stage >= TargetStage ? 0.0f : Heuristic(New.m_Pos, Stage));
-					if(Done || Stage >= TargetStage)
-						Found = (int)vLocal.size() - 1;
-					else
-						Open.push({Heuristic(New.m_Pos, Stage) + (Node.m_Ticks + 2) * 3.0f, (int)vLocal.size() - 1});
-				}
-	}
-	if(Found < 0)
-		return -1;
-	// the way found becomes tries of the main search, each the child of the one before
-	std::vector<int> vChain;
-	for(int i = Found; i > 0; i = vLocal[i].m_Parent)
-		vChain.push_back(i);
-	std::reverse(vChain.begin(), vChain.end());
-	int Parent = From;
-	for(int i : vChain)
-	{
-		SNode Child;
-		Child.m_State = vLocal[i].m_State;
-		Child.m_Parent = Parent;
-		Child.m_Step = vLocal[i].m_Step;
-		Child.m_Steps = Start.m_Steps + vLocal[i].m_Ticks;
-		Child.m_Stage = vLocal[i].m_Stage;
-		vNodes.push_back(Child);
-		Parent = (int)vNodes.size() - 1;
-	}
-	return Parent;
-}
-
-void CSearch::Run()
-{
-	XcSolver::SResult &Result = m_Job.m_Result;
-	// tower skip check: a frozen tee lies at the bottom of every shallow freeze pit; it stands like a block one
-	// tee high that can be stood on and hooked (on Extreme two of them: a pit two cells deep)
-	std::vector<uint8_t> vPlatform((size_t)m_Job.m_Width * m_Job.m_Height, 0);
-	if(m_Job.m_TowerDepth > 0)
-	{
-		const int w = m_Job.m_Width;
-		for(int x = 0; x < w; x++)
-			for(int y = m_Job.m_Height - 1; y > 0; y--)
-			{
-				const int Below = m_Job.m_vGame[y * w + x].m_Index;
-				if(Below != TILE_SOLID && Below != TILE_NOHOOK)
-					continue;
-				int Depth = 0;
-				while(y - 1 - Depth >= 0 && (Freezes(Tile(m_Job.m_vGame, x, y - 1 - Depth)) || Freezes(Tile(m_Job.m_vFront, x, y - 1 - Depth))))
-					Depth++;
-				if(Depth == 0 || Depth > m_Job.m_TowerDepth)
-					continue;
-				for(int d = 0; d < Depth; d++)
+				// a long fall into an unfreeze: frozen, the tee drops straight down (Afternight: a freeze shaft one cell
+				// wide, 38 cells down to the unfreeze, the way on is to fly into it from the side); a way whichever way
+				// the tee comes in, up to 64 cells (a drop that long takes under 2 s, less than the freeze lasts)
+				for(int k = 1; k <= 64; k++)
 				{
-					const int i = (y - 1 - d) * w + x;
-					m_Job.m_vGame[i].m_Index = TILE_SOLID;
-					if(!m_Job.m_vFront.empty())
-						m_Job.m_vFront[i].m_Index = 0;
-					vPlatform[i] = 1;
-				}
-			}
-	}
-	m_Collision.XcInitTiles(m_Job.m_vGame.data(), m_Job.m_vFront.empty() ? nullptr : m_Job.m_vFront.data(), m_Job.m_Width, m_Job.m_Height);
-	BuildTeles();
-	BuildDoors();
-	m_vCellTiles.assign((size_t)m_Job.m_Width * m_Job.m_Height, 0);
-	for(int y = 0; y < m_Job.m_Height; y++)
-		for(int x = 0; x < m_Job.m_Width; x++)
-		{
-			const vec2 Center(x * 32.0f + 16.0f, y * 32.0f + 16.0f);
-			const CTeleTile *pTele = TeleAt(Center);
-			m_vCellTiles[y * m_Job.m_Width + x] = DeadlyAt(Center) || FreezeAt(Center) || UnfreezeAt(Center) || FinishAt(Center) || (pTele && pTele->m_Number);
-		}
-	m_vNearFreeze.assign((size_t)m_Job.m_Width * m_Job.m_Height, 0);
-	for(int y = 0; y < m_Job.m_Height; y++)
-		for(int x = 0; x < m_Job.m_Width; x++)
-			if(Deadly(Tile(m_Job.m_vGame, x, y)) || Deadly(Tile(m_Job.m_vFront, x, y)) || Freezes(Tile(m_Job.m_vGame, x, y)) || Freezes(Tile(m_Job.m_vFront, x, y)))
-				for(int dy = -2; dy <= 2; dy++)
-					for(int dx = -2; dx <= 2; dx++)
-						if(x + dx >= 0 && y + dy >= 0 && x + dx < m_Job.m_Width && y + dy < m_Job.m_Height)
-							m_vNearFreeze[(y + dy) * m_Job.m_Width + x + dx] = 1;
-	if(m_Job.m_vHints.empty())
-		AutoHints();
-	else
-	{
-		// a hint of the mapper in a wall or in freeze: moved to the nearest free cell
-		for(vec2 &Hint : m_Job.m_vHints)
-		{
-			const int hx = (int)(Hint.x / 32.0f), hy = (int)(Hint.y / 32.0f);
-			auto FreeCell = [&](int x, int y) {
-				const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-				return x >= 0 && y >= 0 && x < m_Job.m_Width && y < m_Job.m_Height && g != TILE_SOLID && g != TILE_NOHOOK && !Deadly(g) && !Deadly(f) && !Freezes(g) && !Freezes(f);
-			};
-			if(FreeCell(hx, hy))
-				continue;
-			bool Moved = false;
-			for(int r = 1; r <= 12 && !Moved; r++)
-				for(int dy = -r; dy <= r && !Moved; dy++)
-					for(int dx = -r; dx <= r && !Moved; dx++)
-						if((std::abs(dx) == r || std::abs(dy) == r) && FreeCell(hx + dx, hy + dy))
-						{
-							Hint = vec2((hx + dx) * 32.0f + 16.0f, (hy + dy) * 32.0f + 16.0f);
-							Moved = true;
-						}
-		}
-	}
-	const int NumHints = (int)m_Job.m_vHints.size();
-	m_vvFields.resize(NumHints + 1);
-	for(int k = 0; k < NumHints; k++)
-		BuildField(m_vvFields[k], k);
-	BuildField(m_vvFields[NumHints], -1);
-	BuildThawOk();
-	m_vRest.assign(NumHints + 1, 0.0f);
-	for(int k = NumHints - 1; k >= 0; k--)
-	{
-		const float Next = Field(k + 1, m_Job.m_vHints[k]);
-		m_vRest[k] = m_vRest[k + 1] + (Next >= FAR ? (k + 1 < NumHints ? distance(m_Job.m_vHints[k], m_Job.m_vHints[k + 1]) : 0.0f) : Next);
-	}
-	{
-		int Finish = 0, TeleIns = 0;
-		for(size_t i = 0; i < m_Job.m_vGame.size(); i++)
-		{
-			Finish += m_Job.m_vGame[i].m_Index == TILE_FINISH || (!m_Job.m_vFront.empty() && m_Job.m_vFront[i].m_Index == TILE_FINISH);
-			TeleIns += !m_Job.m_vTele.empty() && (m_Job.m_vTele[i].m_Type == TILE_TELEIN || m_Job.m_vTele[i].m_Type == TILE_TELEINEVIL);
-		}
-		Log("map %d x %d cells, start at %.0f %.0f, finish cells %d, teleport ins %d\n", m_Job.m_Width, m_Job.m_Height, m_Job.m_Start.x / 32.0f, m_Job.m_Start.y / 32.0f, Finish, TeleIns);
-		Log("hints %d (%s), tower check depth %d, max tries without a new hint %d, %s check%s\n", NumHints, m_Job.m_Result.m_vAutoHints.empty() ? "set by the mapper" : "automatic route", m_Job.m_TowerDepth, m_Job.m_MaxTries, m_Job.m_Forgiving ? "soft" : "strict", m_Job.m_Ideal ? ", ideal run (not human)" : "");
-		Log("way through free cells from the start: %.0f cells\n", Heuristic(m_Job.m_Start, 0) >= FAR ? -1.0f : Heuristic(m_Job.m_Start, 0) / 32.0f);
-	}
-	if(Heuristic(m_Job.m_Start, 0) >= FAR)
-	{
-		Log("the finish cannot be reached through free cells from the start (walls, missing teleport outs?)\n");
-		LogGrid(m_Job.m_Start, {});
-		// the finish cannot be reached through free cells at all
-		m_Collision.Unload();
-		return;
-	}
-
-	CWorldCore World;
-	CCharacterCore Core;
-	Core.Init(&World, &m_Collision);
-	Core.Reset();
-	// alone on the map: no checks against other players on every pixel of every move (most of the time went
-	// there), the way the tee moves does not change
-	Core.m_Solo = true;
-	Core.m_Id = 0;
-	World.m_apCharacters[0] = &Core;
-	Core.m_Pos = m_Job.m_Start;
-	mem_zero(&Core.m_Input, sizeof(Core.m_Input));
-	Core.m_Input.m_TargetX = 1;
-
-	// the ways a step can go: run left, stand, run right; jump or not; let the hook go, hold it or hook again
-	// towards one of a few directions; the hooks aimed at real blocks around are added for each place (below)
-	std::vector<XcSolver::SStep> vSteps;
-	const XcSolver::SVariant &Variant = m_Job.m_Variant;
-	// straight sideways matters: a corridor one cell high with freeze above and below is crossed on a level hook
-	std::vector<float> vAngles = {-90.0f, -60.0f, -120.0f};
-	if(Variant.m_WideFixed)
-		vAngles.insert(vAngles.end(), {-30.0f, -150.0f, 0.0f, 180.0f});
-	for(int Dir = -1; Dir <= 1; Dir++)
-		for(int Jump = 0; Jump <= 1; Jump++)
-		{
-			vSteps.push_back({Dir, Jump != 0, 0, vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f});
-			vSteps.push_back({Dir, Jump != 0, 1, vec2(0.0f, 0.0f)});
-			for(float Angle : vAngles)
-				vSteps.push_back({Dir, Jump != 0, 2, direction(Angle * pi / 180.0f) * 100.0f});
-		}
-	// near freeze also the directions in between: a tunnel with freeze above and below is crossed hanging on one
-	// block at the right angle (seen in a report on 70s)
-	// (now the aimed hooks: more of them near freeze)
-	std::vector<XcSolver::SStep> vFineSteps = vSteps;
-	// the ideal run, not a human one: the hook may go in any of 16 directions (24 near freeze) and the input
-	// changes every 2 ticks (every tick near freeze)
-	if(m_Job.m_Ideal)
-	{
-		vSteps.clear();
-		vFineSteps.clear();
-		for(int Dir = -1; Dir <= 1; Dir++)
-			for(int Jump = 0; Jump <= 1; Jump++)
-			{
-				for(std::vector<XcSolver::SStep> *pSteps : {&vSteps, &vFineSteps})
-				{
-					pSteps->push_back({Dir, Jump != 0, 0, vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f});
-					pSteps->push_back({Dir, Jump != 0, 1, vec2(0.0f, 0.0f)});
-				}
-				for(int i = 0; i < 16; i++)
-					vSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / 16.0f) * 100.0f});
-				for(int i = 0; i < 24; i++)
-					vFineSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / 24.0f) * 100.0f});
-			}
-	}
-	const int StepTicks = m_Job.m_Ideal ? 2 : STEP_TICKS;
-	const int FineStepTicks = m_Job.m_Ideal ? 1 : FINE_STEP_TICKS;
-	// how much a tick of game time weighs against distance: the ideal run cares more about being fast
-	const float TickWeight = m_Job.m_Ideal ? 12.0f : Variant.m_TickWeight;
-	// the ideal run makes shorter steps, so many more of its states fall into one cell: without more room per cell
-	// it ran out of tries in a shaft lined with freeze (a report on 70s)
-	const int CellCapScale = m_Job.m_Ideal ? 3 : 1;
-
-	std::vector<XcSolver::SStep> vNodeSteps;
-	// a deque grows without copying everything over, so a long search does not need twice the memory for a moment
-	std::deque<SNode> vNodes;
-	SNode Root;
-	Save(Core, Root.m_State);
-	Root.m_Parent = -1;
-	Root.m_Step = {0, false, 0, vec2(100.0f, 0.0f)};
-	Root.m_Steps = 0;
-	Root.m_Stage = 0;
-	vNodes.push_back(Root);
-
-	using TEntry = std::pair<float, int>;
-	std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Open;
-	Open.push({Heuristic(m_Job.m_Start, 0), 0});
-	std::unordered_set<uint64_t> Seen;
-	// a limit of different states per cell (by the variant): too few throws away the precise ones a tight place
-	// needs, too many digs deep into the same dead end; which is right depends on the map
-	std::vector<uint16_t> vPerCell((size_t)m_Job.m_Width * m_Job.m_Height * 4, 0);
-	// tiredness of a place: tries spent in each 4 x 4 cells make it less inviting, so the search climbs out of
-	// a pocket that only looks close to the finish and goes on elsewhere
-	const int RegionW = m_Job.m_Width / 4 + 1, RegionH = m_Job.m_Height / 4 + 1;
-	std::vector<uint32_t> vRegionTries((size_t)RegionW * RegionH, 0);
-	auto Region = [&](vec2 Pos) {
-		return std::clamp((int)(Pos.y / 128.0f), 0, RegionH - 1) * RegionW + std::clamp((int)(Pos.x / 128.0f), 0, RegionW - 1);
-	};
-	float BestDistance = FAR;
-	int BestNode = 0;
-	int Goal = -1;
-	// the search goes on hint by hint: once a few tries reached the next hint, the tries behind it are dropped;
-	// a hint that cannot be reached for long is skipped
-	int MaxStage = 0, AtMaxStage = 0, SinceStage = 0, SkipStage = 0;
-	bool RepairTried = false;
-	// the tries left behind wait here: when every try ahead ends in a dead end, they come back
-	std::vector<TEntry> vReserve;
-	// tries before this hint go to the reserve as they come out of the queue (going through the whole queue
-	// at every hint made the search slower and slower along the map)
-	int DropStage = 0;
-	auto DropBehind = [&]() {
-		DropStage = MaxStage;
-		std::fill(vRegionTries.begin(), vRegionTries.end(), 0);
-	};
-
-	// the limit counts the tries since the last new hint: a long map that goes on step by step is never cut
-	// short, only a search that is stuck for long stops
-	int SinceProgress = 0;
-	const char *pStopReason = "every try ended in a dead end";
-	while((!Open.empty() || !vReserve.empty()) && !m_Job.m_Cancel)
-	{
-		if(SinceProgress >= m_Job.m_MaxTries)
-		{
-			pStopReason = "no new hint for too long";
-			break;
-		}
-		if(Open.empty())
-		{
-			for(const TEntry &Entry : vReserve)
-				Open.push(Entry);
-			vReserve.clear();
-			DropStage = 0;
-		}
-		const int Index = Open.top().second;
-		if(vNodes[Index].m_Stage < DropStage)
-		{
-			vReserve.push_back(Open.top());
-			Open.pop();
-			continue;
-		}
-		Open.pop();
-		Result.m_Explored++;
-		SinceProgress++;
-		const SNode Node = vNodes[Index];
-		vRegionTries[Region(Node.m_State.m_Pos)]++;
-		if(++SinceStage > REPAIR_AFTER && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size() && !RepairTried)
-		{
-			// stuck at this hint: first the precise search, from the tries closest to it (different places and
-			// speeds, the best of each first)
-			RepairTried = true;
-			const vec2 Next = m_Job.m_vHints[MaxStage];
-			const vec2 BestPos = vNodes[BestNode].m_State.m_Pos;
-			// the places to start from: near the next hint, near the best place so far, and further back along the
-			// way (up to four hints before): a big hall on ShyzoEZ-1 is crossed only by flying in fast and jumping,
-			// from 20 cells before the hint the bot got stuck at; the tries in the hall had lost their speed
-			std::vector<std::vector<std::pair<float, int>>> vvByStage(5);
-			for(int i = 0; i < (int)vNodes.size(); i++)
-			{
-				const SNode &N = vNodes[i];
-				const int Back = MaxStage - N.m_Stage;
-				if(Back < 0 || Back > 4 || N.m_State.m_FreezeTicks > 0 || (distance(N.m_State.m_Pos, Next) > 24 * 32.0f && distance(N.m_State.m_Pos, BestPos) > 6 * 32.0f))
-					continue;
-				vvByStage[Back].push_back({Heuristic(N.m_State.m_Pos, MaxStage), i});
-			}
-			// one per cell and rough speed in each stage (the closest tries are often the lost ones, flying fast
-			// into the freeze at the top of a shaft), then taken in turn from each stage
-			std::vector<std::vector<int>> vvPicked(5);
-			for(int Back = 0; Back < 5; Back++)
-			{
-				std::sort(vvByStage[Back].begin(), vvByStage[Back].end());
-				std::unordered_set<uint64_t> Kinds;
-				for(const auto &[Score, i] : vvByStage[Back])
-				{
-					const SState &St = vNodes[i].m_State;
-					const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 6.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 6.0f + 32.0f) << 4);
-					if(Kinds.insert(Kind).second && vvPicked[Back].size() < 30)
-						vvPicked[Back].push_back(i);
-				}
-			}
-			std::vector<int> vPicked;
-			for(size_t k = 0; k < 30; k++)
-				for(int Back = 0; Back < 5; Back++)
-					if(k < vvPicked[Back].size() && vPicked.size() < 100)
-						vPicked.push_back(vvPicked[Back][k]);
-			// a quick look from many places, then longer ones from the best few (getting round a bend into a
-			// shaft one cell wide took the precise search 10000 to 130000 steps on 70s)
-			int Tried = 0, Repaired = -1;
-			// each pass goes on from the places the one before got closest from
-			const int aPassPlaces[] = {100, 8, 3};
-			const int aPassBudget[] = {3000, 40000, 200000};
-			std::vector<std::pair<float, int>> vOrder;
-			for(int i : vPicked)
-				vOrder.push_back({0.0f, i});
-			for(int Pass = 0; Pass < 3 && Repaired < 0; Pass++)
-			{
-				std::vector<std::pair<float, int>> vNext;
-				for(int k = 0; k < std::min(aPassPlaces[Pass], (int)vOrder.size()) && Repaired < 0 && !m_Job.m_Cancel; k++)
-				{
-					Tried++;
-					float Closest = FAR;
-					Repaired = Repair(vOrder[k].second, MaxStage + 1, vNodes, aPassBudget[Pass], Closest);
-					vNext.push_back({Closest, vOrder[k].second});
-				}
-				std::stable_sort(vNext.begin(), vNext.end());
-				// the closest are mostly the tries deepest in, often flying too fast to be saved: the longer
-				// passes also go on from places further back (at most 3, then 1 from each hint back)
-				vOrder.clear();
-				std::vector<int> vPerBack(5, 0);
-				for(const auto &Entry : vNext)
-				{
-					const int Back = std::clamp(MaxStage - vNodes[Entry.second].m_Stage, 0, 4);
-					if(vPerBack[Back]++ < (Pass == 0 ? 3 : 1))
-						vOrder.push_back(Entry);
-				}
-			}
-			if(Repaired >= 0)
-			{
-				const SNode &R = vNodes[Repaired];
-				Log("try %d: hint %d reached by the precise search (from the %d. place tried), at %.0f %.0f, game time %.2f s\n", Result.m_Explored, R.m_Stage, Tried, R.m_State.m_Pos.x / 32.0f, R.m_State.m_Pos.y / 32.0f, R.m_Steps / 50.0f);
-				MaxStage = std::max(MaxStage, R.m_Stage);
-				Result.m_Repairs++;
-				AtMaxStage = 0;
-				SinceStage = 0;
-				SinceProgress = 0;
-				RepairTried = false;
-				BestNode = Repaired;
-				BestDistance = Heuristic(R.m_State.m_Pos, R.m_Stage);
-				Open.push({-1.0f, Repaired});
-				if(FinishAt(R.m_State.m_Pos))
-				{
-					Goal = Repaired;
-					break;
-				}
-				continue;
-			}
-			Log("try %d: the precise search did not get to hint %d either (%d places tried)\n", Result.m_Explored, MaxStage + 1, Tried);
-		}
-		if(SinceStage > 25000 && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size())
-		{
-			RepairTried = false;
-			// this hint does not work out: aim at the next one
-			SkipStage = MaxStage + 1;
-			SinceStage = 0;
-			Log("try %d: hint %d not reached in 25000 tries, skipped (best place %.0f %.0f)\n", Result.m_Explored, MaxStage + 1, vNodes[BestNode].m_State.m_Pos.x / 32.0f, vNodes[BestNode].m_State.m_Pos.y / 32.0f);
-		}
-		if((Result.m_Explored & 255) == 0)
-		{
-			m_Job.m_Progress = Result.m_Explored;
-			// the live view: the way to the best place so far, and a sample of the tried places
-			std::vector<vec2> vPath;
-			for(int i = BestNode; i >= 0; i = vNodes[i].m_Parent)
-				vPath.push_back(vNodes[i].m_State.m_Pos);
-			std::reverse(vPath.begin(), vPath.end());
-			m_Job.m_LiveTicks = vNodes[BestNode].m_Steps;
-			m_Job.m_LiveHints = vNodes[BestNode].m_Stage;
-			std::lock_guard<std::mutex> Lock(m_Job.m_LiveMutex);
-			m_Job.m_vLivePath = std::move(vPath);
-		}
-		if((Result.m_Explored & 7) == 0)
-		{
-			std::lock_guard<std::mutex> Lock(m_Job.m_LiveMutex);
-			if(m_Job.m_vLiveTried.size() < 20000)
-				m_Job.m_vLiveTried.push_back(Node.m_State.m_Pos);
-		}
-		// far too many places kept: the memory would run out
-		if(vNodes.size() > Variant.m_MaxNodes)
-		{
-			// clean up: keep only the tries at the front (this hint and the one before) and the ways that lead to
-			// them; everything left behind goes (on 70s the memory ran out at hint 198 of 235, not a hard place)
-			std::vector<TEntry> vKeep;
-			while(!Open.empty())
-			{
-				if(vNodes[Open.top().second].m_Stage >= MaxStage - 1)
-					vKeep.push_back(Open.top());
-				Open.pop();
-			}
-			for(const TEntry &Entry : vReserve)
-				if(vNodes[Entry.second].m_Stage >= MaxStage - 1)
-					vKeep.push_back(Entry);
-			vReserve.clear();
-			std::vector<int> vNewIndex(vNodes.size(), -1);
-			auto Mark = [&](int i) {
-				for(; i >= 0 && vNewIndex[i] == -1; i = vNodes[i].m_Parent)
-					vNewIndex[i] = -2;
-			};
-			for(const TEntry &Entry : vKeep)
-				Mark(Entry.second);
-			Mark(BestNode);
-			Mark(Index);
-			std::deque<SNode> vKept;
-			for(int i = 0; i < (int)vNodes.size(); i++)
-				if(vNewIndex[i] == -2)
-				{
-					vNewIndex[i] = (int)vKept.size();
-					SNode N = vNodes[i];
-					N.m_Parent = N.m_Parent >= 0 ? vNewIndex[N.m_Parent] : -1;
-					vKept.push_back(N);
-				}
-			for(const TEntry &Entry : vKeep)
-				Open.push({Entry.first, vNewIndex[Entry.second]});
-			BestNode = vNewIndex[BestNode];
-			Log("try %d: memory cleaned up, %d of %d places kept\n", Result.m_Explored, (int)vKept.size(), (int)vNodes.size());
-			vNodes.swap(vKept);
-			vKept = std::deque<SNode>();
-			if(vNodes.size() > Variant.m_MaxNodes * 3 / 4)
-			{
-				pStopReason = "out of memory for places";
-				break;
-			}
-			continue;
-		}
-		if(Node.m_Steps >= MAX_TICKS)
-			continue;
-		const bool Hooking = Node.m_State.m_HookState != HOOK_IDLE && Node.m_State.m_HookState != HOOK_RETRACTED;
-		// both jumps used up in the air: the steps with a jump do the same as without
-		const vec2 Feet = Node.m_State.m_Pos + vec2(0.0f, 14.0f + 5.0f);
-		const bool Grounded = m_Collision.CheckPoint(Feet.x - 7.0f, Feet.y) || m_Collision.CheckPoint(Feet.x + 7.0f, Feet.y);
-		const bool CanJump = Grounded || !(Node.m_State.m_Jumped & 2);
-		const bool Fine = NearFreeze(Node.m_State.m_Pos);
-		vNodeSteps = Fine ? vFineSteps : vSteps;
-		if(!m_Job.m_Ideal)
-			AddAimedHooks(Node.m_State.m_Pos, Node.m_Stage, Fine ? Variant.m_AimFreeze : Variant.m_Aim, vNodeSteps);
-		// near freeze a ring of hooks in every direction: the corridor one cell high on 70s that turns up into a
-		// shaft between freeze is passed with hooks at angles no block "pulls best" towards (a brute force over
-		// 36 directions found it at once)
-		if(Fine && Variant.m_RingFreeze > 0)
-			for(int i = 0; i < Variant.m_RingFreeze; i++)
-				for(int Dir = -1; Dir <= 1; Dir++)
-					for(int Jump = 0; Jump <= 1; Jump++)
-						vNodeSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / Variant.m_RingFreeze) * 100.0f});
-		for(const XcSolver::SStep &Step : vNodeSteps)
-		{
-			if(Step.m_Hook == 1 && !Hooking)
-				continue; // nothing to hold
-			if(Step.m_Jump && !CanJump)
-				continue;
-			if(Node.m_State.m_FreezeTicks > 0 && &Step != &vNodeSteps[0])
-				continue; // frozen: the input does nothing, one way is enough
-			Load(Core, Node.m_State);
-			int TeleCheckpoint = Node.m_State.m_TeleCheckpoint;
-			int FreezeTicks = Node.m_State.m_FreezeTicks;
-			int FreezeTouch = Node.m_State.m_FreezeTouch;
-			bool ThawOk = Node.m_State.m_ThawOk;
-			bool Dead = false, Done = false;
-			const int Ticks = NearFreeze(Node.m_State.m_Pos) ? FineStepTicks : StepTicks;
-			for(int t = 0; t < Ticks && !Dead && !Done; t++)
-			{
-				CNetObj_PlayerInput &Input = Core.m_Input;
-				Input.m_Direction = Step.m_Direction;
-				Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
-				if(Step.m_Hook == 0)
-					Input.m_Hook = 0;
-				else if(Step.m_Hook == 2)
-					Input.m_Hook = t == 0 && Node.m_State.m_Input.m_Hook ? 0 : 1; // let go for a tick if held, then hook again
-				if(Step.m_Hook != 1)
-				{
-					Input.m_TargetX = (int)Step.m_Target.x;
-					Input.m_TargetY = (int)Step.m_Target.y;
-				}
-				if(FreezeTicks > 0)
-				{
-					// frozen: no running, jumping or hooking
-					Input.m_Direction = 0;
-					Input.m_Jump = 0;
-					Input.m_Hook = 0;
-				}
-				const vec2 PrevPos = Core.m_Pos;
-				ApplyTune(Core);
-				Core.Tick(true);
-				Core.Move();
-				Core.Quantize();
-				if(Core.m_Pos.x < 0.0f || Core.m_Pos.y < 0.0f || Core.m_Pos.x >= m_Job.m_Width * 32.0f || Core.m_Pos.y >= m_Job.m_Height * 32.0f)
-				{
-					Dead = true;
-					m_aEnds[END_OUT]++;
-				}
-				else
-				{
-					const bool WasFrozen = FreezeTicks > 0;
-					if(FreezeTicks > 0)
-						FreezeTicks--;
-					bool Unfrozen = false;
-					m_TouchedFreeze = false;
-					HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done, &ThawOk);
-					if(m_Job.m_Forgiving)
+					if(y + k >= h)
+						break;
+					const int g = Tile(m_Job.m_vGame, x, y + k), f = Tile(m_Job.m_vFront, x, y + k);
+					if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f))
+						break;
+					if(Unfreezes(g) || Unfreezes(f))
 					{
-						// the soft check: a short touch of freeze is forgiven
-						FreezeTouch = m_TouchedFreeze ? FreezeTouch + 1 : 0;
-						if(FreezeTouch >= 3 && !Unfrozen)
-							FreezeTicks = FREEZE_TICKS;
-					}
-					// freeze is passed only when an unfreeze tile ends it on the way (maps made like that); thawing
-					// out by waiting 3 s after falling through freeze is a skip, not the way
-					if(!Dead && WasFrozen && FreezeTicks == 0 && !Unfrozen && !ThawOk)
-					{
-						Dead = true;
-						m_aEnds[END_THAW]++;
-					}
-					// frozen and come to rest in the freeze: stuck for good
-					if(!Dead && FreezeTicks > 0 && length(Core.m_Vel) < 0.5f && FreezeAt(Core.m_Pos))
-					{
-						Dead = true;
-						m_aEnds[END_STUCK]++;
-					}
-				}
-			}
-			if(Dead)
-				continue;
-			// the same place, speed and hook as a try before: nothing new
-			SState New;
-			Save(Core, New);
-			New.m_TeleCheckpoint = TeleCheckpoint;
-			New.m_FreezeTicks = FreezeTicks;
-			New.m_FreezeTouch = FreezeTouch;
-			New.m_ThawOk = ThawOk && FreezeTicks > 0;
-			uint64_t Key = (uint64_t)(int)(New.m_Pos.x / 4.0f) & 0xffff;
-			Key = Key << 16 | ((uint64_t)(int)(New.m_Pos.y / 4.0f) & 0xffff);
-			Key = Key << 8 | ((uint64_t)(int)(New.m_Vel.x / 2.0f + 128.0f) & 0xff);
-			Key = Key << 8 | ((uint64_t)(int)(New.m_Vel.y / 2.0f + 128.0f) & 0xff);
-			Key = Key << 4 | (uint64_t)(New.m_HookState & 0xf);
-			Key = Key << 2 | (uint64_t)(New.m_Jumped & 3);
-			Key ^= (uint64_t)New.m_TeleCheckpoint * 0xff51afd7ed558ccdull;
-			Key ^= (uint64_t)(New.m_FreezeTicks / 10 + 1) * 0xc4ceb9fe1a85ec53ull;
-			// a hint reached: the next one is the target
-			// a skipped hint is skipped only for the tries that got as far as it, not for the ones far behind
-			// a skipped hint counts as passed only near it: before, every try left far behind at that stage jumped
-			// over it too, "reached" the next hints by the field and pushed the real front into the reserve
-			int Stage = Node.m_Stage;
-			if(Stage == SkipStage - 1 && SkipStage <= (int)m_Job.m_vHints.size() && distance(New.m_Pos, m_Job.m_vHints[SkipStage - 1]) < 256.0f)
-				Stage = SkipStage;
-			// a hint counts as passed when the tee is near it, or already farther along the way than it (it may fly
-			// past a hint in a wide place without touching it)
-			// a frozen tee passes no hints: it is most likely lost, and counting it made the search drop the good
-			// tries behind it (a 70s report: "hint 32 reached" by a tee falling frozen down a shaft)
-			while(New.m_FreezeTicks == 0 && Stage < (int)m_Job.m_vHints.size() && (distance(New.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, New.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
-				Stage++;
-			Key ^= (uint64_t)Stage * 0x9e3779b97f4a7c15ull;
-			if(New.m_HookState == HOOK_GRABBED)
-				Key ^= ((uint64_t)(int)(New.m_HookPos.x / 16.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 16.0f) * 40503ull);
-			else if(New.m_HookState == HOOK_FLYING)
-				Key ^= ((uint64_t)(int)(New.m_HookDir.x * 16.0f + 32.0f) * 0x9e3779b97f4a7c15ull) ^ ((uint64_t)(int)(New.m_HookDir.y * 16.0f + 32.0f) * 0xc2b2ae3d27d4eb4full);
-			if(!Seen.insert(Key).second)
-				continue;
-			{
-				const int cx = std::clamp((int)(New.m_Pos.x / 32.0f), 0, m_Job.m_Width - 1), cy = std::clamp((int)(New.m_Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-				const int Cell = (cy * m_Job.m_Width + cx) * 4 + (Stage & 3);
-				if(!Done && vPerCell[Cell] >= (NearFreeze(New.m_Pos) ? Variant.m_CapFreeze : Variant.m_Cap) * CellCapScale)
-					continue;
-				vPerCell[Cell]++;
-			}
-			SNode Child;
-			Child.m_State = New;
-			Child.m_Parent = Index;
-			Child.m_Step = Step;
-			Child.m_Step.m_Ticks = Ticks;
-			Child.m_Steps = Node.m_Steps + Ticks;
-			Child.m_Stage = Stage;
-			vNodes.push_back(Child);
-			const int ChildIndex = (int)vNodes.size() - 1;
-			if(Done)
-			{
-				Goal = ChildIndex;
-				break;
-			}
-			const float Distance = Heuristic(New.m_Pos, Stage);
-			if(Distance >= FAR)
-				continue;
-			if(Distance < BestDistance && New.m_FreezeTicks == 0)
-			{
-				BestDistance = Distance;
-				BestNode = ChildIndex;
-			}
-			if(Stage > MaxStage)
-			{
-				Log("try %d: hint %d reached at %.0f %.0f, game time %.2f s\n", Result.m_Explored, Stage, New.m_Pos.x / 32.0f, New.m_Pos.y / 32.0f, Child.m_Steps / 50.0f);
-				MaxStage = Stage;
-				AtMaxStage = 0;
-				SinceStage = 0;
-				SinceProgress = 0;
-				// the precise search may help at the next hint again (it stayed off until a hint was skipped, after
-				// it once failed and the main search got through by itself: The_Pyra)
-				RepairTried = false;
-			}
-			if(Stage == MaxStage && ++AtMaxStage == 48)
-				DropBehind();
-			// mostly towards the finish, a little for being quick
-			Open.push({Distance + Child.m_Steps * TickWeight + vRegionTries[Region(New.m_Pos)] * 4.0f, ChildIndex});
-		}
-		if(Goal >= 0)
-			break;
-	}
-
-	const int Last = Goal >= 0 ? Goal : BestNode;
-	Result.m_Found = Goal >= 0;
-	Result.m_Closest = vNodes[Last].m_State.m_Pos;
-	for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
-	{
-		Result.m_vPath.push_back(vNodes[i].m_State.m_Pos);
-		if(vNodes[i].m_Parent >= 0)
-		{
-			Result.m_vSteps.push_back(vNodes[i].m_Step);
-			Result.m_Hooks += vNodes[i].m_Step.m_Hook == 2 ? 1 : 0;
-			Result.m_Jumps += vNodes[i].m_Step.m_Jump ? 1 : 0;
-		}
-	}
-	std::reverse(Result.m_vPath.begin(), Result.m_vPath.end());
-	std::reverse(Result.m_vSteps.begin(), Result.m_vSteps.end());
-	Result.m_Ticks = vNodes[Last].m_Steps;
-	Result.m_HintsPassed = vNodes[Last].m_Stage;
-	{
-		Log("\nresult: %s after %d tries%s\n", Goal >= 0 ? "FINISHED" : "no way", Result.m_Explored, m_Job.m_Cancel ? " (stopped)" : "");
-		if(Goal < 0 && !m_Job.m_Cancel)
-			Log("why it stopped: %s (places kept %d)\n", pStopReason, (int)vNodes.size());
-		Log("best place %.0f %.0f, game time %.2f s, hints passed %d of %d\n", vNodes[Last].m_State.m_Pos.x / 32.0f, vNodes[Last].m_State.m_Pos.y / 32.0f, vNodes[Last].m_Steps / 50.0f, vNodes[Last].m_Stage, (int)m_Job.m_vHints.size());
-		Log("tries ended by: death tile %d, out of the map %d, thawed without unfreeze %d, stuck in freeze %d\n", m_aEnds[END_DEATH], m_aEnds[END_OUT], m_aEnds[END_THAW], m_aEnds[END_STUCK]);
-		Log("\nthe cells around the best place:\n");
-		LogGrid(vNodes[Last].m_State.m_Pos, Result.m_vPath);
-		// the last steps of the best way
-		std::vector<int> vChain;
-		for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
-			vChain.push_back(i);
-		std::reverse(vChain.begin(), vChain.end());
-		Log("\nlast steps of the best way (tick: cell x y, speed x y, input: dir jump hook aim, frozen ticks):\n");
-		for(size_t k = vChain.size() > 40 ? vChain.size() - 40 : 0; k < vChain.size(); k++)
-		{
-			const SNode &N = vNodes[vChain[k]];
-			const char *apHook[] = {"release", "hold", "hook"};
-			Log("%5d: %6.1f %6.1f  v %6.1f %6.1f  dir %2d jump %d %-7s aim %4.0f  frozen %d%s\n", N.m_Steps, N.m_State.m_Pos.x / 32.0f, N.m_State.m_Pos.y / 32.0f,
-				N.m_State.m_Vel.x, N.m_State.m_Vel.y, N.m_Step.m_Direction, N.m_Step.m_Jump ? 1 : 0, apHook[std::clamp(N.m_Step.m_Hook, 0, 2)],
-				angle(N.m_Step.m_Target) * 180.0f / pi, N.m_State.m_FreezeTicks, N.m_State.m_HookState == HOOK_GRABBED ? "  (hooked)" : "");
-		}
-		// the time once more at the very end, where it is easy to find
-		const int Ticks = vNodes[Last].m_Steps;
-		Log("\n%s: %d:%05.2f (%d ticks)%s\n", Goal >= 0 ? "TIME" : "time to the best place", Ticks / 3000, (Ticks % 3000) / 50.0f, Ticks, m_Job.m_Ideal ? ", ideal run (not human)" : "");
-	}
-	Result.m_Width = m_Job.m_Width;
-	Result.m_Height = m_Job.m_Height;
-	// room along the way: the nearest wall or freeze around each point, in cells (up to 4)
-	auto Blocks = [&](int x, int y) {
-		const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-		return g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f);
-	};
-	for(const vec2 &Pos : Result.m_vPath)
-	{
-		const int px = (int)(Pos.x / 32.0f), py = (int)(Pos.y / 32.0f);
-		int Room = 4;
-		for(int r = 1; r <= 4 && Room == 4; r++)
-			for(int dy = -r; dy <= r && Room == 4; dy++)
-				for(int dx = -r; dx <= r; dx++)
-					if((std::abs(dx) == r || std::abs(dy) == r) && Blocks(px + dx, py + dy))
-					{
-						Room = r;
+						m_vDoor[y * w + x] |= 0x0f | DOOR_FALL;
 						break;
 					}
-		Result.m_vRoom.push_back((uint8_t)Room);
+				}
+			}
 	}
 
-	// how hard each point of the way is: small mistakes at that step (the hook a little off, the other direction,
-	// a jump), then the bot's own inputs on; the more of them end in freeze within half a second, the more precise
-	// the place (it counted the tries spent on each stretch before, which said more about the search than about
-	// the map)
+	void CSearch::BuildThawOk()
 	{
-		std::vector<int> vChain;
-		for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
-			vChain.push_back(i);
-		std::reverse(vChain.begin(), vChain.end());
-		std::vector<float> vRaw(vChain.size(), -1.0f);
+		const int w = m_Job.m_Width, h = m_Job.m_Height;
+		m_vThawOk.assign((size_t)w * h, 0);
+		if(m_Job.m_Forgiving)
+			return;
+		const std::vector<float> &vField = m_vvFields.back();
+		int Cell = std::clamp((int)(m_Job.m_Start.y / 32.0f), 0, h - 1) * w + std::clamp((int)(m_Job.m_Start.x / 32.0f), 0, w - 1);
+		if(vField[Cell] >= FAR)
+			return;
+		const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
+		for(int Guard = 0; Guard < w * h && vField[Cell] > 0.0f; Guard++)
+		{
+			const int x = Cell % w, y = Cell / w;
+			int Next = -1, Dir = 0;
+			float Best = vField[Cell];
+			for(int d = 0; d < 4; d++)
+			{
+				const int nx = x + aDx[d], ny = y + aDy[d];
+				if(nx >= 0 && ny >= 0 && nx < w && ny < h && vField[ny * w + nx] < Best)
+				{
+					Best = vField[ny * w + nx];
+					Next = ny * w + nx;
+					Dir = d;
+				}
+			}
+			if(Next < 0)
+			{
+				if(!m_Job.m_vTele.empty() && (m_Job.m_vTele[Cell].m_Type == TILE_TELEIN || m_Job.m_vTele[Cell].m_Type == TILE_TELEINEVIL) && m_Job.m_vTele[Cell].m_Number > 0 && !m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1].empty())
+				{
+					const vec2 Out = m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1][0];
+					Cell = (int)(Out.y / 32.0f) * w + (int)(Out.x / 32.0f);
+					continue;
+				}
+				break;
+			}
+			// freeze on the way that is not a door: the whole wall around it, up to 10 cells away (the way over it may
+			// be anywhere along the wall: on Afternight the tee goes through low and falls down a shaft behind it)
+			if(m_vStepCost[Next] > 32.0f && !(m_vDoor[Next] & (1 << Dir)) && !m_vThawOk[Next])
+			{
+				std::deque<std::pair<int, int>> Fill = {{Next, 0}};
+				m_vThawOk[Next] = 1;
+				while(!Fill.empty())
+				{
+					const auto [c, Depth] = Fill.front();
+					Fill.pop_front();
+					if(Depth >= 10)
+						continue;
+					for(int d = 0; d < 4; d++)
+					{
+						const int ax = c % w + aDx[d], ay = c / w + aDy[d];
+						if(ax < 0 || ay < 0 || ax >= w || ay >= h || m_vStepCost[ay * w + ax] <= 32.0f || m_vThawOk[ay * w + ax])
+							continue;
+						m_vThawOk[ay * w + ax] = 1;
+						Fill.push_back({ay * w + ax, Depth + 1});
+					}
+				}
+			}
+			Cell = Next;
+		}
+		const int Walls = (int)std::count(m_vThawOk.begin(), m_vThawOk.end(), 1);
+		if(Walls > 0)
+			Log("freeze the shortest way crosses (flying through frozen is allowed there): %d cells\n", Walls);
+		// the falls into an unfreeze last longer than the precise search lets a tee stay frozen: allowed there too
+		for(size_t i = 0; i < m_vDoor.size(); i++)
+			if(m_vDoor[i] & DOOR_FALL)
+				m_vThawOk[i] = 1;
+	}
+
+	void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
+	{
+		const int w = m_Job.m_Width, h = m_Job.m_Height;
+		vDistance.assign((size_t)w * h, FAR);
+		// Dijkstra: every cell is settled once (a plain queue went over the same cells again and again, a free cell
+		// costing 32 and a freeze one 12800, and building the fields took most of the time of a short search)
+		using TEntry = std::pair<float, int>;
+		std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Queue;
+		if(Hint >= 0)
+		{
+			const vec2 Pos = m_Job.m_vHints[Hint];
+			const int i = std::clamp((int)(Pos.y / 32.0f), 0, h - 1) * w + std::clamp((int)(Pos.x / 32.0f), 0, w - 1);
+			vDistance[i] = 0.0f;
+			Queue.push({0.0f, i});
+		}
+		else
+			for(int i = 0; i < w * h; i++)
+				if(m_Job.m_vGame[i].m_Index == TILE_FINISH || (!m_Job.m_vFront.empty() && m_Job.m_vFront[i].m_Index == TILE_FINISH))
+				{
+					vDistance[i] = 0.0f;
+					Queue.push({0.0f, i});
+				}
+		// what it costs to step into each cell: 0 blocked, through freeze is possible but much harder (once per map)
+		if(m_vStepCost.empty())
+		{
+			m_vStepCost.assign((size_t)w * h, 0.0f);
+			for(int y = 0; y < h; y++)
+				for(int x = 0; x < w; x++)
+				{
+					const int Game = Tile(m_Job.m_vGame, x, y), Front = Tile(m_Job.m_vFront, x, y);
+					if(Game == TILE_SOLID || Game == TILE_NOHOOK || Deadly(Game) || Deadly(Front) || SendsBack(x, y))
+						continue;
+					m_vStepCost[y * w + x] = Freezes(Game) || Freezes(Front) ? 32.0f * 400.0f : 32.0f;
+				}
+		}
+		while(!Queue.empty())
+		{
+			const auto [Dist, i] = Queue.top();
+			Queue.pop();
+			if(Dist > vDistance[i])
+				continue;
+			const int x = i % w, y = i / w;
+			// the way back through a teleport: from its out to every in of the number
+			if(!m_Job.m_vTele.empty() && m_Job.m_vTele[i].m_Type == TILE_TELEOUT && m_Job.m_vTele[i].m_Number > 0)
+				for(int In : m_vvTeleIns[m_Job.m_vTele[i].m_Number - 1])
+					if(vDistance[In] > Dist + 32.0f)
+					{
+						vDistance[In] = Dist + 32.0f;
+						Queue.push({vDistance[In], In});
+					}
+			const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
+			for(int d = 0; d < 4; d++)
+			{
+				const int nx = x + aDx[d], ny = y + aDy[d];
+				if(nx < 0 || ny < 0 || nx >= w || ny >= h)
+					continue;
+				const int n = ny * w + nx;
+				if(m_vStepCost[n] == 0.0f)
+					continue;
+				// the tee goes from n to i: the other way round than d (d ^ 1)
+				const float Next = Dist + (m_vStepCost[n] > 32.0f ? FreezeCost(n, d ^ 1) : m_vStepCost[n]);
+				if(vDistance[n] <= Next)
+					continue;
+				vDistance[n] = Next;
+				Queue.push({Next, n});
+			}
+		}
+	}
+
+	void CSearch::BuildTeles()
+	{
+		m_vvTeleOuts.assign(256, {});
+		m_vvCheckOuts.assign(256, {});
+		m_vvTeleIns.assign(256, {});
+		for(size_t i = 0; i < m_Job.m_vTele.size(); i++)
+		{
+			const CTeleTile &Tile = m_Job.m_vTele[i];
+			if(Tile.m_Number == 0)
+				continue;
+			const vec2 Center((i % m_Job.m_Width) * 32.0f + 16.0f, (i / m_Job.m_Width) * 32.0f + 16.0f);
+			if(Tile.m_Type == TILE_TELEOUT)
+				m_vvTeleOuts[Tile.m_Number - 1].push_back(Center);
+			else if(Tile.m_Type == TILE_TELECHECKOUT)
+				m_vvCheckOuts[Tile.m_Number - 1].push_back(Center);
+			else if(Tile.m_Type == TILE_TELEIN || Tile.m_Type == TILE_TELEINEVIL)
+				m_vvTeleIns[Tile.m_Number - 1].push_back((int)i);
+		}
+	}
+
+	void CSearch::HandleTiles(vec2 From, CCharacterCore &Core, int &TeleCheckpoint, int &FreezeTicks, bool &Unfrozen, bool &Dead, bool &Done, bool *pThawOk) const
+	{
+		// every pixel along the way, like the server (CCollision::GetMapIndices), and the end too: checking every
+		// 8 pixels let a way clip the corner of a freeze cell that the server counts (a replay of a 70s run)
+		const vec2 To = Core.m_Pos;
+		const float Length = distance(From, To);
+		const int Num = (int)Length + 1;
+		int LastCell = -2;
+		for(int i = 0; i <= Num; i++)
+		{
+			const vec2 Pos = i == Num || Length == 0.0f ? To : mix(From, To, i / Length);
+			// the same cell as the pixel before, or a cell with nothing in it: nothing to do (most of the pixels)
+			const int cx = (int)std::floor(Pos.x / 32.0f), cy = (int)std::floor(Pos.y / 32.0f);
+			const int Cell = cx < 0 || cy < 0 || cx >= m_Job.m_Width || cy >= m_Job.m_Height ? -1 : cy * m_Job.m_Width + cx;
+			if(Cell == LastCell)
+				continue;
+			LastCell = Cell;
+			if(Cell < 0 || !m_vCellTiles[Cell])
+				continue;
+			if(DeadlyAt(Pos))
+			{
+				Dead = true;
+				m_aEnds[END_DEATH]++;
+				return;
+			}
+			if(UnfreezeAt(Pos))
+			{
+				Unfrozen = FreezeTicks > 0;
+				FreezeTicks = 0;
+			}
+			else if(FreezeAt(Pos))
+			{
+				if(m_Job.m_Forgiving)
+					m_TouchedFreeze = true;
+				else
+				{
+					FreezeTicks = FREEZE_TICKS;
+					if(pThawOk)
+						*pThawOk = !m_vThawOk.empty() && m_vThawOk[Cell];
+				}
+			}
+			if(FinishAt(Pos))
+			{
+				Done = true;
+				return;
+			}
+			const CTeleTile *pTele = TeleAt(Pos);
+			if(!pTele || pTele->m_Number == 0)
+				continue;
+			const int Number = pTele->m_Number;
+			auto ResetHook = [&]() {
+				Core.SetHookedPlayer(-1);
+				Core.m_HookState = HOOK_RETRACTED;
+				Core.m_HookPos = Core.m_Pos;
+			};
+			switch(pTele->m_Type)
+			{
+			case TILE_TELECHECK:
+				TeleCheckpoint = Number;
+				break;
+			case TILE_TELEIN:
+			case TILE_TELEINEVIL:
+				// the server picks one of the outs at random, the bot takes the first
+				if(!m_vvTeleOuts[Number - 1].empty())
+				{
+					Core.m_Pos = m_vvTeleOuts[Number - 1][0];
+					if(pTele->m_Type == TILE_TELEINEVIL)
+						Core.m_Vel = vec2(0.0f, 0.0f);
+					ResetHook();
+					return;
+				}
+				break;
+			case TILE_TELECHECKIN:
+			case TILE_TELECHECKINEVIL:
+			{
+				// back to the last checkpoint that has an out, else to the spawn
+				vec2 Target = m_Job.m_Start;
+				for(int k = TeleCheckpoint - 1; k >= 0; k--)
+					if(!m_vvCheckOuts[k].empty())
+					{
+						Target = m_vvCheckOuts[k][0];
+						break;
+					}
+				Core.m_Pos = Target;
+				if(pTele->m_Type == TILE_TELECHECKINEVIL)
+					Core.m_Vel = vec2(0.0f, 0.0f);
+				ResetHook();
+				return;
+			}
+			default:
+				break;
+			}
+		}
+	}
+
+	void CSearch::Log(const char *pFormat, ...)
+	{
+		char aBuf[512];
+		va_list Args;
+		va_start(Args, pFormat);
+		std::vsnprintf(aBuf, sizeof(aBuf), pFormat, Args);
+		va_end(Args);
+		m_Job.m_Result.m_Log += aBuf;
+	}
+
+	// the cells around a place as text: # wall, N unhookable, F freeze, D death, u unfreeze, T tele in, O tele out,
+	// S start, E finish, h hint, * the way of the bot, f its way through freeze, @ the place
+	void CSearch::LogGrid(vec2 Center, const std::vector<vec2> &vPath) const
+	{
+		const int cx = (int)(Center.x / 32.0f), cy = (int)(Center.y / 32.0f);
+		std::vector<uint8_t> vOnPath((size_t)m_Job.m_Width * m_Job.m_Height, 0);
+		for(const vec2 &Pos : vPath)
+		{
+			const int x = (int)(Pos.x / 32.0f), y = (int)(Pos.y / 32.0f);
+			if(x >= 0 && y >= 0 && x < m_Job.m_Width && y < m_Job.m_Height)
+				vOnPath[y * m_Job.m_Width + x] = 1;
+		}
+		std::string &Out = m_Job.m_Result.m_Log;
+		char aBuf[64];
+		str_format(aBuf, sizeof(aBuf), "cells %d..%d x, %d..%d y\n", cx - 35, cx + 35, cy - 18, cy + 18);
+		Out += aBuf;
+		for(int y = cy - 18; y <= cy + 18; y++)
+		{
+			for(int x = cx - 35; x <= cx + 35; x++)
+			{
+				const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
+				const CTeleTile *pTele = TeleAt(vec2(x * 32.0f + 16.0f, y * 32.0f + 16.0f));
+				bool Hint = false;
+				for(const vec2 &H : m_Job.m_vHints)
+					if((int)(H.x / 32.0f) == x && (int)(H.y / 32.0f) == y)
+						Hint = true;
+				char c = '.';
+				if(x == cx && y == cy)
+					c = '@';
+				else if(x < 0 || y < 0 || x >= m_Job.m_Width || y >= m_Job.m_Height)
+					c = ' ';
+				else if(vOnPath[y * m_Job.m_Width + x])
+					c = Freezes(g) || Freezes(f) ? 'f' : '*'; // f: the way goes through freeze there
+				else if(Hint)
+					c = 'h';
+				else if(g == TILE_SOLID)
+					c = '#';
+				else if(g == TILE_NOHOOK)
+					c = 'N';
+				else if(Freezes(g) || Freezes(f))
+					c = 'F';
+				else if(Deadly(g) || Deadly(f))
+					c = 'D';
+				else if(Unfreezes(g) || Unfreezes(f))
+					c = 'u';
+				else if(g == TILE_FINISH || f == TILE_FINISH)
+					c = 'E';
+				else if(g == TILE_START || f == TILE_START)
+					c = 'S';
+				else if(pTele && (pTele->m_Type == TILE_TELEIN || pTele->m_Type == TILE_TELEINEVIL))
+					c = 'T';
+				else if(pTele && pTele->m_Type == TILE_TELEOUT)
+					c = 'O';
+				Out += c;
+			}
+			Out += '\n';
+		}
+	}
+
+	void CSearch::AutoHints()
+	{
+		const int w = m_Job.m_Width, h = m_Job.m_Height;
+		auto Blocks = [&](int x, int y) {
+			if(x < 0 || y < 0 || x >= w || y >= h)
+				return true;
+			const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
+			return g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f) || SendsBack(x, y);
+		};
+		// room of each free cell: cells to the nearest wall or freeze, up to 3
+		std::vector<uint8_t> vRoom((size_t)w * h, 0);
+		for(int y = 0; y < h; y++)
+			for(int x = 0; x < w; x++)
+			{
+				if(Blocks(x, y))
+					continue;
+				int Room = 3;
+				for(int r = 1; r < 3 && Room == 3; r++)
+					for(int dy = -r; dy <= r && Room == 3; dy++)
+						for(int dx = -r; dx <= r; dx++)
+							if((std::abs(dx) == r || std::abs(dy) == r) && Blocks(x + dx, y + dy))
+							{
+								Room = r;
+								break;
+							}
+				vRoom[y * w + x] = (uint8_t)Room;
+			}
+		// distances from the finish, narrow cells cost more so the route keeps to the middle
+		std::vector<float> vDistance((size_t)w * h, FAR);
+		std::deque<int> Queue;
+		for(int i = 0; i < w * h; i++)
+			if(m_Job.m_vGame[i].m_Index == TILE_FINISH || (!m_Job.m_vFront.empty() && m_Job.m_vFront[i].m_Index == TILE_FINISH))
+			{
+				vDistance[i] = 0.0f;
+				Queue.push_back(i);
+			}
+		auto Cost = [&](int n, int Dir) {
+			const int x = n % w, y = n / w;
+			const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
+			if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || SendsBack(x, y))
+				return FAR;
+			// through freeze only when there is no other way (some maps lead through freeze into unfreeze)
+			if(Freezes(g) || Freezes(f))
+				return FreezeCost(n, Dir);
+			return 32.0f * (vRoom[n] == 1 ? 4.0f : vRoom[n] == 2 ? 1.6f :
+									       1.0f);
+		};
+		while(!Queue.empty())
+		{
+			const int i = Queue.front();
+			Queue.pop_front();
+			const int x = i % w, y = i / w;
+			if(!m_Job.m_vTele.empty() && m_Job.m_vTele[i].m_Type == TILE_TELEOUT && m_Job.m_vTele[i].m_Number > 0)
+				for(int In : m_vvTeleIns[m_Job.m_vTele[i].m_Number - 1])
+					if(vDistance[In] > vDistance[i] + 32.0f)
+					{
+						vDistance[In] = vDistance[i] + 32.0f;
+						Queue.push_back(In);
+					}
+			const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
+			for(int d = 0; d < 4; d++)
+			{
+				const int nx = x + aDx[d], ny = y + aDy[d];
+				if(nx < 0 || ny < 0 || nx >= w || ny >= h)
+					continue;
+				const int n = ny * w + nx;
+				const float c = Cost(n, d ^ 1);
+				if(c >= FAR || vDistance[n] <= vDistance[i] + c)
+					continue;
+				vDistance[n] = vDistance[i] + c;
+				Queue.push_back(n);
+			}
+		}
+		// walk down from the spawn to the finish
+		int Cell = std::clamp((int)(m_Job.m_Start.y / 32.0f), 0, h - 1) * w + std::clamp((int)(m_Job.m_Start.x / 32.0f), 0, w - 1);
+		if(vDistance[Cell] >= FAR)
+			return;
+		std::vector<int> vRoute;
+		for(int Guard = 0; Guard < w * h && vDistance[Cell] > 0.0f; Guard++)
+		{
+			vRoute.push_back(Cell);
+			const int x = Cell % w, y = Cell / w;
+			int Next = -1;
+			float Best = vDistance[Cell];
+			const int aDx[] = {1, -1, 0, 0}, aDy[] = {0, 0, 1, -1};
+			for(int d = 0; d < 4; d++)
+			{
+				const int nx = x + aDx[d], ny = y + aDy[d];
+				if(nx >= 0 && ny >= 0 && nx < w && ny < h && vDistance[ny * w + nx] < Best)
+				{
+					Best = vDistance[ny * w + nx];
+					Next = ny * w + nx;
+				}
+			}
+			if(Next < 0)
+			{
+				// a teleport in: go on at its out
+				if(!m_Job.m_vTele.empty() && (m_Job.m_vTele[Cell].m_Type == TILE_TELEIN || m_Job.m_vTele[Cell].m_Type == TILE_TELEINEVIL) && m_Job.m_vTele[Cell].m_Number > 0 && !m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1].empty())
+				{
+					const vec2 Out = m_vvTeleOuts[m_Job.m_vTele[Cell].m_Number - 1][0];
+					Next = (int)(Out.y / 32.0f) * w + (int)(Out.x / 32.0f);
+				}
+				else
+					break;
+			}
+			Cell = Next;
+		}
+		// a hint every 6 cells of the route; each hint keeps its own distances, so a big map gets fewer of them
+		const int MaxHints = std::clamp(50000000 / std::max(w * h, 1), 16, 400);
+		const int Spacing = std::max(6, (int)vRoute.size() / MaxHints + 1);
+		for(size_t i = Spacing; i + Spacing / 2 < vRoute.size(); i += Spacing)
+			m_Job.m_vHints.push_back(vec2((vRoute[i] % w) * 32.0f + 16.0f, (vRoute[i] / w) * 32.0f + 16.0f));
+		m_Job.m_Result.m_vAutoHints = m_Job.m_vHints;
+	}
+
+	bool CSearch::StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core)
+	{
+		Load(Core, State);
+		int TeleCheckpoint = State.m_TeleCheckpoint, FreezeTicks = 0;
+		bool Dead = false, Done = false;
+		const bool Held = State.m_Input.m_Hook != 0;
+		for(int t = 0; t < Step.m_Ticks && !Dead && !Done; t++)
+		{
+			CNetObj_PlayerInput &Input = Core.m_Input;
+			Input.m_Direction = Step.m_Direction;
+			Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
+			if(Step.m_Hook == 0)
+				Input.m_Hook = 0;
+			else if(Step.m_Hook == 2)
+				Input.m_Hook = t == 0 && Held ? 0 : 1;
+			if(Step.m_Hook != 1)
+			{
+				Input.m_TargetX = (int)Step.m_Target.x;
+				Input.m_TargetY = (int)Step.m_Target.y;
+			}
+			const vec2 PrevPos = Core.m_Pos;
+			ApplyTune(Core);
+			Core.Tick(true);
+			Core.Move();
+			Core.Quantize();
+			if(Core.m_Pos.x < 0.0f || Core.m_Pos.y < 0.0f || Core.m_Pos.x >= m_Job.m_Width * 32.0f || Core.m_Pos.y >= m_Job.m_Height * 32.0f)
+				return false;
+			bool Unfrozen = false;
+			HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
+			if(FreezeTicks > 0)
+				return false;
+		}
+		if(Dead)
+			return false;
+		Save(Core, State);
+		State.m_TeleCheckpoint = TeleCheckpoint;
+		State.m_FreezeTicks = 0;
+		return true;
+	}
+
+	// A precise search from one try of the main search to the next hint: steps of 2 ticks, the hook in 36 directions
+	// all around, only in a box around the place, and the tee must not touch freeze. The main search cannot afford
+	// that many choices everywhere; here it finds what the main one does not (on 70s a corridor one cell high that
+	// turns up into a shaft between freeze: a brute force like this got through in a few hundred steps). The way it
+	// finds goes into the main search as tries of its own, so the run stays one piece. Returns the last try, or -1.
+	int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest)
+	{
+		struct SLocal
+		{
+			SState m_State;
+			int m_Parent;
+			XcSolver::SStep m_Step;
+			int m_Ticks;
+			int m_Stage;
+		};
+		const SNode &Start = vNodes[From];
+		const vec2 Target = m_Job.m_vHints[std::min(TargetStage - 1, (int)m_Job.m_vHints.size() - 1)];
+		const vec2 BoxMin(std::min(Start.m_State.m_Pos.x, Target.x) - 8 * 32.0f, std::min(Start.m_State.m_Pos.y, Target.y) - 8 * 32.0f);
+		const vec2 BoxMax(std::max(Start.m_State.m_Pos.x, Target.x) + 8 * 32.0f, std::max(Start.m_State.m_Pos.y, Target.y) + 8 * 32.0f);
+		std::vector<SLocal> vLocal;
+		vLocal.push_back({Start.m_State, -1, Start.m_Step, 0, Start.m_Stage});
+		using TEntry = std::pair<float, int>;
+		std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Open;
+		Open.push({0.0f, 0});
+		std::unordered_set<uint64_t> Seen;
 		CWorldCore World;
 		CCharacterCore Core;
 		Core.Init(&World, &m_Collision);
 		Core.Reset();
+		// alone on the map: no checks against other players on every pixel of every move (most of the time went
+		// there), the way the tee moves does not change
 		Core.m_Solo = true;
 		Core.m_Id = 0;
 		World.m_apCharacters[0] = &Core;
-		// the steps after a mistake, until half a second has passed: false when the tee ends in freeze
-		auto Survives = [&](size_t k, const XcSolver::SStep &First) {
-			SState State = vNodes[vChain[k]].m_State;
-			if(!StepAlive(State, First, Core))
-				return false;
-			int Ticks = First.m_Ticks;
-			for(size_t j = k + 2; j < vChain.size() && Ticks < 25; j++)
-			{
-				const XcSolver::SStep &Step = vNodes[vChain[j]].m_Step;
-				if(!StepAlive(State, Step, Core))
-					return false;
-				Ticks += Step.m_Ticks;
-			}
-			return true;
-		};
-		for(size_t k = 0; k + 1 < vChain.size(); k++)
+		int Found = -1;
+		for(int Expanded = 0; !Open.empty() && Expanded < Budget && Found < 0; Expanded++)
 		{
-			const XcSolver::SStep &Step = vNodes[vChain[k + 1]].m_Step;
-			// the bot's own way may touch freeze (the soft check): nothing to compare with there
-			if(!Survives(k, Step))
-				continue;
-			std::vector<XcSolver::SStep> vMistakes;
-			for(int Dir = -1; Dir <= 1; Dir++)
-				if(Dir != Step.m_Direction)
-				{
-					XcSolver::SStep M = Step;
-					M.m_Direction = Dir;
-					vMistakes.push_back(M);
-				}
-			XcSolver::SStep Jump = Step;
-			Jump.m_Jump = !Step.m_Jump;
-			vMistakes.push_back(Jump);
-			if(Step.m_Hook == 2)
-				for(float Off : {-10.0f, -5.0f, 5.0f, 10.0f})
-				{
-					XcSolver::SStep M = Step;
-					M.m_Target = rotate(Step.m_Target, Off);
-					vMistakes.push_back(M);
-				}
-			else if(Step.m_Hook == 1)
-			{
-				XcSolver::SStep M = Step;
-				M.m_Hook = 0;
-				vMistakes.push_back(M);
-			}
-			int Lost = 0;
-			for(const XcSolver::SStep &M : vMistakes)
-				Lost += Survives(k, M) ? 0 : 1;
-			vRaw[k + 1] = (float)Lost / vMistakes.size();
+			const int Index = Open.top().second;
+			Open.pop();
+			const SLocal Node = vLocal[Index];
+			const bool Hooking = Node.m_State.m_HookState == HOOK_GRABBED || Node.m_State.m_HookState == HOOK_FLYING;
+			// no jump left in the air: pressing it changes nothing
+			const bool NoJump = (Node.m_State.m_Jumped & 2) && !m_Collision.IsOnGround(Node.m_State.m_Pos, CCharacterCore::PhysicalSize());
+			for(int Dir = -1; Dir <= 1 && Found < 0; Dir++)
+				for(int Jump = 0; Jump <= 1 && Found < 0; Jump++)
+					for(int Hook = -2; Hook < 36 && Found < 0; Hook++)
+					{
+						if(Hook == -1 && !Hooking)
+							continue;
+						if(Jump && NoJump)
+							continue;
+						if(Node.m_State.m_FreezeTicks > 0 && (Dir != 0 || Jump || Hook != -2))
+							continue; // frozen: the input does nothing
+						XcSolver::SStep Step = {Dir, Jump != 0, Hook == -2 ? 0 : (Hook == -1 ? 1 : 2), Hook >= 0 ? direction(Hook * 2.0f * pi / 36.0f) * 100.0f : vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f, 2};
+						Load(Core, Node.m_State);
+						int TeleCheckpoint = Node.m_State.m_TeleCheckpoint;
+						int FreezeTicks = Node.m_State.m_FreezeTicks;
+						bool ThawOk = Node.m_State.m_ThawOk;
+						bool Dead = false, Done = false;
+						for(int t = 0; t < 2 && !Dead && !Done; t++)
+						{
+							CNetObj_PlayerInput &Input = Core.m_Input;
+							Input.m_Direction = Step.m_Direction;
+							Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
+							if(Step.m_Hook == 0)
+								Input.m_Hook = 0;
+							else if(Step.m_Hook == 2)
+								Input.m_Hook = t == 0 && Node.m_State.m_Input.m_Hook ? 0 : 1;
+							if(Step.m_Hook != 1)
+							{
+								Input.m_TargetX = (int)Step.m_Target.x;
+								Input.m_TargetY = (int)Step.m_Target.y;
+							}
+							if(FreezeTicks > 0)
+							{
+								Input.m_Direction = 0;
+								Input.m_Jump = 0;
+								Input.m_Hook = 0;
+							}
+							const vec2 PrevPos = Core.m_Pos;
+							ApplyTune(Core);
+							Core.Tick(true);
+							Core.Move();
+							Core.Quantize();
+							if(Core.m_Pos.x < BoxMin.x || Core.m_Pos.y < BoxMin.y || Core.m_Pos.x > BoxMax.x || Core.m_Pos.y > BoxMax.y)
+							{
+								Dead = true;
+								break;
+							}
+							const bool WasFrozen = FreezeTicks > 0;
+							if(FreezeTicks > 0)
+								FreezeTicks--;
+							bool Unfrozen = false;
+							HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done, &ThawOk);
+							// through freeze only into an unfreeze close behind it (a freeze door), within half a second,
+							// or through a freeze wall the map leads through
+							if(FreezeTicks > 0 && FreezeTicks < FREEZE_TICKS - 25 && !ThawOk)
+								Dead = true;
+							if(WasFrozen && FreezeTicks == 0 && !Unfrozen && !ThawOk)
+								Dead = true;
+							if(FreezeTicks > 0 && length(Core.m_Vel) < 0.5f && FreezeAt(Core.m_Pos))
+								Dead = true;
+						}
+						if(Dead)
+							continue;
+						SState New;
+						Save(Core, New);
+						New.m_TeleCheckpoint = TeleCheckpoint;
+						New.m_FreezeTicks = FreezeTicks;
+						New.m_FreezeTouch = 0;
+						New.m_ThawOk = ThawOk && FreezeTicks > 0;
+						int Stage = Node.m_Stage;
+						while(FreezeTicks == 0 && Stage < (int)m_Job.m_vHints.size() && (distance(New.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, New.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
+							Stage++;
+						uint64_t Key = ((uint64_t)(int)(New.m_Pos.x / 3.0f) << 48) ^ ((uint64_t)(int)(New.m_Pos.y / 3.0f) << 32) ^ ((uint64_t)(int)(New.m_Vel.x + 64.0f) << 24) ^ ((uint64_t)(int)(New.m_Vel.y + 64.0f) << 16) ^ ((uint64_t)(New.m_HookState & 15) << 8) ^ (uint64_t)(New.m_Jumped & 3) ^ ((uint64_t)(FreezeTicks > 0) << 4);
+						if(New.m_HookState == HOOK_GRABBED)
+							Key ^= ((uint64_t)(int)(New.m_HookPos.x / 8.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 8.0f) * 40503ull);
+						// a hook still in the air: where it flies (before, hooks thrown every way were one try until they
+						// caught, so only hooks catching within 2 ticks, 5 cells, were really tried)
+						else if(New.m_HookState == HOOK_FLYING)
+							Key ^= ((uint64_t)(int)(New.m_HookDir.x * 32.0f + 64.0f) * 0x9e3779b97f4a7c15ull) ^ ((uint64_t)(int)(New.m_HookDir.y * 32.0f + 64.0f) * 0xc2b2ae3d27d4eb4full);
+						if(!Seen.insert(Key).second)
+							continue;
+						vLocal.push_back({New, Index, Step, Node.m_Ticks + 2, Stage});
+						Closest = std::min(Closest, Stage >= TargetStage ? 0.0f : Heuristic(New.m_Pos, Stage));
+						if(Done || Stage >= TargetStage)
+							Found = (int)vLocal.size() - 1;
+						else
+							Open.push({Heuristic(New.m_Pos, Stage) + (Node.m_Ticks + 2) * 3.0f, (int)vLocal.size() - 1});
+					}
 		}
-		// the steps it could not judge (the way itself touched freeze, or the very first point) take the one before
-		for(size_t i = 0; i < vRaw.size(); i++)
-			if(vRaw[i] < 0.0f)
-				vRaw[i] = i > 0 ? vRaw[i - 1] : 0.0f;
-		Result.m_vDifficulty = vRaw;
+		if(Found < 0)
+			return -1;
+		// the way found becomes tries of the main search, each the child of the one before
+		std::vector<int> vChain;
+		for(int i = Found; i > 0; i = vLocal[i].m_Parent)
+			vChain.push_back(i);
+		std::reverse(vChain.begin(), vChain.end());
+		int Parent = From;
+		for(int i : vChain)
+		{
+			SNode Child;
+			Child.m_State = vLocal[i].m_State;
+			Child.m_Parent = Parent;
+			Child.m_Step = vLocal[i].m_Step;
+			Child.m_Steps = Start.m_Steps + vLocal[i].m_Ticks;
+			Child.m_Stage = vLocal[i].m_Stage;
+			vNodes.push_back(Child);
+			Parent = (int)vNodes.size() - 1;
+		}
+		return Parent;
 	}
 
-	// tower skips: where the way stood on a frozen tee or hooked one
-	if(m_Job.m_TowerDepth > 0)
+	void CSearch::Run()
 	{
-		std::set<int> Spots;
-		auto Platform = [&](vec2 Pos) {
-			const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
-			return x >= 0 && y >= 0 && x < m_Job.m_Width && y < m_Job.m_Height && vPlatform[y * m_Job.m_Width + x] ? y * m_Job.m_Width + x : -1;
-		};
-		for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
+		XcSolver::SResult &Result = m_Job.m_Result;
+		// tower skip check: a frozen tee lies at the bottom of every shallow freeze pit; it stands like a block one
+		// tee high that can be stood on and hooked (on Extreme two of them: a pit two cells deep)
+		std::vector<uint8_t> vPlatform((size_t)m_Job.m_Width * m_Job.m_Height, 0);
+		if(m_Job.m_TowerDepth > 0)
 		{
-			const SState &State = vNodes[i].m_State;
-			const int Stand = Platform(State.m_Pos + vec2(0.0f, 14.0f + 4.0f));
-			if(Stand >= 0)
-				Spots.insert(Stand);
-			if(State.m_HookState == HOOK_GRABBED)
+			const int w = m_Job.m_Width;
+			for(int x = 0; x < w; x++)
+				for(int y = m_Job.m_Height - 1; y > 0; y--)
+				{
+					const int Below = m_Job.m_vGame[y * w + x].m_Index;
+					if(Below != TILE_SOLID && Below != TILE_NOHOOK)
+						continue;
+					int Depth = 0;
+					while(y - 1 - Depth >= 0 && (Freezes(Tile(m_Job.m_vGame, x, y - 1 - Depth)) || Freezes(Tile(m_Job.m_vFront, x, y - 1 - Depth))))
+						Depth++;
+					if(Depth == 0 || Depth > m_Job.m_TowerDepth)
+						continue;
+					for(int d = 0; d < Depth; d++)
+					{
+						const int i = (y - 1 - d) * w + x;
+						m_Job.m_vGame[i].m_Index = TILE_SOLID;
+						if(!m_Job.m_vFront.empty())
+							m_Job.m_vFront[i].m_Index = 0;
+						vPlatform[i] = 1;
+					}
+				}
+		}
+		m_Collision.XcInitTiles(m_Job.m_vGame.data(), m_Job.m_vFront.empty() ? nullptr : m_Job.m_vFront.data(), m_Job.m_Width, m_Job.m_Height);
+		BuildTeles();
+		BuildDoors();
+		m_vCellTiles.assign((size_t)m_Job.m_Width * m_Job.m_Height, 0);
+		for(int y = 0; y < m_Job.m_Height; y++)
+			for(int x = 0; x < m_Job.m_Width; x++)
 			{
-				const int Hooked = Platform(State.m_HookPos);
-				if(Hooked >= 0)
-					Spots.insert(Hooked);
+				const vec2 Center(x * 32.0f + 16.0f, y * 32.0f + 16.0f);
+				const CTeleTile *pTele = TeleAt(Center);
+				m_vCellTiles[y * m_Job.m_Width + x] = DeadlyAt(Center) || FreezeAt(Center) || UnfreezeAt(Center) || FinishAt(Center) || (pTele && pTele->m_Number);
+			}
+		m_vNearFreeze.assign((size_t)m_Job.m_Width * m_Job.m_Height, 0);
+		for(int y = 0; y < m_Job.m_Height; y++)
+			for(int x = 0; x < m_Job.m_Width; x++)
+				if(Deadly(Tile(m_Job.m_vGame, x, y)) || Deadly(Tile(m_Job.m_vFront, x, y)) || Freezes(Tile(m_Job.m_vGame, x, y)) || Freezes(Tile(m_Job.m_vFront, x, y)))
+					for(int dy = -2; dy <= 2; dy++)
+						for(int dx = -2; dx <= 2; dx++)
+							if(x + dx >= 0 && y + dy >= 0 && x + dx < m_Job.m_Width && y + dy < m_Job.m_Height)
+								m_vNearFreeze[(y + dy) * m_Job.m_Width + x + dx] = 1;
+		if(m_Job.m_vHints.empty())
+			AutoHints();
+		else
+		{
+			// a hint of the mapper in a wall or in freeze: moved to the nearest free cell
+			for(vec2 &Hint : m_Job.m_vHints)
+			{
+				const int hx = (int)(Hint.x / 32.0f), hy = (int)(Hint.y / 32.0f);
+				auto FreeCell = [&](int x, int y) {
+					const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
+					return x >= 0 && y >= 0 && x < m_Job.m_Width && y < m_Job.m_Height && g != TILE_SOLID && g != TILE_NOHOOK && !Deadly(g) && !Deadly(f) && !Freezes(g) && !Freezes(f);
+				};
+				if(FreeCell(hx, hy))
+					continue;
+				bool Moved = false;
+				for(int r = 1; r <= 12 && !Moved; r++)
+					for(int dy = -r; dy <= r && !Moved; dy++)
+						for(int dx = -r; dx <= r && !Moved; dx++)
+							if((std::abs(dx) == r || std::abs(dy) == r) && FreeCell(hx + dx, hy + dy))
+							{
+								Hint = vec2((hx + dx) * 32.0f + 16.0f, (hy + dy) * 32.0f + 16.0f);
+								Moved = true;
+							}
 			}
 		}
-		for(int Spot : Spots)
-			Result.m_vTowerSpots.push_back(vec2((Spot % m_Job.m_Width) * 32.0f + 16.0f, (Spot / m_Job.m_Width) * 32.0f + 16.0f));
+		const int NumHints = (int)m_Job.m_vHints.size();
+		m_vvFields.resize(NumHints + 1);
+		for(int k = 0; k < NumHints; k++)
+			BuildField(m_vvFields[k], k);
+		BuildField(m_vvFields[NumHints], -1);
+		BuildThawOk();
+		m_vRest.assign(NumHints + 1, 0.0f);
+		for(int k = NumHints - 1; k >= 0; k--)
+		{
+			const float Next = Field(k + 1, m_Job.m_vHints[k]);
+			m_vRest[k] = m_vRest[k + 1] + (Next >= FAR ? (k + 1 < NumHints ? distance(m_Job.m_vHints[k], m_Job.m_vHints[k + 1]) : 0.0f) : Next);
+		}
+		{
+			int Finish = 0, TeleIns = 0;
+			for(size_t i = 0; i < m_Job.m_vGame.size(); i++)
+			{
+				Finish += m_Job.m_vGame[i].m_Index == TILE_FINISH || (!m_Job.m_vFront.empty() && m_Job.m_vFront[i].m_Index == TILE_FINISH);
+				TeleIns += !m_Job.m_vTele.empty() && (m_Job.m_vTele[i].m_Type == TILE_TELEIN || m_Job.m_vTele[i].m_Type == TILE_TELEINEVIL);
+			}
+			Log("map %d x %d cells, start at %.0f %.0f, finish cells %d, teleport ins %d\n", m_Job.m_Width, m_Job.m_Height, m_Job.m_Start.x / 32.0f, m_Job.m_Start.y / 32.0f, Finish, TeleIns);
+			Log("hints %d (%s), tower check depth %d, max tries without a new hint %d, %s check%s\n", NumHints, m_Job.m_Result.m_vAutoHints.empty() ? "set by the mapper" : "automatic route", m_Job.m_TowerDepth, m_Job.m_MaxTries, m_Job.m_Forgiving ? "soft" : "strict", m_Job.m_Ideal ? ", ideal run (not human)" : "");
+			Log("way through free cells from the start: %.0f cells\n", Heuristic(m_Job.m_Start, 0) >= FAR ? -1.0f : Heuristic(m_Job.m_Start, 0) / 32.0f);
+		}
+		if(Heuristic(m_Job.m_Start, 0) >= FAR)
+		{
+			Log("the finish cannot be reached through free cells from the start (walls, missing teleport outs?)\n");
+			LogGrid(m_Job.m_Start, {});
+			// the finish cannot be reached through free cells at all
+			m_Collision.Unload();
+			return;
+		}
+
+		CWorldCore World;
+		CCharacterCore Core;
+		Core.Init(&World, &m_Collision);
+		Core.Reset();
+		// alone on the map: no checks against other players on every pixel of every move (most of the time went
+		// there), the way the tee moves does not change
+		Core.m_Solo = true;
+		Core.m_Id = 0;
+		World.m_apCharacters[0] = &Core;
+		Core.m_Pos = m_Job.m_Start;
+		mem_zero(&Core.m_Input, sizeof(Core.m_Input));
+		Core.m_Input.m_TargetX = 1;
+
+		// the ways a step can go: run left, stand, run right; jump or not; let the hook go, hold it or hook again
+		// towards one of a few directions; the hooks aimed at real blocks around are added for each place (below)
+		std::vector<XcSolver::SStep> vSteps;
+		const XcSolver::SVariant &Variant = m_Job.m_Variant;
+		// straight sideways matters: a corridor one cell high with freeze above and below is crossed on a level hook
+		std::vector<float> vAngles = {-90.0f, -60.0f, -120.0f};
+		if(Variant.m_WideFixed)
+			vAngles.insert(vAngles.end(), {-30.0f, -150.0f, 0.0f, 180.0f});
+		for(int Dir = -1; Dir <= 1; Dir++)
+			for(int Jump = 0; Jump <= 1; Jump++)
+			{
+				vSteps.push_back({Dir, Jump != 0, 0, vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f});
+				vSteps.push_back({Dir, Jump != 0, 1, vec2(0.0f, 0.0f)});
+				for(float Angle : vAngles)
+					vSteps.push_back({Dir, Jump != 0, 2, direction(Angle * pi / 180.0f) * 100.0f});
+			}
+		// near freeze also the directions in between: a tunnel with freeze above and below is crossed hanging on one
+		// block at the right angle (seen in a report on 70s)
+		// (now the aimed hooks: more of them near freeze)
+		std::vector<XcSolver::SStep> vFineSteps = vSteps;
+		// the ideal run, not a human one: the hook may go in any of 16 directions (24 near freeze) and the input
+		// changes every 2 ticks (every tick near freeze)
+		if(m_Job.m_Ideal)
+		{
+			vSteps.clear();
+			vFineSteps.clear();
+			for(int Dir = -1; Dir <= 1; Dir++)
+				for(int Jump = 0; Jump <= 1; Jump++)
+				{
+					for(std::vector<XcSolver::SStep> *pSteps : {&vSteps, &vFineSteps})
+					{
+						pSteps->push_back({Dir, Jump != 0, 0, vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f});
+						pSteps->push_back({Dir, Jump != 0, 1, vec2(0.0f, 0.0f)});
+					}
+					for(int i = 0; i < 16; i++)
+						vSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / 16.0f) * 100.0f});
+					for(int i = 0; i < 24; i++)
+						vFineSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / 24.0f) * 100.0f});
+				}
+		}
+		const int StepTicks = m_Job.m_Ideal ? 2 : STEP_TICKS;
+		const int FineStepTicks = m_Job.m_Ideal ? 1 : FINE_STEP_TICKS;
+		// how much a tick of game time weighs against distance: the ideal run cares more about being fast
+		const float TickWeight = m_Job.m_Ideal ? 12.0f : Variant.m_TickWeight;
+		// the ideal run makes shorter steps, so many more of its states fall into one cell: without more room per cell
+		// it ran out of tries in a shaft lined with freeze (a report on 70s)
+		const int CellCapScale = m_Job.m_Ideal ? 3 : 1;
+
+		std::vector<XcSolver::SStep> vNodeSteps;
+		// a deque grows without copying everything over, so a long search does not need twice the memory for a moment
+		std::deque<SNode> vNodes;
+		SNode Root;
+		Save(Core, Root.m_State);
+		Root.m_Parent = -1;
+		Root.m_Step = {0, false, 0, vec2(100.0f, 0.0f)};
+		Root.m_Steps = 0;
+		Root.m_Stage = 0;
+		vNodes.push_back(Root);
+
+		using TEntry = std::pair<float, int>;
+		std::priority_queue<TEntry, std::vector<TEntry>, std::greater<>> Open;
+		Open.push({Heuristic(m_Job.m_Start, 0), 0});
+		std::unordered_set<uint64_t> Seen;
+		// a limit of different states per cell (by the variant): too few throws away the precise ones a tight place
+		// needs, too many digs deep into the same dead end; which is right depends on the map
+		std::vector<uint16_t> vPerCell((size_t)m_Job.m_Width * m_Job.m_Height * 4, 0);
+		// tiredness of a place: tries spent in each 4 x 4 cells make it less inviting, so the search climbs out of
+		// a pocket that only looks close to the finish and goes on elsewhere
+		const int RegionW = m_Job.m_Width / 4 + 1, RegionH = m_Job.m_Height / 4 + 1;
+		std::vector<uint32_t> vRegionTries((size_t)RegionW * RegionH, 0);
+		auto Region = [&](vec2 Pos) {
+			return std::clamp((int)(Pos.y / 128.0f), 0, RegionH - 1) * RegionW + std::clamp((int)(Pos.x / 128.0f), 0, RegionW - 1);
+		};
+		float BestDistance = FAR;
+		int BestNode = 0;
+		int Goal = -1;
+		// the search goes on hint by hint: once a few tries reached the next hint, the tries behind it are dropped;
+		// a hint that cannot be reached for long is skipped
+		int MaxStage = 0, AtMaxStage = 0, SinceStage = 0, SkipStage = 0;
+		bool RepairTried = false;
+		// the tries left behind wait here: when every try ahead ends in a dead end, they come back
+		std::vector<TEntry> vReserve;
+		// tries before this hint go to the reserve as they come out of the queue (going through the whole queue
+		// at every hint made the search slower and slower along the map)
+		int DropStage = 0;
+		auto DropBehind = [&]() {
+			DropStage = MaxStage;
+			std::fill(vRegionTries.begin(), vRegionTries.end(), 0);
+		};
+
+		// the limit counts the tries since the last new hint: a long map that goes on step by step is never cut
+		// short, only a search that is stuck for long stops
+		int SinceProgress = 0;
+		const char *pStopReason = "every try ended in a dead end";
+		while((!Open.empty() || !vReserve.empty()) && !m_Job.m_Cancel)
+		{
+			if(SinceProgress >= m_Job.m_MaxTries)
+			{
+				pStopReason = "no new hint for too long";
+				break;
+			}
+			if(Open.empty())
+			{
+				for(const TEntry &Entry : vReserve)
+					Open.push(Entry);
+				vReserve.clear();
+				DropStage = 0;
+			}
+			const int Index = Open.top().second;
+			if(vNodes[Index].m_Stage < DropStage)
+			{
+				vReserve.push_back(Open.top());
+				Open.pop();
+				continue;
+			}
+			Open.pop();
+			Result.m_Explored++;
+			SinceProgress++;
+			const SNode Node = vNodes[Index];
+			vRegionTries[Region(Node.m_State.m_Pos)]++;
+			if(++SinceStage > REPAIR_AFTER && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size() && !RepairTried)
+			{
+				// stuck at this hint: first the precise search, from the tries closest to it (different places and
+				// speeds, the best of each first)
+				RepairTried = true;
+				const vec2 Next = m_Job.m_vHints[MaxStage];
+				const vec2 BestPos = vNodes[BestNode].m_State.m_Pos;
+				// the places to start from: near the next hint, near the best place so far, and further back along the
+				// way (up to four hints before): a big hall on ShyzoEZ-1 is crossed only by flying in fast and jumping,
+				// from 20 cells before the hint the bot got stuck at; the tries in the hall had lost their speed
+				std::vector<std::vector<std::pair<float, int>>> vvByStage(5);
+				for(int i = 0; i < (int)vNodes.size(); i++)
+				{
+					const SNode &N = vNodes[i];
+					const int Back = MaxStage - N.m_Stage;
+					if(Back < 0 || Back > 4 || N.m_State.m_FreezeTicks > 0 || (distance(N.m_State.m_Pos, Next) > 24 * 32.0f && distance(N.m_State.m_Pos, BestPos) > 6 * 32.0f))
+						continue;
+					vvByStage[Back].push_back({Heuristic(N.m_State.m_Pos, MaxStage), i});
+				}
+				// one per cell and rough speed in each stage (the closest tries are often the lost ones, flying fast
+				// into the freeze at the top of a shaft), then taken in turn from each stage
+				std::vector<std::vector<int>> vvPicked(5);
+				for(int Back = 0; Back < 5; Back++)
+				{
+					std::sort(vvByStage[Back].begin(), vvByStage[Back].end());
+					std::unordered_set<uint64_t> Kinds;
+					for(const auto &[Score, i] : vvByStage[Back])
+					{
+						const SState &St = vNodes[i].m_State;
+						const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 6.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 6.0f + 32.0f) << 4);
+						if(Kinds.insert(Kind).second && vvPicked[Back].size() < 30)
+							vvPicked[Back].push_back(i);
+					}
+				}
+				std::vector<int> vPicked;
+				for(size_t k = 0; k < 30; k++)
+					for(int Back = 0; Back < 5; Back++)
+						if(k < vvPicked[Back].size() && vPicked.size() < 100)
+							vPicked.push_back(vvPicked[Back][k]);
+				// a quick look from many places, then longer ones from the best few (getting round a bend into a
+				// shaft one cell wide took the precise search 10000 to 130000 steps on 70s)
+				int Tried = 0, Repaired = -1;
+				// each pass goes on from the places the one before got closest from
+				const int aPassPlaces[] = {100, 8, 3};
+				const int aPassBudget[] = {3000, 40000, 200000};
+				std::vector<std::pair<float, int>> vOrder;
+				for(int i : vPicked)
+					vOrder.push_back({0.0f, i});
+				for(int Pass = 0; Pass < 3 && Repaired < 0; Pass++)
+				{
+					std::vector<std::pair<float, int>> vNext;
+					for(int k = 0; k < std::min(aPassPlaces[Pass], (int)vOrder.size()) && Repaired < 0 && !m_Job.m_Cancel; k++)
+					{
+						Tried++;
+						float Closest = FAR;
+						Repaired = Repair(vOrder[k].second, MaxStage + 1, vNodes, aPassBudget[Pass], Closest);
+						vNext.push_back({Closest, vOrder[k].second});
+					}
+					std::stable_sort(vNext.begin(), vNext.end());
+					// the closest are mostly the tries deepest in, often flying too fast to be saved: the longer
+					// passes also go on from places further back (at most 3, then 1 from each hint back)
+					vOrder.clear();
+					std::vector<int> vPerBack(5, 0);
+					for(const auto &Entry : vNext)
+					{
+						const int Back = std::clamp(MaxStage - vNodes[Entry.second].m_Stage, 0, 4);
+						if(vPerBack[Back]++ < (Pass == 0 ? 3 : 1))
+							vOrder.push_back(Entry);
+					}
+				}
+				if(Repaired >= 0)
+				{
+					const SNode &R = vNodes[Repaired];
+					Log("try %d: hint %d reached by the precise search (from the %d. place tried), at %.0f %.0f, game time %.2f s\n", Result.m_Explored, R.m_Stage, Tried, R.m_State.m_Pos.x / 32.0f, R.m_State.m_Pos.y / 32.0f, R.m_Steps / 50.0f);
+					MaxStage = std::max(MaxStage, R.m_Stage);
+					Result.m_Repairs++;
+					AtMaxStage = 0;
+					SinceStage = 0;
+					SinceProgress = 0;
+					RepairTried = false;
+					BestNode = Repaired;
+					BestDistance = Heuristic(R.m_State.m_Pos, R.m_Stage);
+					Open.push({-1.0f, Repaired});
+					if(FinishAt(R.m_State.m_Pos))
+					{
+						Goal = Repaired;
+						break;
+					}
+					continue;
+				}
+				Log("try %d: the precise search did not get to hint %d either (%d places tried)\n", Result.m_Explored, MaxStage + 1, Tried);
+			}
+			if(SinceStage > 25000 && SkipStage <= MaxStage && MaxStage < (int)m_Job.m_vHints.size())
+			{
+				RepairTried = false;
+				// this hint does not work out: aim at the next one
+				SkipStage = MaxStage + 1;
+				SinceStage = 0;
+				Log("try %d: hint %d not reached in 25000 tries, skipped (best place %.0f %.0f)\n", Result.m_Explored, MaxStage + 1, vNodes[BestNode].m_State.m_Pos.x / 32.0f, vNodes[BestNode].m_State.m_Pos.y / 32.0f);
+			}
+			if((Result.m_Explored & 255) == 0)
+			{
+				m_Job.m_Progress = Result.m_Explored;
+				// the live view: the way to the best place so far, and a sample of the tried places
+				std::vector<vec2> vPath;
+				for(int i = BestNode; i >= 0; i = vNodes[i].m_Parent)
+					vPath.push_back(vNodes[i].m_State.m_Pos);
+				std::reverse(vPath.begin(), vPath.end());
+				m_Job.m_LiveTicks = vNodes[BestNode].m_Steps;
+				m_Job.m_LiveHints = vNodes[BestNode].m_Stage;
+				std::lock_guard<std::mutex> Lock(m_Job.m_LiveMutex);
+				m_Job.m_vLivePath = std::move(vPath);
+			}
+			if((Result.m_Explored & 7) == 0)
+			{
+				std::lock_guard<std::mutex> Lock(m_Job.m_LiveMutex);
+				if(m_Job.m_vLiveTried.size() < 20000)
+					m_Job.m_vLiveTried.push_back(Node.m_State.m_Pos);
+			}
+			// far too many places kept: the memory would run out
+			if(vNodes.size() > Variant.m_MaxNodes)
+			{
+				// clean up: keep only the tries at the front (this hint and the one before) and the ways that lead to
+				// them; everything left behind goes (on 70s the memory ran out at hint 198 of 235, not a hard place)
+				std::vector<TEntry> vKeep;
+				while(!Open.empty())
+				{
+					if(vNodes[Open.top().second].m_Stage >= MaxStage - 1)
+						vKeep.push_back(Open.top());
+					Open.pop();
+				}
+				for(const TEntry &Entry : vReserve)
+					if(vNodes[Entry.second].m_Stage >= MaxStage - 1)
+						vKeep.push_back(Entry);
+				vReserve.clear();
+				std::vector<int> vNewIndex(vNodes.size(), -1);
+				auto Mark = [&](int i) {
+					for(; i >= 0 && vNewIndex[i] == -1; i = vNodes[i].m_Parent)
+						vNewIndex[i] = -2;
+				};
+				for(const TEntry &Entry : vKeep)
+					Mark(Entry.second);
+				Mark(BestNode);
+				Mark(Index);
+				std::deque<SNode> vKept;
+				for(int i = 0; i < (int)vNodes.size(); i++)
+					if(vNewIndex[i] == -2)
+					{
+						vNewIndex[i] = (int)vKept.size();
+						SNode N = vNodes[i];
+						N.m_Parent = N.m_Parent >= 0 ? vNewIndex[N.m_Parent] : -1;
+						vKept.push_back(N);
+					}
+				for(const TEntry &Entry : vKeep)
+					Open.push({Entry.first, vNewIndex[Entry.second]});
+				BestNode = vNewIndex[BestNode];
+				Log("try %d: memory cleaned up, %d of %d places kept\n", Result.m_Explored, (int)vKept.size(), (int)vNodes.size());
+				vNodes.swap(vKept);
+				vKept = std::deque<SNode>();
+				if(vNodes.size() > Variant.m_MaxNodes * 3 / 4)
+				{
+					pStopReason = "out of memory for places";
+					break;
+				}
+				continue;
+			}
+			if(Node.m_Steps >= MAX_TICKS)
+				continue;
+			const bool Hooking = Node.m_State.m_HookState != HOOK_IDLE && Node.m_State.m_HookState != HOOK_RETRACTED;
+			// both jumps used up in the air: the steps with a jump do the same as without
+			const vec2 Feet = Node.m_State.m_Pos + vec2(0.0f, 14.0f + 5.0f);
+			const bool Grounded = m_Collision.CheckPoint(Feet.x - 7.0f, Feet.y) || m_Collision.CheckPoint(Feet.x + 7.0f, Feet.y);
+			const bool CanJump = Grounded || !(Node.m_State.m_Jumped & 2);
+			const bool Fine = NearFreeze(Node.m_State.m_Pos);
+			vNodeSteps = Fine ? vFineSteps : vSteps;
+			if(!m_Job.m_Ideal)
+				AddAimedHooks(Node.m_State.m_Pos, Node.m_Stage, Fine ? Variant.m_AimFreeze : Variant.m_Aim, vNodeSteps);
+			// near freeze a ring of hooks in every direction: the corridor one cell high on 70s that turns up into a
+			// shaft between freeze is passed with hooks at angles no block "pulls best" towards (a brute force over
+			// 36 directions found it at once)
+			if(Fine && Variant.m_RingFreeze > 0)
+				for(int i = 0; i < Variant.m_RingFreeze; i++)
+					for(int Dir = -1; Dir <= 1; Dir++)
+						for(int Jump = 0; Jump <= 1; Jump++)
+							vNodeSteps.push_back({Dir, Jump != 0, 2, direction(i * 2.0f * pi / Variant.m_RingFreeze) * 100.0f});
+			for(const XcSolver::SStep &Step : vNodeSteps)
+			{
+				if(Step.m_Hook == 1 && !Hooking)
+					continue; // nothing to hold
+				if(Step.m_Jump && !CanJump)
+					continue;
+				if(Node.m_State.m_FreezeTicks > 0 && &Step != &vNodeSteps[0])
+					continue; // frozen: the input does nothing, one way is enough
+				Load(Core, Node.m_State);
+				int TeleCheckpoint = Node.m_State.m_TeleCheckpoint;
+				int FreezeTicks = Node.m_State.m_FreezeTicks;
+				int FreezeTouch = Node.m_State.m_FreezeTouch;
+				bool ThawOk = Node.m_State.m_ThawOk;
+				bool Dead = false, Done = false;
+				const int Ticks = NearFreeze(Node.m_State.m_Pos) ? FineStepTicks : StepTicks;
+				for(int t = 0; t < Ticks && !Dead && !Done; t++)
+				{
+					CNetObj_PlayerInput &Input = Core.m_Input;
+					Input.m_Direction = Step.m_Direction;
+					Input.m_Jump = Step.m_Jump && t == 0 ? 1 : 0;
+					if(Step.m_Hook == 0)
+						Input.m_Hook = 0;
+					else if(Step.m_Hook == 2)
+						Input.m_Hook = t == 0 && Node.m_State.m_Input.m_Hook ? 0 : 1; // let go for a tick if held, then hook again
+					if(Step.m_Hook != 1)
+					{
+						Input.m_TargetX = (int)Step.m_Target.x;
+						Input.m_TargetY = (int)Step.m_Target.y;
+					}
+					if(FreezeTicks > 0)
+					{
+						// frozen: no running, jumping or hooking
+						Input.m_Direction = 0;
+						Input.m_Jump = 0;
+						Input.m_Hook = 0;
+					}
+					const vec2 PrevPos = Core.m_Pos;
+					ApplyTune(Core);
+					Core.Tick(true);
+					Core.Move();
+					Core.Quantize();
+					if(Core.m_Pos.x < 0.0f || Core.m_Pos.y < 0.0f || Core.m_Pos.x >= m_Job.m_Width * 32.0f || Core.m_Pos.y >= m_Job.m_Height * 32.0f)
+					{
+						Dead = true;
+						m_aEnds[END_OUT]++;
+					}
+					else
+					{
+						const bool WasFrozen = FreezeTicks > 0;
+						if(FreezeTicks > 0)
+							FreezeTicks--;
+						bool Unfrozen = false;
+						m_TouchedFreeze = false;
+						HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done, &ThawOk);
+						if(m_Job.m_Forgiving)
+						{
+							// the soft check: a short touch of freeze is forgiven
+							FreezeTouch = m_TouchedFreeze ? FreezeTouch + 1 : 0;
+							if(FreezeTouch >= 3 && !Unfrozen)
+								FreezeTicks = FREEZE_TICKS;
+						}
+						// freeze is passed only when an unfreeze tile ends it on the way (maps made like that); thawing
+						// out by waiting 3 s after falling through freeze is a skip, not the way
+						if(!Dead && WasFrozen && FreezeTicks == 0 && !Unfrozen && !ThawOk)
+						{
+							Dead = true;
+							m_aEnds[END_THAW]++;
+						}
+						// frozen and come to rest in the freeze: stuck for good
+						if(!Dead && FreezeTicks > 0 && length(Core.m_Vel) < 0.5f && FreezeAt(Core.m_Pos))
+						{
+							Dead = true;
+							m_aEnds[END_STUCK]++;
+						}
+					}
+				}
+				if(Dead)
+					continue;
+				// the same place, speed and hook as a try before: nothing new
+				SState New;
+				Save(Core, New);
+				New.m_TeleCheckpoint = TeleCheckpoint;
+				New.m_FreezeTicks = FreezeTicks;
+				New.m_FreezeTouch = FreezeTouch;
+				New.m_ThawOk = ThawOk && FreezeTicks > 0;
+				uint64_t Key = (uint64_t)(int)(New.m_Pos.x / 4.0f) & 0xffff;
+				Key = Key << 16 | ((uint64_t)(int)(New.m_Pos.y / 4.0f) & 0xffff);
+				Key = Key << 8 | ((uint64_t)(int)(New.m_Vel.x / 2.0f + 128.0f) & 0xff);
+				Key = Key << 8 | ((uint64_t)(int)(New.m_Vel.y / 2.0f + 128.0f) & 0xff);
+				Key = Key << 4 | (uint64_t)(New.m_HookState & 0xf);
+				Key = Key << 2 | (uint64_t)(New.m_Jumped & 3);
+				Key ^= (uint64_t)New.m_TeleCheckpoint * 0xff51afd7ed558ccdull;
+				Key ^= (uint64_t)(New.m_FreezeTicks / 10 + 1) * 0xc4ceb9fe1a85ec53ull;
+				// a hint reached: the next one is the target
+				// a skipped hint is skipped only for the tries that got as far as it, not for the ones far behind
+				// a skipped hint counts as passed only near it: before, every try left far behind at that stage jumped
+				// over it too, "reached" the next hints by the field and pushed the real front into the reserve
+				int Stage = Node.m_Stage;
+				if(Stage == SkipStage - 1 && SkipStage <= (int)m_Job.m_vHints.size() && distance(New.m_Pos, m_Job.m_vHints[SkipStage - 1]) < 256.0f)
+					Stage = SkipStage;
+				// a hint counts as passed when the tee is near it, or already farther along the way than it (it may fly
+				// past a hint in a wide place without touching it)
+				// a frozen tee passes no hints: it is most likely lost, and counting it made the search drop the good
+				// tries behind it (a 70s report: "hint 32 reached" by a tee falling frozen down a shaft)
+				while(New.m_FreezeTicks == 0 && Stage < (int)m_Job.m_vHints.size() && (distance(New.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, New.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
+					Stage++;
+				Key ^= (uint64_t)Stage * 0x9e3779b97f4a7c15ull;
+				if(New.m_HookState == HOOK_GRABBED)
+					Key ^= ((uint64_t)(int)(New.m_HookPos.x / 16.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 16.0f) * 40503ull);
+				else if(New.m_HookState == HOOK_FLYING)
+					Key ^= ((uint64_t)(int)(New.m_HookDir.x * 16.0f + 32.0f) * 0x9e3779b97f4a7c15ull) ^ ((uint64_t)(int)(New.m_HookDir.y * 16.0f + 32.0f) * 0xc2b2ae3d27d4eb4full);
+				if(!Seen.insert(Key).second)
+					continue;
+				{
+					const int cx = std::clamp((int)(New.m_Pos.x / 32.0f), 0, m_Job.m_Width - 1), cy = std::clamp((int)(New.m_Pos.y / 32.0f), 0, m_Job.m_Height - 1);
+					const int Cell = (cy * m_Job.m_Width + cx) * 4 + (Stage & 3);
+					if(!Done && vPerCell[Cell] >= (NearFreeze(New.m_Pos) ? Variant.m_CapFreeze : Variant.m_Cap) * CellCapScale)
+						continue;
+					vPerCell[Cell]++;
+				}
+				SNode Child;
+				Child.m_State = New;
+				Child.m_Parent = Index;
+				Child.m_Step = Step;
+				Child.m_Step.m_Ticks = Ticks;
+				Child.m_Steps = Node.m_Steps + Ticks;
+				Child.m_Stage = Stage;
+				vNodes.push_back(Child);
+				const int ChildIndex = (int)vNodes.size() - 1;
+				if(Done)
+				{
+					Goal = ChildIndex;
+					break;
+				}
+				const float Distance = Heuristic(New.m_Pos, Stage);
+				if(Distance >= FAR)
+					continue;
+				if(Distance < BestDistance && New.m_FreezeTicks == 0)
+				{
+					BestDistance = Distance;
+					BestNode = ChildIndex;
+				}
+				if(Stage > MaxStage)
+				{
+					Log("try %d: hint %d reached at %.0f %.0f, game time %.2f s\n", Result.m_Explored, Stage, New.m_Pos.x / 32.0f, New.m_Pos.y / 32.0f, Child.m_Steps / 50.0f);
+					MaxStage = Stage;
+					AtMaxStage = 0;
+					SinceStage = 0;
+					SinceProgress = 0;
+					// the precise search may help at the next hint again (it stayed off until a hint was skipped, after
+					// it once failed and the main search got through by itself: The_Pyra)
+					RepairTried = false;
+				}
+				if(Stage == MaxStage && ++AtMaxStage == 48)
+					DropBehind();
+				// mostly towards the finish, a little for being quick
+				Open.push({Distance + Child.m_Steps * TickWeight + vRegionTries[Region(New.m_Pos)] * 4.0f, ChildIndex});
+			}
+			if(Goal >= 0)
+				break;
+		}
+
+		const int Last = Goal >= 0 ? Goal : BestNode;
+		Result.m_Found = Goal >= 0;
+		Result.m_Closest = vNodes[Last].m_State.m_Pos;
+		for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
+		{
+			Result.m_vPath.push_back(vNodes[i].m_State.m_Pos);
+			if(vNodes[i].m_Parent >= 0)
+			{
+				Result.m_vSteps.push_back(vNodes[i].m_Step);
+				Result.m_Hooks += vNodes[i].m_Step.m_Hook == 2 ? 1 : 0;
+				Result.m_Jumps += vNodes[i].m_Step.m_Jump ? 1 : 0;
+			}
+		}
+		std::reverse(Result.m_vPath.begin(), Result.m_vPath.end());
+		std::reverse(Result.m_vSteps.begin(), Result.m_vSteps.end());
+		Result.m_Ticks = vNodes[Last].m_Steps;
+		Result.m_HintsPassed = vNodes[Last].m_Stage;
+		{
+			Log("\nresult: %s after %d tries%s\n", Goal >= 0 ? "FINISHED" : "no way", Result.m_Explored, m_Job.m_Cancel ? " (stopped)" : "");
+			if(Goal < 0 && !m_Job.m_Cancel)
+				Log("why it stopped: %s (places kept %d)\n", pStopReason, (int)vNodes.size());
+			Log("best place %.0f %.0f, game time %.2f s, hints passed %d of %d\n", vNodes[Last].m_State.m_Pos.x / 32.0f, vNodes[Last].m_State.m_Pos.y / 32.0f, vNodes[Last].m_Steps / 50.0f, vNodes[Last].m_Stage, (int)m_Job.m_vHints.size());
+			Log("tries ended by: death tile %d, out of the map %d, thawed without unfreeze %d, stuck in freeze %d\n", m_aEnds[END_DEATH], m_aEnds[END_OUT], m_aEnds[END_THAW], m_aEnds[END_STUCK]);
+			Log("\nthe cells around the best place:\n");
+			LogGrid(vNodes[Last].m_State.m_Pos, Result.m_vPath);
+			// the last steps of the best way
+			std::vector<int> vChain;
+			for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
+				vChain.push_back(i);
+			std::reverse(vChain.begin(), vChain.end());
+			Log("\nlast steps of the best way (tick: cell x y, speed x y, input: dir jump hook aim, frozen ticks):\n");
+			for(size_t k = vChain.size() > 40 ? vChain.size() - 40 : 0; k < vChain.size(); k++)
+			{
+				const SNode &N = vNodes[vChain[k]];
+				const char *apHook[] = {"release", "hold", "hook"};
+				Log("%5d: %6.1f %6.1f  v %6.1f %6.1f  dir %2d jump %d %-7s aim %4.0f  frozen %d%s\n", N.m_Steps, N.m_State.m_Pos.x / 32.0f, N.m_State.m_Pos.y / 32.0f,
+					N.m_State.m_Vel.x, N.m_State.m_Vel.y, N.m_Step.m_Direction, N.m_Step.m_Jump ? 1 : 0, apHook[std::clamp(N.m_Step.m_Hook, 0, 2)],
+					angle(N.m_Step.m_Target) * 180.0f / pi, N.m_State.m_FreezeTicks, N.m_State.m_HookState == HOOK_GRABBED ? "  (hooked)" : "");
+			}
+			// the time once more at the very end, where it is easy to find
+			const int Ticks = vNodes[Last].m_Steps;
+			Log("\n%s: %d:%05.2f (%d ticks)%s\n", Goal >= 0 ? "TIME" : "time to the best place", Ticks / 3000, (Ticks % 3000) / 50.0f, Ticks, m_Job.m_Ideal ? ", ideal run (not human)" : "");
+		}
+		Result.m_Width = m_Job.m_Width;
+		Result.m_Height = m_Job.m_Height;
+		// room along the way: the nearest wall or freeze around each point, in cells (up to 4)
+		auto Blocks = [&](int x, int y) {
+			const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
+			return g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f);
+		};
+		for(const vec2 &Pos : Result.m_vPath)
+		{
+			const int px = (int)(Pos.x / 32.0f), py = (int)(Pos.y / 32.0f);
+			int Room = 4;
+			for(int r = 1; r <= 4 && Room == 4; r++)
+				for(int dy = -r; dy <= r && Room == 4; dy++)
+					for(int dx = -r; dx <= r; dx++)
+						if((std::abs(dx) == r || std::abs(dy) == r) && Blocks(px + dx, py + dy))
+						{
+							Room = r;
+							break;
+						}
+			Result.m_vRoom.push_back((uint8_t)Room);
+		}
+
+		// how hard each point of the way is: small mistakes at that step (the hook a little off, the other direction,
+		// a jump), then the bot's own inputs on; the more of them end in freeze within half a second, the more precise
+		// the place (it counted the tries spent on each stretch before, which said more about the search than about
+		// the map)
+		{
+			std::vector<int> vChain;
+			for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
+				vChain.push_back(i);
+			std::reverse(vChain.begin(), vChain.end());
+			std::vector<float> vRaw(vChain.size(), -1.0f);
+			CWorldCore World;
+			CCharacterCore Core;
+			Core.Init(&World, &m_Collision);
+			Core.Reset();
+			Core.m_Solo = true;
+			Core.m_Id = 0;
+			World.m_apCharacters[0] = &Core;
+			// the steps after a mistake, until half a second has passed: false when the tee ends in freeze
+			auto Survives = [&](size_t k, const XcSolver::SStep &First) {
+				SState State = vNodes[vChain[k]].m_State;
+				if(!StepAlive(State, First, Core))
+					return false;
+				int Ticks = First.m_Ticks;
+				for(size_t j = k + 2; j < vChain.size() && Ticks < 25; j++)
+				{
+					const XcSolver::SStep &Step = vNodes[vChain[j]].m_Step;
+					if(!StepAlive(State, Step, Core))
+						return false;
+					Ticks += Step.m_Ticks;
+				}
+				return true;
+			};
+			for(size_t k = 0; k + 1 < vChain.size(); k++)
+			{
+				const XcSolver::SStep &Step = vNodes[vChain[k + 1]].m_Step;
+				// the bot's own way may touch freeze (the soft check): nothing to compare with there
+				if(!Survives(k, Step))
+					continue;
+				std::vector<XcSolver::SStep> vMistakes;
+				for(int Dir = -1; Dir <= 1; Dir++)
+					if(Dir != Step.m_Direction)
+					{
+						XcSolver::SStep M = Step;
+						M.m_Direction = Dir;
+						vMistakes.push_back(M);
+					}
+				XcSolver::SStep Jump = Step;
+				Jump.m_Jump = !Step.m_Jump;
+				vMistakes.push_back(Jump);
+				if(Step.m_Hook == 2)
+					for(float Off : {-10.0f, -5.0f, 5.0f, 10.0f})
+					{
+						XcSolver::SStep M = Step;
+						M.m_Target = rotate(Step.m_Target, Off);
+						vMistakes.push_back(M);
+					}
+				else if(Step.m_Hook == 1)
+				{
+					XcSolver::SStep M = Step;
+					M.m_Hook = 0;
+					vMistakes.push_back(M);
+				}
+				int Lost = 0;
+				for(const XcSolver::SStep &M : vMistakes)
+					Lost += Survives(k, M) ? 0 : 1;
+				vRaw[k + 1] = (float)Lost / vMistakes.size();
+			}
+			// the steps it could not judge (the way itself touched freeze, or the very first point) take the one before
+			for(size_t i = 0; i < vRaw.size(); i++)
+				if(vRaw[i] < 0.0f)
+					vRaw[i] = i > 0 ? vRaw[i - 1] : 0.0f;
+			Result.m_vDifficulty = vRaw;
+		}
+
+		// tower skips: where the way stood on a frozen tee or hooked one
+		if(m_Job.m_TowerDepth > 0)
+		{
+			std::set<int> Spots;
+			auto Platform = [&](vec2 Pos) {
+				const int x = (int)std::floor(Pos.x / 32.0f), y = (int)std::floor(Pos.y / 32.0f);
+				return x >= 0 && y >= 0 && x < m_Job.m_Width && y < m_Job.m_Height && vPlatform[y * m_Job.m_Width + x] ? y * m_Job.m_Width + x : -1;
+			};
+			for(int i = Last; i >= 0; i = vNodes[i].m_Parent)
+			{
+				const SState &State = vNodes[i].m_State;
+				const int Stand = Platform(State.m_Pos + vec2(0.0f, 14.0f + 4.0f));
+				if(Stand >= 0)
+					Spots.insert(Stand);
+				if(State.m_HookState == HOOK_GRABBED)
+				{
+					const int Hooked = Platform(State.m_HookPos);
+					if(Hooked >= 0)
+						Spots.insert(Hooked);
+				}
+			}
+			for(int Spot : Spots)
+				Result.m_vTowerSpots.push_back(vec2((Spot % m_Job.m_Width) * 32.0f + 16.0f, (Spot / m_Job.m_Width) * 32.0f + 16.0f));
+		}
+		m_Collision.Unload();
 	}
-	m_Collision.Unload();
-}
 } // namespace
 
 // several searches with different settings at once, one per core (the search gets far with one setting and
@@ -2219,7 +2231,8 @@ XcSolver::SRating XcSolver::Rate(const SResult &Result)
 	Rating.m_Score = std::clamp(25.89f * Mean - 1.67f, 0.5f, 12.49f);
 	Rating.m_Tier = std::clamp((int)std::lround(Rating.m_Score), 1, 12);
 	const float Offset = Rating.m_Score - Rating.m_Tier;
-	Rating.m_Stars = Offset < -1.0f / 6.0f ? 1 : Offset > 1.0f / 6.0f ? 3 : 2;
+	Rating.m_Stars = Offset < -1.0f / 6.0f ? 1 : Offset > 1.0f / 6.0f ? 3 :
+									    2;
 	Rating.m_Partial = !Result.m_Found || !Result.m_vStuck.empty();
 	Rating.m_Valid = true;
 	return Rating;
