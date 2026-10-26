@@ -745,6 +745,7 @@ namespace XcUi
 			{"No servers found", "Серверы не найдены"},
 			{"Asking the master servers for the list", "Запрашиваю список у мастер-серверов"},
 			{"Try another filter or refresh the list", "Попробуй другой фильтр или обнови список"},
+			{"%d hard places were passed only after starting again a few hints before them (see the log)", "%d трудных мест бот прошёл только с перезапуска на несколько точек раньше (подробности в логе)"},
 			{"Tower skips: %d places (Map > Bot: show tower skips)", "Тавер-скипы: %d мест (Карта > Бот: показать тавер-скипы)"},
 			{"Bot: checking for tower skips...", "Бот: проверяет тавер-скипы..."},
 			{"Bot: show tower skips", "Бот: показать тавер-скипы"},

@@ -10,9 +10,14 @@
 #include <engine/storage.h>
 
 #include <string>
+#include <tuple>
 
 static const char *const s_apFontFamilies[] = {"Manrope", "Onest", "Unbounded"};
 static const char *const ICON_FONT = "fonts/Font_Awesome_6_Free-Solid-900.otf";
+// for what the text fonts do not have: symbols (stars, arrows, shapes) and emoji, from the fonts DDNet ships; without
+// them votes and chat lines showed "?" (KoG votes, "INS, *****" in the map info)
+static const char *const SYMBOL_FONT = "fonts/DejaVuSans.ttf";
+static const char *const EMOJI_FONT = "fonts/NotoEmoji-Regular.ttf";
 
 static ImGuiKey TranslateKey(int Key)
 {
@@ -159,6 +164,13 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 	str_format(aPath, sizeof(aPath), "xclient/fonts/%s-Bold.ttf", s_apFontFamilies[Family]);
 	const unsigned char *pBold = ReadFont(aPath, &BoldSize);
 	const unsigned char *pIcons = ReadFont(ICON_FONT, &IconSize);
+	int SymbolSize, EmojiSize;
+	const unsigned char *pSymbols = ReadFont(SYMBOL_FONT, &SymbolSize);
+	const unsigned char *pEmoji = ReadFont(EMOJI_FONT, &EmojiSize);
+	// Latin and Greek letters with marks, letter-like symbols, arrows, maths, technical, enclosed letters, boxes,
+	// shapes, misc symbols and dingbats (the stars), more arrows
+	static const ImWchar s_aSymbolRanges[] = {0x0100, 0x024f, 0x0370, 0x03ff, 0x20a0, 0x20cf, 0x2100, 0x23ff, 0x2460, 0x27bf, 0x2b00, 0x2bff, 0};
+	static const ImWchar s_aEmojiRanges[] = {0x1f300, 0x1f6ff, 0x1f900, 0x1f9ff, 0};
 
 	static const ImWchar s_aIconRanges[] = {0xe000, 0xf8ff, 0};
 	// Latin, Cyrillic and the general punctuation (dashes, quotes, ellipsis)
@@ -186,6 +198,19 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 			IconConfig.GlyphMinAdvanceX = Pixels * Scale;
 			IconConfig.GlyphOffset = ImVec2(0.0f, 0.5f * Scale);
 			pAtlas->AddFontFromMemoryTTF((void *)pIcons, IconSize, Pixels * Scale * 0.9f, &IconConfig, s_aIconRanges);
+		}
+		// the fallbacks: only the characters the font before has not got are taken from them
+		for(const auto &[pFallback, FallbackSize, pRanges] : {std::tuple{pSymbols, SymbolSize, (const ImWchar *)s_aSymbolRanges}, std::tuple{pEmoji, EmojiSize, (const ImWchar *)s_aEmojiRanges}})
+		{
+			if(!pFallback)
+				continue;
+			ImFontConfig FallbackConfig;
+			FallbackConfig.FontDataOwnedByAtlas = false;
+			FallbackConfig.MergeMode = true;
+			FallbackConfig.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LightHinting;
+			FallbackConfig.OversampleH = 1;
+			FallbackConfig.OversampleV = 1;
+			pAtlas->AddFontFromMemoryTTF((void *)pFallback, FallbackSize, Pixels * Scale, &FallbackConfig, pRanges);
 		}
 		return pFont;
 	};
