@@ -735,11 +735,15 @@ int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Bu
 		Open.pop();
 		const SLocal Node = vLocal[Index];
 		const bool Hooking = Node.m_State.m_HookState == HOOK_GRABBED || Node.m_State.m_HookState == HOOK_FLYING;
+		// no jump left in the air: pressing it changes nothing
+		const bool NoJump = (Node.m_State.m_Jumped & 2) && !m_Collision.IsOnGround(Node.m_State.m_Pos, CCharacterCore::PhysicalSize());
 		for(int Dir = -1; Dir <= 1 && Found < 0; Dir++)
 			for(int Jump = 0; Jump <= 1 && Found < 0; Jump++)
 				for(int Hook = -2; Hook < 36 && Found < 0; Hook++)
 				{
 					if(Hook == -1 && !Hooking)
+						continue;
+					if(Jump && NoJump)
 						continue;
 					XcSolver::SStep Step = {Dir, Jump != 0, Hook == -2 ? 0 : (Hook == -1 ? 1 : 2), Hook >= 0 ? direction(Hook * 2.0f * pi / 36.0f) * 100.0f : vec2(Dir == 0 ? 1.0f : (float)Dir, 0.0f) * 100.0f, 2};
 					Load(Core, Node.m_State);
@@ -787,6 +791,10 @@ int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Bu
 					uint64_t Key = ((uint64_t)(int)(New.m_Pos.x / 3.0f) << 48) ^ ((uint64_t)(int)(New.m_Pos.y / 3.0f) << 32) ^ ((uint64_t)(int)(New.m_Vel.x + 64.0f) << 24) ^ ((uint64_t)(int)(New.m_Vel.y + 64.0f) << 16) ^ ((uint64_t)(New.m_HookState & 15) << 8) ^ (uint64_t)(New.m_Jumped & 3);
 					if(New.m_HookState == HOOK_GRABBED)
 						Key ^= ((uint64_t)(int)(New.m_HookPos.x / 8.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 8.0f) * 40503ull);
+					// a hook still in the air: where it flies (before, hooks thrown every way were one try until they
+					// caught, so only hooks catching within 2 ticks, 5 cells, were really tried)
+					else if(New.m_HookState == HOOK_FLYING)
+						Key ^= ((uint64_t)(int)(New.m_HookDir.x * 32.0f + 64.0f) * 0x9e3779b97f4a7c15ull) ^ ((uint64_t)(int)(New.m_HookDir.y * 32.0f + 64.0f) * 0xc2b2ae3d27d4eb4full);
 					if(!Seen.insert(Key).second)
 						continue;
 					vLocal.push_back({New, Index, Step, Node.m_Ticks + 2, Stage});
@@ -1063,33 +1071,43 @@ void CSearch::Run()
 			RepairTried = true;
 			const vec2 Next = m_Job.m_vHints[MaxStage];
 			const vec2 BestPos = vNodes[BestNode].m_State.m_Pos;
-			std::vector<std::pair<float, int>> vCandidates;
+			// the places to start from: near the next hint, near the best place so far, and further back along the
+			// way (up to four hints before): a big hall on ShyzoEZ-1 is crossed only by flying in fast and jumping,
+			// from 20 cells before the hint the bot got stuck at; the tries in the hall had lost their speed
+			std::vector<std::vector<std::pair<float, int>>> vvByStage(5);
 			for(int i = 0; i < (int)vNodes.size(); i++)
 			{
 				const SNode &N = vNodes[i];
-				// near the next hint, or near the best place so far (a hint far from the way had no tries near it at
-				// all, and the precise search gave up before it started)
-				if(N.m_Stage < MaxStage - 1 || N.m_Stage > MaxStage || N.m_State.m_FreezeTicks > 0 || (distance(N.m_State.m_Pos, Next) > 12 * 32.0f && distance(N.m_State.m_Pos, BestPos) > 6 * 32.0f))
+				const int Back = MaxStage - N.m_Stage;
+				if(Back < 0 || Back > 4 || N.m_State.m_FreezeTicks > 0 || (distance(N.m_State.m_Pos, Next) > 24 * 32.0f && distance(N.m_State.m_Pos, BestPos) > 6 * 32.0f))
 					continue;
-				vCandidates.push_back({Heuristic(N.m_State.m_Pos, MaxStage), i});
+				vvByStage[Back].push_back({Heuristic(N.m_State.m_Pos, MaxStage), i});
 			}
-			std::sort(vCandidates.begin(), vCandidates.end());
-			std::unordered_set<uint64_t> Kinds;
-			std::vector<int> vPicked;
-			for(const auto &[Score, i] : vCandidates)
+			// one per cell and rough speed in each stage (the closest tries are often the lost ones, flying fast
+			// into the freeze at the top of a shaft), then taken in turn from each stage
+			std::vector<std::vector<int>> vvPicked(5);
+			for(int Back = 0; Back < 5; Back++)
 			{
-				const SState &St = vNodes[i].m_State;
-				// one per cell and rough speed: the closest tries are often the lost ones (flying fast into the
-				// freeze at the top of a shaft), the way on starts lower and slower
-				const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 6.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 6.0f + 32.0f) << 4);
-				if(Kinds.insert(Kind).second && vPicked.size() < 80)
-					vPicked.push_back(i);
+				std::sort(vvByStage[Back].begin(), vvByStage[Back].end());
+				std::unordered_set<uint64_t> Kinds;
+				for(const auto &[Score, i] : vvByStage[Back])
+				{
+					const SState &St = vNodes[i].m_State;
+					const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 6.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 6.0f + 32.0f) << 4);
+					if(Kinds.insert(Kind).second && vvPicked[Back].size() < 30)
+						vvPicked[Back].push_back(i);
+				}
 			}
+			std::vector<int> vPicked;
+			for(size_t k = 0; k < 30; k++)
+				for(int Back = 0; Back < 5; Back++)
+					if(k < vvPicked[Back].size() && vPicked.size() < 100)
+						vPicked.push_back(vvPicked[Back][k]);
 			// a quick look from many places, then longer ones from the best few (getting round a bend into a
 			// shaft one cell wide took the precise search 10000 to 130000 steps on 70s)
 			int Tried = 0, Repaired = -1;
 			// each pass goes on from the places the one before got closest from
-			const int aPassPlaces[] = {80, 8, 3};
+			const int aPassPlaces[] = {100, 8, 3};
 			const int aPassBudget[] = {3000, 40000, 200000};
 			std::vector<std::pair<float, int>> vOrder;
 			for(int i : vPicked)
@@ -1105,7 +1123,16 @@ void CSearch::Run()
 					vNext.push_back({Closest, vOrder[k].second});
 				}
 				std::stable_sort(vNext.begin(), vNext.end());
-				vOrder = vNext;
+				// the closest are mostly the tries deepest in, often flying too fast to be saved: the longer
+				// passes also go on from places further back (at most 3, then 1 from each hint back)
+				vOrder.clear();
+				std::vector<int> vPerBack(5, 0);
+				for(const auto &Entry : vNext)
+				{
+					const int Back = std::clamp(MaxStage - vNodes[Entry.second].m_Stage, 0, 4);
+					if(vPerBack[Back]++ < (Pass == 0 ? 3 : 1))
+						vOrder.push_back(Entry);
+				}
 			}
 			if(Repaired >= 0)
 			{
@@ -1328,6 +1355,8 @@ void CSearch::Run()
 			Key ^= (uint64_t)Stage * 0x9e3779b97f4a7c15ull;
 			if(New.m_HookState == HOOK_GRABBED)
 				Key ^= ((uint64_t)(int)(New.m_HookPos.x / 16.0f) * 2654435761ull) ^ ((uint64_t)(int)(New.m_HookPos.y / 16.0f) * 40503ull);
+			else if(New.m_HookState == HOOK_FLYING)
+				Key ^= ((uint64_t)(int)(New.m_HookDir.x * 16.0f + 32.0f) * 0x9e3779b97f4a7c15ull) ^ ((uint64_t)(int)(New.m_HookDir.y * 16.0f + 32.0f) * 0xc2b2ae3d27d4eb4full);
 			if(!Seen.insert(Key).second)
 				continue;
 			{
