@@ -124,6 +124,7 @@ void CLayerTele::BrushDraw(CLayer *pBrush, vec2 WorldPos)
 				else if(pTeleLayer->m_pTeleTile[SrcIndex].m_Number)
 				{
 					m_pTeleTile[TgtIndex].m_Number = pTeleLayer->m_pTeleTile[SrcIndex].m_Number;
+					XcExt = !IsCheckpoint && pTeleLayer->m_pTeleTile[SrcIndex].m_Number == Editor()->m_TeleNumber; // XClient: the brush carries the number
 				}
 				else
 				{
@@ -298,7 +299,11 @@ void CLayerTele::FillSelection(bool Empty, CLayer *pBrush, CUIRect Rect)
 					else if(IsCheckpoint && ((pLt->m_pTeleTile[SrcIndex].m_Number == 0 && Editor()->m_TeleCheckpointNumber) || Editor()->m_TeleCheckpointNumber != pLt->m_TeleCheckpointNumber))
 						m_pTeleTile[TgtIndex].m_Number = Editor()->m_TeleCheckpointNumber;
 					else
+					{
 						m_pTeleTile[TgtIndex].m_Number = pLt->m_pTeleTile[SrcIndex].m_Number;
+						if(!IsCheckpoint && m_pTeleTile[TgtIndex].m_Number == Editor()->m_TeleNumber) // XClient: the brush carries the number
+							XcConvertExt(TgtIndex);
+					}
 				}
 				else
 				{
