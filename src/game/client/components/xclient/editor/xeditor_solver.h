@@ -6,6 +6,7 @@
 #include <base/vmath.h>
 
 #include <game/mapitems.h>
+#include <game/gamecore.h>
 
 #include <atomic>
 #include <string>
@@ -92,6 +93,8 @@ public:
 	std::vector<CTile> m_vGame;
 	std::vector<CTile> m_vFront;
 	std::vector<CTeleTile> m_vTele; // empty without a tele layer
+	std::vector<CTuneTile> m_vTune; // empty without a tune layer
+	std::vector<CTuningParams> m_vTuning; // per tune zone (0: the whole map), empty: the default physics
 	vec2 m_Start;
 	std::vector<vec2> m_vHints; // points the way has to pass, in this order, before the finish
 	int m_MaxTries = 200000; // tries without a new hint before giving up
@@ -105,7 +108,8 @@ public:
 };
 
 // a search from the spawn (or start line) to the finish line of the layers; the tiles are copied
-std::shared_ptr<CJob> Start(const CTile *pGame, const CTile *pFront, const CTeleTile *pTele, int Width, int Height, int MaxTries, const std::vector<vec2> &vHints = {}, int TowerDepth = 0, bool Forgiving = false, bool Ideal = false);
+// the tune zones: the tune layer and the settings of the map ("tune gravity 0.3", "tune_zone 2 gravity 0.1")
+std::shared_ptr<CJob> Start(const CTile *pGame, const CTile *pFront, const CTeleTile *pTele, int Width, int Height, int MaxTries, const std::vector<vec2> &vHints = {}, int TowerDepth = 0, bool Forgiving = false, bool Ideal = false, const CTuneTile *pTune = nullptr, const std::vector<std::string> &vSettings = {});
 
 // the ideal route: no physics at all, the shortest line from the spawn through the hints (in their order) to the
 // finish that keeps clear of walls, freeze and death, as if the tee could fly anywhere

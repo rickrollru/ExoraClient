@@ -166,6 +166,20 @@ private:
 	// it, made to be passed from one side only)
 	std::vector<uint8_t> m_vDoor;
 	void BuildDoors();
+	// the physics where the tee is, before each tick (the server: CCharacter::HandleTuneLayer)
+	void ApplyTune(CCharacterCore &Core) const
+	{
+		if(m_Job.m_vTuning.empty())
+			return;
+		int Zone = 0;
+		if(!m_Job.m_vTune.empty())
+		{
+			const int x = std::clamp((int)(Core.m_Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Core.m_Pos.y / 32.0f), 0, m_Job.m_Height - 1);
+			const CTuneTile &Tile = m_Job.m_vTune[y * m_Job.m_Width + x];
+			Zone = Tile.m_Type ? Tile.m_Number : 0;
+		}
+		Core.m_Tuning = m_Job.m_vTuning[Zone];
+	}
 	// freeze walls the map leads through (no way around them, no unfreeze behind): the tee flies through
 	// frozen and thaws out (Afternight: a dozen walls one cell thick); around the cells where the shortest way to
 	// the finish crosses freeze
@@ -786,6 +800,7 @@ bool CSearch::StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCo
 			Input.m_TargetY = (int)Step.m_Target.y;
 		}
 		const vec2 PrevPos = Core.m_Pos;
+		ApplyTune(Core);
 		Core.Tick(true);
 		Core.Move();
 		Core.Quantize();
@@ -884,6 +899,7 @@ int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Bu
 							Input.m_Hook = 0;
 						}
 						const vec2 PrevPos = Core.m_Pos;
+						ApplyTune(Core);
 						Core.Tick(true);
 						Core.Move();
 						Core.Quantize();
@@ -1417,6 +1433,7 @@ void CSearch::Run()
 					Input.m_Hook = 0;
 				}
 				const vec2 PrevPos = Core.m_Pos;
+				ApplyTune(Core);
 				Core.Tick(true);
 				Core.Move();
 				Core.Quantize();
@@ -1759,6 +1776,8 @@ static XcSolver::SResult RunSearches(XcSolver::CJob &Job, vec2 Start, const std:
 		pSub->m_vGame = Job.m_vGame;
 		pSub->m_vFront = Job.m_vFront;
 		pSub->m_vTele = Job.m_vTele;
+		pSub->m_vTune = Job.m_vTune;
+		pSub->m_vTuning = Job.m_vTuning;
 		pSub->m_Start = Start;
 		pSub->m_vHints = vHints;
 		pSub->m_MaxTries = Job.m_MaxTries;
@@ -1905,9 +1924,29 @@ static void RunPieces(XcSolver::CJob &Job)
 	Job.m_Done = true;
 }
 
-std::shared_ptr<XcSolver::CJob> XcSolver::Start(const CTile *pGame, const CTile *pFront, const CTeleTile *pTele, int Width, int Height, int MaxTries, const std::vector<vec2> &vHints, int TowerDepth, bool Forgiving, bool Ideal)
+std::shared_ptr<XcSolver::CJob> XcSolver::Start(const CTile *pGame, const CTile *pFront, const CTeleTile *pTele, int Width, int Height, int MaxTries, const std::vector<vec2> &vHints, int TowerDepth, bool Forgiving, bool Ideal, const CTuneTile *pTune, const std::vector<std::string> &vSettings)
 {
 	auto pJob = std::make_shared<CJob>();
+	// the physics of each tune zone, like the server reads the settings of the map (SolarSystem: another
+	// gravity on each planet; without it the bot could not get up from the first one)
+	{
+		std::vector<CTuningParams> vTuning(256);
+		bool Changed = false;
+		for(const std::string &Setting : vSettings)
+		{
+			char aCommand[32], aName[64];
+			int Zone;
+			float Value;
+			if(std::sscanf(Setting.c_str(), "%31s %d %63s %f", aCommand, &Zone, aName, &Value) == 4 && str_comp(aCommand, "tune_zone") == 0 && Zone >= 0 && Zone < 256)
+				Changed |= vTuning[Zone].Set(aName, Value);
+			else if(std::sscanf(Setting.c_str(), "%31s %63s %f", aCommand, aName, &Value) == 3 && str_comp(aCommand, "tune") == 0)
+				Changed |= vTuning[0].Set(aName, Value);
+		}
+		if(pTune)
+			pJob->m_vTune.assign(pTune, pTune + (size_t)Width * Height);
+		if(Changed || pTune)
+			pJob->m_vTuning = std::move(vTuning);
+	}
 	pJob->m_vHints = vHints;
 	pJob->m_TowerDepth = TowerDepth;
 	pJob->m_Forgiving = Forgiving;
