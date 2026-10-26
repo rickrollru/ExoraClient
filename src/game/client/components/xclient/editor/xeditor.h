@@ -348,12 +348,15 @@ private:
 	bool m_SolveFound = false;
 	XcSolver::SResult m_SolveResult; // the last result: heat map, room along the way, tower spots
 	bool m_ShowHeat = false;
-	int m_SolveTowerDepth = 0; // the running search looks for tower skips
+	// tower skips: after each run a second search in the background, allowed to stand on frozen tees in freeze
+	// pits; where its way did, a tower skip (only shown when asked for)
+	std::shared_ptr<XcSolver::CJob> m_pTowerJob;
+	std::vector<vec2> m_vTowerSpots;
+	bool m_ShowTowers = false;
 	std::vector<float> m_vSolveHeat; // the heat map: per point of the way, 0 the easiest of this map, 1 the hardest
 	char m_aSolveSummary[160] = ""; // the time of the last run, shown over the map while its way is shown
 	bool m_SolveIdeal = false; // the running search is the ideal (not human) run
 	int m_SolveHumanTicks = -1; // the time of the last finished human-like run, to compare with the ideal one
-	const char *m_pSolveTowerLevel = "";
 	// help for the bot: points the way passes in order, set by clicks while the mode is on
 	std::vector<vec2> m_vSolveHints;
 	std::string m_SolveMapKey; // the map the hints and the result belong to: another map clears them
@@ -366,7 +369,8 @@ private:
 	XcSolver::SRoute m_IdealRoute;
 	float m_IdealRouteStart = 0.0f;
 	void RenderSolveHeat();
-	void StartSolve(int TowerDepth = 0, const char *pLevel = "", bool Forgiving = false, bool Ideal = false);
+	std::shared_ptr<XcSolver::CJob> StartJob(int TowerDepth, bool Forgiving, bool Ideal);
+	void StartSolve(bool Forgiving = false, bool Ideal = false);
 	void UpdateSolve();
 	void RenderSolvePath();
 

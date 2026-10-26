@@ -315,6 +315,10 @@ void CXcEditorUi::Render()
 			m_SolveResult = {};
 			m_aSolveSummary[0] = '\0';
 			m_IdealRoute = {};
+			if(m_pTowerJob)
+				m_pTowerJob->m_Cancel = true;
+			m_pTowerJob.reset();
+			m_vTowerSpots.clear();
 		}
 		UpdateSolve();
 		RenderSolvePath();
@@ -921,14 +925,19 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 				if(ImGui::MenuItem(Tr("Bot: find the way to the finish"), nullptr, false, !m_pSolveJob))
 					StartSolve();
 				if(ImGui::MenuItem(Tr("Bot: find the way, soft check (short touches of freeze are forgiven)"), nullptr, false, !m_pSolveJob))
-					StartSolve(0, "", true);
+					StartSolve(true);
 				if(ImGui::MenuItem(Tr("Ideal route through the hints (no physics, just the line)")))
 					StartIdealRoute();
 				if(!m_IdealRoute.m_vPath.empty() && ImGui::MenuItem(Tr("Hide the ideal route")))
 					m_IdealRoute = {};
 				// always in the menu (greyed out when idle), so the items below never move under the mouse
-				if(ImGui::MenuItem(Tr("Bot: stop"), nullptr, false, m_pSolveJob != nullptr) && m_pSolveJob)
-					m_pSolveJob->m_Cancel = true;
+				if(ImGui::MenuItem(Tr("Bot: stop"), nullptr, false, m_pSolveJob != nullptr || m_pTowerJob != nullptr))
+				{
+					if(m_pSolveJob)
+						m_pSolveJob->m_Cancel = true;
+					if(m_pTowerJob)
+						m_pTowerJob->m_Cancel = true;
+				}
 				if(ImGui::MenuItem(Tr("Bot: place hints (left click adds, right click removes)"), nullptr, m_HintMode))
 					m_HintMode = !m_HintMode;
 				if(!m_vSolveHints.empty() && ImGui::MenuItem(Tr("Bot: clear the hints")))
@@ -942,20 +951,11 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 				}
 				if(ImGui::MenuItem(Tr("Bot: heat map"), nullptr, m_ShowHeat, !m_SolveResult.m_vDifficulty.empty()))
 					m_ShowHeat = !m_ShowHeat;
-				if(ImGui::BeginMenu(Tr("Bot: look for tower skips"), !m_pSolveJob))
-				{
-					// how deep a freeze pit may be and still let a frozen tee (or two) be a step: by the difficulty
-					ImGui::MenuItem(Tr("Easy: towers do not matter"), nullptr, false, false);
-					if(ImGui::MenuItem("Main"))
-						StartSolve(1, "Main");
-					if(ImGui::MenuItem("Hard"))
-						StartSolve(1, "Hard");
-					if(ImGui::MenuItem("Insane"))
-						StartSolve(1, "Insane");
-					if(ImGui::MenuItem(Tr("Extreme (even two cells of freeze)")))
-						StartSolve(2, "Extreme");
-					ImGui::EndMenu();
-				}
+				// the tower check runs by itself after each run; the marks only when asked for
+				if(m_pTowerJob)
+					ImGui::MenuItem(Tr("Bot: checking for tower skips..."), nullptr, false, false);
+				else if(ImGui::MenuItem(Tr("Bot: show tower skips"), nullptr, m_ShowTowers, !m_vTowerSpots.empty()))
+					m_ShowTowers = !m_ShowTowers;
 				if(!m_vSolvePath.empty() && ImGui::MenuItem(Tr("Bot: hide the way")))
 					m_vSolvePath.clear();
 				ImGui::Separator();
