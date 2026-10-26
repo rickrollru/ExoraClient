@@ -1018,6 +1018,9 @@ set_src(DEP_IMGUI_FT_SRC GLOB src/engine/external/imgui/misc/freetype imgui_free
 add_library(imgui EXCLUDE_FROM_ALL OBJECT ${DEP_IMGUI_SRC} ${DEP_IMGUI_FT_SRC})
 # crisp hinted text with FreeType (DDNet already links it)
 target_include_directories(imgui PRIVATE ${FREETYPE_INCLUDE_DIRS} src/engine/external/imgui)
+# 32-bit characters (emoji) are set in imconfig.h; the definition here only changes the flags, so builds made
+# before that recompile the imgui objects too (Visual Studio kept the old ones and the link failed)
+target_compile_definitions(imgui PRIVATE XC_IMGUI_WCHAR32=1)
 # XClient: stb_image for custom menu backgrounds (jpg, gif)
 set_src(DEP_STB_SRC GLOB src/engine/external/stb stb_image.cpp stb_image.h stb_image_xc.h)
 add_library(stb EXCLUDE_FROM_ALL OBJECT ${DEP_STB_SRC})
