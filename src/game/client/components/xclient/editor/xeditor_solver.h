@@ -124,7 +124,7 @@ struct SRoute
 SRoute IdealRoute(const CTile *pGame, const CTile *pFront, int Width, int Height, const std::vector<vec2> &vHints);
 
 // how hard the map is on the KoG scale (Easy 1 .. Insane 3, each with 1 to 3 stars: easier, middle, harder), from
-// the difficulty along the way the bot found; fitted to 17 ranked KoG maps (off by under one star on average)
+// the difficulty along the way the bot found; fitted to 19 ranked KoG maps (off by 0.7 of a tier on average)
 struct SRating
 {
 	bool m_Valid = false;
