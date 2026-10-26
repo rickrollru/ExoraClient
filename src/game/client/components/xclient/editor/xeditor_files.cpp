@@ -264,12 +264,19 @@ void CXcEditorUi::RenderFileDialog()
 			}
 		}
 		// arrows move the selection like in the classic list
+		bool KeyMoved = false;
 		if(!B.m_vpFilteredFileList.empty() && !ClassicPopup)
 		{
 			if(ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+			{
 				B.m_SelectedFileIndex = std::min(B.m_SelectedFileIndex + 1, (int)B.m_vpFilteredFileList.size() - 1);
+				KeyMoved = true;
+			}
 			if(ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+			{
 				B.m_SelectedFileIndex = std::max(B.m_SelectedFileIndex - 1, 0);
+				KeyMoved = true;
+			}
 		}
 		if(B.m_SelectedFileIndex != OldSelection)
 		{
@@ -277,8 +284,16 @@ void CXcEditorUi::RenderFileDialog()
 			B.UpdateFilenameInput();
 			str_copy(m_aFileName, B.m_FilenameInput.GetString());
 			B.m_PreviewState = CFileBrowser::EPreviewState::UNLOADED;
-			if(B.m_SelectedFileIndex >= 0)
-				ImGui::SetScrollY(std::max(0.0f, B.m_SelectedFileIndex * RowHeight - ImGui::GetWindowHeight() * 0.5f));
+			// only the arrows scroll, and only as far as the row needs to be seen: a click centred the clicked row,
+			// the list jumped under the mouse and the second click of a double click hit another map
+			if(B.m_SelectedFileIndex >= 0 && KeyMoved)
+			{
+				const float RowTop = B.m_SelectedFileIndex * RowHeight;
+				if(RowTop < ImGui::GetScrollY())
+					ImGui::SetScrollY(RowTop);
+				else if(RowTop + RowHeight > ImGui::GetScrollY() + ImGui::GetWindowHeight())
+					ImGui::SetScrollY(RowTop + RowHeight - ImGui::GetWindowHeight());
+			}
 		}
 		if(B.m_vpFilteredFileList.empty())
 			Description(Tr("Nothing here"));
