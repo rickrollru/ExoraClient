@@ -20,6 +20,7 @@
 #include <game/client/components/xclient/ui/widgets.h>
 #include <game/editor/editor.h>
 #include <game/editor/mapitems/layer_group.h>
+#include <game/editor/mapitems/layer_tune.h>
 
 #include <engine/external/imgui/imgui.h>
 
@@ -409,7 +410,11 @@ void CXcEditorUi::StartSolve(int TowerDepth, const char *pLevel, bool Forgiving,
 	const std::shared_ptr<CLayerFront> &pFront = E.Map()->m_pFrontLayer;
 	m_vSolvePath.clear();
 	const std::shared_ptr<CLayerTele> &pTele = E.Map()->m_pTeleLayer;
-	m_pSolveJob = XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal);
+	const std::shared_ptr<CLayerTune> &pTune = E.Map()->m_pTuneLayer;
+	std::vector<std::string> vSettings;
+	for(const CEditorMapSetting &Setting : E.Map()->m_vSettings)
+		vSettings.emplace_back(Setting.m_aCommand);
+	m_pSolveJob = XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal, pTune ? pTune->m_pTuneTile : nullptr, vSettings);
 	m_SolveIdeal = Ideal;
 	// the name for the log, without the hash maps downloaded from a server carry (Name_<64 hex digits>)
 	fs_split_file_extension(fs_filename(E.Map()->m_aFilename), m_aSolveMap, sizeof(m_aSolveMap));
