@@ -165,6 +165,7 @@ private:
 	// few cells, so passing it that way is a way of the map (Afternight: a freeze wall with unfreeze right behind
 	// it, made to be passed from one side only)
 	std::vector<uint8_t> m_vDoor;
+	static constexpr uint8_t DOOR_FALL = 0x10; // a long fall into an unfreeze below
 	void BuildDoors();
 	// a tele back to the checkpoint: no way through there for the routes (SolarSystem: a line of them all round
 	// each planet; the route went straight through it into space)
@@ -353,6 +354,22 @@ void CSearch::BuildDoors()
 						break;
 					}
 				}
+			// a long fall into an unfreeze: frozen, the tee drops straight down (Afternight: a freeze shaft one cell
+			// wide, 38 cells down to the unfreeze, the way on is to fly into it from the side); a way whichever way
+			// the tee comes in, up to 64 cells (a drop that long takes under 2 s, less than the freeze lasts)
+			for(int k = 1; k <= 64; k++)
+			{
+				if(y + k >= h)
+					break;
+				const int g = Tile(m_Job.m_vGame, x, y + k), f = Tile(m_Job.m_vFront, x, y + k);
+				if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f))
+					break;
+				if(Unfreezes(g) || Unfreezes(f))
+				{
+					m_vDoor[y * w + x] |= 0x0f | DOOR_FALL;
+					break;
+				}
+			}
 		}
 }
 
@@ -419,6 +436,10 @@ void CSearch::BuildThawOk()
 	const int Walls = (int)std::count(m_vThawOk.begin(), m_vThawOk.end(), 1);
 	if(Walls > 0)
 		Log("freeze the shortest way crosses (flying through frozen is allowed there): %d cells\n", Walls);
+	// the falls into an unfreeze last longer than the precise search lets a tee stay frozen: allowed there too
+	for(size_t i = 0; i < m_vDoor.size(); i++)
+		if(m_vDoor[i] & DOOR_FALL)
+			m_vThawOk[i] = 1;
 }
 
 void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
