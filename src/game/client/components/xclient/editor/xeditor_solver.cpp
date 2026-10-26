@@ -2145,9 +2145,11 @@ XcSolver::SRating XcSolver::Rate(const SResult &Result)
 		Sum += d;
 	const float Mean = Sum / Result.m_vDifficulty.size();
 	// the share of small mistakes that freeze, on average along the way, grows steadily with the tier of the
-	// map: 0.12 on Easy 1, 0.30 on Main 3, 0.43 on Hard 2, 0.49 on Insane 2 (a straight line fits best; the share
-	// of the hardest places and how often the precise search was needed made it no better)
-	Rating.m_Score = std::clamp(25.2f * Mean - 1.31f, 0.5f, 12.49f);
+	// map: 0.13 on Easy 1, 0.30 on Main 3, 0.43 on Hard 2, 0.49 on Insane 2 (a straight line fits best; the share
+	// of the hardest places, how often the precise search was needed and finer mistakes, the hook 2 degrees off or
+	// a tick late, made it no better). 19 KoG maps: the right group (Easy..Insane) on 15, off by 0.7 of a tier on
+	// average, never more than 1.6
+	Rating.m_Score = std::clamp(25.89f * Mean - 1.67f, 0.5f, 12.49f);
 	Rating.m_Tier = std::clamp((int)std::lround(Rating.m_Score), 1, 12);
 	const float Offset = Rating.m_Score - Rating.m_Tier;
 	Rating.m_Stars = Offset < -1.0f / 6.0f ? 1 : Offset > 1.0f / 6.0f ? 3 : 2;
