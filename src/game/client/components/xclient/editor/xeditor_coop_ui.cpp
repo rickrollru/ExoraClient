@@ -401,20 +401,31 @@ static void FormatRaceTime(char *pBuf, int Size, int Ticks)
 	str_format(pBuf, Size, "%d:%02d.%02d", Centis / 6000, (Centis / 100) % 60, Centis % 100);
 }
 
-void CXcEditorUi::StartSolve(int TowerDepth, const char *pLevel, bool Forgiving, bool Ideal)
+std::shared_ptr<XcSolver::CJob> CXcEditorUi::StartJob(int TowerDepth, bool Forgiving, bool Ideal)
 {
 	CEditor &E = *m_pEditor;
 	const std::shared_ptr<CLayerGame> &pGame = E.Map()->m_pGameLayer;
-	if(!pGame)
-		return;
 	const std::shared_ptr<CLayerFront> &pFront = E.Map()->m_pFrontLayer;
-	m_vSolvePath.clear();
 	const std::shared_ptr<CLayerTele> &pTele = E.Map()->m_pTeleLayer;
 	const std::shared_ptr<CLayerTune> &pTune = E.Map()->m_pTuneLayer;
 	std::vector<std::string> vSettings;
 	for(const CEditorMapSetting &Setting : E.Map()->m_vSettings)
 		vSettings.emplace_back(Setting.m_aCommand);
-	m_pSolveJob = XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal, pTune ? pTune->m_pTuneTile : nullptr, vSettings);
+	return XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal, pTune ? pTune->m_pTuneTile : nullptr, vSettings);
+}
+
+void CXcEditorUi::StartSolve(bool Forgiving, bool Ideal)
+{
+	CEditor &E = *m_pEditor;
+	if(!E.Map()->m_pGameLayer)
+		return;
+	m_vSolvePath.clear();
+	// a new run: the tower check of the last one is out of date
+	if(m_pTowerJob)
+		m_pTowerJob->m_Cancel = true;
+	m_pTowerJob.reset();
+	m_vTowerSpots.clear();
+	m_pSolveJob = StartJob(0, Forgiving, Ideal);
 	m_SolveIdeal = Ideal;
 	// the name for the log, without the hash maps downloaded from a server carry (Name_<64 hex digits>)
 	fs_split_file_extension(fs_filename(E.Map()->m_aFilename), m_aSolveMap, sizeof(m_aSolveMap));
@@ -429,8 +440,6 @@ void CXcEditorUi::StartSolve(int TowerDepth, const char *pLevel, bool Forgiving,
 	}
 	if(!m_aSolveMap[0])
 		str_copy(m_aSolveMap, "unnamed");
-	m_SolveTowerDepth = TowerDepth;
-	m_pSolveTowerLevel = pLevel;
 	if(!m_pSolveJob->m_HasStart || !m_pSolveJob->m_HasGoal)
 	{
 		XcUi::Toast(Tr("The bot needs a spawn (or a start line) and a finish line in the game layer"), XcUi::TOAST_ERROR);
@@ -442,6 +451,35 @@ void CXcEditorUi::StartSolve(int TowerDepth, const char *pLevel, bool Forgiving,
 
 void CXcEditorUi::UpdateSolve()
 {
+	// the tower check after a run: its way is not shown, only where it stood on frozen tees
+	if(m_pTowerJob && m_pTowerJob->m_Done)
+	{
+		CEditor &E = *m_pEditor;
+		const XcSolver::SResult &Tower = m_pTowerJob->m_Result;
+		m_vTowerSpots = Tower.m_vTowerSpots;
+		std::string Line = "\nTOWER SKIPS: " + std::to_string(m_vTowerSpots.size());
+		for(const vec2 &Spot : m_vTowerSpots)
+			Line += " | " + std::to_string((int)(Spot.x / 32.0f)) + " " + std::to_string((int)(Spot.y / 32.0f));
+		Line += "\n";
+		char aPath[IO_MAX_PATH_LENGTH];
+		str_format(aPath, sizeof(aPath), "xclient/bot_logs/%s.txt", m_aSolveMap);
+		for(const char *pPath : {"xclient/bot_log.txt", (const char *)aPath})
+		{
+			IOHANDLE File = E.Storage()->OpenFile(pPath, IOFLAG_APPEND, IStorage::TYPE_SAVE);
+			if(File)
+			{
+				io_write(File, Line.data(), Line.size());
+				io_close(File);
+			}
+		}
+		if(!m_vTowerSpots.empty())
+		{
+			char aMsg[160];
+			str_format(aMsg, sizeof(aMsg), Tr("Tower skips: %d places (Map > Bot: show tower skips)"), (int)m_vTowerSpots.size());
+			XcUi::Toast(aMsg, XcUi::TOAST_ERROR);
+		}
+		m_pTowerJob.reset();
+	}
 	if(!m_pSolveJob || !m_pSolveJob->m_Done)
 		return;
 	CEditor &E = *m_pEditor;
@@ -565,16 +603,11 @@ void CXcEditorUi::UpdateSolve()
 		str_append(m_aSolveSummary, " | ");
 		str_append(m_aSolveSummary, aRating);
 	}
-	if(m_SolveTowerDepth > 0)
-	{
-		if(Result.m_vTowerSpots.empty())
-			str_format(aMsg, sizeof(aMsg), Tr("Tower skips (%s): none found on this way"), m_pSolveTowerLevel);
-		else
-			str_format(aMsg, sizeof(aMsg), Tr("Tower skips (%s): %d places, marked with T"), m_pSolveTowerLevel, (int)Result.m_vTowerSpots.size());
-		XcUi::Toast(aMsg, Result.m_vTowerSpots.empty() ? XcUi::TOAST_SUCCESS : XcUi::TOAST_ERROR);
-		m_ShowHeat = false;
-	}
 	m_pSolveJob.reset();
+	// then the tower check, by itself in the background: a frozen tee lying in a freeze pit one cell deep is a
+	// step (two cells only on Extreme); on Easy maps towers do not matter. Not for the ideal run
+	if(!m_SolveIdeal && !(Rating.m_Valid && Rating.m_Tier <= 3))
+		m_pTowerJob = StartJob(1, false, false);
 }
 
 void CXcEditorUi::RenderSolveHints()
@@ -783,19 +816,19 @@ void CXcEditorUi::RenderSolvePath()
 		}
 		pGraphics->QuadsEnd();
 	}
-	// tower skips: the frozen tees the way stood on or hooked
-	if(!m_SolveResult.m_vTowerSpots.empty())
+	// tower skips: the frozen tees the way of the tower check stood on or hooked
+	if(m_ShowTowers && !m_vTowerSpots.empty())
 	{
 		pGraphics->TextureClear();
 		pGraphics->QuadsBegin();
 		pGraphics->SetColor(1.0f, 0.2f, 0.25f, 0.7f);
-		for(const vec2 &Spot : m_SolveResult.m_vTowerSpots)
+		for(const vec2 &Spot : m_vTowerSpots)
 		{
 			const IGraphics::CQuadItem Quad(Spot.x - 16.0f, Spot.y - 16.0f, 32.0f, 32.0f);
 			pGraphics->QuadsDrawTL(&Quad, 1);
 		}
 		pGraphics->QuadsEnd();
-		for(const vec2 &Spot : m_SolveResult.m_vTowerSpots)
+		for(const vec2 &Spot : m_vTowerSpots)
 			E.TextRender()->Text(Spot.x - 7.0f, Spot.y - 11.0f, 20.0f, "T");
 	}
 	E.Ui()->MapScreen();
