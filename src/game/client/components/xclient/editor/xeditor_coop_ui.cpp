@@ -465,11 +465,13 @@ void CXcEditorUi::UpdateSolve()
 		float Length = 0.0f;
 		for(size_t i = 1; i < Result.m_vPath.size(); i++)
 			Length += distance(Result.m_vPath[i - 1], Result.m_vPath[i]);
+		const XcSolver::SRating Rating = XcSolver::Rate(Result);
 		char aSummary[512];
-		str_format(aSummary, sizeof(aSummary), "\nSUMMARY map %s | %s | time %.2f s | way %d cells | points %d | difficulty mean %.3f p50 %.3f p90 %.3f hard share %.3f | precise search %d | not passed %d | tries %d\n",
+		str_format(aSummary, sizeof(aSummary), "\nSUMMARY map %s | %s | time %.2f s | way %d cells | points %d | difficulty mean %.3f p50 %.3f p90 %.3f hard share %.3f | precise search %d | not passed %d | tries %d | rating %s %d, %d of 3 (score %.2f%s)\n",
 			aMap, Result.m_Found ? "finished" : "not finished", Result.m_Ticks / 50.0f, (int)(Length / 32.0f), n,
 			n ? Sum / n : 0.0f, n ? vSorted[n / 2] : 0.0f, n ? vSorted[n * 9 / 10] : 0.0f, n ? (float)Hard / n : 0.0f,
-			Result.m_Repairs, (int)Result.m_vStuck.size(), Result.m_Explored);
+			Result.m_Repairs, (int)Result.m_vStuck.size(), Result.m_Explored,
+			Rating.m_Valid ? XcSolver::TierGroup(Rating.m_Tier) : "none", (Rating.m_Tier - 1) % 3 + 1, Rating.m_Stars, Rating.m_Score, Rating.m_Partial ? ", from the part passed" : "");
 		E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
 		E.Storage()->CreateFolder("xclient/bot_logs", IStorage::TYPE_SAVE);
 		char aPath[IO_MAX_PATH_LENGTH];
@@ -551,6 +553,18 @@ void CXcEditorUi::UpdateSolve()
 		Length += distance(Result.m_vPath[i - 1], Result.m_vPath[i]);
 	str_format(aMsg, sizeof(aMsg), Tr("Length of the way: %d cells. Map > Bot: heat map shows the hard places"), (int)(Length / 32.0f));
 	XcUi::Toast(aMsg, XcUi::TOAST_INFO);
+	// the difficulty on the KoG scale: the tier and how hard within it (not for the ideal run, it takes no risks)
+	const XcSolver::SRating Rating = XcSolver::Rate(Result);
+	if(Rating.m_Valid && !m_SolveIdeal)
+	{
+		static const char *s_apStars[] = {"", "easier", "middle", "harder"};
+		char aRating[128];
+		str_format(aRating, sizeof(aRating), "%s %d (%s)", Tr(XcSolver::TierGroup(Rating.m_Tier)), (Rating.m_Tier - 1) % 3 + 1, Tr(s_apStars[Rating.m_Stars]));
+		str_format(aMsg, sizeof(aMsg), Rating.m_Partial ? Tr("Difficulty on the KoG scale: %s, from the part the bot passed") : Tr("Difficulty on the KoG scale: %s"), aRating);
+		XcUi::Toast(aMsg, XcUi::TOAST_INFO);
+		str_append(m_aSolveSummary, " | ");
+		str_append(m_aSolveSummary, aRating);
+	}
 	if(m_SolveTowerDepth > 0)
 	{
 		if(Result.m_vTowerSpots.empty())

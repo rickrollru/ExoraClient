@@ -166,6 +166,15 @@ private:
 	// it, made to be passed from one side only)
 	std::vector<uint8_t> m_vDoor;
 	void BuildDoors();
+	// a tele back to the checkpoint: no way through there for the routes (SolarSystem: a line of them all round
+	// each planet; the route went straight through it into space)
+	bool SendsBack(int x, int y) const
+	{
+		if(m_Job.m_vTele.empty())
+			return false;
+		const int Type = m_Job.m_vTele[y * m_Job.m_Width + x].m_Type;
+		return m_Job.m_vTele[y * m_Job.m_Width + x].m_Number > 0 && (Type == TILE_TELECHECKIN || Type == TILE_TELECHECKINEVIL);
+	}
 	// the physics where the tee is, before each tick (the server: CCharacter::HandleTuneLayer)
 	void ApplyTune(CCharacterCore &Core) const
 	{
@@ -442,7 +451,7 @@ void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
 			for(int x = 0; x < w; x++)
 			{
 				const int Game = Tile(m_Job.m_vGame, x, y), Front = Tile(m_Job.m_vFront, x, y);
-				if(Game == TILE_SOLID || Game == TILE_NOHOOK || Deadly(Game) || Deadly(Front))
+				if(Game == TILE_SOLID || Game == TILE_NOHOOK || Deadly(Game) || Deadly(Front) || SendsBack(x, y))
 					continue;
 				m_vStepCost[y * w + x] = Freezes(Game) || Freezes(Front) ? 32.0f * 400.0f : 32.0f;
 			}
@@ -672,7 +681,7 @@ void CSearch::AutoHints()
 		if(x < 0 || y < 0 || x >= w || y >= h)
 			return true;
 		const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-		return g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f);
+		return g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || Freezes(g) || Freezes(f) || SendsBack(x, y);
 	};
 	// room of each free cell: cells to the nearest wall or freeze, up to 3
 	std::vector<uint8_t> vRoom((size_t)w * h, 0);
@@ -704,7 +713,7 @@ void CSearch::AutoHints()
 	auto Cost = [&](int n, int Dir) {
 		const int x = n % w, y = n / w;
 		const int g = Tile(m_Job.m_vGame, x, y), f = Tile(m_Job.m_vFront, x, y);
-		if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f))
+		if(g == TILE_SOLID || g == TILE_NOHOOK || Deadly(g) || Deadly(f) || SendsBack(x, y))
 			return FAR;
 		// through freeze only when there is no other way (some maps lead through freeze into unfreeze)
 		if(Freezes(g) || Freezes(f))
@@ -2123,4 +2132,32 @@ XcSolver::SRoute XcSolver::IdealRoute(const CTile *pGame, const CTile *pFront, i
 		i = j;
 	}
 	return Route;
+}
+
+XcSolver::SRating XcSolver::Rate(const SResult &Result)
+{
+	SRating Rating;
+	// too short a way says nothing
+	if(Result.m_vDifficulty.size() < 100)
+		return Rating;
+	float Sum = 0.0f;
+	for(float d : Result.m_vDifficulty)
+		Sum += d;
+	const float Mean = Sum / Result.m_vDifficulty.size();
+	// the share of small mistakes that freeze, on average along the way, grows steadily with the tier of the
+	// map: 0.12 on Easy 1, 0.30 on Main 3, 0.43 on Hard 2, 0.49 on Insane 2 (a straight line fits best; the share
+	// of the hardest places and how often the precise search was needed made it no better)
+	Rating.m_Score = std::clamp(25.2f * Mean - 1.31f, 0.5f, 12.49f);
+	Rating.m_Tier = std::clamp((int)std::lround(Rating.m_Score), 1, 12);
+	const float Offset = Rating.m_Score - Rating.m_Tier;
+	Rating.m_Stars = Offset < -1.0f / 6.0f ? 1 : Offset > 1.0f / 6.0f ? 3 : 2;
+	Rating.m_Partial = !Result.m_Found || !Result.m_vStuck.empty();
+	Rating.m_Valid = true;
+	return Rating;
+}
+
+const char *XcSolver::TierGroup(int Tier)
+{
+	static const char *s_apNames[] = {"Easy", "Main", "Hard", "Insane"};
+	return s_apNames[std::clamp((Tier - 1) / 3, 0, 3)];
 }
