@@ -492,6 +492,10 @@ void CXcEditorUi::Render()
 		m_HoldMouse = m_DragThisFrame;
 		if(!m_HoldMouse)
 			m_HeldOffset = vec2(0.0f, 0.0f);
+		// the notices (the bot, saving...) over the editor: the game HUD that shows them is not drawn here, so they
+		// came up only after leaving the editor
+		if(XcUi::HasToasts())
+			XcUi::RenderToasts(ImGui::GetForegroundDrawList(), ImGui::GetIO().DisplaySize, E.Client()->GlobalTime(), 1.0f, m_Gui.Fonts().m_pLabel, m_Gui.Fonts().m_pSmall);
 		m_Gui.Render();
 		SetFonts(OldFonts);
 		SetScale(OldScale);

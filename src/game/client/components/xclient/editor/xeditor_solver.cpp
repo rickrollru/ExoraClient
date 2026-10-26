@@ -1897,6 +1897,9 @@ static void RunPieces(XcSolver::CJob &Job)
 	std::vector<vec2> vHints = Job.m_vHints; // the mapper's, or empty: each piece routes itself
 	const bool MapperHints = !vHints.empty();
 	std::string Log;
+	// where the last piece got stuck, after a restart a few hints back: stuck there again, the place is skipped
+	vec2 LastStuck(-1e9f, -1e9f);
+	std::vector<vec2> vRestarts;
 	for(int Piece = 0; Piece < 30 && !Job.m_Cancel; Piece++)
 	{
 		std::string Summary;
@@ -1927,13 +1930,35 @@ static void RunPieces(XcSolver::CJob &Job)
 		Out.m_Found = R.m_Found;
 		if(R.m_Found || Job.m_Cancel)
 			break;
-		// stuck: mark the place and go on from the hint after the one it could not reach (two after, when this
-		// piece got nowhere at all)
 		const std::vector<vec2> &vRoute = MapperHints ? vHints : R.m_vAutoHints;
+		if(R.m_vPath.empty())
+			break;
+		// stuck at a new place: first once more from a few hints back, from a standstill. A hard place is often
+		// passed only coming in another way than the search happened to (Afternight: from a fall down the shaft
+		// before it, not with the speed the way had); the tee still goes through the place itself
+		if(distance(R.m_Closest, LastStuck) > 320.0f && R.m_HintsPassed >= 2)
+		{
+			LastStuck = R.m_Closest;
+			vRestarts.push_back(R.m_Closest);
+			const int Back = R.m_HintsPassed - 3 < 0 ? 0 : R.m_HintsPassed - 3;
+			Start = vRoute[Back];
+			if(MapperHints)
+				vHints.erase(vHints.begin(), vHints.begin() + Back + 1);
+			Out.m_Restarts++;
+			continue;
+		}
+		// stuck again: mark the place and go on from the hint after the one it could not reach (two after, when
+		// this piece got nowhere at all)
+		if(!vRestarts.empty() && distance(vRestarts.back(), R.m_Closest) <= 320.0f)
+		{
+			vRestarts.pop_back();
+			Out.m_Restarts--;
+		}
 		const int Next = R.m_HintsPassed + (Piece > 0 && R.m_HintsPassed == 0 ? 2 : 1);
-		if(R.m_vPath.empty() || Next >= (int)vRoute.size())
+		if(Next >= (int)vRoute.size())
 			break;
 		Out.m_vStuck.push_back(R.m_Closest);
+		LastStuck = vec2(-1e9f, -1e9f);
 		Start = vRoute[Next];
 		if(MapperHints)
 			vHints.erase(vHints.begin(), vHints.begin() + Next + 1);
@@ -1944,6 +1969,18 @@ static void RunPieces(XcSolver::CJob &Job)
 		str_format(aLine, sizeof(aLine), "places the bot could not pass (it went on from the next hint): %d\n", (int)Out.m_vStuck.size());
 		std::string List = aLine;
 		for(const vec2 &Pos : Out.m_vStuck)
+		{
+			str_format(aLine, sizeof(aLine), "  %.0f %.0f\n", Pos.x / 32.0f, Pos.y / 32.0f);
+			List += aLine;
+		}
+		Log = List + "\n" + Log;
+	}
+	if(!vRestarts.empty())
+	{
+		char aLine[128];
+		str_format(aLine, sizeof(aLine), "places the bot passed only after starting again a few hints before (from a standstill): %d\n", (int)vRestarts.size());
+		std::string List = aLine;
+		for(const vec2 &Pos : vRestarts)
 		{
 			str_format(aLine, sizeof(aLine), "  %.0f %.0f\n", Pos.x / 32.0f, Pos.y / 32.0f);
 			List += aLine;

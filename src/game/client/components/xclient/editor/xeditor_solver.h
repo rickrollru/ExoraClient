@@ -42,6 +42,7 @@ struct SResult
 	int m_Height = 0;
 	// the heat map: how hard each point of m_vPath is, 0..1 (the share of small mistakes there that end in freeze)
 	std::vector<float> m_vDifficulty;
+	int m_Restarts = 0; // places passed only after starting again a few hints before them
 	// how much room the way has at each point: cells to the nearest wall or freeze (1: a one cell gap)
 	std::vector<uint8_t> m_vRoom;
 	// tower skips: cells of frozen tees the way stood on or hooked

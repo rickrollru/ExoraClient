@@ -578,6 +578,11 @@ void CXcEditorUi::UpdateSolve()
 	else
 		str_format(aMsg, sizeof(aMsg), Tr("The bot found no way (%d tries). It got to the red mark in %s"), Result.m_Explored, aTime);
 	XcUi::Toast(aMsg, Result.m_Found && Result.m_vStuck.empty() ? XcUi::TOAST_SUCCESS : XcUi::TOAST_ERROR);
+	if(Result.m_Restarts > 0)
+	{
+		str_format(aMsg, sizeof(aMsg), Tr("%d hard places were passed only after starting again a few hints before them (see the log)"), Result.m_Restarts);
+		XcUi::Toast(aMsg, XcUi::TOAST_INFO);
+	}
 	// the toast goes away: the time stays written over the map
 	if(Result.m_Found && !Result.m_vStuck.empty())
 		str_format(m_aSolveSummary, sizeof(m_aSolveSummary), Tr("The bot got to the finish, %d places not passed (red marks); time without them %s"), (int)Result.m_vStuck.size(), aTime);
