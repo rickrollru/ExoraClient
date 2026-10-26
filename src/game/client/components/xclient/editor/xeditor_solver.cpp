@@ -1900,10 +1900,17 @@ static void RunPieces(XcSolver::CJob &Job)
 	// where the last piece got stuck, after a restart a few hints back: stuck there again, the place is skipped
 	vec2 LastStuck(-1e9f, -1e9f);
 	std::vector<vec2> vRestarts;
+	bool Restarting = false;
 	for(int Piece = 0; Piece < 30 && !Job.m_Cancel; Piece++)
 	{
 		std::string Summary;
+		// a restart gets less time: when it does not help, the place is skipped (a failed one took 20 minutes)
+		const int MaxTries = Job.m_MaxTries;
+		if(Restarting)
+			Job.m_MaxTries = std::min(Job.m_MaxTries, 60000);
 		SResult R = RunSearches(Job, Start, vHints, Summary);
+		Job.m_MaxTries = MaxTries;
+		Restarting = false;
 		char aHeader[160];
 		str_format(aHeader, sizeof(aHeader), "==== piece %d, from %.0f %.0f ====\n", Piece + 1, Start.x / 32.0f, Start.y / 32.0f);
 		Log += aHeader + Summary + "\n" + R.m_Log + "\n";
@@ -1935,12 +1942,14 @@ static void RunPieces(XcSolver::CJob &Job)
 			break;
 		// stuck at a new place: first once more from a few hints back, from a standstill. A hard place is often
 		// passed only coming in another way than the search happened to (Afternight: from a fall down the shaft
-		// before it, not with the speed the way had); the tee still goes through the place itself
+		// 10 cells above it, not with the speed the way had; 3 hints back was too low); the tee still goes
+		// through the place itself
 		if(distance(R.m_Closest, LastStuck) > 320.0f && R.m_HintsPassed >= 2)
 		{
 			LastStuck = R.m_Closest;
 			vRestarts.push_back(R.m_Closest);
-			const int Back = R.m_HintsPassed - 3 < 0 ? 0 : R.m_HintsPassed - 3;
+			Restarting = true;
+			const int Back = R.m_HintsPassed - 6 < 0 ? 0 : R.m_HintsPassed - 6;
 			Start = vRoute[Back];
 			if(MapperHints)
 				vHints.erase(vHints.begin(), vHints.begin() + Back + 1);
