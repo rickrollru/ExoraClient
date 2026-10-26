@@ -122,6 +122,20 @@ struct SRoute
 	float m_Length = 0.0f; // in pixels
 };
 SRoute IdealRoute(const CTile *pGame, const CTile *pFront, int Width, int Height, const std::vector<vec2> &vHints);
+
+// how hard the map is on the KoG scale (Easy 1 .. Insane 3, each with 1 to 3 stars: easier, middle, harder), from
+// the difficulty along the way the bot found; fitted to 17 ranked KoG maps (off by under one star on average)
+struct SRating
+{
+	bool m_Valid = false;
+	float m_Score = 0.0f; // 1 (Easy 1) .. 12 (Insane 3), the stars in between
+	int m_Tier = 0; // 1..12
+	int m_Stars = 0; // 1..3
+	bool m_Partial = false; // the bot did not get through all of it: from the part it passed
+};
+SRating Rate(const SResult &Result);
+// "Easy", "Main", "Hard", "Insane"
+const char *TierGroup(int Tier);
 } // namespace XcSolver
 
 #endif
