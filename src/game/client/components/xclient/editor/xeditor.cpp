@@ -604,6 +604,12 @@ void CXcEditorUi::RenderPanelSplitters()
 	const float Top = m_TopHeight;
 	const float Height = ImGui::GetIO().DisplaySize.y - m_TopHeight - m_StatusHeight;
 	const auto Splitter = [&](const char *pId, float x, int *pValue, int Default, float Direction) {
+		// not over an open menu or popup: the grip lies on top of everything and took the clicks on the menu items
+		// over the line (File menu over the left splitter)
+		const ImGuiWindow *pGrip = ImGui::FindWindowByName(pId);
+		const bool Dragging = pGrip && GImGui->ActiveIdWindow == pGrip;
+		if(!Dragging && ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
+			return;
 		ImGui::SetNextWindowPos(ImVec2(x - Grip * 0.5f, Top));
 		ImGui::SetNextWindowSize(ImVec2(Grip, Height));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
