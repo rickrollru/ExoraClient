@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <set>
 #include <cmath>
 #include <deque>
@@ -1185,6 +1186,11 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 	};
 	std::vector<SSeg> vBestSegs;
 	int BestRandomFrom = -1, BestRandomEnd = -1;
+	float RandomBestScore = -FAR;
+	vec2 RandomBestPos(0, 0), RandomBestStart(0, 0);
+	int RandomStarts = 0;
+	int aDbg[3] = {0, 0, 0};
+	float DbgMinX = FAR;
 	STrack BestRandomTrack;
 	if(BestStage < 0)
 	{
@@ -1201,7 +1207,13 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 			if(k < (int)vClose.size() / 2 + 1)
 				vSlow.push_back({length(vNodes[vClose[k].second].m_State.m_Vel), vClose[k].second});
 		std::sort(vSlow.begin(), vSlow.end());
-		for(const auto *pList : {&vClose, &vSlow})
+		// and the closest that still have the jump in the air (The_Pyra, x 250: all the tries close to a hole one cell
+		// wide had used it and fell into the freeze below; from a few cells before with the jump the way is easy)
+		std::vector<std::pair<float, int>> vJump;
+		for(const auto &[Score, From] : vClose)
+			if(!(vNodes[From].m_State.m_Jumped & 2))
+				vJump.push_back({Score, From});
+		for(const auto *pList : {&vClose, &vSlow, &vJump})
 		{
 			int Added = 0;
 			for(const auto &[Score, From] : *pList)
@@ -1220,6 +1232,13 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 			Seed = Seed * 1103515245u + 12345u;
 			return (int)((Seed >> 8) % (uint32_t)n);
 		};
+		RandomStarts = (int)vRandomStarts.size();
+		if(getenv("XC_SWING_DEBUG"))
+			for(int From : vRandomStarts)
+			{
+				const SState &St = vNodes[From].m_State;
+				Log("  random start %.2f %.2f v %.1f %.1f hook %d jumped %d jumps %d stage %d\n", St.m_Pos.x / 32.0f, St.m_Pos.y / 32.0f, St.m_Vel.x, St.m_Vel.y, St.m_HookState, St.m_Jumped, St.m_Jumps, vNodes[From].m_Stage);
+			}
 		for(int From : vRandomStarts)
 		{
 			if(m_Job.m_Cancel)
@@ -1290,14 +1309,20 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 							int FreezeTicks = 0;
 							bool Unfrozen = false, Dead = false, Done = false;
 							if(Core.m_Pos.x < BoxMin.x || Core.m_Pos.y < BoxMin.y || Core.m_Pos.x > BoxMax.x || Core.m_Pos.y > BoxMax.y)
+							{
 								Dead = true;
+								aDbg[0]++;
+							}
 							else
 								HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
 							if(Dead || FreezeTicks > 0)
 							{
+								aDbg[Dead ? 1 : 2]++;
+								DbgMinX = std::min(DbgMinX, PrevPos.x);
 								Alive = false;
 								break;
 							}
+							DbgMinX = std::min(DbgMinX, Core.m_Pos.x);
 							while(Stage < (int)m_Job.m_vHints.size() && (distance(Core.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, Core.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
 								Stage++;
 							Score = std::max(Score, Stage * 100000.0f - Heuristic(Core.m_Pos, Stage));
@@ -1311,6 +1336,12 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 							break;
 					}
 					vRound.push_back({Score, vSegs});
+					if(Score > RandomBestScore && !Track.m_vAt.empty())
+					{
+						RandomBestScore = Score;
+						RandomBestPos = Track.m_vAt.back().m_Pos;
+						RandomBestStart = vNodes[From].m_State.m_Pos;
+					}
 					int End = -1;
 					for(int t = 0; t < (int)Track.m_vStage.size(); t++)
 						if(Track.m_vStage[t] >= TargetStage && (End < 0 || Track.m_vStage[t] > Track.m_vStage[End]))
@@ -1332,7 +1363,10 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 		}
 	}
 	if(BestStage < 0)
+	{
+		Log("swings and random hooks: nothing from %d places (random hooks from %d, best from %.1f %.1f to %.1f %.1f; ends box %d dead %d freeze %d, min x %.1f, target %.1f %.1f)\n", (int)vStarts.size(), RandomStarts, RandomBestStart.x / 32.0f, RandomBestStart.y / 32.0f, RandomBestPos.x / 32.0f, RandomBestPos.y / 32.0f, aDbg[0], aDbg[1], aDbg[2], DbgMinX / 32.0f, Target.x / 32.0f, Target.y / 32.0f);
 		return -1;
+	}
 	if(BestRandomFrom >= 0)
 	{
 		// the series becomes tries of the main search: per hook the hold and the time after it
