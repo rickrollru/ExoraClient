@@ -1209,10 +1209,17 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 		std::sort(vSlow.begin(), vSlow.end());
 		// and the closest that still have the jump in the air (The_Pyra, x 250: all the tries close to a hole one cell
 		// wide had used it and fell into the freeze below; from a few cells before with the jump the way is easy)
+		// among all the tries up to 15 hints back, not only the fast and close ones
 		std::vector<std::pair<float, int>> vJump;
-		for(const auto &[Score, From] : vClose)
-			if(!(vNodes[From].m_State.m_Jumped & 2))
-				vJump.push_back({Score, From});
+		for(int i = 0; i < (int)vNodes.size(); i++)
+		{
+			const SNode &N = vNodes[i];
+			const int Back = TargetStage - 1 - N.m_Stage;
+			if(Back < 0 || Back > 15 || N.m_State.m_FreezeTicks > 0 || (N.m_State.m_Jumped & 2) || distance(N.m_State.m_Pos, Target) > 30 * 32.0f)
+				continue;
+			vJump.push_back({Heuristic(N.m_State.m_Pos, N.m_Stage) + Back * 64.0f, i});
+		}
+		std::sort(vJump.begin(), vJump.end());
 		for(const auto *pList : {&vClose, &vSlow, &vJump})
 		{
 			int Added = 0;
@@ -1258,11 +1265,11 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 				std::vector<SCand> vRound;
 				for(int n = 0; n < 10000; n++)
 				{
-					std::vector<SSeg> vSegs(4);
+					std::vector<SSeg> vSegs(6);
 					if(Round > 0 && !vElite.empty() && Rnd(10) < 7)
 					{
 						vSegs = vElite[Rnd((int)vElite.size())].m_vSegs;
-						SSeg &Seg = vSegs[Rnd(4)];
+						SSeg &Seg = vSegs[Rnd(6)];
 						switch(Rnd(5))
 						{
 						case 0: Seg.m_Aim = (Seg.m_Aim + Rnd(21) - 10 + 360) % 360; break;
