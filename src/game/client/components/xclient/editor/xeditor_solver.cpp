@@ -1618,7 +1618,7 @@ void CSearch::Run()
 	std::unordered_set<uint64_t> Seen;
 	// a limit of different states per cell (by the variant): too few throws away the precise ones a tight place
 	// needs, too many digs deep into the same dead end; which is right depends on the map
-	std::vector<uint16_t> vPerCell((size_t)m_Job.m_Width * m_Job.m_Height * 4, 0);
+	std::vector<uint16_t> vPerCell((size_t)m_Job.m_Width * m_Job.m_Height * 8, 0);
 	// tiredness of a place: tries spent in each 4 x 4 cells make it less inviting, so the search climbs out of
 	// a pocket that only looks close to the finish and goes on elsewhere
 	const int RegionW = m_Job.m_Width / 4 + 1, RegionH = m_Job.m_Height / 4 + 1;
@@ -2031,7 +2031,9 @@ void CSearch::Run()
 				continue;
 			{
 				const int cx = std::clamp((int)(New.m_Pos.x / 32.0f), 0, m_Job.m_Width - 1), cy = std::clamp((int)(New.m_Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-				const int Cell = (cy * m_Job.m_Width + cx) * 4 + (Stage & 3);
+				// the tries that still have the jump in the air count apart: they were crowded out by the ones that
+				// had used it, and some places are passed only with it (The_Pyra, a hole one cell wide at x 250)
+				const int Cell = (cy * m_Job.m_Width + cx) * 8 + (Stage & 3) * 2 + ((New.m_Jumped & 2) ? 0 : 1);
 				if(!Done && vPerCell[Cell] >= (NearFreeze(New.m_Pos) ? Variant.m_CapFreeze : Variant.m_Cap) * CellCapScale)
 					continue;
 				vPerCell[Cell]++;
