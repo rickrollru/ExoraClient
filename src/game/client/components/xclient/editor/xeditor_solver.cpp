@@ -1209,17 +1209,19 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 		std::sort(vSlow.begin(), vSlow.end());
 		// and the closest that still have the jump in the air (The_Pyra, x 250: all the tries close to a hole one cell
 		// wide had used it and fell into the freeze below; from a few cells before with the jump the way is easy)
-		// among all the tries up to 15 hints back, not only the fast and close ones
+		// among all the tries up to 40 hints back, not only the fast and close ones
 		std::vector<std::pair<float, int>> vJump;
 		for(int i = 0; i < (int)vNodes.size(); i++)
 		{
 			const SNode &N = vNodes[i];
 			const int Back = TargetStage - 1 - N.m_Stage;
-			if(Back < 0 || Back > 15 || N.m_State.m_FreezeTicks > 0 || (N.m_State.m_Jumped & 2) || distance(N.m_State.m_Pos, Target) > 30 * 32.0f)
+			if(Back < 0 || Back > 40 || N.m_State.m_FreezeTicks > 0 || (N.m_State.m_Jumped & 2) || distance(N.m_State.m_Pos, Target) > 60 * 32.0f)
 				continue;
 			vJump.push_back({Heuristic(N.m_State.m_Pos, N.m_Stage) + Back * 64.0f, i});
 		}
 		std::sort(vJump.begin(), vJump.end());
+		if(getenv("XC_SWING_DEBUG"))
+			Log("  tries with the jump left: %d\n", (int)vJump.size());
 		for(const auto *pList : {&vClose, &vSlow, &vJump})
 		{
 			int Added = 0;
