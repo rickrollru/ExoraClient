@@ -114,6 +114,13 @@ private:
 	CCollision m_Collision;
 	// the way through free cells, in pixels: to each hint and the last one to the finish
 	std::vector<std::vector<float>> m_vvFields;
+	// on a big map the field of a hint covers only a window round it (whole fields for every hint did not fit, so a
+	// big map got a hint every 80 cells and the precise search had nothing to start from: SolarSystem)
+	struct SFieldWindow
+	{
+		int m_X0 = 0, m_Y0 = 0, m_W = 0, m_H = 0; // m_W 0: the whole map
+	};
+	std::vector<SFieldWindow> m_vFieldWindows;
 	std::vector<float> m_vRest; // from reaching target k on: the way left after it
 
 	int Tile(const std::vector<CTile> &vTiles, int x, int y) const
@@ -150,7 +157,12 @@ private:
 	float Field(int Target, vec2 Pos) const
 	{
 		const int x = std::clamp((int)(Pos.x / 32.0f), 0, m_Job.m_Width - 1), y = std::clamp((int)(Pos.y / 32.0f), 0, m_Job.m_Height - 1);
-		return m_vvFields[Target][y * m_Job.m_Width + x];
+		const SFieldWindow &Win = m_vFieldWindows[Target];
+		if(Win.m_W == 0)
+			return m_vvFields[Target][y * m_Job.m_Width + x];
+		if(x < Win.m_X0 || y < Win.m_Y0 || x >= Win.m_X0 + Win.m_W || y >= Win.m_Y0 + Win.m_H)
+			return FAR;
+		return m_vvFields[Target][(y - Win.m_Y0) * Win.m_W + (x - Win.m_X0)];
 	}
 	float Heuristic(vec2 Pos, int Stage) const
 	{
@@ -160,7 +172,7 @@ private:
 			Value = distance(Pos, m_Job.m_vHints[Stage]);
 		return Value >= FAR ? FAR : Value + m_vRest[Stage];
 	}
-	void BuildField(std::vector<float> &vField, int Hint);
+	void BuildField(std::vector<float> &vField, int Hint, int Radius = 0, SFieldWindow *pWindow = nullptr);
 	std::vector<float> m_vStepCost; // per cell for the fields, 0: blocked
 	// freeze "doors": a freeze cell left in a direction (bit k: aDx/aDy[k] below) that reaches an unfreeze within a
 	// few cells, so passing it that way is a way of the map (Afternight: a freeze wall with unfreeze right behind
@@ -456,10 +468,30 @@ void CSearch::BuildThawOk()
 			m_vThawOk[i] = 1;
 }
 
-void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
+void CSearch::BuildField(std::vector<float> &vField, int Hint, int Radius, SFieldWindow *pWindow)
 {
 	const int w = m_Job.m_Width, h = m_Job.m_Height;
-	vDistance.assign((size_t)w * h, FAR);
+	// a window round the hint: the same search on the whole map, its distances copied out at the end; cells outside
+	// the window are not entered
+	int X0 = 0, Y0 = 0, X1 = w, Y1 = h;
+	if(Radius > 0 && Hint >= 0)
+	{
+		const int hx = (int)(m_Job.m_vHints[Hint].x / 32.0f), hy = (int)(m_Job.m_vHints[Hint].y / 32.0f);
+		X0 = std::max(hx - Radius, 0);
+		Y0 = std::max(hy - Radius, 0);
+		X1 = std::min(hx + Radius + 1, w);
+		Y1 = std::min(hy + Radius + 1, h);
+	}
+	std::vector<float> vWhole;
+	std::vector<float> &vDistance = Radius > 0 && Hint >= 0 ? vWhole : vField;
+	if(Radius > 0 && Hint >= 0)
+	{
+		// only the window is ever read: the rest stays FAR without being written (a map-sized buffer per hint is
+		// what did not fit; this one is freed right away)
+		vDistance.assign((size_t)w * h, FAR);
+	}
+	else
+		vDistance.assign((size_t)w * h, FAR);
 	// Dijkstra: every cell is settled once (a plain queue went over the same cells again and again, a free cell
 	// costing 32 and a freeze one 12800, and building the fields took most of the time of a short search)
 	using TEntry = std::pair<float, int>;
@@ -501,7 +533,7 @@ void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
 		// the way back through a teleport: from its out to every in of the number
 		if(!m_Job.m_vTele.empty() && m_Job.m_vTele[i].m_Type == TILE_TELEOUT && m_Job.m_vTele[i].m_Number > 0)
 			for(int In : m_vvTeleIns[m_Job.m_vTele[i].m_Number - 1])
-				if(vDistance[In] > Dist + 32.0f)
+				if(In % w >= X0 && In % w < X1 && In / w >= Y0 && In / w < Y1 && vDistance[In] > Dist + 32.0f)
 				{
 					vDistance[In] = Dist + 32.0f;
 					Queue.push({vDistance[In], In});
@@ -510,7 +542,7 @@ void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
 		for(int d = 0; d < 4; d++)
 		{
 			const int nx = x + aDx[d], ny = y + aDy[d];
-			if(nx < 0 || ny < 0 || nx >= w || ny >= h)
+			if(nx < X0 || ny < Y0 || nx >= X1 || ny >= Y1)
 				continue;
 			const int n = ny * w + nx;
 			if(m_vStepCost[n] == 0.0f)
@@ -523,6 +555,17 @@ void CSearch::BuildField(std::vector<float> &vDistance, int Hint)
 			Queue.push({Next, n});
 		}
 	}
+	if(Radius > 0 && Hint >= 0)
+	{
+		vField.assign((size_t)(X1 - X0) * (Y1 - Y0), FAR);
+		for(int y = Y0; y < Y1; y++)
+			for(int x = X0; x < X1; x++)
+				vField[(size_t)(y - Y0) * (X1 - X0) + (x - X0)] = vDistance[(size_t)y * w + x];
+		if(pWindow)
+			*pWindow = {X0, Y0, X1 - X0, Y1 - Y0};
+	}
+	else if(pWindow)
+		*pWindow = {};
 }
 
 void CSearch::BuildTeles()
@@ -816,7 +859,10 @@ void CSearch::AutoHints()
 		Cell = Next;
 	}
 	// a hint every 6 cells of the route; each hint keeps its own distances, so a big map gets fewer of them
-	const int MaxHints = std::clamp(50000000 / std::max(w * h, 1), 16, 400);
+	int MaxHints = std::clamp(50000000 / std::max(w * h, 1), 16, 400);
+	// too few for the way: the fields go into windows, and the hints stay 6 cells apart
+	if((int)vRoute.size() / MaxHints + 1 > 6 && (size_t)w * h > 400000)
+		MaxHints = 5000;
 	const int Spacing = std::max(6, (int)vRoute.size() / MaxHints + 1);
 	for(size_t i = Spacing; i + Spacing / 2 < vRoute.size(); i += Spacing)
 		m_Job.m_vHints.push_back(vec2((vRoute[i] % w) * 32.0f + 16.0f, (vRoute[i] / w) * 32.0f + 16.0f));
@@ -1512,9 +1558,19 @@ void CSearch::Run()
 	}
 	const int NumHints = (int)m_Job.m_vHints.size();
 	m_vvFields.resize(NumHints + 1);
+	m_vFieldWindows.assign(NumHints + 1, SFieldWindow());
+	// whole fields while they fit, else windows a few gaps between hints wide
+	int Radius = 0;
+	if((size_t)m_Job.m_Width * m_Job.m_Height * (NumHints + 1) > 60000000)
+	{
+		float Gap = 0.0f;
+		for(int k = 0; k + 1 < NumHints; k++)
+			Gap = std::max(Gap, distance(m_Job.m_vHints[k], m_Job.m_vHints[k + 1]) / 32.0f);
+		Radius = std::clamp((int)(Gap * 3.0f) + 24, 40, 200);
+	}
 	for(int k = 0; k < NumHints; k++)
-		BuildField(m_vvFields[k], k);
-	BuildField(m_vvFields[NumHints], -1);
+		BuildField(m_vvFields[k], k, Radius, &m_vFieldWindows[k]);
+	BuildField(m_vvFields[NumHints], -1, 0, &m_vFieldWindows[NumHints]);
 	BuildThawOk();
 	m_vRest.assign(NumHints + 1, 0.0f);
 	for(int k = NumHints - 1; k >= 0; k--)
@@ -2395,6 +2451,9 @@ static void RunPieces(XcSolver::CJob &Job)
 	vec2 LastStuck(-1e9f, -1e9f);
 	std::vector<vec2> vRestarts;
 	bool Restarting = false;
+	// the other places to start again from for the same stuck place (Afternight x 389: from 6 hints back no, from
+	// a standstill at the top of the shaft above it yes)
+	std::vector<std::pair<vec2, int>> vMoreRestarts;
 	for(int Piece = 0; Piece < 30 && !Job.m_Cancel; Piece++)
 	{
 		std::string Summary;
@@ -2444,12 +2503,28 @@ static void RunPieces(XcSolver::CJob &Job)
 			vRestarts.push_back(R.m_Closest);
 			Restarting = true;
 			const int Back = R.m_HintsPassed - 6 < 0 ? 0 : R.m_HintsPassed - 6;
+			vMoreRestarts.clear();
+			for(int More : {3, 10})
+			{
+				const int B = std::max(R.m_HintsPassed - More, 0);
+				if(B != Back)
+					vMoreRestarts.push_back({vRoute[B], MapperHints ? B : -1});
+			}
 			Start = vRoute[Back];
 			if(MapperHints)
 				vHints.erase(vHints.begin(), vHints.begin() + Back + 1);
 			Out.m_Restarts++;
 			continue;
 		}
+		// stuck at the same place after a restart: the next place to start again from
+		if(!vMoreRestarts.empty() && distance(R.m_Closest, LastStuck) <= 320.0f && !MapperHints)
+		{
+			Start = vMoreRestarts.front().first;
+			vMoreRestarts.erase(vMoreRestarts.begin());
+			Restarting = true;
+			continue;
+		}
+		vMoreRestarts.clear();
 		// stuck again: mark the place and go on from the hint after the one it could not reach (two after, when
 		// this piece got nowhere at all)
 		if(!vRestarts.empty() && distance(vRestarts.back(), R.m_Closest) <= 320.0f)
