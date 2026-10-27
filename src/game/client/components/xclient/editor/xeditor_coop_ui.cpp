@@ -411,7 +411,7 @@ std::shared_ptr<XcSolver::CJob> CXcEditorUi::StartJob(int TowerDepth, bool Forgi
 	std::vector<std::string> vSettings;
 	for(const CEditorMapSetting &Setting : E.Map()->m_vSettings)
 		vSettings.emplace_back(Setting.m_aCommand);
-	return XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 250000, m_vSolveHints, TowerDepth, Forgiving, Ideal, pTune ? pTune->m_pTuneTile : nullptr, vSettings);
+	return XcSolver::Start(pGame->m_pTiles, pFront ? pFront->m_pTiles : nullptr, pTele ? pTele->m_pTeleTile : nullptr, pGame->m_Width, pGame->m_Height, 500000, m_vSolveHints, TowerDepth, Forgiving, Ideal, pTune ? pTune->m_pTuneTile : nullptr, vSettings);
 }
 
 void CXcEditorUi::StartSolve(bool Forgiving, bool Ideal)

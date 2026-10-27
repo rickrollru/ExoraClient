@@ -246,6 +246,8 @@ private:
 	bool StepAlive(SState &State, const XcSolver::SStep &Step, CCharacterCore &Core);
 	// a precise search for a place the main one does not get through: see the function
 	int Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Budget, float &Closest);
+	// swings tried whole, when the precise search did not get through: see the function
+	int Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<SNode> &vNodes);
 	// the blocks a hook reaches from a cell: like a player, the bot hooks real blocks, not just a few directions
 	struct SHookSpot
 	{
@@ -1013,6 +1015,384 @@ int CSearch::Repair(int From, int TargetStage, std::deque<SNode> &vNodes, int Bu
 	return Parent;
 }
 
+// Swings tried whole, from tries that already fly: hook one way, hold it for a while, let go, jump at the top; and
+// the same after a first move that gets the speed for it (a hook held or not, then a wait). The precise search takes
+// 2 ticks at a time and goes towards the hint first, so it does not find a way that first goes away from it: on
+// Blasphemy (x 260) the tee falls down a shaft, hooks down-right to fall faster, then hooks a wall to the right
+// through freeze, holds the hook for 48 ticks and swings under a block up into the next shaft (the rope goes through
+// blocks in DDNet). Returns the last try of the way found, or -1.
+int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<SNode> &vNodes)
+{
+	CWorldCore World;
+	CCharacterCore Core;
+	Core.Init(&World, &m_Collision);
+	Core.Reset();
+	Core.m_Solo = true;
+	Core.m_Id = 0;
+	World.m_apCharacters[0] = &Core;
+	const vec2 Target = m_Job.m_vHints[std::min(TargetStage - 1, (int)m_Job.m_vHints.size() - 1)];
+	struct SMove
+	{
+		int m_Dir, m_Aim, m_Hold, m_Ticks, m_JumpMode;
+	};
+	struct STrack
+	{
+		std::vector<SState> m_vAt;
+		std::vector<int> m_vStage;
+		int m_JumpAt = -1;
+	};
+	// one move from a state: false when the tee dies, freezes or leaves the box
+	auto Move = [&](const SState &From, int FromStage, const SMove &M, vec2 BoxMin, vec2 BoxMax, STrack &Track) {
+		Load(Core, From);
+		int TeleCheckpoint = From.m_TeleCheckpoint, Stage = FromStage;
+		const vec2 Aimed = direction(M.m_Aim * 2.0f * pi / 36.0f) * 100.0f;
+		const bool Held = From.m_Input.m_Hook != 0;
+		for(int t = 0; t < M.m_Ticks; t++)
+		{
+			CNetObj_PlayerInput &Input = Core.m_Input;
+			Input.m_Direction = M.m_Dir;
+			Input.m_Hook = t < M.m_Hold ? (t == 0 && Held ? 0 : 1) : 0;
+			Input.m_TargetX = (int)Aimed.x;
+			Input.m_TargetY = (int)Aimed.y;
+			Input.m_Jump = 0;
+			if(M.m_JumpMode && Track.m_JumpAt < 0 && t > M.m_Hold && Core.m_Vel.y > -1.0f && !(Core.m_Jumped & 2))
+			{
+				Input.m_Jump = 1;
+				Track.m_JumpAt = t;
+			}
+			const vec2 PrevPos = Core.m_Pos;
+			ApplyTune(Core);
+			Core.Tick(true);
+			Core.Move();
+			Core.Quantize();
+			if(Core.m_Pos.x < BoxMin.x || Core.m_Pos.y < BoxMin.y || Core.m_Pos.x > BoxMax.x || Core.m_Pos.y > BoxMax.y)
+				return false;
+			int FreezeTicks = 0;
+			bool Unfrozen = false, Dead = false, Done = false;
+			HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
+			if(Dead || FreezeTicks > 0)
+				return false;
+			while(Stage < (int)m_Job.m_vHints.size() && (distance(Core.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, Core.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
+				Stage++;
+			SState State;
+			Save(Core, State);
+			State.m_TeleCheckpoint = TeleCheckpoint;
+			State.m_FreezeTicks = 0;
+			Track.m_vAt.push_back(State);
+			Track.m_vStage.push_back(Stage);
+			if(Done)
+				return true;
+		}
+		return true;
+	};
+	// the swing that gets furthest: from which state, after which first move
+	int BestStage = -1, BestEnd = -1, BestFrom = -1;
+	SMove BestFirst = {0, 0, 0, 0, 0}, BestSwing = {0, 0, 0, 0, 0};
+	STrack BestTrack, BestFirstTrack;
+	auto TrySwings = [&](int From, const SState &State, int Stage, const SMove &First, const STrack &FirstTrack, vec2 BoxMin, vec2 BoxMax) {
+		for(int Aim = 0; Aim < 36; Aim++)
+			for(int Dir = -1; Dir <= 1; Dir++)
+				for(int Hold = 4; Hold <= 48; Hold += 4)
+					for(int JumpMode = 0; JumpMode <= 1; JumpMode++)
+					{
+						const SMove M = {Dir, Aim, Hold, 100, JumpMode};
+						STrack Track;
+						Move(State, Stage, M, BoxMin, BoxMax, Track);
+						int End = -1;
+						for(int t = 0; t < (int)Track.m_vStage.size(); t++)
+							if(Track.m_vStage[t] >= TargetStage && (End < 0 || Track.m_vStage[t] > Track.m_vStage[End]))
+								End = t;
+						if(End < 0 || Track.m_vStage[End] <= BestStage)
+							continue;
+						BestStage = Track.m_vStage[End];
+						BestEnd = End;
+						BestFrom = From;
+						BestFirst = First;
+						BestSwing = M;
+						BestTrack = Track;
+						BestFirstTrack = FirstTrack;
+					}
+	};
+	auto Box = [&](vec2 Pos, vec2 &BoxMin, vec2 &BoxMax) {
+		BoxMin = vec2(std::min(Pos.x, Target.x) - 16 * 32.0f, std::min(Pos.y, Target.y) - 16 * 32.0f);
+		BoxMax = vec2(std::max(Pos.x, Target.x) + 16 * 32.0f, std::max(Pos.y, Target.y) + 16 * 32.0f);
+	};
+	// one move
+	for(int From : vStarts)
+	{
+		if(m_Job.m_Cancel)
+			return -1;
+		vec2 BoxMin, BoxMax;
+		Box(vNodes[From].m_State.m_Pos, BoxMin, BoxMax);
+		TrySwings(From, vNodes[From].m_State, vNodes[From].m_Stage, {0, 0, 0, 0, 0}, STrack(), BoxMin, BoxMax);
+	}
+	// a first move for the speed, then the swing (also when one move gets only to the next hint: on Blasphemy that
+	// is halfway up the shaft): from 40 places in different cells, the fastest first, the 300 fastest results
+	if(BestStage < TargetStage + 2)
+	{
+		struct SFirst
+		{
+			int m_From;
+			SMove m_Move;
+			STrack m_Track;
+		};
+		std::vector<SFirst> vFirst;
+		std::unordered_set<uint64_t> Kinds;
+		std::vector<int> vFirstStarts;
+		std::unordered_set<uint64_t> Cells;
+		for(int From : vStarts)
+			if(vFirstStarts.size() < 40 && Cells.insert(((uint64_t)(int)(vNodes[From].m_State.m_Pos.x / 32.0f) << 32) ^ (uint64_t)(int)(vNodes[From].m_State.m_Pos.y / 32.0f)).second)
+				vFirstStarts.push_back(From);
+		for(int From : vFirstStarts)
+		{
+			vec2 BoxMin, BoxMax;
+			Box(vNodes[From].m_State.m_Pos, BoxMin, BoxMax);
+			for(int Aim = 0; Aim < 36; Aim++)
+				for(int Dir = -1; Dir <= 1; Dir++)
+					for(int Hold = 0; Hold <= 24; Hold += 8)
+						for(int Wait = 4; Wait <= 20; Wait += 4)
+						{
+							if(Hold == 0 && Aim > 0)
+								continue; // no hook: the aim does not matter
+							const SMove M = {Dir, Aim, Hold, Hold + Wait, 0};
+							STrack Track;
+							if(!Move(vNodes[From].m_State, vNodes[From].m_Stage, M, BoxMin, BoxMax, Track) || Track.m_vAt.empty())
+								continue;
+							const SState &St = Track.m_vAt.back();
+							const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 16.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 16.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 2.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 2.0f + 32.0f) << 4);
+							if(Kinds.insert(Kind).second)
+								vFirst.push_back({From, M, Track});
+						}
+		}
+		std::sort(vFirst.begin(), vFirst.end(), [](const SFirst &A, const SFirst &B) { return length(A.m_Track.m_vAt.back().m_Vel) > length(B.m_Track.m_vAt.back().m_Vel); });
+		for(int k = 0; k < std::min(300, (int)vFirst.size()); k++)
+		{
+			if(m_Job.m_Cancel)
+				return -1;
+			const SFirst &F = vFirst[k];
+			vec2 BoxMin, BoxMax;
+			Box(vNodes[F.m_From].m_State.m_Pos, BoxMin, BoxMax);
+			TrySwings(F.m_From, F.m_Track.m_vAt.back(), F.m_Track.m_vStage.back(), F.m_Move, F.m_Track, BoxMin, BoxMax);
+		}
+	}
+	// still nothing: random series of hooks, aimed to the degree and held to the tick, from the places closest to
+	// the hint (Blasphemy, x 265: a corridor one cell high between freeze, entered by hanging on a block above and
+	// letting go at the right tick; 300000 such series from the top of the shaft get through)
+	struct SSeg
+	{
+		int m_Aim, m_Hold, m_Free, m_Dir, m_Dir2;
+		bool m_Jump;
+	};
+	std::vector<SSeg> vBestSegs;
+	int BestRandomFrom = -1, BestRandomEnd = -1;
+	STrack BestRandomTrack;
+	if(BestStage < 0)
+	{
+		std::vector<std::pair<float, int>> vClose;
+		for(int From : vStarts)
+			vClose.push_back({Heuristic(vNodes[From].m_State.m_Pos, vNodes[From].m_Stage), From});
+		std::sort(vClose.begin(), vClose.end());
+		std::vector<int> vRandomStarts;
+		std::unordered_set<uint64_t> Kinds;
+		// the closest, then the slowest of the close half (a tee hanging still at the top of a shaft has the
+		// most time to aim; the closest fly fast into the freeze)
+		std::vector<std::pair<float, int>> vSlow;
+		for(int k = 0; k < (int)vClose.size(); k++)
+			if(k < (int)vClose.size() / 2 + 1)
+				vSlow.push_back({length(vNodes[vClose[k].second].m_State.m_Vel), vClose[k].second});
+		std::sort(vSlow.begin(), vSlow.end());
+		for(const auto *pList : {&vClose, &vSlow})
+		{
+			int Added = 0;
+			for(const auto &[Score, From] : *pList)
+			{
+				const SState &St = vNodes[From].m_State;
+				const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 4.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 4.0f + 32.0f) << 4);
+				if(Added < 10 && Kinds.insert(Kind).second)
+				{
+					vRandomStarts.push_back(From);
+					Added++;
+				}
+			}
+		}
+		uint32_t Seed = 12345;
+		auto Rnd = [&](int n) {
+			Seed = Seed * 1103515245u + 12345u;
+			return (int)((Seed >> 8) % (uint32_t)n);
+		};
+		for(int From : vRandomStarts)
+		{
+			if(m_Job.m_Cancel)
+				return -1;
+			vec2 BoxMin, BoxMax;
+			Box(vNodes[From].m_State.m_Pos, BoxMin, BoxMax);
+			// rounds: the best series of the round before changed a little, and new ones (a blind search needed
+			// millions of series there, this some ten thousand)
+			struct SCand
+			{
+				float m_Score;
+				std::vector<SSeg> m_vSegs;
+			};
+			std::vector<SCand> vElite;
+			for(int Round = 0; Round < 10; Round++)
+			{
+				std::vector<SCand> vRound;
+				for(int n = 0; n < 10000; n++)
+				{
+					std::vector<SSeg> vSegs(4);
+					if(Round > 0 && !vElite.empty() && Rnd(10) < 7)
+					{
+						vSegs = vElite[Rnd((int)vElite.size())].m_vSegs;
+						SSeg &Seg = vSegs[Rnd(4)];
+						switch(Rnd(5))
+						{
+						case 0: Seg.m_Aim = (Seg.m_Aim + Rnd(21) - 10 + 360) % 360; break;
+						case 1: Seg.m_Hold = std::clamp(Seg.m_Hold + Rnd(7) - 3, 1, 40); break;
+						case 2: Seg.m_Free = std::clamp(Seg.m_Free + Rnd(5) - 2, 0, 15); break;
+						case 3:
+							Seg.m_Dir = Rnd(3) - 1;
+							Seg.m_Dir2 = Rnd(3) - 1;
+							break;
+						default:
+							Seg.m_Aim = (Seg.m_Aim + Rnd(5) - 2 + 360) % 360;
+							Seg.m_Hold = std::clamp(Seg.m_Hold + Rnd(3) - 1, 1, 40);
+							break;
+						}
+					}
+					else
+						for(SSeg &Seg : vSegs)
+							Seg = {Rnd(360), 1 + Rnd(24), Rnd(10), Rnd(3) - 1, Rnd(3) - 1, Rnd(8) == 0};
+					STrack Track;
+					SState State = vNodes[From].m_State;
+					int Stage = vNodes[From].m_Stage;
+					bool Alive = true;
+					float Score = -FAR;
+					for(const SSeg &Seg : vSegs)
+					{
+						// the aim to the degree (Move aims in 36 steps)
+						Load(Core, State);
+						const vec2 Aimed = direction(Seg.m_Aim * pi / 180.0f) * 1000.0f;
+						int TeleCheckpoint = State.m_TeleCheckpoint;
+						const bool Held = State.m_Input.m_Hook != 0;
+						for(int t = 0; t < Seg.m_Hold + Seg.m_Free && Alive; t++)
+						{
+							CNetObj_PlayerInput &Input = Core.m_Input;
+							Input.m_Direction = t < Seg.m_Hold ? Seg.m_Dir : Seg.m_Dir2;
+							Input.m_Hook = t < Seg.m_Hold ? (t == 0 && Held ? 0 : 1) : 0;
+							Input.m_Jump = Seg.m_Jump && t == 0;
+							Input.m_TargetX = (int)Aimed.x;
+							Input.m_TargetY = (int)Aimed.y;
+							const vec2 PrevPos = Core.m_Pos;
+							ApplyTune(Core);
+							Core.Tick(true);
+							Core.Move();
+							Core.Quantize();
+							int FreezeTicks = 0;
+							bool Unfrozen = false, Dead = false, Done = false;
+							if(Core.m_Pos.x < BoxMin.x || Core.m_Pos.y < BoxMin.y || Core.m_Pos.x > BoxMax.x || Core.m_Pos.y > BoxMax.y)
+								Dead = true;
+							else
+								HandleTiles(PrevPos, Core, TeleCheckpoint, FreezeTicks, Unfrozen, Dead, Done);
+							if(Dead || FreezeTicks > 0)
+							{
+								Alive = false;
+								break;
+							}
+							while(Stage < (int)m_Job.m_vHints.size() && (distance(Core.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, Core.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
+								Stage++;
+							Score = std::max(Score, Stage * 100000.0f - Heuristic(Core.m_Pos, Stage));
+							Save(Core, State);
+							State.m_TeleCheckpoint = TeleCheckpoint;
+							State.m_FreezeTicks = 0;
+							Track.m_vAt.push_back(State);
+							Track.m_vStage.push_back(Stage);
+						}
+						if(!Alive)
+							break;
+					}
+					vRound.push_back({Score, vSegs});
+					int End = -1;
+					for(int t = 0; t < (int)Track.m_vStage.size(); t++)
+						if(Track.m_vStage[t] >= TargetStage && (End < 0 || Track.m_vStage[t] > Track.m_vStage[End]))
+							End = t;
+					if(End < 0 || Track.m_vStage[End] <= BestStage)
+						continue;
+					BestStage = Track.m_vStage[End];
+					BestRandomFrom = From;
+					BestRandomEnd = End;
+					BestRandomTrack = Track;
+					vBestSegs = vSegs;
+				}
+				if(BestStage >= TargetStage + 1)
+					break;
+				std::sort(vRound.begin(), vRound.end(), [](const SCand &A, const SCand &B) { return A.m_Score > B.m_Score; });
+				vRound.resize(std::min<size_t>(vRound.size(), 50));
+				vElite = std::move(vRound);
+			}
+		}
+	}
+	if(BestStage < 0)
+		return -1;
+	if(BestRandomFrom >= 0)
+	{
+		// the series becomes tries of the main search: per hook the hold and the time after it
+		Log("random hooks: from %.1f %.1f at speed %.1f %.1f, to %.1f %.1f\n", vNodes[BestRandomFrom].m_State.m_Pos.x / 32.0f, vNodes[BestRandomFrom].m_State.m_Pos.y / 32.0f, vNodes[BestRandomFrom].m_State.m_Vel.x, vNodes[BestRandomFrom].m_State.m_Vel.y, BestRandomTrack.m_vAt[BestRandomEnd].m_Pos.x / 32.0f, BestRandomTrack.m_vAt[BestRandomEnd].m_Pos.y / 32.0f);
+		int Parent = BestRandomFrom, Tick = 0;
+		for(const SSeg &Seg : vBestSegs)
+		{
+			const vec2 Aimed = direction(Seg.m_Aim * pi / 180.0f) * 1000.0f;
+			const int aLen[2] = {Seg.m_Hold, Seg.m_Free};
+			for(int Part = 0; Part < 2 && Tick <= BestRandomEnd; Part++)
+			{
+				const int Len = std::min(aLen[Part], BestRandomEnd + 1 - Tick);
+				if(Len <= 0)
+					continue;
+				SNode Child;
+				Child.m_Step = Part == 0 ? XcSolver::SStep{Seg.m_Dir, Seg.m_Jump, 2, Aimed, Len} : XcSolver::SStep{Seg.m_Dir2, false, 0, Aimed, Len};
+				Tick += Len;
+				Child.m_State = BestRandomTrack.m_vAt[Tick - 1];
+				Child.m_Parent = Parent;
+				Child.m_Steps = vNodes[Parent].m_Steps + Len;
+				Child.m_Stage = BestRandomTrack.m_vStage[Tick - 1];
+				vNodes.push_back(Child);
+				Parent = (int)vNodes.size() - 1;
+			}
+		}
+		return Parent;
+	}
+	// the moves become tries of the main search: the hold, the flight, the jump and after
+	std::vector<std::pair<const SState *, std::pair<int, XcSolver::SStep>>> vSteps; // the state at the end, its stage, the step
+	auto AddMove = [&](const SMove &M, const STrack &Track, int End) {
+		const vec2 Aimed = direction(M.m_Aim * 2.0f * pi / 36.0f) * 100.0f;
+		const int HoldEnd = std::min(M.m_Hold, End + 1) - 1;
+		if(HoldEnd >= 0)
+			vSteps.push_back({&Track.m_vAt[HoldEnd], {Track.m_vStage[HoldEnd], {M.m_Dir, false, 2, Aimed, HoldEnd + 1}}});
+		const int JumpAt = Track.m_JumpAt;
+		const int FlyEnd = JumpAt > 0 ? std::min(JumpAt - 1, End) : End;
+		if(FlyEnd > HoldEnd)
+			vSteps.push_back({&Track.m_vAt[FlyEnd], {Track.m_vStage[FlyEnd], {M.m_Dir, false, 0, Aimed, FlyEnd - HoldEnd}}});
+		if(JumpAt > 0 && JumpAt <= End)
+			vSteps.push_back({&Track.m_vAt[End], {Track.m_vStage[End], {M.m_Dir, true, 0, Aimed, End - JumpAt + 1}}});
+	};
+	if(BestFirst.m_Ticks > 0)
+		AddMove(BestFirst, BestFirstTrack, (int)BestFirstTrack.m_vAt.size() - 1);
+	AddMove(BestSwing, BestTrack, BestEnd);
+	Log("the swing: from %.1f %.1f at speed %.1f %.1f (of %d places)%s, hook held %d ticks, to %.1f %.1f\n", vNodes[BestFrom].m_State.m_Pos.x / 32.0f, vNodes[BestFrom].m_State.m_Pos.y / 32.0f, vNodes[BestFrom].m_State.m_Vel.x, vNodes[BestFrom].m_State.m_Vel.y, (int)vStarts.size(), BestFirst.m_Ticks > 0 ? " after a first move" : "", BestSwing.m_Hold, BestTrack.m_vAt[BestEnd].m_Pos.x / 32.0f, BestTrack.m_vAt[BestEnd].m_Pos.y / 32.0f);
+	int Parent = BestFrom;
+	for(const auto &[pState, StageStep] : vSteps)
+	{
+		SNode Child;
+		Child.m_State = *pState;
+		Child.m_Parent = Parent;
+		Child.m_Step = StageStep.second;
+		Child.m_Steps = vNodes[Parent].m_Steps + StageStep.second.m_Ticks;
+		Child.m_Stage = StageStep.first;
+		vNodes.push_back(Child);
+		Parent = (int)vNodes.size() - 1;
+	}
+	return Parent;
+}
+
 void CSearch::Run()
 {
 	XcSolver::SResult &Result = m_Job.m_Result;
@@ -1341,6 +1721,64 @@ void CSearch::Run()
 					break;
 				}
 				continue;
+			}
+			// then whole swings from the fastest tries up to eight hints back
+			{
+				std::vector<std::pair<float, int>> vFast;
+				for(int i = 0; i < (int)vNodes.size(); i++)
+				{
+					const SNode &N = vNodes[i];
+					const int Back = MaxStage - N.m_Stage;
+					if(Back < 0 || Back > 8 || N.m_State.m_FreezeTicks > 0 || distance(N.m_State.m_Pos, Next) > 30 * 32.0f)
+						continue;
+					vFast.push_back({-length(N.m_State.m_Vel), i});
+				}
+				std::sort(vFast.begin(), vFast.end());
+				std::vector<int> vStarts;
+				std::unordered_set<uint64_t> Kinds;
+				for(const auto &[Speed, i] : vFast)
+				{
+					const SState &St = vNodes[i].m_State;
+					const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 4.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 4.0f + 32.0f) << 4);
+					if(Kinds.insert(Kind).second && vStarts.size() < 150)
+						vStarts.push_back(i);
+				}
+				// and the closest to the hint, whatever their speed (the random hooks go on from them)
+				std::vector<std::pair<float, int>> vClose;
+				for(const auto &[Speed, i] : vFast)
+					vClose.push_back({Heuristic(vNodes[i].m_State.m_Pos, vNodes[i].m_Stage), i});
+				std::sort(vClose.begin(), vClose.end());
+				for(int k = 0, Added = 0; k < (int)vClose.size() && Added < 50; k++)
+				{
+					const SState &St = vNodes[vClose[k].second].m_State;
+					const uint64_t Kind = ((uint64_t)(int)(St.m_Pos.x / 32.0f) << 40) ^ ((uint64_t)(int)(St.m_Pos.y / 32.0f) << 24) ^ ((uint64_t)(int)(St.m_Vel.x / 4.0f + 32.0f) << 12) ^ ((uint64_t)(int)(St.m_Vel.y / 4.0f + 32.0f) << 4);
+					if(Kinds.insert(Kind).second)
+					{
+						vStarts.push_back(vClose[k].second);
+						Added++;
+					}
+				}
+				const int Swung = Swing(vStarts, MaxStage + 1, vNodes);
+				if(Swung >= 0)
+				{
+					const SNode &R = vNodes[Swung];
+					Log("try %d: hint %d reached by a swing, at %.0f %.0f, game time %.2f s\n", Result.m_Explored, R.m_Stage, R.m_State.m_Pos.x / 32.0f, R.m_State.m_Pos.y / 32.0f, R.m_Steps / 50.0f);
+					MaxStage = std::max(MaxStage, R.m_Stage);
+					Result.m_Repairs++;
+					AtMaxStage = 0;
+					SinceStage = 0;
+					SinceProgress = 0;
+					RepairTried = false;
+					BestNode = Swung;
+					BestDistance = Heuristic(R.m_State.m_Pos, R.m_Stage);
+					Open.push({-1.0f, Swung});
+					if(FinishAt(R.m_State.m_Pos))
+					{
+						Goal = Swung;
+						break;
+					}
+					continue;
+				}
 			}
 			Log("try %d: the precise search did not get to hint %d either (%d places tried)\n", Result.m_Explored, MaxStage + 1, Tried);
 		}
