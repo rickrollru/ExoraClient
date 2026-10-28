@@ -3153,6 +3153,7 @@ if(CLIENT)
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu_cosmetics.cpp
+    components/xclient/ui/menu_demoplayer.cpp
     components/xclient/ui/menu_demos.cpp
     components/xclient/ui/menu_votes.cpp
     components/xclient/ui/menus_classic.cpp

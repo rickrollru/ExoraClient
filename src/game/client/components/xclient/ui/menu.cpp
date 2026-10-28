@@ -149,12 +149,19 @@ void CXcMenu::OnStateChange(int NewState, int OldState)
 		SetActive(true);
 	else if(NewState == IClient::STATE_CONNECTING || NewState == IClient::STATE_LOADING || NewState == IClient::STATE_ONLINE || NewState == IClient::STATE_DEMOPLAYBACK)
 		SetActive(false);
+	// a demo starts with the player bar shown, it hides by itself when the mouse rests
+	m_DemoBar = NewState == IClient::STATE_DEMOPLAYBACK;
+	m_DemoIdle = 0.0f;
+	m_DemoSliceOpen = false;
 	(void)OldState;
 }
 
 bool CXcMenu::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 {
-	if(!m_Active)
+	const bool DemoBar = !m_Active && m_DemoBar && Client()->State() == IClient::STATE_DEMOPLAYBACK;
+	if(DemoBar)
+		m_DemoIdle = 0.0f;
+	if(!m_Active && !DemoBar)
 		return false;
 	Ui()->ConvertMouseMove(&x, &y, CursorType);
 	Ui()->OnCursorMove(x, y);
@@ -171,9 +178,9 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 	const bool EscapePressed = (Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_ESCAPE;
 	if(!m_Active)
 	{
-		// in a demo Esc belongs to the demo player controls (pause, seek, exit)
+		// in a demo Esc shows and hides our player bar; the keys of the stock player stay as they are
 		if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-			return false;
+			return DemoBarInput(Event);
 		// Esc opens the new menu, unless the classic one is open in game (it closes itself then)
 		if(EscapePressed && (!IsOnline() || !GameClient()->m_Menus.IsActive()))
 		{
@@ -481,7 +488,11 @@ void CXcMenu::OnRender()
 	const float Speed = AnimationSpeed() > 0.0f ? 6.0f * AnimationSpeed() : 1000.0f;
 	m_OpenAnimation = m_OpenAnimation < Target ? std::min(m_OpenAnimation + Dt * Speed, Target) : std::max(m_OpenAnimation - Dt * Speed, Target);
 	if(m_OpenAnimation <= 0.0f)
+	{
+		if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			RenderDemoOverlay(Dt);
 		return;
+	}
 
 	UpdateStyle();
 	RenderBackground();

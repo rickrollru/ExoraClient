@@ -390,6 +390,24 @@ private:
 	void RenderDemoDetails(SDemoEntry *pEntry, float Height);
 	void PlayDemo(const SDemoEntry &Entry);
 	void RenderDemos();
+	// the player bar while a demo plays (menu_demoplayer.cpp): over the game, no blur, hides when the mouse rests
+	bool m_DemoBar = false;
+	float m_DemoBarAnim = 0.0f;
+	float m_DemoIdle = 0.0f;
+	bool m_DemoSliceOpen = false;
+	bool m_DemoSliceRemoveChat = false;
+	char m_aDemoSliceName[128] = "";
+	float m_DemoSeekRatio = -1.0f;
+	bool DemoBarInput(const IInput::CEvent &Event);
+
+public:
+	// the demo player bar is on screen (the HUD steps back meanwhile, it lies under the bar)
+	bool DemoBarShown() const { return m_DemoBarAnim > 0.0f; }
+
+private:
+	void RenderDemoOverlay(float Dt);
+	void RenderDemoBar(float Alpha);
+	void DemoSeek(float Ratio, float Seconds);
 
 	// menu_votes.cpp: the current vote, the vote options of the server and votes on players
 	int m_VoteOption = -1;

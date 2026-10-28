@@ -61,4 +61,16 @@
 #define XC_ICON_FOLDER_OPEN "\xef\x81\xbc" // U+F07C
 #define XC_ICON_BRUSH "\xef\x95\x9d" // U+F55D
 
+#define XC_ICON_STOP "\xef\x81\x8d" // U+F04D
+#define XC_ICON_REWIND "\xef\x81\x8a" // U+F04A backward
+#define XC_ICON_FAST_FORWARD "\xef\x81\x8e" // U+F04E forward
+#define XC_ICON_SKIP_BACK "\xef\x81\x89" // U+F049 backward-fast
+#define XC_ICON_SKIP_FORWARD "\xef\x81\x90" // U+F050 forward-fast
+#define XC_ICON_SCISSORS "\xef\x83\x84" // U+F0C4
+#define XC_ICON_BRACKET_LEFT "\x5b"
+#define XC_ICON_BRACKET_RIGHT "\x5d"
+#define XC_ICON_CAMERA "\xef\x80\xb0" // U+F030
+#define XC_ICON_FLOPPY "\xef\x83\x87" // U+F0C7
+#define XC_ICON_MINUS "\xef\x81\xa8" // U+F068
+
 #endif

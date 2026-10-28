@@ -1099,7 +1099,7 @@ void CXcHud::OnRender()
 	const auto Approach = [&](float &Value, float Target) {
 		Value = Value < Target ? std::min(Value + Dt * FadeSpeed, Target) : std::max(Value - Dt * FadeSpeed, Target);
 	};
-	Approach(m_MenuFade, GameClient()->m_XcMenu.IsActive() ? 0.0f : 1.0f);
+	Approach(m_MenuFade, GameClient()->m_XcMenu.IsActive() || GameClient()->m_XcMenu.DemoBarShown() ? 0.0f : 1.0f);
 	const float Alpha = m_MenuFade * m_MenuFade * (3.0f - 2.0f * m_MenuFade);
 	// focus mode keeps only the timer and the speed (the editor shows everything)
 	const bool Focus = g_Config.m_XcFocusMode && !m_Editing;
