@@ -1238,6 +1238,7 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 	int aDbg[3] = {0, 0, 0};
 	float DbgMinX = FAR;
 	STrack BestRandomTrack;
+	std::vector<int> vLongStarts;
 	if(BestStage < 0)
 	{
 		std::vector<std::pair<float, int>> vClose;
@@ -1288,6 +1289,7 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 			return (int)((Seed >> 8) % (uint32_t)n);
 		};
 		RandomStarts = (int)vRandomStarts.size();
+		vLongStarts.assign(vRandomStarts.rbegin(), vRandomStarts.rend());
 		if(getenv("XC_SWING_DEBUG"))
 			for(int From : vRandomStarts)
 			{
@@ -1417,9 +1419,93 @@ int CSearch::Swing(const std::vector<int> &vStarts, int TargetStage, std::deque<
 			}
 		}
 	}
+	// still nothing: a best-first search of long moves, from the tries with the jump left first: a hook in 36
+	// directions held 2, 16 or 32 ticks, with or without the jump, or the hook let go (The_Pyra, x 250: a hook into
+	// the floor ahead for speed, the jump, a hook into the far wall, then the drop into a hole one cell wide; the
+	// random series did not find it, this in a few hundred moves)
+	int LongEnd = -1, LongExpanded = 0;
+	if(BestStage < 0 && !vLongStarts.empty())
+	{
+		struct SLong
+		{
+			SState m_State;
+			int m_Stage, m_Parent, m_From;
+			XcSolver::SStep m_Step;
+			int m_Ticks;
+		};
+		std::vector<SLong> vLong;
+		std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<>> Open;
+		std::unordered_set<uint64_t> Seen;
+		for(int From : vLongStarts)
+		{
+			vLong.push_back({vNodes[From].m_State, vNodes[From].m_Stage, -1, From, {}, 0});
+			Open.push({Heuristic(vNodes[From].m_State.m_Pos, vNodes[From].m_Stage), (int)vLong.size() - 1});
+		}
+		static const int s_aHolds[] = {2, 16, 32};
+		while(!Open.empty() && LongEnd < 0 && LongExpanded < 4000 && !m_Job.m_Cancel)
+		{
+			const int Index = Open.top().second;
+			Open.pop();
+			LongExpanded++;
+			vec2 BoxMin, BoxMax;
+			Box(vNodes[vLong[Index].m_From].m_State.m_Pos, BoxMin, BoxMax);
+			std::vector<XcSolver::SStep> vMoves;
+			const SState &At = vLong[Index].m_State;
+			for(int Dir = -1; Dir <= 1; Dir++)
+				for(int Jump = 0; Jump <= ((At.m_Jumped & 2) ? 0 : 1); Jump++)
+				{
+					vMoves.push_back({Dir, Jump != 0, 0, vec2(1.0f, 0.0f), 2});
+					if(At.m_HookState == HOOK_GRABBED || At.m_HookState == HOOK_FLYING)
+						vMoves.push_back({Dir, Jump != 0, 1, vec2(1.0f, 0.0f), 2});
+					for(int Aim = 0; Aim < 36; Aim++)
+						for(int Hold : s_aHolds)
+							vMoves.push_back({Dir, Jump != 0, 2, direction(Aim * 2.0f * pi / 36.0f) * 100.0f, Hold});
+				}
+			for(const XcSolver::SStep &Step : vMoves)
+			{
+				SState State = vLong[Index].m_State;
+				if(!StepAlive(State, Step, Core) || State.m_Pos.x < BoxMin.x || State.m_Pos.y < BoxMin.y || State.m_Pos.x > BoxMax.x || State.m_Pos.y > BoxMax.y)
+					continue;
+				int Stage = vLong[Index].m_Stage;
+				while(Stage < (int)m_Job.m_vHints.size() && (distance(State.m_Pos, m_Job.m_vHints[Stage]) < 64.0f || Field(Stage + 1, State.m_Pos) + 16.0f < Field(Stage + 1, m_Job.m_vHints[Stage])))
+					Stage++;
+				const uint64_t Key = ((uint64_t)(int)(State.m_Pos.x / 3.0f) << 44) ^ ((uint64_t)(int)(State.m_Pos.y / 3.0f) << 26) ^ ((uint64_t)(int)(State.m_Vel.x + 64.0f) << 18) ^ ((uint64_t)(int)(State.m_Vel.y + 64.0f) << 10) ^ ((uint64_t)State.m_HookState & 15) << 4 ^ (uint64_t)(State.m_Jumped & 3) ^ (uint64_t)Stage * 0x9E3779B97F4A7C15ull ^ ((uint64_t)(int)(State.m_HookPos.x / 8.0f) * 2654435761ull) ^ ((uint64_t)(int)(State.m_HookPos.y / 8.0f) * 40503ull);
+				if(!Seen.insert(Key).second)
+					continue;
+				vLong.push_back({State, Stage, Index, vLong[Index].m_From, Step, vLong[Index].m_Ticks + Step.m_Ticks});
+				if(Stage >= TargetStage)
+				{
+					LongEnd = (int)vLong.size() - 1;
+					break;
+				}
+				Open.push({Heuristic(State.m_Pos, Stage) + vLong.back().m_Ticks * 2.0f, (int)vLong.size() - 1});
+			}
+		}
+		if(LongEnd >= 0)
+		{
+			std::vector<int> vChain;
+			for(int i = LongEnd; vLong[i].m_Parent >= 0; i = vLong[i].m_Parent)
+				vChain.push_back(i);
+			const int From = vLong[LongEnd].m_From;
+			Log("long moves: from %.1f %.1f at speed %.1f %.1f, %d moves (%d tried), to %.1f %.1f\n", vNodes[From].m_State.m_Pos.x / 32.0f, vNodes[From].m_State.m_Pos.y / 32.0f, vNodes[From].m_State.m_Vel.x, vNodes[From].m_State.m_Vel.y, (int)vChain.size(), LongExpanded, vLong[LongEnd].m_State.m_Pos.x / 32.0f, vLong[LongEnd].m_State.m_Pos.y / 32.0f);
+			int Parent = From;
+			for(auto It = vChain.rbegin(); It != vChain.rend(); ++It)
+			{
+				SNode Child;
+				Child.m_Step = vLong[*It].m_Step;
+				Child.m_State = vLong[*It].m_State;
+				Child.m_Parent = Parent;
+				Child.m_Steps = vNodes[Parent].m_Steps + Child.m_Step.m_Ticks;
+				Child.m_Stage = vLong[*It].m_Stage;
+				vNodes.push_back(Child);
+				Parent = (int)vNodes.size() - 1;
+			}
+			return Parent;
+		}
+	}
 	if(BestStage < 0)
 	{
-		Log("swings and random hooks: nothing from %d places (random hooks from %d, best from %.1f %.1f to %.1f %.1f; ends box %d dead %d freeze %d, min x %.1f, target %.1f %.1f)\n", (int)vStarts.size(), RandomStarts, RandomBestStart.x / 32.0f, RandomBestStart.y / 32.0f, RandomBestPos.x / 32.0f, RandomBestPos.y / 32.0f, aDbg[0], aDbg[1], aDbg[2], DbgMinX / 32.0f, Target.x / 32.0f, Target.y / 32.0f);
+		Log("swings and random hooks: nothing from %d places (random hooks from %d, long moves %d, best from %.1f %.1f to %.1f %.1f; ends box %d dead %d freeze %d, min x %.1f, target %.1f %.1f)\n", (int)vStarts.size(), RandomStarts, LongExpanded, RandomBestStart.x / 32.0f, RandomBestStart.y / 32.0f, RandomBestPos.x / 32.0f, RandomBestPos.y / 32.0f, aDbg[0], aDbg[1], aDbg[2], DbgMinX / 32.0f, Target.x / 32.0f, Target.y / 32.0f);
 		return -1;
 	}
 	if(BestRandomFrom >= 0)
@@ -2451,8 +2537,8 @@ static void RunPieces(XcSolver::CJob &Job)
 	vec2 LastStuck(-1e9f, -1e9f);
 	std::vector<vec2> vRestarts;
 	bool Restarting = false;
-	// the other places to start again from for the same stuck place (Afternight x 389: from 6 hints back no, from
-	// a standstill at the top of the shaft above it yes)
+	// the other places to start again from for the same stuck place (Afternight x 389: from 3, 6 and 10 hints back
+	// no, from a standstill at the top of the shaft above it, 4 back, yes)
 	std::vector<std::pair<vec2, int>> vMoreRestarts;
 	for(int Piece = 0; Piece < 30 && !Job.m_Cancel; Piece++)
 	{
@@ -2504,7 +2590,7 @@ static void RunPieces(XcSolver::CJob &Job)
 			Restarting = true;
 			const int Back = R.m_HintsPassed - 6 < 0 ? 0 : R.m_HintsPassed - 6;
 			vMoreRestarts.clear();
-			for(int More : {3, 10})
+			for(int More : {3, 4, 5, 7, 8, 2, 10})
 			{
 				const int B = std::max(R.m_HintsPassed - More, 0);
 				if(B != Back)
