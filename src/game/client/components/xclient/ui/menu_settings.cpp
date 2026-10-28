@@ -514,6 +514,18 @@ void CXcMenu::RenderSettingsSound()
 		ConfigSlider(Tr("Ambient"), "snd_ambient_volume", &g_Config.m_SndMapVolume, 0, 100, "%d%%");
 		ConfigSlider(Tr("Music"), "snd_background_music_volume", &g_Config.m_SndBackgroundMusicVolume, 0, 100, "%d%%");
 		ToggleRow(Tr("Mute when not active"), "snd_nonactive_mute", &g_Config.m_SndNonactiveMute);
+		Description(Tr("Interface sounds and event sounds have their own volume in their cards"));
+		EndCard();
+	}
+	if(BeginCard("##chat_sounds", Tr("Sounds of the game and chat"), Tr("Turn single sounds on and off")))
+	{
+		ToggleRow(Tr("Game sounds"), "snd_game", &g_Config.m_SndGame);
+		ToggleRow(Tr("Gun sound"), "snd_gun", &g_Config.m_SndGun);
+		ToggleRow(Tr("Chat messages"), "snd_chat", &g_Config.m_SndChat);
+		ToggleRow(Tr("Team chat messages"), "snd_team_chat", &g_Config.m_SndTeamChat);
+		ToggleRow(Tr("Server messages"), "snd_servermessage", &g_Config.m_SndServerMessage);
+		ToggleRow(Tr("When your name is mentioned"), "snd_highlight", &g_Config.m_SndHighlight);
+		ToggleRow(Tr("Background music of the menu"), "snd_enable_music", &g_Config.m_SndMusic);
 		EndCard();
 	}
 	if(BeginCard("##ui_sounds", Tr("Interface sounds"), Tr("Clicks, switches and notifications"), &g_Config.m_XcUiSounds))

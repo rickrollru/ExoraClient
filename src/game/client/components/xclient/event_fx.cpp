@@ -53,7 +53,7 @@ void CXcEventFx::PlayEventSound(int Sound)
 		&g_Config.m_XcEventSoundFreeze, &g_Config.m_XcEventSoundDeath, &g_Config.m_XcEventSoundTeleport};
 	if(!*apEnabled[Sound])
 		return;
-	this->Sound()->Play(CSounds::CHN_GUI, m_aSounds[Sound], 0, g_Config.m_XcEventSoundVolume / 100.0f);
+	this->Sound()->Play(CSounds::CHN_GLOBAL, m_aSounds[Sound], 0, g_Config.m_XcEventSoundVolume / 100.0f);
 }
 
 bool CXcEventFx::IsOwn(int ClientId) const

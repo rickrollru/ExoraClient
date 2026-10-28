@@ -83,7 +83,7 @@ void CXcMenu::PlayUiSoundCallback(void *pUser, int Sound)
 	if(Now - pSelf->m_aUiSoundTime[Sound] < 0.04f)
 		return;
 	pSelf->m_aUiSoundTime[Sound] = Now;
-	pSelf->Sound()->Play(CSounds::CHN_GUI, Sample, 0, g_Config.m_XcUiSoundVolume / 100.0f * (Sound == XcUi::SOUND_TICK ? 0.6f : 1.0f));
+	pSelf->Sound()->Play(CSounds::CHN_XC_UI, Sample, 0, g_Config.m_XcUiSoundVolume / 100.0f * (Sound == XcUi::SOUND_TICK ? 0.6f : 1.0f));
 }
 
 void CXcMenu::OnShutdown()

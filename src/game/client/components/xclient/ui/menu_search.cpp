@@ -104,6 +104,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##camera", "Camera", "Dynamic camera follows the mouse", "камера динамическая dyncam camera"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##binds", "Key binds", "Click a key and press a new one, Esc cancels", "бинды клавиши кнопки управление binds keys jump hook прыжок хук"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_SOUND, "##volume", "Sound", "Sound and volume", "звук громкость музыка sound volume music"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_SOUND, "##chat_sounds", "Sounds of the game and chat", "Turn single sounds on and off", "звук чата сообщений сервера упоминание пистолет музыка меню chat sound highlight server gun"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CHAT, "##chat_look", "Chat", "How the chat looks", "чат сообщения chat messages"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##latency", "Input delay", "Lowest delay of the mouse and keys: VSync, fullscreen, frame queue, synchronous frames", "задержка ввода инпут лаг мышь клавиатура вертикальная синхронизация полноэкранный raw input сырой ввод input lag delay latency mouse keyboard vsync fullscreen sync"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_GRAPHICS, "##performance", "Performance", "Low, medium or high in one click, then each effect by hand", "производительность пресет низкое среднее высокое fps лаги performance preset low medium high"},

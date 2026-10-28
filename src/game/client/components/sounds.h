@@ -55,6 +55,7 @@ public:
 		CHN_WORLD,
 		CHN_GLOBAL,
 		CHN_MAPSOUND,
+		CHN_XC_UI, // XClient: interface sounds, own volume only (not the chat volume)
 	};
 
 	int Sizeof() const override { return sizeof(*this); }

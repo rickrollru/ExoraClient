@@ -50,6 +50,9 @@ void CSoundLoading::Run()
 
 void CSounds::UpdateChannels()
 {
+	// XClient: the interface sounds have their own volume setting, the channel stays at full
+	Sound()->SetChannel(CSounds::CHN_XC_UI, 1.0f, 0.0f);
+
 	const float NewGuiSoundVolume = g_Config.m_SndChatVolume / 100.0f;
 	if(NewGuiSoundVolume != m_GuiSoundVolume)
 	{
