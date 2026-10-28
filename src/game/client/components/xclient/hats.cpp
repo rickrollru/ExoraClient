@@ -264,8 +264,9 @@ void CXcHats::OnRender()
 
 void CXcOverTiles::OnRender()
 {
-	if(g_Config.m_XcFxOverTiles)
-		GameClient()->m_FxRenderer.FlushWorld();
+	// bullet holes always lie on the blocks; without the effects over the tiles the queue holds only them here
+	GameClient()->m_ImpactFx.QueueHoles();
+	GameClient()->m_FxRenderer.FlushWorld();
 	if(g_Config.m_XcHatsOverTiles && !g_Config.m_XcHatBehind)
 		GameClient()->m_XcHats.RenderAll();
 }

@@ -87,6 +87,9 @@ void CItems::RenderProjectile(const CProjectileData *pCurrent, int ItemId, const
 	vec2 Pos = CalcPos(pCurrent->m_StartPos, pCurrent->m_StartVel, Curvature, Speed, Ct);
 	if(!ScreenRect.Inside(Pos))
 		return;
+	// XClient: the server takes a shot away a tick or two after it hit, do not draw it flying on inside the block
+	if(Collision()->CheckPoint(Pos))
+		return;
 	vec2 PrevPos = CalcPos(pCurrent->m_StartPos, pCurrent->m_StartVel, Curvature, Speed, Ct - 0.001f);
 
 	float Alpha = 1.f;
@@ -126,7 +129,7 @@ void CItems::RenderProjectile(const CProjectileData *pCurrent, int ItemId, const
 		Graphics()->RenderQuadContainerAsSprite(m_ItemsQuadContainerIndex, m_aProjectileOffset[CurWeapon], Pos.x, Pos.y);
 	}
 	GameClient()->m_ItemFx.Projectile(Pos, Vel, CurWeapon, Alpha); // XClient
-	GameClient()->m_ImpactFx.Projectile(ItemId, Pos, Vel, CurWeapon, pCurrent->m_Owner, Ct, Speed); // XClient
+	GameClient()->m_ImpactFx.Projectile(ItemId, Pos, Vel, CurWeapon, pCurrent->m_Owner, Ct, Speed, pCurrent->m_StartPos, pCurrent->m_StartVel, Curvature); // XClient
 }
 
 void CItems::RenderPickup(const CNetObj_Pickup *pPrev, const CNetObj_Pickup *pCurrent, bool IsPredicted, int Flags)
@@ -782,6 +785,8 @@ void CItems::ReconstructSmokeTrail(const CProjectileData *pCurrent, int DestroyT
 	{
 		float t = Step * (float)i + 0.4f * Step * random_float(-0.5f, 0.5f);
 		vec2 Pos = CalcPos(pCurrent->m_StartPos, pCurrent->m_StartVel, Curvature, Speed, t);
+		if(Collision()->CheckPoint(Pos)) // XClient: no trail inside the block it hit
+			break;
 		vec2 PrevPos = CalcPos(pCurrent->m_StartPos, pCurrent->m_StartVel, Curvature, Speed, t - 0.001f);
 		vec2 Vel = Pos - PrevPos;
 		float TimePassed = Pt - t;

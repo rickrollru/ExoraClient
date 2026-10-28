@@ -740,8 +740,25 @@ void CXcMenu::RenderVisualsWeapons()
 		ToggleRow(Tr("Color of the weapon"), "xc_impact_weapon_color", &g_Config.m_XcImpactWeaponColor);
 		if(!g_Config.m_XcImpactWeaponColor)
 			EffectColorPicker("##impact_color", &g_Config.m_XcImpactColorMode, &g_Config.m_XcImpactColor);
+		ConfigSlider(Tr("Size"), "xc_impact_size", &g_Config.m_XcImpactSize, 25, 300, "%d%%");
+		ConfigSlider(Tr("Flash brightness"), "xc_impact_flash", &g_Config.m_XcImpactFlash, 0, 200, "%d%%");
+		ConfigSlider(Tr("Amount of sparks"), "xc_fxtune_impact_amount", &g_Config.m_XcFxtuneImpactAmount, 0, 500, "%d%%");
+		ConfigSlider(Tr("Sparks fly"), "xc_fxtune_impact_life", &g_Config.m_XcFxtuneImpactLife, 25, 400, "%d%%");
+		ToggleRow(Tr("Hide the standard orange stars"), "xc_replace_damage", &g_Config.m_XcReplaceDamage);
 		TargetChips("##impact_targets", &g_Config.m_XcImpactSelf, &g_Config.m_XcImpactDummy, &g_Config.m_XcImpactOthers);
 		ParticleTuning(FxTune::IMPACT);
+		EndCard();
+	}
+	if(BeginCard("##fx_holes", Tr("Bullet holes"), Tr("Marks left on the blocks where bullets and lasers hit"), &g_Config.m_XcImpactHoles))
+	{
+		ParamLabel(Tr("Look"));
+		const char *apHoles[] = {Tr("Dark marks"), Tr("Hot, cools down"), Tr("Color of the hit")};
+		ConfigSegmented("##hole_style", "xc_impact_hole_style", &g_Config.m_XcImpactHoleStyle, apHoles, 3);
+		ConfigSlider(Tr("Size"), "xc_impact_hole_size", &g_Config.m_XcImpactHoleSize, 25, 300, "%d%%");
+		ConfigSlider(Tr("Opacity"), "xc_impact_hole_opacity", &g_Config.m_XcImpactHoleOpacity, 10, 100, "%d%%");
+		ConfigSlider(Tr("Holes stay"), "xc_impact_hole_time", &g_Config.m_XcImpactHoleTime, 1, 60, "%d s");
+		ConfigSlider(Tr("Most holes at once"), "xc_impact_hole_max", &g_Config.m_XcImpactHoleMax, 10, 500, "%d");
+		Description(Tr("Players and colors as for the hits on blocks"));
 		EndCard();
 	}
 	const char *apPlayerHits[] = {Tr("Ring"), Tr("Sparks"), Tr("Stars")};
