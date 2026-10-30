@@ -162,11 +162,8 @@ void CAccessory::RenderCone(vec2 Head, float Scale, float Tilt, float Squash, fl
 
 	// the far half of the rim, under everything
 	Fx.AddWorldGlowing(FxShape::Ring(Base, Brim, 1.8f * Scale, Shade(Edge, 0.8f).WithMultipliedAlpha(0.7f)).Half(-1.0f).Rotate(Tilt), 4.0f * Scale, 0.3f);
-	// see-through glass: the brim and the cone, light at the tip, deeper at the brim
-	Fx.AddWorld(FxShape::Ellipse(Base, Brim, Shade(Main, 0.75f).WithMultipliedAlpha(0.35f)).Rotate(Tilt));
-	Fx.AddWorld(FxShape::Triangle((Base + Tip) * 0.5f, vec2(Radius * 0.97f, Height * 0.5f), Shade(Main, 1.35f).WithMultipliedAlpha(0.6f))
-			    .Gradient(Shade(Main, 0.8f).WithMultipliedAlpha(0.45f))
-			    .Rotate(Tilt));
+	// see-through brim; the cone itself is only its stripes (a filled triangle showed hard edges)
+	Fx.AddWorld(FxShape::Ellipse(Base, Brim, Shade(Main, 0.75f).WithMultipliedAlpha(0.3f)).Soft(2.0f * Scale).Rotate(Tilt));
 	// stripes from the tip to the rim that turn round the cone; the ones in front are bright, the ones going away fade
 	const int NumStripes = 10;
 	for(int i = 0; i < NumStripes; i++)
@@ -176,7 +173,7 @@ void CAccessory::RenderCone(vec2 Head, float Scale, float Tilt, float Squash, fl
 		if(Front < -0.15f)
 			continue;
 		const vec2 OnRim = P(std::cos(a) * Radius, BaseY + std::sin(a) * Radius * DEPTH);
-		Fx.AddWorld(FxShape::Line(Tip, OnRim, 1.1f * Scale, Shade(Edge, 1.3f).WithMultipliedAlpha(0.12f + 0.4f * std::max(Front, 0.0f))).Additive());
+		Fx.AddWorld(FxShape::Line(Tip, OnRim, 1.1f * Scale, Shade(Edge, 1.3f).WithMultipliedAlpha(0.15f + 0.5f * std::max(Front, 0.0f))).Additive());
 	}
 	// light from the upper left: a shine down the left flank
 	const float ShineA = pi * 0.72f;
