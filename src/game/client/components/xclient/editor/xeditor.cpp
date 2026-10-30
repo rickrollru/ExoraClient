@@ -253,6 +253,24 @@ void CXcEditorUi::Render()
 	CEditor &E = *m_pEditor;
 	const float k = UiToPixels(); // pixels per editor UI unit
 
+	// ---- a tab switched or closed last frame: done before anything is drawn, so no part of a frame shows one map
+	// and the rest another (a switch in the middle of the frame left the panels on the old map and crashed)
+	if(m_SwitchToMap >= 0)
+	{
+		if((size_t)m_SwitchToMap < E.m_vpMaps.size() && (size_t)m_SwitchToMap != E.m_SelectedMap)
+		{
+			E.m_SelectedMap = m_SwitchToMap;
+			E.Reset();
+		}
+		m_SwitchToMap = -1;
+	}
+	if(m_CloseMap >= 0)
+	{
+		if((size_t)m_CloseMap < E.m_vpMaps.size())
+			E.CloseMap(m_CloseMap, true);
+		m_CloseMap = -1;
+	}
+
 	// ---- the shared editing: blocks and maps from the others before anything is drawn
 	UpdateCoop();
 	m_Live.Update();
@@ -1069,10 +1087,7 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 		ImGui::InvisibleButton("##tab", ImVec2(TabWidth - Height, Height), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 		const bool Hovered = ImGui::IsItemHovered();
 		if(ImGui::IsItemClicked(ImGuiMouseButton_Left) && !Selected)
-		{
-			E.m_SelectedMap = i;
-			E.Reset();
-		}
+			m_SwitchToMap = i;
 		if(ImGui::IsItemClicked(ImGuiMouseButton_Middle))
 			Close = i;
 		if(ImGui::IsItemClicked(ImGuiMouseButton_Right))
@@ -1142,10 +1157,7 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 				char aName[160];
 				str_format(aName, sizeof(aName), "%s%s", MapEntry.m_aDisplayName, MapEntry.m_Modified ? " *" : "");
 				if(ImGui::Selectable(aName, (size_t)i == E.m_SelectedMap) && (size_t)i != E.m_SelectedMap)
-				{
-					E.m_SelectedMap = i;
-					E.Reset();
-				}
+					m_SwitchToMap = i;
 				ImGui::PopID();
 			}
 			ImGui::EndPopup();
@@ -1157,7 +1169,7 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 	if(IconButton("##newtab", FontIcon::PLUS, Tr("New map (Ctrl+N)"), false, true, S(28.0f)))
 		E.m_QuickActionNewMap.Call();
 	if(Close.has_value())
-		E.CloseMap(Close.value(), true);
+		m_CloseMap = (int)Close.value();
 }
 
 // ------------------------------------------------------------------------------------------------

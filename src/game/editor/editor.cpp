@@ -4600,6 +4600,7 @@ void CEditor::Reset()
 	m_QuadEnvelopePointOperation = EQuadEnvelopePointOperation::NONE;
 
 	m_RenderLayersState.Reset();
+	m_XcUi.ForgetMap(); // XClient
 }
 
 void CEditor::AddDefaultMap()

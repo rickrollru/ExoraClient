@@ -228,6 +228,14 @@ private:
 	void RenderTopBar();
 	float RenderMenus(float x, float y); // returns where the menus end
 	void RenderMapTabs(float x0, float x1, float y);
+	int m_SwitchToMap = -1; // a tab clicked, switched at the start of the next frame
+	int m_CloseMap = -1;
+
+public:
+	// the shown map changed (CEditor::Reset): drop what points into the old one
+	void ForgetMap();
+
+private:
 	void RenderLeftPanel();
 	void RenderLayersTree();
 	void RenderPrefabsPanel();

@@ -35,23 +35,29 @@ static ImVec4 MemberColor(int Id, float Alpha = 1.0f)
 	return ImVec4(((Rgb >> 16) & 0xff) / 255.0f, ((Rgb >> 8) & 0xff) / 255.0f, (Rgb & 0xff) / 255.0f, Alpha);
 }
 
+// pointers and pending edits into a map that is no longer the one shown: another tab, a map loaded or closed, a
+// map replaced by the room (a tab switch kept them, the next frame worked on a freed or another map and crashed)
+void CXcEditorUi::ForgetMap()
+{
+	m_pAdjustImage = nullptr;
+	std::fill(std::begin(m_aAdjust), std::end(m_aAdjust), 0);
+	m_vAdjustBackup.clear();
+	m_pLastQuads = nullptr;
+	m_pLastBrushLayer = nullptr;
+	m_pEnvLast = nullptr;
+	m_EnvSelPoint = -1;
+	m_EnvDragging = false;
+	m_RenameGroup = -1;
+	m_RenameLayer = -1;
+	for(SCaptureState &Capture : m_aCaptures)
+		Capture = SCaptureState();
+}
+
 void CXcEditorUi::UpdateCoop()
 {
 	m_Coop.Update();
 	if(m_Coop.TakeMapReplaced())
-	{
-		// pointers into the old map
-		m_pAdjustImage = nullptr;
-		m_pLastQuads = nullptr;
-		m_pLastBrushLayer = nullptr;
-		m_pEnvLast = nullptr;
-		m_EnvSelPoint = -1;
-		m_EnvDragging = false;
-		m_RenameGroup = -1;
-		m_RenameLayer = -1;
-		for(SCaptureState &Capture : m_aCaptures)
-			Capture = SCaptureState();
-	}
+		ForgetMap();
 	const std::string Notice = m_Coop.TakeNotice();
 	if(!Notice.empty())
 		ShowMessage(Notice.c_str(), "Edit together");
