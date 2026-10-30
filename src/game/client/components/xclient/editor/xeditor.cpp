@@ -1032,17 +1032,34 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 	const STheme &t = Theme();
 	ImFont *pFont = Fonts().m_pSmall;
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
-	if(x1 - x0 < S(80.0f))
-		return;
 	const float Height = S(30.0f);
 	const int Num = (int)E.m_vpMaps.size();
-	const float TabWidth = std::clamp((x1 - x0 - S(36.0f)) / std::max(Num, 1) - S(4.0f), S(90.0f), S(200.0f));
+	// the tabs that fit; the others are in a list behind a button (a narrow window or a big interface scale
+	// showed no tabs at all before, the maps of the room could not be switched)
+	const float NewWidth = S(36.0f), ListWidth = S(52.0f);
+	float Room = std::max(x1 - x0 - NewWidth, 0.0f);
+	float TabWidth = std::clamp(Room / std::max(Num, 1) - S(4.0f), S(90.0f), S(200.0f));
+	int Fit = (int)((Room + S(4.0f)) / (TabWidth + S(4.0f)));
+	if(Fit < Num)
+	{
+		Room = std::max(Room - ListWidth, 0.0f);
+		Fit = std::max((int)((Room + S(4.0f)) / (TabWidth + S(4.0f))), 0);
+		// one tab at least, narrower when needed
+		if(Fit == 0 && Room >= S(60.0f))
+		{
+			Fit = 1;
+			TabWidth = Room - S(4.0f);
+		}
+	}
+	Fit = std::min(Fit, Num);
+	// the selected tab is always among the shown ones
+	int First = 0;
+	if(Fit > 0 && (int)E.m_SelectedMap >= Fit)
+		First = std::min((int)E.m_SelectedMap - Fit + 1, Num - Fit);
 	float x = x0;
 	std::optional<size_t> Close;
-	for(int i = 0; i < Num; i++)
+	for(int i = First; i < First + Fit; i++)
 	{
-		if(x + TabWidth > x1 - S(36.0f))
-			break;
 		const CEditorMap &MapEntry = *E.m_vpMaps[i];
 		const bool Selected = (size_t)i == E.m_SelectedMap;
 		const ImVec2 Min(x, Mid - Height * 0.5f);
@@ -1105,6 +1122,35 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 			pDraw->AddText(pFont, pFont->FontSize, ImVec2(CloseCenter.x - CrossSize.x * 0.5f, Mid - CrossSize.y * 0.5f), Col(CloseHovered ? t.m_Text : t.m_TextMuted), FontIcon::XMARK);
 		}
 		x += TabWidth + S(4.0f);
+	}
+	// all the maps in a list, when not all tabs fit
+	if(Fit < Num)
+	{
+		ImGui::SetCursorScreenPos(ImVec2(x, Mid - S(14.0f)));
+		char aLabel[32];
+		str_format(aLabel, sizeof(aLabel), "%s %d", FontIcon::CHEVRON_DOWN, Num);
+		if(Button(aLabel, false, ListWidth - S(6.0f)))
+			ImGui::OpenPopup("##xe_all_tabs");
+		if(ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s", Tr("All open maps"));
+		if(ImGui::BeginPopup("##xe_all_tabs"))
+		{
+			for(int i = 0; i < Num; i++)
+			{
+				ImGui::PushID(i);
+				const CEditorMap &MapEntry = *E.m_vpMaps[i];
+				char aName[160];
+				str_format(aName, sizeof(aName), "%s%s", MapEntry.m_aDisplayName, MapEntry.m_Modified ? " *" : "");
+				if(ImGui::Selectable(aName, (size_t)i == E.m_SelectedMap) && (size_t)i != E.m_SelectedMap)
+				{
+					E.m_SelectedMap = i;
+					E.Reset();
+				}
+				ImGui::PopID();
+			}
+			ImGui::EndPopup();
+		}
+		x += ListWidth;
 	}
 	// a new map in a new tab
 	ImGui::SetCursorScreenPos(ImVec2(x, Mid - S(14.0f)));
