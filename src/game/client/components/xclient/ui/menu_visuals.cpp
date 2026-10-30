@@ -552,7 +552,7 @@ void CXcMenu::CapePreview(const char *pId)
 	pDraw->AddCircleFilled(Mid, Height * 0.36f, Col(t.m_Accent, 0.08f), 64);
 	const float Rect = Height * 0.85f;
 	AddTeePreview(pDraw, ImVec2(Mid.x - Rect * 0.5f, Mid.y - Rect * 0.5f), ImVec2(Mid.x + Rect * 0.5f, Mid.y + Rect * 0.5f));
-	if(!g_Config.m_XcCapeSelf && !g_Config.m_XcScarfSelf)
+	if(!g_Config.m_XcCapeSelf && !g_Config.m_XcScarfSelf && !g_Config.m_XcAccessorySelf)
 		Description(Tr("Turn on \"Mine\" below to see it here"));
 }
 
@@ -562,15 +562,37 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown")};
 	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 3))
 	{
+		CapePreview("##accessory_preview");
+		const char *apLooks[] = {Tr("Energy"), Tr("Neon"), Tr("Solid")};
+		ParamLabel(Tr("Look"));
+		ConfigSegmented("##accessory_look", "xc_accessory_look", &g_Config.m_XcAccessoryLook, apLooks, 3);
+		ParamLabel(Tr("Shape"));
+		const char *apConeShapes[] = {Tr("Wide"), Tr("Tall"), Tr("Two tiers")};
+		const char *apHaloShapes[] = {Tr("Ring"), Tr("Double"), Tr("Rays")};
+		const char *apCrownShapes[] = {Tr("Royal"), Tr("Tiara"), Tr("Spiky")};
+		const char **ppShapes = g_Config.m_XcAccessory == 1 ? apConeShapes : (g_Config.m_XcAccessory == 2 ? apHaloShapes : apCrownShapes);
+		ConfigSegmented("##accessory_shape", "xc_accessory_shape", &g_Config.m_XcAccessoryShape, ppShapes, 3);
+		if(g_Config.m_XcAccessory == 1)
+		{
+			ParamLabel(Tr("Pattern"));
+			const char *apPatterns[] = {Tr("Plain"), Tr("Stripes"), Tr("Rings"), Tr("Gradient")};
+			ConfigSegmented("##accessory_pattern", "xc_accessory_pattern", &g_Config.m_XcAccessoryPattern, apPatterns, 4);
+		}
+		ParamLabel(g_Config.m_XcAccessory == 3 && g_Config.m_XcAccessoryLook == 2 ? Tr("Gems") : Tr("Color"));
 		EffectColorPicker("##accessory_color", &g_Config.m_XcAccessoryColorMode, &g_Config.m_XcAccessoryColor);
+		ParamLabel(Tr("Edges"));
+		const char *apEdges[] = {Tr("Lighter"), Tr("Own")};
+		ConfigSegmented("##accessory_edge", "xc_accessory_edge_mode", &g_Config.m_XcAccessoryEdgeMode, apEdges, 2);
+		if(g_Config.m_XcAccessoryEdgeMode)
+			ConfigColorRow(Tr("Edge color"), &g_Config.m_XcAccessoryEdgeColor, false);
 		ConfigSlider(Tr("Size"), "xc_accessory_size", &g_Config.m_XcAccessorySize, 50, 200, "%d%%");
+		if(g_Config.m_XcAccessory == 1)
+			ConfigSlider(Tr("Height"), "xc_accessory_height", &g_Config.m_XcAccessoryHeight, 30, 250, "%d%%");
 		ConfigSlider(Tr("Opacity"), "xc_accessory_alpha", &g_Config.m_XcAccessoryAlpha, 10, 100, "%d%%");
 		ConfigSlider(Tr("Sway"), "xc_accessory_physics", &g_Config.m_XcAccessoryPhysics, 0, 200, "%d%%");
 		ConfigSlider(Tr("Spin speed"), "xc_accessory_spin", &g_Config.m_XcAccessorySpin, 0, 300, "%d%%");
 		if(g_Config.m_XcAccessory != 1)
 			ToggleRow(Tr("Sparkles"), "xc_accessory_sparkles", &g_Config.m_XcAccessorySparkles);
-		if(g_Config.m_XcAccessory == 1)
-			ConfigSlider(Tr("Height"), "xc_accessory_height", &g_Config.m_XcAccessoryHeight, 30, 250, "%d%%");
 		// the same values as the accessory group in Visuals > World > Glow
 		ConfigSlider(Tr("Glow strength"), "xc_fxglow_accessory", &g_Config.m_XcFxglowAccessory, 0, 300, "%d%%");
 		ConfigSlider(Tr("Glow size"), "xc_fxglow_accessory_size", &g_Config.m_XcFxglowAccessorySize, 25, 300, "%d%%");

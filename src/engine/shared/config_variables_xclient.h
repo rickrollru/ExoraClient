@@ -529,6 +529,11 @@ MACRO_CONFIG_INT(XcAccessoryFriends, xc_accessory_friends, 0, 0, 1, CFGFLAG_CLIE
 MACRO_CONFIG_INT(XcAccessoryAlpha, xc_accessory_alpha, 85, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of the accessory in percent")
 MACRO_CONFIG_COL(XcAccessoryColor, xc_accessory_color, 10223527, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the accessory (crown gems for the crown)") // #4F8CFF
 MACRO_CONFIG_INT(XcAccessoryColorMode, xc_accessory_color_mode, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory color (0 = menu accent, 1 = own color, 2 = rainbow, 3 = skin color)")
+MACRO_CONFIG_INT(XcAccessoryLook, xc_accessory_look, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look of the accessory (0 = energy: made of light, 1 = neon: dark with glowing edges, 2 = solid material)")
+MACRO_CONFIG_INT(XcAccessoryShape, xc_accessory_shape, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shape of the accessory (cone hat: wide, tall, two tiers; halo: ring, double, rays; crown: royal, tiara, spiky)")
+MACRO_CONFIG_INT(XcAccessoryPattern, xc_accessory_pattern, 1, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Pattern of the cone hat (0 = plain, 1 = stripes, 2 = rings, 3 = gradient)")
+MACRO_CONFIG_INT(XcAccessoryEdgeMode, xc_accessory_edge_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the edges of the accessory (0 = lighter main color, 1 = own color)")
+MACRO_CONFIG_COL(XcAccessoryEdgeColor, xc_accessory_edge_color, 255, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Own color of the edges of the accessory") // white
 MACRO_CONFIG_INT(XcAccessorySpin, xc_accessory_spin, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of the stripes of the cone hat, the spark of the halo and the sparkles in percent (0 = still)")
 MACRO_CONFIG_INT(XcAccessorySparkles, xc_accessory_sparkles, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Small sparkles around the halo and twinkling gems of the crown")
 MACRO_CONFIG_INT(XcAccessoryPhysics, xc_accessory_physics, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How much the accessory tilts and bounces with movement in percent (0 = rigid)")
