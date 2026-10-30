@@ -883,6 +883,7 @@ namespace XcUi
 			{"Hide the standard explosion and smoke", "Скрыть стандартный взрыв и дым"},
 			{"Camera shake near explosions", "Тряска камеры у взрывов"},
 			{"Hits on blocks", "Попадания по блокам"},
+			{"Spin speed", "Скорость вращения"},
 			{"Play (Space)", "Играть (Пробел)"},
 			{"Pause (Space)", "Пауза (Пробел)"},
 			{"Stop: back to the start", "Стоп: в начало"},

@@ -566,6 +566,9 @@ void CXcMenu::RenderVisualsCosmeticsExtra()
 		ConfigSlider(Tr("Size"), "xc_accessory_size", &g_Config.m_XcAccessorySize, 50, 200, "%d%%");
 		ConfigSlider(Tr("Opacity"), "xc_accessory_alpha", &g_Config.m_XcAccessoryAlpha, 10, 100, "%d%%");
 		ConfigSlider(Tr("Sway"), "xc_accessory_physics", &g_Config.m_XcAccessoryPhysics, 0, 200, "%d%%");
+		ConfigSlider(Tr("Spin speed"), "xc_accessory_spin", &g_Config.m_XcAccessorySpin, 0, 300, "%d%%");
+		if(g_Config.m_XcAccessory != 1)
+			ToggleRow(Tr("Sparkles"), "xc_accessory_sparkles", &g_Config.m_XcAccessorySparkles);
 		if(g_Config.m_XcAccessory == 1)
 			ConfigSlider(Tr("Height"), "xc_accessory_height", &g_Config.m_XcAccessoryHeight, 30, 250, "%d%%");
 		// the same values as the accessory group in Visuals > World > Glow
