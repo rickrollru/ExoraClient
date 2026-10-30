@@ -720,9 +720,6 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
 	if(Cloth && g_Config.m_XcScarfSelf)
 		GameClient()->m_XcCape.RenderPreviewFront(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha);
-	// the accessory of the cosmetics cards on the head
-	if(Extras && g_Config.m_XcAccessory && g_Config.m_XcAccessorySelf && Max.y - Min.y > 64.0f)
-		GameClient()->m_Accessory.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha);
 	if(Hat && !g_Config.m_XcHatBehind)
 	{
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
