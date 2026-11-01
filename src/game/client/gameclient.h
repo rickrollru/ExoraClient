@@ -93,7 +93,6 @@
 #include "components/xclient/world3d.h"
 #include "components/xclient/discord_rpc.h" // XClient
 #include "components/xclient/cape.h"
-#include "components/xclient/cosmetics.h"
 #include "components/xclient/motion_fx.h"
 #include "components/xclient/event_fx.h"
 #include "components/xclient/floaters.h"
@@ -275,8 +274,6 @@ public:
 	CXcHats m_XcHats;
 	CXcHatsBehind m_XcHatsBehind;
 	CXcCape m_XcCape;
-	CXcCosmetics m_XcCosmetics;
-	CXcCosmeticsBehind m_XcCosmeticsBehind;
 	CXcMotion m_XcMotion;
 	CXcFloaters m_XcFloaters;
 	CXcBlockOutline m_XcBlockOutline;

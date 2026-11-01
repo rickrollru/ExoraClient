@@ -157,7 +157,6 @@ void CGameClient::OnConsoleInit()
 					      &m_XcMotion, // XClient: motion blur and speed lines behind the tees
 					      &m_XcCape, // XClient: cape with cloth physics behind the tees
 					      &m_XcHatsBehind, // XClient: wings and capes behind the tees
-					      &m_XcCosmeticsBehind, // XClient: 3D wings and backpacks behind the tees
 					      &m_Players,
 					      &m_XcCape.m_Front, // XClient: the scarf around the neck, over the tee
 					      &m_JumpFx, // XClient
@@ -168,7 +167,6 @@ void CGameClient::OnConsoleInit()
 					      &m_XcSprites, // XClient: textures of the new effect style
 					      &m_FxRenderer, // XClient: draws the queued world effects
 					      &m_XcHats, // XClient: own hats, over the queued effects
-					      &m_XcCosmetics, // XClient: 3D hats and pets in front of the tees
 					      &m_TeeGlow, // XClient
 					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
