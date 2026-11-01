@@ -245,30 +245,49 @@ void CAccessory::RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, f
 	Fx.AddWorld(FxShape::Circle(Center + vec2(-0.8f, -0.8f) * Scale, 0.7f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha * 0.8f)).Additive());
 }
 
-// two small horns curving up and out from the top of the head
+// two neon horns like crescents, in the look of the cone hat: a see-through fill and a glowing outline
 void CAccessory::RenderHorns(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
 {
 	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
 	CFxRenderer &Fx = GameClient()->m_FxRenderer;
 	const ColorRGBA Main = BaseColor(0.0f, Alpha);
-	const ColorRGBA Dark = Shade(Main, 0.55f);
+	const ColorRGBA Core(mix(Main.r, 1.0f, 0.55f), mix(Main.g, 1.0f, 0.55f), mix(Main.b, 1.0f, 0.55f), Alpha);
+	const auto Bezier = [](vec2 a, vec2 b, vec2 c, float t) { return a * ((1.0f - t) * (1.0f - t)) + b * (2.0f * t * (1.0f - t)) + c * (t * t); };
+	constexpr int NUM = 12;
+	Graphics()->TextureClear();
 	for(float Side : {-1.0f, 1.0f})
 	{
-		// a demon's horn of tapering pieces: out and up first, then the tip curls back in over the head
-		vec2 Prev(Side * 9.0f * Scale, 3.0f * Scale);
-		const int NumPieces = 9;
-		for(int i = 1; i <= NumPieces; i++)
+		// a crescent: wide on the head, both edges bow outwards, the sharp tip points up and a little out
+		const vec2 BaseIn(Side * 4.0f, 3.0f), BaseOut(Side * 11.5f, 3.0f), Tip(Side * 13.5f, -12.5f * Squash);
+		const vec2 CtrlIn(Side * 10.5f, -1.0f * Squash), CtrlOut(Side * 15.0f, -1.5f * Squash);
+		vec2 aIn[NUM + 1], aOut[NUM + 1];
+		for(int i = 0; i <= NUM; i++)
 		{
-			const float t = (float)i / NumPieces;
-			const vec2 Next(Side * (9.0f + 7.0f * t - 11.0f * t * t * t) * Scale, (3.0f - (14.0f * t + 2.0f * t * t) * Squash) * Scale);
-			const float Width = (5.2f * (1.0f - t) * (1.0f - t) + 0.9f) * Scale;
-			const ColorRGBA c(mix(Main.r, Dark.r, t * 0.6f), mix(Main.g, Dark.g, t * 0.6f), mix(Main.b, Dark.b, t * 0.6f), Alpha);
-			Fx.AddWorld(FxShape::Line(Rotate(Head + Prev, Head, Tilt), Rotate(Head + Next, Head, Tilt), Width, c).Outline(0.6f * Scale, Shade(Main, 0.35f)));
-			Prev = Next;
+			const float t = (float)i / NUM;
+			aIn[i] = Rotate(Head + Bezier(BaseIn, CtrlIn, Tip, t) * Scale, Head, Tilt);
+			aOut[i] = Rotate(Head + Bezier(BaseOut, CtrlOut, Tip, t) * Scale, Head, Tilt);
 		}
-		// light on the inner side, a glow at the tip
-		Fx.AddWorld(FxShape::Line(Rotate(Head + vec2(Side * 9.5f * Scale, 0.5f * Scale), Head, Tilt), Rotate(Head + vec2(Side * 12.0f * Scale, -6.0f * Scale * Squash), Head, Tilt), 0.9f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f * Alpha)).Additive());
-		Fx.AddWorldGlowing(FxShape::Circle(Rotate(Head + Prev, Head, Tilt), 0.9f * Scale, Main), 4.0f * Scale, 0.5f);
+		// the see-through fill between the two edges, lighter to the tip
+		Graphics()->QuadsBegin();
+		for(int i = 0; i < NUM; i++)
+		{
+			const float t = (float)i / NUM;
+			Graphics()->SetColor(ColorRGBA(mix(Main.r, Core.r, t), mix(Main.g, Core.g, t), mix(Main.b, Core.b, t), Alpha * 0.3f));
+			const IGraphics::CFreeformItem Item(aIn[i], aOut[i], aIn[i + 1], aOut[i + 1]);
+			Graphics()->QuadsDrawFreeform(&Item, 1);
+		}
+		Graphics()->QuadsEnd();
+		// the glowing outline: both edges and the base, a white-hot core in the middle of the line
+		const auto Edge = [&](vec2 A, vec2 B) {
+			Fx.AddWorldGlowing(FxShape::Line(A, B, 1.6f * Scale, Main), 5.0f * Scale, 0.7f);
+			Fx.AddWorld(FxShape::Line(A, B, 0.6f * Scale, Core).Additive());
+		};
+		for(int i = 0; i < NUM; i++)
+		{
+			Edge(aIn[i], aIn[i + 1]);
+			Edge(aOut[i], aOut[i + 1]);
+		}
+		Edge(aIn[0], aOut[0]);
 	}
 }
 
