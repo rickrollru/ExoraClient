@@ -25,9 +25,12 @@
 using namespace XcHelpers;
 using namespace XcUi;
 
-// the words on the map: how long one stays, its size in world units
-static constexpr float WORD_LIFE = 2.6f;
+static float WordLife() { return g_Config.m_XcLyricsTime / 10.0f; }
+
+// the words on the map: their size in world units; how long one stays comes from xc_lyrics_time
 static constexpr float WORD_SIZE = 26.0f;
+// a word of the line before goes away this fast when the next line starts
+static constexpr float WORD_OUT_TIME = 0.35f;
 
 // LRCLIB asks the programs that use it to say who they are
 static const char *const LRCLIB_AGENT = "ExoraClient (https://github.com/rickrollru/ExoraClient)";
@@ -415,13 +418,14 @@ void CXcLyrics::OnRender()
 			}
 			// the words of the line before go away quickly
 			for(SWord &Word : m_vWords)
-				Word.m_Age = std::max(Word.m_Age, Word.m_Delay + WORD_LIFE - 0.3f);
+				if(Word.m_Out < 0.0f)
+					Word.m_Out = 0.0f;
 			// each word comes in its turn, as the line is sung; its place is found when it appears
 			const float Size = WORD_SIZE * g_Config.m_XcLyricsSize / 100.0f;
 			for(size_t i = 0; i < vWords.size(); i++)
 			{
 				const float Width = TextRender()->TextWidth(Size, vWords[i].c_str());
-				m_vWords.push_back({vWords[i], vec2(0.0f, 0.0f), false, Width, 0.0f, Length * 0.8f * i / std::max<size_t>(vWords.size(), 1), random_float(-0.04f, 0.04f)});
+				m_vWords.push_back({vWords[i], vec2(0.0f, 0.0f), false, Width, 0.0f, Length * 0.8f * i / std::max<size_t>(vWords.size(), 1), random_float(-0.04f, 0.04f), -1.0f});
 			}
 		}
 	}
@@ -429,21 +433,19 @@ void CXcLyrics::OnRender()
 	for(SWord &Word : m_vWords)
 	{
 		Word.m_Age += Dt;
+		if(Word.m_Out >= 0.0f)
+			Word.m_Out += Dt;
 		if(!Word.m_Placed && Word.m_Age >= Word.m_Delay)
 			PlaceWord(Word);
 	}
-	m_vWords.erase(std::remove_if(m_vWords.begin(), m_vWords.end(), [](const SWord &Word) { return Word.m_Age - Word.m_Delay > WORD_LIFE; }), m_vWords.end());
+	m_vWords.erase(std::remove_if(m_vWords.begin(), m_vWords.end(), [](const SWord &Word) { return Word.m_Age - Word.m_Delay > WordLife() || Word.m_Out > WORD_OUT_TIME || (Word.m_Out >= 0.0f && Word.m_Age < Word.m_Delay); }), m_vWords.end());
 	if(g_Config.m_XcLyricsShow == SHOW_PLATE)
 		m_vWords.clear();
 
 	m_PlateLine = g_Config.m_XcLyricsShow == SHOW_PLATE || g_Config.m_XcLyricsShow == SHOW_BOTH ? Line : -2;
 	m_PlatePosition = Position;
-	// the soft light behind the words, with the other glowing effects; the letters come later in the HUD
 	if(!m_vWords.empty())
-	{
-		QueueWordGlow();
 		RenderWordsClassic();
-	}
 	if(m_PlateLine >= 0 && !OwnFontCovers(m_vLines[m_PlateLine].m_Text.c_str()))
 		RenderPlateClassic(m_PlateLine, Position);
 }
@@ -476,7 +478,7 @@ void CXcLyrics::PlaceWord(SWord &Word)
 	{
 		// mostly over the tee, sometimes beside it, never under the feet
 		const float Angle = random_float(-pi * 0.92f, -pi * 0.08f);
-		const float Radius = random_float(90.0f, 165.0f) * Scale;
+		const float Radius = random_float(90.0f, 165.0f) * Scale * g_Config.m_XcLyricsSpread / 100.0f;
 		const vec2 Pos = Tee + vec2(std::cos(Angle) * Radius * 1.5f, std::sin(Angle) * Radius);
 		float Score = 1e9f;
 		for(const SWord &Other : m_vWords)
@@ -501,48 +503,31 @@ bool CXcLyrics::WordLook(const SWord &Word, float &Alpha, float &Pop, vec2 &Pos)
 	const float t = Word.m_Age - Word.m_Delay;
 	if(!Word.m_Placed || t < 0.0f)
 		return false;
-	const float Life = t / WORD_LIFE;
-	// grows in smoothly with a little overshoot, floats up a bit, fades at the end
-	const float In = std::min(t / 0.25f, 1.0f);
-	const float Back = 1.0f - In;
-	Pop = 1.0f - Back * Back * Back * 0.35f + std::sin(In * pi) * 0.06f;
-	Alpha = std::min(t / 0.15f, 1.0f) * (1.0f - std::max(Life - 0.65f, 0.0f) / 0.35f);
-	Pos = Word.m_Pos + vec2(0.0f, -14.0f * Life);
-	return Alpha > 0.0f;
+	const auto Smooth = [](float x) { x = std::clamp(x, 0.0f, 1.0f); return x * x * (3.0f - 2.0f * x); };
+	// grows in with a soft overshoot (ease out back), all smooth in time, no jumps
+	const float In = std::clamp(t / 0.35f, 0.0f, 1.0f);
+	const float x = In - 1.0f;
+	const float c1 = 1.1f, c3 = c1 + 1.0f;
+	Pop = 0.75f + 0.25f * (1.0f + c3 * x * x * x + c1 * x * x);
+	// fades in, fades out at the end of its life or quickly when the next line sends it away
+	const float Life = WordLife();
+	Alpha = Smooth(t / 0.25f) * (1.0f - Smooth((t - Life * 0.7f) / (Life * 0.3f)));
+	if(Word.m_Out >= 0.0f)
+		Alpha *= 1.0f - Smooth(Word.m_Out / WORD_OUT_TIME);
+	// floats up a little, slower and slower
+	Pos = Word.m_Pos + vec2(0.0f, -16.0f * (1.0f - std::exp(-t * 0.9f)));
+	return Alpha > 0.001f;
 }
 
 ColorRGBA CXcLyrics::WordColor(const SWord &Word) const
 {
 	ColorHSLA Hsl = color_cast<ColorHSLA>(EffectColor(GameClient(), 0, 0, -1));
-	Hsl.h = std::fmod(Hsl.h + Word.m_Hue + 1.0f, 1.0f);
+	// rainbow: each word its own hue, a calm one (not full saturation)
+	if(g_Config.m_XcLyricsColor == 2)
+		Hsl = ColorHSLA((Word.m_Hue + 0.04f) / 0.08f, 0.75f, 0.62f, 1.0f);
+	else
+		Hsl.h = std::fmod(Hsl.h + Word.m_Hue + 1.0f, 1.0f);
 	return color_cast<ColorRGBA>(Hsl);
-}
-
-// a soft light in the accent color behind each word: a wide ellipse fading out to its edge, through the
-// render module with bloom, like the other glowing effects
-void CXcLyrics::QueueWordGlow()
-{
-	CFxRenderer &Fx = GameClient()->m_FxRenderer;
-	const float Size = WORD_SIZE * g_Config.m_XcLyricsSize / 100.0f;
-	bool Any = false;
-	for(const SWord &Word : m_vWords)
-	{
-		float Alpha, Pop;
-		vec2 Pos;
-		if(!WordLook(Word, Alpha, Pop, Pos))
-			continue;
-		const ColorRGBA Color = WordColor(Word);
-		const vec2 Half(Word.m_Width * 0.5f * Pop + Size * 0.9f, Size * 0.95f * Pop);
-		// a colored haze under the letters (keeps them readable on bright maps), a little light in the middle
-		Fx.AddWorld(FxShape::Ellipse(Pos, Half, Color.WithAlpha(0.0f)).RadialGradient(ColorRGBA(Color.r * 0.55f, Color.g * 0.55f, Color.b * 0.55f, 0.45f * Alpha), 1.4f));
-		Fx.AddWorld(FxShape::Ellipse(Pos, Half * 0.8f, Color.WithAlpha(0.0f)).RadialGradient(Color.WithAlpha(0.22f * Alpha), 1.8f).Additive());
-		Any = true;
-	}
-	if(!Any)
-		return;
-	const vec2 Camera = GameClient()->m_Camera.m_Center;
-	Graphics()->MapScreen(Graphics()->MapScreenToWorld(Camera.x, Camera.y, 100.0f, 100.0f, 100.0f, 0.0f, 0.0f, Graphics()->ScreenAspect(), GameClient()->m_Camera.m_Zoom));
-	Fx.FlushWorld();
 }
 
 // the plate and the words with the HUD fonts: clean letters over the soft light, staying where they appeared
@@ -568,16 +553,40 @@ void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, floa
 				continue;
 			WordAlpha *= Alpha;
 			const float TextSize = Size * Pop;
-			const ImVec2 Dim = pBold->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, Word.m_Text.c_str());
+			const char *pText = Word.m_Text.c_str();
+			const ImVec2 Dim = pBold->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pText);
+			// not snapped to pixels: the words move smoothly with the camera and while they float up
 			const ImVec2 Center = ToScreen(WorldPos);
-			const ImVec2 Pos(std::round(Center.x - Dim.x * 0.5f), std::round(Center.y - Dim.y * 0.5f));
+			const ImVec2 Pos(Center.x - Dim.x * 0.5f, Center.y - Dim.y * 0.5f);
 			const ColorRGBA Color = WordColor(Word);
-			// a soft shadow for bright maps, then the letters: nearly white with a touch of the accent
-			const float Shadow = std::max(TextSize * 0.05f, 1.0f);
-			pDraw->AddText(pBold, TextSize, ImVec2(Pos.x, Pos.y + Shadow * 1.5f), Rgba(ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f), 0.18f * WordAlpha), Word.m_Text.c_str());
-			pDraw->AddText(pBold, TextSize, ImVec2(Pos.x, Pos.y + Shadow * 0.7f), Rgba(ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f), 0.3f * WordAlpha), Word.m_Text.c_str());
-			const ColorRGBA Light(mix(Color.r, 1.0f, 0.7f), mix(Color.g, 1.0f, 0.7f), mix(Color.b, 1.0f, 0.7f), 1.0f);
-			pDraw->AddText(pBold, TextSize, Pos, Rgba(Light, WordAlpha), Word.m_Text.c_str());
+			// the glow: the letters again in rings around them, many faint copies that add up to a soft light
+			// close to the letters, fading out further away
+			const float Glow = g_Config.m_XcLyricsGlow / 100.0f;
+			if(Glow > 0.0f)
+			{
+				const float Reach = TextSize * 0.28f * g_Config.m_XcLyricsGlowSize / 100.0f;
+				// the glow is the color itself, a bit deeper: around white letters it also keeps them readable on
+				// bright maps
+				const ColorRGBA GlowColor(Color.r * 0.85f, Color.g * 0.85f, Color.b * 0.85f, 1.0f);
+				static constexpr int RINGS = 5, STEPS = 12;
+				for(int Ring = RINGS; Ring >= 1; Ring--)
+				{
+					const float k = (Ring - 0.5f) / RINGS;
+					const float r = Reach * k;
+					// dense close to the letters, falling off softly outwards
+					const float a = Glow * 0.22f * std::exp(-3.2f * k * k) * WordAlpha;
+					const ImU32 Col32 = Rgba(GlowColor, a);
+					for(int i = 0; i < STEPS; i++)
+					{
+						const float Angle = (i + Ring * 0.5f) * 2.0f * pi / STEPS;
+						pDraw->AddText(pBold, TextSize, ImVec2(Pos.x + std::cos(Angle) * r, Pos.y + std::sin(Angle) * r), Col32, pText);
+					}
+				}
+			}
+			// the letters: white with a touch of the color, or the color itself
+			const float White = g_Config.m_XcLyricsColor == 0 ? 0.85f : 0.25f;
+			const ColorRGBA Letters(mix(Color.r, 1.0f, White), mix(Color.g, 1.0f, White), mix(Color.b, 1.0f, White), 1.0f);
+			pDraw->AddText(pBold, TextSize, Pos, Rgba(Letters, WordAlpha), pText);
 		}
 	}
 
@@ -693,17 +702,13 @@ void CXcLyrics::RenderWordsClassic()
 	const float Size = WORD_SIZE * g_Config.m_XcLyricsSize / 100.0f;
 	for(const SWord &Word : m_vWords)
 	{
-		const float t = Word.m_Age - Word.m_Delay;
-		if(t < 0.0f || !Word.m_Placed || OwnFontCovers(Word.m_Text.c_str()))
+		float Alpha, Pop;
+		vec2 Pos;
+		if(OwnFontCovers(Word.m_Text.c_str()) || !WordLook(Word, Alpha, Pop, Pos))
 			continue;
-		const float Life = t / WORD_LIFE;
-		// pops in a little bigger, rises, fades at the end
-		const float Pop = t < 0.15f ? 1.0f + (0.15f - t) * 2.0f : 1.0f;
-		const float Alpha = std::min(t / 0.12f, 1.0f) * (1.0f - std::max(Life - 0.6f, 0.0f) / 0.4f);
 		const float TextSize = Size * Pop;
-		const vec2 Pos = Word.m_Pos + vec2(0.0f, -14.0f * Life);
 		const float TextWidth = TextRender()->TextWidth(TextSize, Word.m_Text.c_str());
-		const ColorRGBA Color = EffectColor(GameClient(), 0, 0, -1, Word.m_Hue);
+		const ColorRGBA Color = WordColor(Word);
 		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f * Alpha));
 		TextRender()->TextColor(ColorRGBA(mix(Color.r, 1.0f, 0.5f), mix(Color.g, 1.0f, 0.5f), mix(Color.b, 1.0f, 0.5f), Alpha));
 		TextRender()->Text(Pos.x - TextWidth * 0.5f, Pos.y - TextSize * 0.5f, TextSize, Word.m_Text.c_str());

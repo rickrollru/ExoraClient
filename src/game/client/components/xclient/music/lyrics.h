@@ -100,6 +100,7 @@ private:
 		float m_Age;
 		float m_Delay;
 		float m_Hue; // a little shift of the accent color
+		float m_Out; // time since the next line sent it away, -1 while it stays
 	};
 	std::vector<SWord> m_vWords;
 
@@ -115,7 +116,6 @@ private:
 	// how a word looks now: false while it is hidden
 	bool WordLook(const SWord &Word, float &Alpha, float &Pop, vec2 &Pos) const;
 	ColorRGBA WordColor(const SWord &Word) const;
-	void QueueWordGlow();
 	// the game font, for lines the HUD fonts cannot write
 	void RenderPlateClassic(int Line, double Position);
 	void RenderWordsClassic();

@@ -571,6 +571,11 @@ MACRO_CONFIG_INT(XcLyricsSize, xc_lyrics_size, 100, 50, 200, CFGFLAG_CLIENT | CF
 MACRO_CONFIG_INT(XcLyricsY, xc_lyrics_y, 78, 10, 95, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Height of the lyrics plate on the screen in percent from the top")
 MACRO_CONFIG_INT(XcLyricsOffset, xc_lyrics_offset, 0, -5000, 5000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shift of the lyrics against the music in ms (+ earlier, - later)")
 MACRO_CONFIG_INT(XcLyricsExtra, xc_lyrics_extra, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look for the lyrics on NetEase Music too and show lyrics without times spread over the track")
+MACRO_CONFIG_INT(XcLyricsColor, xc_lyrics_color, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Color of the words on the map (0 = white with the theme glow, 1 = theme color, 2 = rainbow)")
+MACRO_CONFIG_INT(XcLyricsGlow, xc_lyrics_glow, 60, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Glow around the letters of the words on the map in percent")
+MACRO_CONFIG_INT(XcLyricsGlowSize, xc_lyrics_glow_size, 100, 30, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far the glow of the words reaches in percent")
+MACRO_CONFIG_INT(XcLyricsSpread, xc_lyrics_spread, 100, 40, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far from the tee the words appear in percent")
+MACRO_CONFIG_INT(XcLyricsTime, xc_lyrics_time, 26, 10, 80, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long a word stays on the map in tenths of a second")
 
 // Map editor
 MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the Exora Client style: flat dark panels, accent selection, the menu font")
