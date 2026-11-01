@@ -570,6 +570,7 @@ MACRO_CONFIG_INT(XcLyricsShow, xc_lyrics_show, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG
 MACRO_CONFIG_INT(XcLyricsSize, xc_lyrics_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the lyrics in percent")
 MACRO_CONFIG_INT(XcLyricsY, xc_lyrics_y, 78, 10, 95, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Height of the lyrics plate on the screen in percent from the top")
 MACRO_CONFIG_INT(XcLyricsOffset, xc_lyrics_offset, 0, -5000, 5000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shift of the lyrics against the music in ms (+ earlier, - later)")
+MACRO_CONFIG_INT(XcLyricsExtra, xc_lyrics_extra, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look for the lyrics on NetEase Music too and show lyrics without times spread over the track")
 
 // Map editor
 MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the Exora Client style: flat dark panels, accent selection, the menu font")

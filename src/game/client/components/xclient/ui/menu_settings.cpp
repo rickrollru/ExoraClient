@@ -1090,7 +1090,8 @@ void CXcMenu::RenderSettingsHud()
 		ConfigSlider(Tr("Size"), "xc_lyrics_size", &g_Config.m_XcLyricsSize, 50, 200, "%d%%");
 		ConfigSlider(Tr("Plate height"), "xc_lyrics_y", &g_Config.m_XcLyricsY, 10, 95, "%d%%");
 		ConfigSlider(Tr("Shift against the music"), "xc_lyrics_offset", &g_Config.m_XcLyricsOffset, -5000, 5000, "%d ms");
-		Description(Tr("The lyrics come from lrclib.net by the title and the artist. Not every song has timed lyrics there"));
+		ToggleRow(Tr("More sources: NetEase Music and lyrics without times (marked with \xe2\x89\x88)"), "xc_lyrics_extra", &g_Config.m_XcLyricsExtra);
+		Description(Tr("The lyrics come from lrclib.net and NetEase Music by the title and the artist. A song not found is looked for again in two minutes"));
 		EndCard();
 	}
 	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list on Tab and the top of the server in the HUD")))

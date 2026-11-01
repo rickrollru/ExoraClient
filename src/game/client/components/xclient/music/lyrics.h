@@ -47,14 +47,37 @@ private:
 		STATE_FOUND,
 		STATE_NOT_FOUND,
 	};
+	// the tries one after another, until one gives timed lyrics
+	enum
+	{
+		STEP_LRCLIB_GET = 0, // the exact match with the length of the track
+		STEP_LRCLIB_GET_ANY, // the exact match, any length
+		STEP_LRCLIB_FIELDS, // a search by the title and the artist
+		STEP_LRCLIB_WORDS, // a search by the words "artist title"
+		STEP_LRCLIB_TITLE, // a search by the title only
+		STEP_NETEASE_SEARCH, // NetEase Music: find the song
+		STEP_NETEASE_LYRIC, // NetEase Music: its lyrics
+		NUM_STEPS,
+	};
 	std::string m_Key; // the track the lyrics are for
+	std::string m_SeenKey; // the track the player tells now; taken when it stays a second (switching tells others)
+	float m_SeenTime = 0.0f;
 	int m_State = STATE_NONE;
-	bool m_Searching = false; // the second try: a search instead of the exact match
+	int m_Step = 0;
+	long long m_NeteaseId = 0;
+	std::string m_PlainLyrics; // lyrics without times, when nothing better is found
+	bool m_Approx = false; // the lines are spread over the track, not timed
 	std::string m_Artist, m_Title;
 	double m_Duration = -1.0;
 	std::shared_ptr<IHttpRequest> m_pRequest;
 	std::vector<SLine> m_vLines;
-	std::map<std::string, std::vector<SLine>> m_Cache; // tracks played in this session
+	struct SCached
+	{
+		std::vector<SLine> m_vLines;
+		bool m_Approx;
+		float m_Time; // when it was looked for: a failed search is tried again after a while
+	};
+	std::map<std::string, SCached> m_Cache; // tracks played in this session
 	int m_LastLine = -1;
 	float m_Fade = 0.0f;
 
@@ -68,8 +91,12 @@ private:
 	};
 	std::vector<SWord> m_vWords;
 
-	void Request(bool Search);
+	void StartSearch();
+	void RunStep();
 	void TakeAnswer();
+	void Finish(bool Found);
+	// the lines spread evenly over the track (lyrics without times)
+	std::vector<SLine> SpreadPlain(const std::string &Text) const;
 	void RenderPlate(int Line, double Position);
 	void RenderWords(float Dt);
 };

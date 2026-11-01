@@ -129,25 +129,99 @@ void CXcLyrics::OnShutdown()
 	m_pRequest = nullptr;
 }
 
-void CXcLyrics::Request(bool Search)
+void CXcLyrics::StartSearch()
 {
-	char aArtist[256], aTitle[256], aUrl[768];
+	m_Step = STEP_LRCLIB_GET;
+	m_NeteaseId = 0;
+	m_PlainLyrics.clear();
+	m_Approx = false;
+	m_State = STATE_LOADING;
+	if(m_Duration <= 0.0)
+		m_Step = STEP_LRCLIB_GET_ANY;
+	RunStep();
+}
+
+void CXcLyrics::RunStep()
+{
+	char aArtist[256], aTitle[256], aWords[512], aUrl[1024];
 	EscapeUrl(aArtist, m_Artist.c_str());
 	EscapeUrl(aTitle, m_Title.c_str());
-	if(Search)
-		str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/search?track_name=%s&artist_name=%s", aTitle, aArtist);
-	else if(m_Duration > 0.0)
-		str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/get?track_name=%s&artist_name=%s&duration=%d", aTitle, aArtist, (int)std::round(m_Duration));
-	else
-		str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/get?track_name=%s&artist_name=%s", aTitle, aArtist);
+	char aBoth[512];
+	str_format(aBoth, sizeof(aBoth), "%s %s", m_Artist.c_str(), m_Title.c_str());
+	EscapeUrl(aWords, aBoth);
+	bool Netease = false;
+	switch(m_Step)
+	{
+	case STEP_LRCLIB_GET: str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/get?track_name=%s&artist_name=%s&duration=%d", aTitle, aArtist, (int)std::round(m_Duration)); break;
+	case STEP_LRCLIB_GET_ANY: str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/get?track_name=%s&artist_name=%s", aTitle, aArtist); break;
+	case STEP_LRCLIB_FIELDS: str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/search?track_name=%s&artist_name=%s", aTitle, aArtist); break;
+	case STEP_LRCLIB_WORDS: str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/search?q=%s", aWords); break;
+	case STEP_LRCLIB_TITLE: str_format(aUrl, sizeof(aUrl), "https://lrclib.net/api/search?q=%s", aTitle); break;
+	case STEP_NETEASE_SEARCH:
+		str_format(aUrl, sizeof(aUrl), "https://music.163.com/api/search/get/web?s=%s&type=1&limit=8", aWords);
+		Netease = true;
+		break;
+	case STEP_NETEASE_LYRIC:
+		str_format(aUrl, sizeof(aUrl), "https://music.163.com/api/song/lyric?id=%lld&lv=1", m_NeteaseId);
+		Netease = true;
+		break;
+	default:
+		Finish(false);
+		return;
+	}
 	m_pRequest = HttpGet(aUrl);
-	m_pRequest->HeaderString("User-Agent", LRCLIB_AGENT);
+	if(Netease)
+	{
+		m_pRequest->HeaderString("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+		m_pRequest->HeaderString("Referer", "https://music.163.com/");
+	}
+	else
+		m_pRequest->HeaderString("User-Agent", LRCLIB_AGENT);
 	m_pRequest->Timeout(CTimeout{10000, 0, 500, 10});
-	m_pRequest->MaxResponseSize(2 * 1024 * 1024);
+	m_pRequest->MaxResponseSize(4 * 1024 * 1024);
 	m_pRequest->LogProgress(HTTPLOG::NONE);
 	Http()->Run(m_pRequest);
-	m_Searching = Search;
-	m_State = STATE_LOADING;
+}
+
+std::vector<CXcLyrics::SLine> CXcLyrics::SpreadPlain(const std::string &Text) const
+{
+	std::vector<std::string> vTexts;
+	size_t Start = 0;
+	while(Start <= Text.size())
+	{
+		size_t End = Text.find('\n', Start);
+		if(End == std::string::npos)
+			End = Text.size();
+		std::string Line = Text.substr(Start, End - Start);
+		if(!Line.empty() && Line.back() == '\r')
+			Line.pop_back();
+		if(!Line.empty())
+			vTexts.push_back(Line);
+		Start = End + 1;
+	}
+	std::vector<SLine> vLines;
+	if(vTexts.empty())
+		return vLines;
+	// from a little after the start to a little before the end; a guess, the plate says so
+	const double Length = m_Duration > 30.0 ? m_Duration : 180.0;
+	const double From = Length * 0.07, To = Length * 0.95;
+	for(size_t i = 0; i < vTexts.size(); i++)
+		vLines.push_back({From + (To - From) * i / vTexts.size(), vTexts[i]});
+	return vLines;
+}
+
+void CXcLyrics::Finish(bool Found)
+{
+	if(!Found && !m_PlainLyrics.empty() && g_Config.m_XcLyricsExtra)
+	{
+		m_vLines = SpreadPlain(m_PlainLyrics);
+		m_Approx = true;
+		Found = !m_vLines.empty();
+	}
+	m_State = Found ? STATE_FOUND : STATE_NOT_FOUND;
+	if(!Found)
+		m_vLines.clear();
+	m_Cache[m_Key] = {m_vLines, m_Approx, Client()->GlobalTime()};
 }
 
 void CXcLyrics::TakeAnswer()
@@ -155,41 +229,91 @@ void CXcLyrics::TakeAnswer()
 	std::shared_ptr<IHttpRequest> pRequest = m_pRequest;
 	m_pRequest = nullptr;
 	json_value *pJson = pRequest->State() == EHttpState::DONE ? pRequest->ResultJson() : nullptr;
-	const char *pLrc = nullptr;
-	if(pJson && pJson->type == json_object)
+	std::string Lrc;
+	// the closest length wins when the track tells its length
+	const auto Closer = [&](double Length, double Best) { return m_Duration <= 0.0 || std::abs(Length - m_Duration) < std::abs(Best - m_Duration); };
+	if(pJson && m_Step <= STEP_LRCLIB_TITLE)
 	{
-		const json_value *pSynced = json_object_get(pJson, "syncedLyrics");
-		if(pSynced && pSynced->type == json_string)
-			pLrc = json_string_get(pSynced);
+		const auto Take = [&](const json_value *pItem, double &BestLength) {
+			const json_value *pSynced = json_object_get(pItem, "syncedLyrics");
+			const json_value *pPlain = json_object_get(pItem, "plainLyrics");
+			const json_value *pLength = json_object_get(pItem, "duration");
+			const double Length = pLength && pLength->type == json_integer ? (double)pLength->u.integer : (pLength && pLength->type == json_double ? pLength->u.dbl : -1.0);
+			// a search by words can find another song: its length must fit
+			if(m_Step >= STEP_LRCLIB_WORDS && m_Duration > 0.0 && Length > 0.0 && std::abs(Length - m_Duration) > 8.0)
+				return;
+			if(pSynced && pSynced->type == json_string && json_string_get(pSynced)[0] && (Lrc.empty() || Closer(Length, BestLength)))
+			{
+				Lrc = json_string_get(pSynced);
+				BestLength = Length;
+			}
+			if(m_PlainLyrics.empty() && pPlain && pPlain->type == json_string)
+				m_PlainLyrics = json_string_get(pPlain);
+		};
+		double BestLength = 1e9;
+		if(pJson->type == json_object)
+			Take(pJson, BestLength);
+		else if(pJson->type == json_array)
+			for(int i = 0; i < json_array_length(pJson); i++)
+				Take(json_array_get(pJson, i), BestLength);
 	}
-	else if(pJson && pJson->type == json_array)
+	else if(pJson && m_Step == STEP_NETEASE_SEARCH)
 	{
-		// the first result that has timed lyrics
-		for(int i = 0; i < json_array_length(pJson) && !pLrc; i++)
+		// the song with the closest length
+		const json_value *pSongs = json_object_get(json_object_get(pJson, "result"), "songs");
+		double BestLength = 1e9;
+		for(int i = 0; pSongs && pSongs->type == json_array && i < json_array_length(pSongs); i++)
 		{
-			const json_value *pSynced = json_object_get(json_array_get(pJson, i), "syncedLyrics");
-			if(pSynced && pSynced->type == json_string && json_string_get(pSynced)[0])
-				pLrc = json_string_get(pSynced);
+			const json_value *pSong = json_array_get(pSongs, i);
+			const json_value *pId = json_object_get(pSong, "id");
+			const json_value *pLength = json_object_get(pSong, "duration");
+			const double Length = pLength && pLength->type == json_integer ? pLength->u.integer / 1000.0 : -1.0;
+			if(!pId || pId->type != json_integer)
+				continue;
+			if(m_Duration > 0.0 && Length > 0.0 && std::abs(Length - m_Duration) > 8.0)
+				continue;
+			if(m_NeteaseId == 0 || Closer(Length, BestLength))
+			{
+				m_NeteaseId = pId->u.integer;
+				BestLength = Length;
+			}
 		}
 	}
-	if(pLrc)
+	else if(pJson && m_Step == STEP_NETEASE_LYRIC)
 	{
-		m_vLines = ParseLrc(pLrc);
-		m_Cache[m_Key] = m_vLines;
-		m_State = m_vLines.empty() ? STATE_NOT_FOUND : STATE_FOUND;
+		const json_value *pLyric = json_object_get(json_object_get(pJson, "lrc"), "lyric");
+		if(pLyric && pLyric->type == json_string)
+			Lrc = json_string_get(pLyric);
 	}
 	if(pJson)
 		json_value_free(pJson);
-	if(m_State == STATE_FOUND)
-		return;
-	// not found exactly: search once more by the words
-	if(!m_Searching)
-		Request(true);
-	else
+
+	if(!Lrc.empty())
 	{
-		m_State = STATE_NOT_FOUND;
-		m_Cache[m_Key] = {};
+		std::vector<SLine> vLines = ParseLrc(Lrc.c_str());
+		// NetEase puts the credits ("作词 : ...") in timed lines at the start
+		vLines.erase(std::remove_if(vLines.begin(), vLines.end(), [](const SLine &Line) { return Line.m_Text.find(" : ") != std::string::npos && Line.m_Time < 30.0 && (Line.m_Text.find("\xe4\xbd\x9c") != std::string::npos || Line.m_Text.find("\xe7\xbc\x96") != std::string::npos || Line.m_Text.find("\xe5\x88\xb6") != std::string::npos); }), vLines.end());
+		int Words = 0;
+		for(const SLine &Line : vLines)
+			Words += !Line.m_Text.empty();
+		if(Words >= 3)
+		{
+			m_vLines = vLines;
+			m_Approx = false;
+			Finish(true);
+			return;
+		}
 	}
+	// the next try
+	if(m_Step == STEP_NETEASE_SEARCH && m_NeteaseId == 0)
+		m_Step = STEP_NETEASE_LYRIC; // nothing to ask the lyrics of
+	m_Step++;
+	if(m_Step >= STEP_NETEASE_SEARCH && !g_Config.m_XcLyricsExtra)
+		m_Step = NUM_STEPS;
+	if(m_Step >= NUM_STEPS)
+		Finish(false);
+	else
+		RunStep();
 }
 
 void CXcLyrics::OnRender()
@@ -204,10 +328,21 @@ void CXcLyrics::OnRender()
 		return;
 	}
 
-	// a new track: the lyrics from the memory, or ask for them
+	// a new track: the lyrics from the memory, or ask for them; only when the player tells the same track for a
+	// second (switching tracks or pausing tells empty or half names for a moment, each cut the search before)
 	const SXcMediaState &State = Music.State();
 	const std::string Key = State.m_Artist + "\x1f" + State.m_Title;
-	if(Key != m_Key)
+	const float Now = Client()->GlobalTime();
+	if(Key != m_SeenKey)
+	{
+		m_SeenKey = Key;
+		m_SeenTime = Now;
+	}
+	const bool Settled = Now - m_SeenTime >= 1.0f;
+	// a search that failed is tried again after two minutes (the network may have been down)
+	auto Cached = m_Cache.find(Key);
+	const bool Retry = Key == m_Key && m_State == STATE_NOT_FOUND && !m_pRequest && Cached != m_Cache.end() && Now - Cached->second.m_Time > 120.0f;
+	if(Settled && (Key != m_Key || Retry))
 	{
 		if(m_pRequest)
 			m_pRequest->Abort();
@@ -218,16 +353,23 @@ void CXcLyrics::OnRender()
 		m_LastLine = -1;
 		CleanTitle(State.m_Artist, State.m_Title, m_Artist, m_Title);
 		m_Duration = State.m_Duration;
-		auto It = m_Cache.find(Key);
-		if(It != m_Cache.end())
+		if(Cached != m_Cache.end() && !Retry && (!Cached->second.m_vLines.empty() || Now - Cached->second.m_Time <= 120.0f))
 		{
-			m_vLines = It->second;
+			m_vLines = Cached->second.m_vLines;
+			m_Approx = Cached->second.m_Approx;
 			m_State = m_vLines.empty() ? STATE_NOT_FOUND : STATE_FOUND;
 		}
 		else if(!m_Title.empty())
-			Request(false);
+			StartSearch();
 		else
 			m_State = STATE_NOT_FOUND;
+	}
+	// another track than the lyrics are for: nothing shown meanwhile
+	if(Key != m_Key)
+	{
+		m_Fade = std::max(m_Fade - Dt * 3.0f, 0.0f);
+		m_vWords.clear();
+		return;
 	}
 	if(m_pRequest && m_pRequest->Done())
 		TakeAnswer();
@@ -308,6 +450,12 @@ void CXcLyrics::RenderPlate(int Line, double Position)
 	const float PlateHeight = Size + SmallSize * 2.0f + 36.0f * k;
 	const float x0 = (Width - PlateWidth) * 0.5f;
 	Graphics()->DrawRect(x0, y - PlateHeight * 0.5f, PlateWidth, PlateHeight, ColorRGBA(0.05f, 0.06f, 0.08f, 0.55f * m_Fade), IGraphics::CORNER_ALL, 16.0f * k);
+	// lyrics without times, spread over the track: a mark that the timing is a guess
+	if(m_Approx)
+	{
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f * m_Fade));
+		TextRender()->Text(x0 + PlateWidth - 26.0f * k, y - PlateHeight * 0.5f + 6.0f * k, SmallSize, "\xe2\x89\x88");
+	}
 
 	const auto Centered = [&](const char *pText, float TextSize, float Ty, ColorRGBA Color) {
 		if(!pText[0])
