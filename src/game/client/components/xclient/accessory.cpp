@@ -254,20 +254,20 @@ void CAccessory::RenderHorns(vec2 Head, float Scale, float Tilt, float Squash, f
 	const ColorRGBA Dark = Shade(Main, 0.55f);
 	for(float Side : {-1.0f, 1.0f})
 	{
-		// a curve of tapering pieces: up first, the tip bends outwards
+		// a demon's horn of tapering pieces: out and up first, then the tip curls back in over the head
 		vec2 Prev(Side * 9.0f * Scale, 3.0f * Scale);
-		const int NumPieces = 5;
+		const int NumPieces = 9;
 		for(int i = 1; i <= NumPieces; i++)
 		{
 			const float t = (float)i / NumPieces;
-			const vec2 Next(Side * (9.0f + 5.5f * t * t) * Scale, (3.0f - 13.0f * t * Squash) * Scale);
-			const float Width = (5.0f * (1.0f - t) + 1.2f) * Scale;
+			const vec2 Next(Side * (9.0f + 7.0f * t - 11.0f * t * t * t) * Scale, (3.0f - (14.0f * t + 2.0f * t * t) * Squash) * Scale);
+			const float Width = (5.2f * (1.0f - t) * (1.0f - t) + 0.9f) * Scale;
 			const ColorRGBA c(mix(Main.r, Dark.r, t * 0.6f), mix(Main.g, Dark.g, t * 0.6f), mix(Main.b, Dark.b, t * 0.6f), Alpha);
 			Fx.AddWorld(FxShape::Line(Rotate(Head + Prev, Head, Tilt), Rotate(Head + Next, Head, Tilt), Width, c).Outline(0.6f * Scale, Shade(Main, 0.35f)));
 			Prev = Next;
 		}
 		// light on the inner side, a glow at the tip
-		Fx.AddWorld(FxShape::Line(Rotate(Head + vec2(Side * 8.0f * Scale, 1.0f * Scale), Head, Tilt), Rotate(Head + vec2(Side * 10.5f * Scale, -6.0f * Scale * Squash), Head, Tilt), 0.9f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f * Alpha)).Additive());
+		Fx.AddWorld(FxShape::Line(Rotate(Head + vec2(Side * 9.5f * Scale, 0.5f * Scale), Head, Tilt), Rotate(Head + vec2(Side * 12.0f * Scale, -6.0f * Scale * Squash), Head, Tilt), 0.9f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f * Alpha)).Additive());
 		Fx.AddWorldGlowing(FxShape::Circle(Rotate(Head + Prev, Head, Tilt), 0.9f * Scale, Main), 4.0f * Scale, 0.5f);
 	}
 }
