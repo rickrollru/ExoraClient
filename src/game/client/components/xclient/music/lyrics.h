@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_MUSIC_LYRICS_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_MUSIC_LYRICS_H
 
+#include <base/color.h>
 #include <base/vmath.h>
 
 #include <game/client/component.h>
@@ -111,6 +112,10 @@ private:
 	int m_PlateLine = -1;
 	double m_PlatePosition = 0.0;
 	void PlaceWord(SWord &Word);
+	// how a word looks now: false while it is hidden
+	bool WordLook(const SWord &Word, float &Alpha, float &Pop, vec2 &Pos) const;
+	ColorRGBA WordColor(const SWord &Word) const;
+	void QueueWordGlow();
 	// the game font, for lines the HUD fonts cannot write
 	void RenderPlateClassic(int Line, double Position);
 	void RenderWordsClassic();
