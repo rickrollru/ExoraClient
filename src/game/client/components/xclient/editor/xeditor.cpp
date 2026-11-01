@@ -950,42 +950,52 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					OpenDepthDialog();
 				if(ImGui::MenuItem(Tr("Tune zones...")))
 					m_TuneRequest = true;
-				if(ImGui::MenuItem(Tr("Bot: find the way to the finish"), nullptr, false, !m_pSolveJob))
-					StartSolve();
-				if(ImGui::MenuItem(Tr("Bot: find the way, soft check (short touches of freeze are forgiven)"), nullptr, false, !m_pSolveJob))
-					StartSolve(true);
-				if(ImGui::MenuItem(Tr("Ideal route through the hints (no physics, just the line)")))
-					StartIdealRoute();
-				if(!m_IdealRoute.m_vPath.empty() && ImGui::MenuItem(Tr("Hide the ideal route")))
-					m_IdealRoute = {};
-				// always in the menu (greyed out when idle), so the items below never move under the mouse
-				if(ImGui::MenuItem(Tr("Bot: stop"), nullptr, false, m_pSolveJob != nullptr || m_pTowerJob != nullptr))
+				// the bot and the KoG tools in a submenu of their own, out of the way of the usual map tools
+				ImGui::Separator();
+				if(ImGui::BeginMenu(Tr("KoG")))
 				{
-					if(m_pSolveJob)
-						m_pSolveJob->m_Cancel = true;
-					if(m_pTowerJob)
-						m_pTowerJob->m_Cancel = true;
+					if(ImGui::BeginMenu(Tr("Bot")))
+					{
+						if(ImGui::MenuItem(Tr("Find the way to the finish"), nullptr, false, !m_pSolveJob))
+							StartSolve();
+						if(ImGui::MenuItem(Tr("Find the way, soft check (short touches of freeze are forgiven)"), nullptr, false, !m_pSolveJob))
+							StartSolve(true);
+						if(ImGui::MenuItem(Tr("Ideal route through the hints (no physics, just the line)")))
+							StartIdealRoute();
+						if(!m_IdealRoute.m_vPath.empty() && ImGui::MenuItem(Tr("Hide the ideal route")))
+							m_IdealRoute = {};
+						// always in the menu (greyed out when idle), so the items below never move under the mouse
+						if(ImGui::MenuItem(Tr("Stop"), nullptr, false, m_pSolveJob != nullptr || m_pTowerJob != nullptr))
+						{
+							if(m_pSolveJob)
+								m_pSolveJob->m_Cancel = true;
+							if(m_pTowerJob)
+								m_pTowerJob->m_Cancel = true;
+						}
+						if(ImGui::MenuItem(Tr("Place hints (left click adds, right click removes)"), nullptr, m_HintMode))
+							m_HintMode = !m_HintMode;
+						if(!m_vSolveHints.empty() && ImGui::MenuItem(Tr("Clear the hints")))
+							m_vSolveHints.clear();
+						if(ImGui::MenuItem(Tr("Open the folder with its log (bot_log.txt)")))
+						{
+							char aFolder[IO_MAX_PATH_LENGTH];
+							E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
+							E.Storage()->GetCompletePath(IStorage::TYPE_SAVE, "xclient", aFolder, sizeof(aFolder));
+							E.Client()->ViewFile(aFolder);
+						}
+						if(ImGui::MenuItem(Tr("Heat map"), nullptr, m_ShowHeat, !m_SolveResult.m_vDifficulty.empty()))
+							m_ShowHeat = !m_ShowHeat;
+						// the tower check runs by itself after each run; the marks only when asked for
+						if(m_pTowerJob)
+							ImGui::MenuItem(Tr("Checking for tower skips..."), nullptr, false, false);
+						else if(ImGui::MenuItem(Tr("Show tower skips"), nullptr, m_ShowTowers, !m_vTowerSpots.empty()))
+							m_ShowTowers = !m_ShowTowers;
+						if(!m_vSolvePath.empty() && ImGui::MenuItem(Tr("Hide the way")))
+							m_vSolvePath.clear();
+						ImGui::EndMenu();
+					}
+					ImGui::EndMenu();
 				}
-				if(ImGui::MenuItem(Tr("Bot: place hints (left click adds, right click removes)"), nullptr, m_HintMode))
-					m_HintMode = !m_HintMode;
-				if(!m_vSolveHints.empty() && ImGui::MenuItem(Tr("Bot: clear the hints")))
-					m_vSolveHints.clear();
-				if(ImGui::MenuItem(Tr("Bot: open the folder with its log (bot_log.txt)")))
-				{
-					char aFolder[IO_MAX_PATH_LENGTH];
-					E.Storage()->CreateFolder("xclient", IStorage::TYPE_SAVE);
-					E.Storage()->GetCompletePath(IStorage::TYPE_SAVE, "xclient", aFolder, sizeof(aFolder));
-					E.Client()->ViewFile(aFolder);
-				}
-				if(ImGui::MenuItem(Tr("Bot: heat map"), nullptr, m_ShowHeat, !m_SolveResult.m_vDifficulty.empty()))
-					m_ShowHeat = !m_ShowHeat;
-				// the tower check runs by itself after each run; the marks only when asked for
-				if(m_pTowerJob)
-					ImGui::MenuItem(Tr("Bot: checking for tower skips..."), nullptr, false, false);
-				else if(ImGui::MenuItem(Tr("Bot: show tower skips"), nullptr, m_ShowTowers, !m_vTowerSpots.empty()))
-					m_ShowTowers = !m_ShowTowers;
-				if(!m_vSolvePath.empty() && ImGui::MenuItem(Tr("Bot: hide the way")))
-					m_vSolvePath.clear();
 				ImGui::Separator();
 				if(ImGui::MenuItem(Tr("More tools...")))
 				{
