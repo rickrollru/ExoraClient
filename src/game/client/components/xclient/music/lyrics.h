@@ -11,10 +11,13 @@
 #include <vector>
 
 class IHttpRequest;
+struct ImDrawList;
+struct ImFont;
 
 // The words of the song that plays in the music player, in time with it. The timed lyrics (LRC) come from the
 // open LRCLIB database by the title and the artist the player tells; the line that is sung now is shown in a plate
-// at the bottom of the screen, and its words pop up one by one next to your tee on the map.
+// at the bottom of the screen, and its words pop up one by one around your tee and stay on their places on the map.
+// Both are drawn with the HUD fonts (RenderHud); lines in other scripts take the game font.
 class CXcLyrics : public CComponent
 {
 public:
@@ -28,6 +31,11 @@ public:
 	int Sizeof() const override { return sizeof(*this); }
 	void OnRender() override;
 	void OnShutdown() override;
+	// the plate and the words in the new HUD style; called by the HUD inside its ImGui frame
+	bool WantsHud() const { return m_Fade > 0.0f || !m_vWords.empty(); }
+	void RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, float Alpha);
+	// the HUD fonts have Latin and Cyrillic only; other letters (Japanese, Korean...) take the game font
+	static bool OwnFontCovers(const char *pText);
 
 	struct SLine
 	{
@@ -81,13 +89,16 @@ private:
 	int m_LastLine = -1;
 	float m_Fade = 0.0f;
 
-	// the words of the current line that fly up next to the tee
+	// the words of the current line: each pops up around the tee in its turn and stays on its place in the world
 	struct SWord
 	{
 		std::string m_Text;
-		vec2 m_Offset; // from the tee
+		vec2 m_Pos; // in the world, taken when the word appears
+		bool m_Placed;
+		float m_Width; // in world units, to keep the words apart
 		float m_Age;
 		float m_Delay;
+		float m_Hue; // a little shift of the accent color
 	};
 	std::vector<SWord> m_vWords;
 
@@ -97,8 +108,12 @@ private:
 	void Finish(bool Found);
 	// the lines spread evenly over the track (lyrics without times)
 	std::vector<SLine> SpreadPlain(const std::string &Text) const;
-	void RenderPlate(int Line, double Position);
-	void RenderWords(float Dt);
+	int m_PlateLine = -1;
+	double m_PlatePosition = 0.0;
+	void PlaceWord(SWord &Word);
+	// the game font, for lines the HUD fonts cannot write
+	void RenderPlateClassic(int Line, double Position);
+	void RenderWordsClassic();
 };
 
 #endif

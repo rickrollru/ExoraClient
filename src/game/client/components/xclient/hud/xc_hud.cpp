@@ -1080,7 +1080,9 @@ void CXcHud::OnRender()
 	const bool HudVisible = Visible();
 	// the new chat shows even with the HUD turned off, like the classic one (cl_showchat decides)
 	const bool ChatVisible = DrawsChat() && (g_Config.m_ClShowChat || GameClient()->m_Chat.IsActive()) && !m_Editing && (!g_Config.m_XcFocusMode || GameClient()->m_Chat.IsActive());
-	if(!HudVisible && !Scoreboard && !ChatVisible)
+	// XClient lyrics: the song words on the map and the plate, in the HUD fonts
+	const bool Lyrics = Online && GameClient()->m_XcLyrics.WantsHud();
+	if(!HudVisible && !Scoreboard && !ChatVisible && !Lyrics)
 		return;
 	const float Scale = std::round(Graphics()->ScreenHeight() / 1080.0f * FONT_OVERSAMPLE * 20.0f) / 20.0f;
 	if(m_Backend.FontFamily() != g_Config.m_XcUiFont || m_Backend.FontScale() != Scale)
@@ -1116,6 +1118,8 @@ void CXcHud::OnRender()
 	};
 	for(int i = 0; i < NUM_ELEMENTS; i++)
 		Approach(m_aShown[i], aWanted[i] ? 1.0f : 0.0f);
+	if(Lyrics && !m_Editing)
+		GameClient()->m_XcLyrics.RenderHud(pDraw, m_Backend.Fonts().m_pHeader, m_Backend.Fonts().m_pLabel, Alpha);
 	if(HudVisible && (Alpha > 0.0f || m_Editing))
 	{
 		const float a = m_Editing ? 1.0f : Alpha;

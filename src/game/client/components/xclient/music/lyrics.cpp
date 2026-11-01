@@ -13,16 +13,20 @@
 #include <engine/textrender.h>
 
 #include <game/client/components/xclient/xc_helpers.h>
+#include <game/client/components/xclient/ui/theme.h>
 #include <game/client/gameclient.h>
+
+#include <engine/external/imgui/imgui.h>
 
 #include <algorithm>
 #include <cmath>
 
 using namespace XcHelpers;
+using namespace XcUi;
 
 // the words on the map: how long one stays, its size in world units
 static constexpr float WORD_LIFE = 2.6f;
-static constexpr float WORD_SIZE = 22.0f;
+static constexpr float WORD_SIZE = 26.0f;
 
 // LRCLIB asks the programs that use it to say who they are
 static const char *const LRCLIB_AGENT = "ExoraClient (https://github.com/rickrollru/ExoraClient)";
@@ -378,7 +382,11 @@ void CXcLyrics::OnRender()
 	const bool Playing = Music.PausedFor() <= 0.0f;
 	m_Fade = std::clamp(m_Fade + (m_State == STATE_FOUND && Playing ? Dt : -Dt) * 3.0f, 0.0f, 1.0f);
 	if(m_State != STATE_FOUND || Position < 0.0 || !InGame)
+	{
+		m_vWords.clear();
+		m_PlateLine = -2;
 		return;
+	}
 
 	// the line sung now: the last one that has started
 	int Line = -1;
@@ -407,32 +415,178 @@ void CXcLyrics::OnRender()
 			// the words of the line before go away quickly
 			for(SWord &Word : m_vWords)
 				Word.m_Age = std::max(Word.m_Age, Word.m_Delay + WORD_LIFE - 0.3f);
-			// in a row over the tee, as the line is written, each word comes in its turn
+			// each word comes in its turn, as the line is sung; its place is found when it appears
 			const float Size = WORD_SIZE * g_Config.m_XcLyricsSize / 100.0f;
-			const float Space = TextRender()->TextWidth(Size, " ");
-			float Total = 0.0f;
-			std::vector<float> vWidths;
-			for(const std::string &Word : vWords)
-			{
-				vWidths.push_back(TextRender()->TextWidth(Size, Word.c_str()));
-				Total += vWidths.back() + Space;
-			}
-			float x = -(Total - Space) * 0.5f;
 			for(size_t i = 0; i < vWords.size(); i++)
 			{
-				m_vWords.push_back({vWords[i], vec2(x + vWidths[i] * 0.5f, -78.0f + random_float(-5.0f, 5.0f)), 0.0f, Length * 0.8f * i / std::max<size_t>(vWords.size(), 1)});
-				x += vWidths[i] + Space;
+				const float Width = TextRender()->TextWidth(Size, vWords[i].c_str());
+				m_vWords.push_back({vWords[i], vec2(0.0f, 0.0f), false, Width, 0.0f, Length * 0.8f * i / std::max<size_t>(vWords.size(), 1), random_float(-0.04f, 0.04f)});
 			}
 		}
 	}
-	if(g_Config.m_XcLyricsShow == SHOW_MAP || g_Config.m_XcLyricsShow == SHOW_BOTH)
-		RenderWords(Dt);
-	if(g_Config.m_XcLyricsShow == SHOW_PLATE || g_Config.m_XcLyricsShow == SHOW_BOTH)
-		RenderPlate(Line, Position);
+	// the words age, appear on their places, go away
+	for(SWord &Word : m_vWords)
+	{
+		Word.m_Age += Dt;
+		if(!Word.m_Placed && Word.m_Age >= Word.m_Delay)
+			PlaceWord(Word);
+	}
+	m_vWords.erase(std::remove_if(m_vWords.begin(), m_vWords.end(), [](const SWord &Word) { return Word.m_Age - Word.m_Delay > WORD_LIFE; }), m_vWords.end());
+	if(g_Config.m_XcLyricsShow == SHOW_PLATE)
+		m_vWords.clear();
+
+	m_PlateLine = g_Config.m_XcLyricsShow == SHOW_PLATE || g_Config.m_XcLyricsShow == SHOW_BOTH ? Line : -2;
+	m_PlatePosition = Position;
+	// a line the HUD fonts cannot write: the game font, drawn here
+	if(!m_vWords.empty())
+		RenderWordsClassic();
+	if(m_PlateLine >= 0 && !OwnFontCovers(m_vLines[m_PlateLine].m_Text.c_str()))
+		RenderPlateClassic(m_PlateLine, Position);
+}
+
+bool CXcLyrics::OwnFontCovers(const char *pText)
+{
+	const char *pStr = pText;
+	while(int Code = str_utf8_decode(&pStr))
+	{
+		if(Code < 0)
+			return false;
+		const bool Covered = (Code >= 0x20 && Code <= 0x24f) || (Code >= 0x370 && Code <= 0x3ff) || (Code >= 0x400 && Code <= 0x52f) || (Code >= 0x2000 && Code <= 0x206f) || Code == 0x2248;
+		if(!Covered)
+			return false;
+	}
+	return true;
+}
+
+// a place around the tee where the word stays: above and to the sides, as far as it can be from the words
+// still shown, so they do not cover each other
+void CXcLyrics::PlaceWord(SWord &Word)
+{
+	Word.m_Placed = true;
+	const int Local = GameClient()->m_Snap.m_LocalClientId;
+	const bool HasTee = Local >= 0 && GameClient()->m_Snap.m_aCharacters[Local].m_Active;
+	const vec2 Tee = HasTee ? GameClient()->m_aClients[Local].m_RenderPos : GameClient()->m_Camera.m_Center;
+	const float Scale = g_Config.m_XcLyricsSize / 100.0f;
+	float BestScore = -1.0f;
+	for(int Try = 0; Try < 14; Try++)
+	{
+		// mostly over the tee, sometimes beside it, never under the feet
+		const float Angle = random_float(-pi * 0.92f, -pi * 0.08f);
+		const float Radius = random_float(90.0f, 165.0f) * Scale;
+		const vec2 Pos = Tee + vec2(std::cos(Angle) * Radius * 1.5f, std::sin(Angle) * Radius);
+		float Score = 1e9f;
+		for(const SWord &Other : m_vWords)
+		{
+			if(!Other.m_Placed || &Other == &Word)
+				continue;
+			// the words are wide: the room across counts by their widths
+			const float dx = std::max(std::abs(Pos.x - Other.m_Pos.x) - (Word.m_Width + Other.m_Width) * 0.5f, 0.0f);
+			const float dy = std::max(std::abs(Pos.y - Other.m_Pos.y) - WORD_SIZE * Scale, 0.0f);
+			Score = std::min(Score, dx + dy * 2.0f);
+		}
+		if(Score > BestScore)
+		{
+			BestScore = Score;
+			Word.m_Pos = Pos;
+		}
+	}
+}
+
+// the plate and the words with the HUD fonts: the words glow in the accent color and stay where they appeared
+void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, float Alpha)
+{
+	const ImVec2 Display = ImGui::GetIO().DisplaySize;
+	const ColorRGBA Accent = EffectColor(GameClient(), 0, 0, -1);
+	const auto Rgba = [](ColorRGBA c, float a) { return ImGui::GetColorU32(ImVec4(c.r, c.g, c.b, c.a * a)); };
+
+	// the words: the world turned into the screen
+	if(!m_vWords.empty() && Alpha > 0.0f)
+	{
+		const vec2 Camera = GameClient()->m_Camera.m_Center;
+		const CScreenRect World = Graphics()->MapScreenToWorld(Camera.x, Camera.y, 100.0f, 100.0f, 100.0f, 0.0f, 0.0f, Graphics()->ScreenAspect(), GameClient()->m_Camera.m_Zoom);
+		const float PerUnit = Display.y / std::max(World.m_BottomRight.y - World.m_TopLeft.y, 1.0f);
+		const auto ToScreen = [&](vec2 Pos) { return ImVec2((Pos.x - World.m_TopLeft.x) / (World.m_BottomRight.x - World.m_TopLeft.x) * Display.x, (Pos.y - World.m_TopLeft.y) / (World.m_BottomRight.y - World.m_TopLeft.y) * Display.y); };
+		const float Size = WORD_SIZE * g_Config.m_XcLyricsSize / 100.0f * PerUnit;
+		for(const SWord &Word : m_vWords)
+		{
+			const float t = Word.m_Age - Word.m_Delay;
+			if(!Word.m_Placed || t < 0.0f || !OwnFontCovers(Word.m_Text.c_str()))
+				continue;
+			const float Life = t / WORD_LIFE;
+			// pops in from small with a little overshoot, floats up a bit, fades at the end
+			const float In = std::min(t / 0.22f, 1.0f);
+			const float Pop = In < 1.0f ? 0.6f + 0.55f * std::sin(In * pi * 0.5f) - 0.15f * In : 1.0f;
+			const float WordAlpha = Alpha * std::min(t / 0.12f, 1.0f) * (1.0f - std::max(Life - 0.65f, 0.0f) / 0.35f);
+			const float TextSize = Size * Pop;
+			const ImVec2 Dim = pBold->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, Word.m_Text.c_str());
+			const ImVec2 Center = ToScreen(Word.m_Pos + vec2(0.0f, -14.0f * Life));
+			const ImVec2 Pos(Center.x - Dim.x * 0.5f, Center.y - Dim.y * 0.5f);
+			ColorHSLA Hsl = color_cast<ColorHSLA>(Accent);
+			Hsl.h = std::fmod(Hsl.h + Word.m_Hue + 1.0f, 1.0f);
+			const ColorRGBA Color = color_cast<ColorRGBA>(Hsl);
+			// a soft shadow, a glow around the letters in the accent color, the letters light in the middle
+			pDraw->AddText(pBold, TextSize, ImVec2(Pos.x, Pos.y + TextSize * 0.06f), Rgba(ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f), 0.45f * WordAlpha), Word.m_Text.c_str());
+			for(int i = 0; i < 8; i++)
+			{
+				const float Angle = i * pi / 4.0f;
+				const float r = TextSize * 0.07f;
+				pDraw->AddText(pBold, TextSize, ImVec2(Pos.x + std::cos(Angle) * r, Pos.y + std::sin(Angle) * r), Rgba(Color, 0.22f * WordAlpha), Word.m_Text.c_str());
+			}
+			const ColorRGBA Light(mix(Color.r, 1.0f, 0.7f), mix(Color.g, 1.0f, 0.7f), mix(Color.b, 1.0f, 0.7f), 1.0f);
+			pDraw->AddText(pBold, TextSize, Pos, Rgba(Light, WordAlpha), Word.m_Text.c_str());
+		}
+	}
+
+	// the plate: the line before, the line sung now (filled with the accent as it goes), the next line
+	const int Line = m_PlateLine;
+	const float Fade = m_Fade * Alpha;
+	if(Line < 0 || Line >= (int)m_vLines.size() || Fade <= 0.0f || !OwnFontCovers(m_vLines[Line].m_Text.c_str()))
+		return;
+	const STheme &t = Theme();
+	const float k = Display.y / 1080.0f * g_Config.m_XcLyricsSize / 100.0f;
+	const float Size = 30.0f * k, SmallSize = 20.0f * k;
+	const float y = Display.y * g_Config.m_XcLyricsY / 100.0f;
+	const char *pNow = m_vLines[Line].m_Text.c_str();
+	const char *pBefore = Line >= 1 && OwnFontCovers(m_vLines[Line - 1].m_Text.c_str()) ? m_vLines[Line - 1].m_Text.c_str() : "";
+	const char *pAfter = Line + 1 < (int)m_vLines.size() && OwnFontCovers(m_vLines[Line + 1].m_Text.c_str()) ? m_vLines[Line + 1].m_Text.c_str() : "";
+	const auto Width = [&](ImFont *pFont, float TextSize, const char *pText) { return pFont->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pText).x; };
+	const float NowWidth = Width(pBold, Size, pNow);
+	const float PlateWidth = std::max({NowWidth, Width(pSmall, SmallSize, pBefore), Width(pSmall, SmallSize, pAfter), 220.0f * k}) + 56.0f * k;
+	const float PlateHeight = Size + SmallSize * 2.0f + 40.0f * k;
+	const ImVec2 Min((Display.x - PlateWidth) * 0.5f, y - PlateHeight * 0.5f);
+	const ImVec2 Max(Min.x + PlateWidth, Min.y + PlateHeight);
+	const float Rounding = 16.0f * k;
+	for(int i = 3; i >= 1; i--)
+	{
+		const float Grow = i * 2.5f * k;
+		pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow + 3.0f * k), ImVec2(Max.x + Grow, Max.y + Grow + 3.0f * k), Col(ImVec4(0, 0, 0, 1), 0.07f * Fade), Rounding + Grow);
+	}
+	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.8f), Fade), Rounding);
+	pDraw->AddRect(Min, Max, Col(t.m_Border, Fade), Rounding, 0, 1.0f);
+	if(m_Approx)
+		pDraw->AddText(pSmall, SmallSize, ImVec2(Max.x - 24.0f * k, Min.y + 6.0f * k), Col(t.m_TextMuted, Fade), "\xe2\x89\x88");
+
+	const float Top = Min.y + 14.0f * k;
+	const auto Centered = [&](ImFont *pFont, float TextSize, float Ty, ImU32 Color, const char *pText) {
+		if(pText[0])
+			pDraw->AddText(pFont, TextSize, ImVec2((Display.x - Width(pFont, TextSize, pText)) * 0.5f, Ty), Color, pText);
+	};
+	Centered(pSmall, SmallSize, Top, Col(t.m_TextMuted, Fade), pBefore);
+	Centered(pSmall, SmallSize, Top + SmallSize + Size + 14.0f * k, Col(t.m_TextMuted, Fade), pAfter);
+	const float NowY = Top + SmallSize + 7.0f * k;
+	Centered(pBold, Size, NowY, Col(t.m_Text, Fade), pNow);
+	// the part already sung once more in the accent color, cut at the progress
+	const double Start = m_vLines[Line].m_Time;
+	const double End = Line + 1 < (int)m_vLines.size() ? m_vLines[Line + 1].m_Time : Start + 4.0;
+	const float Progress = (float)std::clamp((m_PlatePosition - Start) / std::max(End - Start, 0.1), 0.0, 1.0);
+	const float NowX = (Display.x - NowWidth) * 0.5f;
+	pDraw->PushClipRect(ImVec2(NowX, NowY - Size * 0.2f), ImVec2(NowX + NowWidth * Progress, NowY + Size * 1.4f), true);
+	pDraw->AddText(pBold, Size, ImVec2(NowX, NowY), Rgba(Accent, Fade), pNow);
+	pDraw->PopClipRect();
 }
 
 // three lines at the bottom: the one before (dim), the one sung now (bright, filled as it goes), the next one (dim)
-void CXcLyrics::RenderPlate(int Line, double Position)
+void CXcLyrics::RenderPlateClassic(int Line, double Position)
 {
 	if(m_Fade <= 0.0f)
 		return;
@@ -484,14 +638,8 @@ void CXcLyrics::RenderPlate(int Line, double Position)
 }
 
 // the words of the line fly up from next to your tee and fade
-void CXcLyrics::RenderWords(float Dt)
+void CXcLyrics::RenderWordsClassic()
 {
-	const int Local = GameClient()->m_Snap.m_LocalClientId;
-	const bool HasTee = Local >= 0 && GameClient()->m_Snap.m_aCharacters[Local].m_Active;
-	const vec2 Tee = HasTee ? GameClient()->m_aClients[Local].m_RenderPos : GameClient()->m_Camera.m_Center;
-	for(SWord &Word : m_vWords)
-		Word.m_Age += Dt;
-	m_vWords.erase(std::remove_if(m_vWords.begin(), m_vWords.end(), [](const SWord &Word) { return Word.m_Age - Word.m_Delay > WORD_LIFE; }), m_vWords.end());
 	if(m_vWords.empty())
 		return;
 
@@ -502,16 +650,16 @@ void CXcLyrics::RenderWords(float Dt)
 	for(const SWord &Word : m_vWords)
 	{
 		const float t = Word.m_Age - Word.m_Delay;
-		if(t < 0.0f)
+		if(t < 0.0f || !Word.m_Placed || OwnFontCovers(Word.m_Text.c_str()))
 			continue;
 		const float Life = t / WORD_LIFE;
 		// pops in a little bigger, rises, fades at the end
 		const float Pop = t < 0.15f ? 1.0f + (0.15f - t) * 2.0f : 1.0f;
 		const float Alpha = std::min(t / 0.12f, 1.0f) * (1.0f - std::max(Life - 0.6f, 0.0f) / 0.4f);
 		const float TextSize = Size * Pop;
-		const vec2 Pos = Tee + Word.m_Offset + vec2(0.0f, -40.0f * Life);
+		const vec2 Pos = Word.m_Pos + vec2(0.0f, -14.0f * Life);
 		const float TextWidth = TextRender()->TextWidth(TextSize, Word.m_Text.c_str());
-		const ColorRGBA Color = EffectColor(GameClient(), 0, 0, -1, Word.m_Offset.x * 0.003f);
+		const ColorRGBA Color = EffectColor(GameClient(), 0, 0, -1, Word.m_Hue);
 		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f * Alpha));
 		TextRender()->TextColor(ColorRGBA(mix(Color.r, 1.0f, 0.5f), mix(Color.g, 1.0f, 0.5f), mix(Color.b, 1.0f, 0.5f), Alpha));
 		TextRender()->Text(Pos.x - TextWidth * 0.5f, Pos.y - TextSize * 0.5f, TextSize, Word.m_Text.c_str());
