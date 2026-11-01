@@ -399,6 +399,9 @@ MACRO_CONFIG_INT(XcFlyingNamesLag, xc_flying_names_lag, 100, 30, 300, CFGFLAG_CL
 
 // Floating glowing cubes and orbs
 MACRO_CONFIG_INT(XcFloaters, xc_floaters, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Floating lights in the world (0 = off, 1 = cubes, 2 = orbs, 3 = both)")
+MACRO_CONFIG_INT(XcFloatersKinds, xc_floaters_kinds, 0, 0, 63, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which floating things fly, a sum of 1 cubes, 2 orbs, 4 fireflies, 8 notes, 16 runes, 32 hearts (0 = from xc_floaters)")
+MACRO_CONFIG_INT(XcFloatersRunes, xc_floaters_runes, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Runes of the floating things (0 = Norse, 1 = Elvish, 2 = alchemy, 3 = all mixed)")
+MACRO_CONFIG_INT(XcFloatersNotesMusic, xc_floaters_notes_music, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notes show only while the music player plays, and bob to its beat")
 MACRO_CONFIG_INT(XcFloatersCount, xc_floaters_count, 30, 5, 150, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many floating lights")
 MACRO_CONFIG_INT(XcFloatersSize, xc_floaters_size, 100, 30, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the floating lights in percent")
 MACRO_CONFIG_INT(XcFloatersSpeed, xc_floaters_speed, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of the floating lights in percent")
@@ -522,7 +525,8 @@ MACRO_CONFIG_INT(XcScarfWind, xc_scarf_wind, 100, 0, 200, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(XcScarfSelf, xc_scarf_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the scarf on yourself")
 MACRO_CONFIG_INT(XcScarfDummy, xc_scarf_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the scarf on your dummy")
 MACRO_CONFIG_INT(XcScarfOthers, xc_scarf_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the scarf on other players")
-MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown)")
+MACRO_CONFIG_INT(XcAccessory, xc_accessory, 0, 0, 10, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Accessory on the tee (0 = off, 1 = cone hat, 2 = halo, 3 = crown, 4 = horns, 5 = sprout, 6 = stars, 7 = flame, 8 = bow, 9 = sign, 10 = cross)")
+MACRO_CONFIG_INT(XcAccessorySign, xc_accessory_sign, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Sign over the head (0 = !, 1 = ?, 2 = ? in freeze, ! otherwise)")
 MACRO_CONFIG_INT(XcAccessorySize, xc_accessory_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the accessory in percent")
 MACRO_CONFIG_INT(XcAccessoryHeight, xc_accessory_height, 100, 30, 250, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Height of the cone hat in percent")
 MACRO_CONFIG_INT(XcAccessoryFriends, xc_accessory_friends, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the accessory on your friends too")

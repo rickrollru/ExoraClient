@@ -19,6 +19,13 @@ public:
 		ACCESSORY_CONE,
 		ACCESSORY_HALO,
 		ACCESSORY_CROWN,
+		ACCESSORY_HORNS,
+		ACCESSORY_SPROUT,
+		ACCESSORY_STARS,
+		ACCESSORY_FLAME,
+		ACCESSORY_BOW,
+		ACCESSORY_SIGN,
+		ACCESSORY_CROSS,
 	};
 
 	int Sizeof() const override { return sizeof(*this); }
@@ -45,6 +52,13 @@ private:
 	void RenderCone(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
 	void RenderHalo(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
 	void RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
+	void RenderHorns(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
+	void RenderSprout(vec2 Head, float Scale, float Tilt, float Squash, float Alpha, float Spring) const;
+	void RenderStars(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
+	void RenderFlame(vec2 Head, float Scale, float Tilt, float Squash, float Alpha, vec2 Vel) const;
+	void RenderBow(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
+	void RenderSign(vec2 Head, float Scale, float Tilt, float Squash, float Alpha, bool Frozen) const;
+	void RenderCross(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const;
 };
 
 #endif

@@ -128,6 +128,13 @@ void CAccessory::OnRender()
 		case ACCESSORY_CONE: RenderCone(Head, Scale, State.m_Tilt, Squash, Alpha); break;
 		case ACCESSORY_HALO: RenderHalo(Head + vec2(0.0f, std::sin(m_Time * 2.2f + ClientId) * 2.0f * Scale), Scale, State.m_Tilt, Squash, Alpha); break;
 		case ACCESSORY_CROWN: RenderCrown(Head, Scale, State.m_Tilt, Squash, Alpha); break;
+		case ACCESSORY_HORNS: RenderHorns(Head, Scale, State.m_Tilt, Squash, Alpha); break;
+		case ACCESSORY_SPROUT: RenderSprout(Head, Scale, State.m_Tilt, Squash, Alpha, State.m_Spring / SPRING_MAX); break;
+		case ACCESSORY_STARS: RenderStars(Head, Scale, State.m_Tilt, Squash, Alpha); break;
+		case ACCESSORY_FLAME: RenderFlame(Head, Scale, State.m_Tilt, Squash, Alpha, CharacterVelocity(GameClient(), ClientId)); break;
+		case ACCESSORY_BOW: RenderBow(Head, Scale, State.m_Tilt, Squash, Alpha); break;
+		case ACCESSORY_SIGN: RenderSign(Head + vec2(0.0f, std::sin(m_Time * 2.6f + ClientId) * 1.5f * Scale), Scale, State.m_Tilt, Squash, Alpha, Data.m_FreezeEnd != 0 || Data.m_RegularPredicted.m_FreezeEnd != 0 || Data.m_DeepFrozen); break;
+		case ACCESSORY_CROSS: RenderCross(Head + vec2(0.0f, std::sin(m_Time * 2.0f + ClientId) * 2.0f * Scale), Scale, State.m_Tilt, Squash, Alpha); break;
 		}
 	}
 }
@@ -236,4 +243,176 @@ void CAccessory::RenderCrown(vec2 Head, float Scale, float Tilt, float Squash, f
 	const vec2 Center = P(0.0f, (BandTop + Bottom) * 0.5f);
 	Fx.AddWorldGlowing(FxShape::Circle(Center, 2.4f * Scale, Gem), 3.5f * Scale, 0.5f);
 	Fx.AddWorld(FxShape::Circle(Center + vec2(-0.8f, -0.8f) * Scale, 0.7f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha * 0.8f)).Additive());
+}
+
+// two small horns curving up and out from the top of the head
+void CAccessory::RenderHorns(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const ColorRGBA Main = BaseColor(0.0f, Alpha);
+	const ColorRGBA Dark = Shade(Main, 0.55f);
+	for(float Side : {-1.0f, 1.0f})
+	{
+		// a curve of tapering pieces: up first, the tip bends outwards
+		vec2 Prev(Side * 9.0f * Scale, 3.0f * Scale);
+		const int NumPieces = 5;
+		for(int i = 1; i <= NumPieces; i++)
+		{
+			const float t = (float)i / NumPieces;
+			const vec2 Next(Side * (9.0f + 5.5f * t * t) * Scale, (3.0f - 13.0f * t * Squash) * Scale);
+			const float Width = (5.0f * (1.0f - t) + 1.2f) * Scale;
+			const ColorRGBA c(mix(Main.r, Dark.r, t * 0.6f), mix(Main.g, Dark.g, t * 0.6f), mix(Main.b, Dark.b, t * 0.6f), Alpha);
+			Fx.AddWorld(FxShape::Line(Rotate(Head + Prev, Head, Tilt), Rotate(Head + Next, Head, Tilt), Width, c).Outline(0.6f * Scale, Shade(Main, 0.35f)));
+			Prev = Next;
+		}
+		// light on the inner side, a glow at the tip
+		Fx.AddWorld(FxShape::Line(Rotate(Head + vec2(Side * 8.0f * Scale, 1.0f * Scale), Head, Tilt), Rotate(Head + vec2(Side * 10.5f * Scale, -6.0f * Scale * Squash), Head, Tilt), 0.9f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f * Alpha)).Additive());
+		Fx.AddWorldGlowing(FxShape::Circle(Rotate(Head + Prev, Head, Tilt), 0.9f * Scale, Main), 4.0f * Scale, 0.5f);
+	}
+}
+
+// a little sprout on a thin stem: it bends with the running and springs on jumps
+void CAccessory::RenderSprout(vec2 Head, float Scale, float Tilt, float Squash, float Alpha, float Spring) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const ColorRGBA Leaf = BaseColor(0.0f, Alpha);
+	const ColorRGBA Stem = Shade(Leaf, 0.6f);
+	// leans against the running, sways a little by itself
+	const float Bend = -Tilt * 2.2f + std::sin(m_Time * 1.7f + m_ColorClient) * 0.12f + Spring * 0.25f;
+	const float Length = 12.0f * Scale * Squash;
+	vec2 Prev = Head + vec2(0.0f, 3.0f * Scale);
+	const int NumPieces = 4;
+	float Angle = -pi / 2.0f;
+	for(int i = 0; i < NumPieces; i++)
+	{
+		Angle += Bend / NumPieces;
+		const vec2 Next = Prev + direction(Angle) * (Length / NumPieces);
+		Fx.AddWorld(FxShape::Line(Prev, Next, 1.6f * Scale, Stem));
+		Prev = Next;
+	}
+	// two leaves at the top, and a bud between them
+	for(float Side : {-1.0f, 1.0f})
+	{
+		const float LeafAngle = Angle + Side * 1.0f + std::sin(m_Time * 2.3f + Side) * 0.08f;
+		const vec2 Center = Prev + direction(LeafAngle) * 4.2f * Scale;
+		Fx.AddWorld(FxShape::Ellipse(Center, vec2(4.6f, 2.2f) * Scale, Leaf).Gradient(Shade(Leaf, 0.7f)).Outline(0.5f * Scale, Shade(Leaf, 0.45f)).Rotate(LeafAngle));
+		Fx.AddWorld(FxShape::Line(Prev, Prev + direction(LeafAngle) * 7.0f * Scale, 0.5f * Scale, Shade(Leaf, 0.55f)));
+	}
+	Fx.AddWorldGlowing(FxShape::Circle(Prev, 1.5f * Scale, Shade(Leaf, 1.3f)), 3.0f * Scale, 0.4f);
+}
+
+// little stars that fly round the head like after a hit in a cartoon
+void CAccessory::RenderStars(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const vec2 Center = Rotate(Head + vec2(0.0f, -5.0f * Scale * Squash), Head, Tilt);
+	const int NumStars = 5;
+	for(int i = 0; i < NumStars; i++)
+	{
+		const float a = m_Time * 2.4f + 2.0f * pi * i / NumStars + m_ColorClient;
+		const float Front = std::sin(a); // the near half is lower and bigger
+		const vec2 Pos = Center + vec2(std::cos(a) * 16.0f, Front * 4.5f) * Scale;
+		const float Size = (3.2f + 1.0f * Front) * Scale;
+		const ColorRGBA c = BaseColor(i / (float)NumStars, Alpha * (0.65f + 0.35f * Front));
+		Fx.AddWorldGlowing(FxShape::Star(Pos, Size, 5, 0.45f, c).Outline(0.5f * Scale, Shade(c, 0.5f)).Rotate(m_Time * 3.0f + i), 4.0f * Scale, 0.5f);
+	}
+}
+
+// a small flame over the head; it flickers and blows back when running
+void CAccessory::RenderFlame(vec2 Head, float Scale, float Tilt, float Squash, float Alpha, vec2 Vel) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const ColorRGBA Main = BaseColor(0.0f, Alpha);
+	const ColorRGBA Hot(mix(Main.r, 1.0f, 0.7f), mix(Main.g, 1.0f, 0.7f), mix(Main.b, 0.85f, 0.7f), Alpha);
+	const float Lean = std::clamp(-Vel.x / 1500.0f, -0.6f, 0.6f) - Tilt;
+	const vec2 Base = Rotate(Head + vec2(0.0f, -1.0f * Scale), Head, Tilt);
+	// tongues of the flame: from the outer and darker to the inner white-hot one
+	const float aSizes[] = {1.0f, 0.7f, 0.42f};
+	for(int Layer = 0; Layer < 3; Layer++)
+	{
+		const float k = aSizes[Layer];
+		const float Flicker = 1.0f + 0.12f * std::sin(m_Time * (13.0f + Layer * 4.0f) + m_ColorClient * 1.3f);
+		const float Height = 15.0f * Scale * k * Flicker * Squash;
+		const vec2 Tip = Base + direction(-pi / 2.0f + Lean) * Height;
+		const ColorRGBA c = Layer == 0 ? Shade(Main, 0.85f).WithMultipliedAlpha(0.95f) : (Layer == 1 ? ColorRGBA(mix(Main.r, Hot.r, 0.4f), mix(Main.g, Hot.g, 0.4f), mix(Main.b, Hot.b, 0.4f), Alpha * 0.6f) : Hot.WithMultipliedAlpha(0.7f));
+		// a round bottom and a pointed top; the outer tongue is solid color, so it shows on bright maps too
+		SFxShape Round = FxShape::Circle(Base + (Tip - Base) * 0.2f, 5.2f * Scale * k, c);
+		SFxShape Point = FxShape::Triangle((Base + Tip) * 0.5f + (Tip - Base) * 0.05f, vec2(4.9f * Scale * k, length(Tip - Base) * 0.5f), c).Rotate(Lean);
+		if(Layer > 0)
+		{
+			Round.Additive();
+			Point.Additive();
+		}
+		Fx.AddWorld(Round);
+		Fx.AddWorld(Point);
+	}
+	Fx.AddWorld(FxShape::Circle(Base + vec2(0.0f, -3.0f * Scale), 1.0f, Main).GlowOnly(14.0f * Scale, 0.6f).Additive());
+	// now and then a spark flies up
+	const float Spark = std::fmod(m_Time * 1.3f + m_ColorClient * 0.37f, 1.0f);
+	const vec2 SparkPos = Base + vec2(std::sin(m_Time * 5.0f) * 3.0f * Scale + Lean * 10.0f * Scale * Spark, -(16.0f + 14.0f * Spark) * Scale);
+	Fx.AddWorldGlowing(FxShape::Circle(SparkPos, 0.9f * Scale * (1.0f - Spark), Hot.WithMultipliedAlpha(1.0f - Spark)).Additive(), 3.0f * Scale, 0.6f * (1.0f - Spark));
+}
+
+// a bow on the side of the head
+void CAccessory::RenderBow(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const ColorRGBA Main = BaseColor(0.0f, Alpha);
+	const ColorRGBA Edge = Shade(Main, 0.5f);
+	const vec2 Knot = Head + vec2(9.0f * Scale, 3.0f * Scale);
+	const float Wiggle = std::sin(m_Time * 3.0f + m_ColorClient) * 0.06f;
+	const float Angle = -0.35f + Tilt + Wiggle;
+	const auto P = [&](float x, float y) { return Rotate(Knot + vec2(x, y) * Scale, Knot, Angle); };
+	// the two loops are triangles pointing at the knot, the two tails hang down
+	for(float Side : {-1.0f, 1.0f})
+	{
+		Fx.AddWorld(FxShape::Triangle(P(Side * 4.5f, 0.0f), vec2(4.2f, 4.5f) * Scale * vec2(Squash, 1.0f), Main).Gradient(Shade(Main, 0.75f)).Outline(0.7f * Scale, Edge).Rotate(Angle - Side * pi / 2.0f)); // the tip at the knot
+		Fx.AddWorld(FxShape::Line(P(Side * 1.0f, 1.5f), P(Side * 3.0f, 7.0f), 2.0f * Scale, Shade(Main, 0.85f)).Outline(0.5f * Scale, Edge));
+	}
+	Fx.AddWorld(FxShape::Circle(P(0.0f, 0.0f), 2.2f * Scale, Shade(Main, 1.15f)).Outline(0.7f * Scale, Edge));
+	Fx.AddWorld(FxShape::Circle(P(-0.7f, -0.7f), 0.7f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, 0.6f * Alpha)).Additive());
+}
+
+// "!" or "?" over the head, "?" while frozen in the auto mode
+void CAccessory::RenderSign(vec2 Head, float Scale, float Tilt, float Squash, float Alpha, bool Frozen) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const bool Question = g_Config.m_XcAccessorySign == 1 || (g_Config.m_XcAccessorySign == 2 && Frozen);
+	const ColorRGBA Main = BaseColor(0.0f, Alpha);
+	const ColorRGBA Edge = Shade(Main, 0.4f);
+	const vec2 Center = Rotate(Head + vec2(0.0f, -14.0f * Scale * Squash), Head, Tilt);
+	const auto P = [&](float x, float y) { return Rotate(Center + vec2(x, y) * Scale, Center, Tilt); };
+	if(Question)
+	{
+		// the hook as the upper half of a ring and a short line down, then the dot
+		Fx.AddWorldGlowing(FxShape::Ring(P(0.0f, -3.5f), vec2(4.2f, 4.2f) * Scale, 2.4f * Scale, Main).Outline(0.6f * Scale, Edge).Half(-1.0f).Rotate(Tilt), 4.0f * Scale, 0.4f);
+		Fx.AddWorld(FxShape::Line(P(4.2f, -3.5f), P(0.0f, 2.5f), 2.4f * Scale, Main).Outline(0.6f * Scale, Edge));
+		Fx.AddWorld(FxShape::Line(P(0.0f, 2.5f), P(0.0f, 4.0f), 2.4f * Scale, Main).Outline(0.6f * Scale, Edge));
+	}
+	else
+		Fx.AddWorldGlowing(FxShape::RoundRect(P(0.0f, -2.0f), vec2(1.6f, 6.0f) * Scale, 1.4f * Scale, Main).Gradient(Shade(Main, 0.8f)).Outline(0.6f * Scale, Edge).Rotate(Tilt), 4.0f * Scale, 0.4f);
+	Fx.AddWorldGlowing(FxShape::Circle(P(0.0f, 7.5f), 1.7f * Scale, Main).Outline(0.6f * Scale, Edge), 4.0f * Scale, 0.4f);
+}
+
+// a simple cross floating over the head, swaying a little
+void CAccessory::RenderCross(vec2 Head, float Scale, float Tilt, float Squash, float Alpha) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::ACCESSORY);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const ColorRGBA Main = BaseColor(0.0f, Alpha);
+	const ColorRGBA Edge = Shade(Main, 0.45f);
+	const vec2 Center = Rotate(Head + vec2(0.0f, -15.0f * Scale * Squash), Head, Tilt);
+	const float Angle = Tilt * 0.6f + std::sin(m_Time * 1.4f + m_ColorClient) * 0.08f;
+	const auto P = [&](float x, float y) { return Rotate(Center + vec2(x, y) * Scale, Center, Angle); };
+	// a soft light behind it, then the two bars
+	Fx.AddWorld(FxShape::Circle(P(0.0f, -1.5f), 1.0f, Main).GlowOnly(15.0f * Scale, 0.35f).Additive());
+	Fx.AddWorldGlowing(FxShape::RoundRect(P(0.0f, 0.0f), vec2(1.7f, 8.5f) * Scale, 0.8f * Scale, Main).Gradient(Shade(Main, 0.8f)).Outline(0.6f * Scale, Edge).Rotate(Angle), 4.0f * Scale, 0.4f);
+	Fx.AddWorldGlowing(FxShape::RoundRect(P(0.0f, -3.5f), vec2(5.5f, 1.7f) * Scale, 0.8f * Scale, Main).Gradient(Shade(Main, 0.9f)).Outline(0.6f * Scale, Edge).Rotate(Angle), 4.0f * Scale, 0.4f);
+	Fx.AddWorld(FxShape::Line(P(-0.6f, -7.5f), P(-0.6f, 7.5f), 0.6f * Scale, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f * Alpha)).Additive());
 }

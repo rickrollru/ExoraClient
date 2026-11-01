@@ -3,6 +3,8 @@
 #include "icons.h"
 #include "lang.h"
 #include "menu.h"
+
+#include "../floaters.h"
 #include "theme.h"
 #include "widgets.h"
 
@@ -559,9 +561,15 @@ void CXcMenu::CapePreview(const char *pId)
 void CXcMenu::RenderVisualsCosmeticsExtra()
 {
 	BeginCardGrid("##vis_cosmetics_extra", 2);
-	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown")};
-	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 3))
+	const char *apAccessories[] = {Tr("Cone hat"), Tr("Halo"), Tr("Crown"), Tr("Horns"), Tr("Sprout"), Tr("Stars"), Tr("Flame"), Tr("Bow"), Tr("Sign"), Tr("Cross")};
+	if(StyleCard("##fx_accessory", Tr("Accessory"), Tr("Something on the head that sways with the tee"), "xc_accessory", &g_Config.m_XcAccessory, apAccessories, 10))
 	{
+		if(g_Config.m_XcAccessory == 9)
+		{
+			ParamLabel(Tr("Sign"));
+			const char *apSigns[] = {"!", "?", Tr("? in freeze")};
+			ConfigSegmented("##accessory_sign", "xc_accessory_sign", &g_Config.m_XcAccessorySign, apSigns, 3);
+		}
 		EffectColorPicker("##accessory_color", &g_Config.m_XcAccessoryColorMode, &g_Config.m_XcAccessoryColor);
 		ConfigSlider(Tr("Size"), "xc_accessory_size", &g_Config.m_XcAccessorySize, 50, 200, "%d%%");
 		ConfigSlider(Tr("Opacity"), "xc_accessory_alpha", &g_Config.m_XcAccessoryAlpha, 10, 100, "%d%%");
@@ -897,8 +905,34 @@ void CXcMenu::RenderVisualsWorld()
 		EndCard();
 	}
 	const char *apFloaters[] = {Tr("Cubes"), Tr("Orbs"), Tr("Both")};
-	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes and orbs drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
+	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes, orbs, fireflies, notes, runes and hearts drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
 	{
+		// what flies: any mix of the kinds (the style above is the mix while none is picked here)
+		ParamLabel(Tr("What flies"));
+		const char *apKinds[] = {Tr("Cubes"), Tr("Orbs"), Tr("Fireflies"), Tr("Notes"), Tr("Runes"), Tr("Hearts")};
+		const int Mask = CXcFloaters::Kinds();
+		for(int k = 0; k < CXcFloaters::NUM_KINDS; k++)
+		{
+			char aId[32];
+			str_format(aId, sizeof(aId), "##floater_kind%d", k);
+			RowLabel(apKinds[k], S(38.0f));
+			int On = (Mask >> k) & 1;
+			if(ToggleInt(aId, &On))
+			{
+				const int NewMask = On ? Mask | (1 << k) : Mask & ~(1 << k);
+				// at least one kind stays on
+				if(NewMask)
+					SetConfigInt("xc_floaters_kinds", NewMask);
+			}
+		}
+		if(Mask & (1 << CXcFloaters::KIND_RUNE))
+		{
+			ParamLabel(Tr("Runes"));
+			const char *apRunes[] = {Tr("Norse"), Tr("Elvish"), Tr("Alchemy"), Tr("Mixed")};
+			ConfigSegmented("##floater_runes", "xc_floaters_runes", &g_Config.m_XcFloatersRunes, apRunes, 4);
+		}
+		if(Mask & (1 << CXcFloaters::KIND_NOTE))
+			ToggleRow(Tr("Notes only while music plays, to its beat"), "xc_floaters_notes_music", &g_Config.m_XcFloatersNotesMusic);
 		EffectColorPicker("##floaters_color", &g_Config.m_XcFloatersColorMode, &g_Config.m_XcFloatersColor);
 		ConfigSlider(Tr("Amount"), "xc_floaters_count", &g_Config.m_XcFloatersCount, 5, 150);
 		ConfigSlider(Tr("Size"), "xc_floaters_size", &g_Config.m_XcFloatersSize, 30, 300, "%d%%");

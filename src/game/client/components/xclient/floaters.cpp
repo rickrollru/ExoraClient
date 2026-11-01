@@ -59,8 +59,233 @@ void CXcFloaters::Spawn(SFloater &Floater, float X0, float Y0, float X1, float Y
 	}
 	Floater.m_Hue = random_float(0.0f, 1.0f);
 	Floater.m_Life = 0.0f;
-	const int Style = g_Config.m_XcFloaters;
-	Floater.m_Cube = Style == FLOATERS_CUBES || (Style == FLOATERS_MIXED && rand() % 2 == 0);
+	// one of the kinds that are on
+	const int Mask = Kinds();
+	int aKinds[NUM_KINDS], Num = 0;
+	for(int k = 0; k < NUM_KINDS; k++)
+		if(Mask & (1 << k))
+			aKinds[Num++] = k;
+	Floater.m_Kind = Num > 0 ? aKinds[rand() % Num] : KIND_ORB;
+	Floater.m_Script = g_Config.m_XcFloatersRunes == 3 ? rand() % 3 : g_Config.m_XcFloatersRunes;
+	Floater.m_Glyph = rand();
+	Floater.m_Phase = random_float(0.0f, 100.0f);
+	if(Floater.m_Kind == KIND_HEART)
+	{
+		// hearts rise slowly
+		Floater.m_Drift = vec2(random_float(-6.0f, 6.0f), -random_float(10.0f, 22.0f));
+		Floater.m_Vel = Floater.m_Drift;
+	}
+	else if(Floater.m_Kind == KIND_FIREFLY)
+		Floater.m_Size = random_float(6.0f, 10.0f);
+}
+
+int CXcFloaters::Kinds()
+{
+	if(g_Config.m_XcFloatersKinds)
+		return g_Config.m_XcFloatersKinds;
+	switch(g_Config.m_XcFloaters)
+	{
+	case FLOATERS_CUBES: return 1 << KIND_CUBE;
+	case FLOATERS_ORBS: return 1 << KIND_ORB;
+	default: return (1 << KIND_CUBE) | (1 << KIND_ORB);
+	}
+}
+
+namespace
+{
+	// the runes as strokes in a box of -1..1 wide and -1.5..1.5 high
+	struct SStroke
+	{
+		float x0, y0, x1, y1;
+	};
+	struct SRune
+	{
+		int m_Num;
+		SStroke m_aStrokes[6];
+	};
+	// Elder Futhark
+	const SRune s_aNorse[] = {
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -0.6f, 0.8f, -1.3f}, {0, 0.1f, 0.8f, -0.6f}}}, // fehu
+		{3, {{-0.5f, 1.5f, -0.5f, -1.5f}, {-0.5f, -1.5f, 0.6f, -0.6f}, {0.6f, -0.6f, 0.6f, 1.5f}}}, // uruz
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -0.6f, 0.7f, 0}, {0.7f, 0, 0, 0.6f}}}, // thurisaz
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -1.5f, 0.7f, -0.9f}, {0, -0.8f, 0.7f, -0.2f}}}, // ansuz
+		{4, {{0, -1.5f, 0, 1.5f}, {0, -1.5f, 0.7f, -0.9f}, {0.7f, -0.9f, 0, -0.2f}, {0, -0.2f, 0.7f, 1.5f}}}, // raido
+		{2, {{0.6f, -1.0f, -0.4f, 0}, {-0.4f, 0, 0.6f, 1.0f}}}, // kaunan
+		{2, {{-0.7f, -1.2f, 0.7f, 1.2f}, {0.7f, -1.2f, -0.7f, 1.2f}}}, // gebo
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -1.5f, 0.7f, -0.9f}, {0.7f, -0.9f, 0, -0.3f}}}, // wunjo
+		{3, {{-0.6f, -1.5f, -0.6f, 1.5f}, {0.6f, -1.5f, 0.6f, 1.5f}, {-0.6f, -0.4f, 0.6f, 0.4f}}}, // hagalaz
+		{2, {{0, -1.5f, 0, 1.5f}, {-0.6f, -0.5f, 0.6f, 0.5f}}}, // naudiz
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -1.5f, 0.6f, -1.0f}, {0, 1.5f, -0.6f, 1.0f}}}, // eihwaz
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -0.4f, -0.7f, -1.3f}, {0, -0.4f, 0.7f, -1.3f}}}, // algiz
+		{3, {{0.5f, -1.4f, -0.5f, -0.3f}, {-0.5f, -0.3f, 0.5f, 0.3f}, {0.5f, 0.3f, -0.5f, 1.4f}}}, // sowilo
+		{3, {{0, -1.5f, 0, 1.5f}, {0, -1.5f, -0.7f, -0.7f}, {0, -1.5f, 0.7f, -0.7f}}}, // tiwaz
+		{5, {{0, -1.5f, 0, 1.5f}, {0, -1.5f, 0.6f, -0.8f}, {0.6f, -0.8f, 0, 0}, {0, 0, 0.6f, 0.8f}, {0.6f, 0.8f, 0, 1.5f}}}, // berkanan
+		{4, {{-0.6f, -1.5f, -0.6f, 1.5f}, {0.6f, -1.5f, 0.6f, 1.5f}, {-0.6f, -1.5f, 0.6f, -0.3f}, {0.6f, -1.5f, -0.6f, -0.3f}}}, // mannaz
+		{6, {{0, -1.4f, 0.6f, -0.5f}, {0.6f, -0.5f, 0, 0.4f}, {0, 0.4f, -0.6f, -0.5f}, {-0.6f, -0.5f, 0, -1.4f}, {0, 0.4f, 0.7f, 1.5f}, {0, 0.4f, -0.7f, 1.5f}}}, // othala
+	};
+} // namespace
+
+void CXcFloaters::DrawShape(const SFloater &Floater, float Size, ColorRGBA Color, float Alpha, float Time) const
+{
+	const FxGlow::CScope GlowScope(FxGlow::FLOATERS);
+	CFxRenderer &Fx = GameClient()->m_FxRenderer;
+	const vec2 Pos = Floater.m_Pos;
+	const ColorRGBA c = Color.WithAlpha(Alpha);
+	const ColorRGBA Hot(mix(Color.r, 1.0f, 0.55f), mix(Color.g, 1.0f, 0.55f), mix(Color.b, 1.0f, 0.55f), Alpha);
+	const float u = Size * 0.32f; // the unit of the drawings
+	// a slow sway instead of the full 3D turn of the cubes
+	const float Angle = std::sin(Floater.m_aAngle[0]) * 0.35f;
+	const auto P = [&](float x, float y) { return Rotate(Pos + vec2(x, y) * u, Pos, Angle); };
+	const float Line = std::max(u * 0.22f, 0.8f);
+	// a colored stroke with a light core: the color shows on bright maps, the light on dark ones
+	const ColorRGBA Ink(Color.r * 0.8f, Color.g * 0.8f, Color.b * 0.8f, Alpha);
+	const auto Stroke = [&](vec2 A, vec2 B) {
+		Fx.AddWorldGlowing(FxShape::Line(A, B, Line * 1.7f, Ink), u * 1.2f, 0.4f);
+		Fx.AddWorld(FxShape::Line(A, B, Line * 0.7f, Hot).Additive());
+	};
+	const auto Arc = [&](float cx, float cy, float r, float a0, float a1) {
+		const int Num = 6;
+		vec2 Prev = P(cx + std::cos(a0) * r, cy + std::sin(a0) * r);
+		for(int i = 1; i <= Num; i++)
+		{
+			const float a = mix(a0, a1, (float)i / Num);
+			const vec2 Next = P(cx + std::cos(a) * r, cy + std::sin(a) * r);
+			Stroke(Prev, Next);
+			Prev = Next;
+		}
+	};
+
+	switch(Floater.m_Kind)
+	{
+	case KIND_FIREFLY:
+	{
+		// blinks: lit for a while, then nearly dark
+		const float Blink = 0.5f + 0.5f * std::sin(Time * 1.6f + Floater.m_Phase);
+		const float Lit = Blink * Blink * Blink;
+		Fx.AddWorld(FxShape::Circle(Pos, std::max(u * 0.45f, 1.0f), Hot.WithMultipliedAlpha(0.25f + 0.75f * Lit)).GlowOnly(u * 4.0f, 0.9f * Lit + 0.1f).Additive());
+		Fx.AddWorld(FxShape::Circle(Pos, std::max(u * 0.3f, 0.8f), ColorRGBA(1.0f, 1.0f, 0.9f, Alpha * (0.3f + 0.7f * Lit))).Additive());
+		break;
+	}
+	case KIND_NOTE:
+	{
+		// one note or two joined ones; the head is a tilted oval, the stem goes up from its right side
+		const bool Double = Floater.m_Glyph % 2;
+		const int NumHeads = Double ? 2 : 1;
+		for(int i = 0; i < NumHeads; i++)
+		{
+			const float x = Double ? (i ? 1.0f : -1.0f) : 0.0f;
+			const float y = Double && i ? 0.6f : 1.0f;
+			Fx.AddWorldGlowing(FxShape::Ellipse(P(x - 0.3f, y + 0.9f), vec2(0.85f, 0.6f) * u, c).Rotate(Angle - 0.4f), u * 1.5f, 0.5f);
+			Stroke(P(x + 0.45f, y + 0.8f), P(x + 0.45f, y - 1.8f));
+		}
+		if(Double)
+		{
+			Fx.AddWorldGlowing(FxShape::Line(P(-0.55f, -0.8f), P(1.45f, -1.2f), Line * 2.2f, Hot).Additive(), u * 1.2f, 0.5f);
+		}
+		else
+		{
+			Stroke(P(0.45f, -0.8f), P(1.3f, -0.1f));
+			Stroke(P(1.3f, -0.1f), P(1.0f, 0.6f));
+		}
+		break;
+	}
+	case KIND_HEART:
+	{
+		// two circles and a triangle pointing down
+		const float Beat = 1.0f + 0.08f * std::sin(Time * 4.0f + Floater.m_Phase);
+		const float h = u * Beat;
+		const auto H = [&](float x, float y) { return Rotate(Pos + vec2(x, y) * h, Pos, Angle); };
+		Fx.AddWorldGlowing(FxShape::Circle(H(-0.62f, -0.35f), 0.75f * h, c), h * 1.5f, 0.45f);
+		Fx.AddWorldGlowing(FxShape::Circle(H(0.62f, -0.35f), 0.75f * h, c), h * 1.5f, 0.45f);
+		Fx.AddWorld(FxShape::Triangle(H(0.0f, 0.45f), vec2(1.33f, 0.95f) * h, c).Rotate(Angle + pi));
+		Fx.AddWorld(FxShape::Circle(H(-0.75f, -0.55f), 0.25f * h, ColorRGBA(1.0f, 1.0f, 1.0f, 0.6f * Alpha)).Additive());
+		break;
+	}
+	case KIND_RUNE:
+	{
+		if(Floater.m_Script == 0)
+		{
+			const SRune &Rune = s_aNorse[(unsigned)Floater.m_Glyph % (sizeof(s_aNorse) / sizeof(s_aNorse[0]))];
+			for(int i = 0; i < Rune.m_Num; i++)
+				Stroke(P(Rune.m_aStrokes[i].x0, Rune.m_aStrokes[i].y0), P(Rune.m_aStrokes[i].x1, Rune.m_aStrokes[i].y1));
+		}
+		else if(Floater.m_Script == 1)
+		{
+			// Elvish in the manner of the tengwar: a stem up or down, one or two bows to one side, a mark above
+			const unsigned g = (unsigned)Floater.m_Glyph;
+			const bool StemUp = g & 1, TwoBows = g & 2, Left = g & 4, Mark = g & 8, Open = g & 16;
+			const float Side = Left ? -1.0f : 1.0f;
+			Stroke(P(-Side * 0.5f, StemUp ? -1.6f : -0.5f), P(-Side * 0.5f, StemUp ? 0.6f : 1.6f));
+			for(int b = 0; b < (TwoBows ? 2 : 1); b++)
+			{
+				const float cx = -Side * 0.5f + Side * (0.45f + b * 0.75f);
+				const float a0 = Left ? pi * 0.5f : -pi * 0.5f;
+				Arc(cx, 0.05f, 0.5f, a0, a0 + (Left ? pi : -pi) * (Open && b == (TwoBows ? 1 : 0) ? -0.75f : -1.0f));
+			}
+			if(Mark)
+				Arc(0.0f, -1.55f, 0.45f, pi * 1.15f, pi * 1.85f);
+			else
+				Fx.AddWorldGlowing(FxShape::Circle(P(0.1f, -1.35f), Line * 0.9f, Hot).Additive(), u, 0.4f);
+		}
+		else
+		{
+			// alchemy: the elements, the sun, salt, sulphur, mercury, the moon
+			const auto Triangle = [&](bool Up, bool Bar) {
+				const float t = Up ? -1.0f : 1.0f;
+				const vec2 A = P(0.0f, t * 1.3f), B = P(-1.1f, -t * 0.7f), C = P(1.1f, -t * 0.7f);
+				Stroke(A, B);
+				Stroke(B, C);
+				Stroke(C, A);
+				if(Bar)
+					Stroke(P(-0.9f, t * 0.35f), P(0.9f, t * 0.35f));
+			};
+			const auto Circle = [&](float cx, float cy, float r) {
+				Fx.AddWorldGlowing(FxShape::Ring(P(cx, cy), vec2(r, r) * u, Line * 1.7f, Ink), u * 1.2f, 0.4f);
+				Fx.AddWorld(FxShape::Ring(P(cx, cy), vec2(r, r) * u, Line * 0.7f, Hot).Additive());
+			};
+			switch((unsigned)Floater.m_Glyph % 10)
+			{
+			case 0: Triangle(true, false); break; // fire
+			case 1: Triangle(false, false); break; // water
+			case 2: Triangle(true, true); break; // air
+			case 3: Triangle(false, true); break; // earth
+			case 4: // the sun
+				Circle(0.0f, 0.0f, 1.1f);
+				Fx.AddWorldGlowing(FxShape::Circle(P(0.0f, 0.0f), Line * 1.4f, Hot).Additive(), u, 0.5f);
+				break;
+			case 5: // salt
+				Circle(0.0f, 0.0f, 1.1f);
+				Stroke(P(-1.1f, 0.0f), P(1.1f, 0.0f));
+				break;
+			case 6: // sulphur: a triangle on a cross
+				Stroke(P(0.0f, -1.5f), P(-0.8f, -0.2f));
+				Stroke(P(-0.8f, -0.2f), P(0.8f, -0.2f));
+				Stroke(P(0.8f, -0.2f), P(0.0f, -1.5f));
+				Stroke(P(0.0f, -0.2f), P(0.0f, 1.5f));
+				Stroke(P(-0.6f, 0.75f), P(0.6f, 0.75f));
+				break;
+			case 7: // mercury: horns, a circle, a cross
+				Arc(0.0f, -1.45f, 0.55f, pi * 0.1f, pi * 0.9f);
+				Circle(0.0f, -0.35f, 0.6f);
+				Stroke(P(0.0f, 0.25f), P(0.0f, 1.5f));
+				Stroke(P(-0.5f, 0.9f), P(0.5f, 0.9f));
+				break;
+			case 8: // the moon: a crescent
+				Arc(0.0f, 0.0f, 1.2f, pi * 0.35f, pi * 1.65f);
+				Arc(0.55f, 0.0f, 0.95f, pi * 0.55f, pi * 1.45f);
+				break;
+			default: // copper (Venus): a circle on a cross
+				Circle(0.0f, -0.55f, 0.75f);
+				Stroke(P(0.0f, 0.2f), P(0.0f, 1.5f));
+				Stroke(P(-0.6f, 0.85f), P(0.6f, 0.85f));
+				break;
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 // soft round light, additive: bright middle, nothing at the edge
@@ -178,6 +403,10 @@ void CXcFloaters::OnRender()
 			Spawn(m_vFloaters[i], X0, Y0, X1, Y1, true);
 	}
 
+	// notes: only while the music plays (when asked), bobbing to a steady beat
+	const bool Music = GameClient()->m_XcMusic.HasTrack() && GameClient()->m_XcMusic.PausedFor() <= 0.0f;
+	const bool NotesShown = !g_Config.m_XcFloatersNotesMusic || Music;
+	m_NotesFade = std::clamp(m_NotesFade + (NotesShown ? Dt : -Dt) * 1.5f, 0.0f, 1.0f);
 	const float Speed = g_Config.m_XcFloatersSpeed / 100.0f;
 	const float SizeScale = g_Config.m_XcFloatersSize / 100.0f;
 	const float Alpha = g_Config.m_XcFloatersAlpha / 100.0f;
@@ -205,11 +434,16 @@ void CXcFloaters::OnRender()
 					Spin += (Spin >= 0.0f ? 1.0f : -1.0f) * Force * Dt * 0.01f;
 			}
 		}
+		// fireflies wander in zigzags
+		if(Floater.m_Kind == KIND_FIREFLY)
+			Floater.m_Drift = rotate(Floater.m_Drift, std::sin(Client()->GlobalTime() * 1.3f + Floater.m_Phase) * 2.5f * Dt);
 		// back to the slow drift
 		Floater.m_Vel = mix(Floater.m_Vel, Floater.m_Drift, SmoothFactor(1.2f, Dt));
 		for(float &Spin : Floater.m_aSpin)
 			Spin = std::clamp(Spin, -4.0f, 4.0f) * (1.0f - std::min(Dt * 0.4f, 1.0f));
 		Floater.m_Pos += Floater.m_Vel * Speed * Dt;
+		if(Floater.m_Kind == KIND_NOTE && Music)
+			Floater.m_Pos.y += std::cos(Client()->GlobalTime() * 2.0f * pi * 2.0f + Floater.m_Phase) * 18.0f * Dt; // two beats a second
 		for(int i = 0; i < 3; i++)
 			Floater.m_aAngle[i] += (Floater.m_aSpin[i] + (Floater.m_aSpin[i] >= 0.0f ? 0.25f : -0.25f)) * Speed * Dt;
 	}
@@ -236,7 +470,7 @@ void CXcFloaters::OnRender()
 			const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
 			const float Twinkle = 0.8f + 0.2f * std::sin(Time * 2.0f + pFloater->m_Hue * 40.0f);
 			const float a = Alpha * pFloater->m_Life * pFloater->m_Depth * Twinkle;
-			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * (pFloater->m_Cube ? 2.6f : 3.2f) * GlowScale.m_Radius;
+			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * (pFloater->m_Kind == KIND_CUBE ? 2.6f : (pFloater->m_Kind == KIND_ORB ? 3.2f : 1.3f)) * GlowScale.m_Radius;
 			Sprites.Draw(pFloater->m_Pos, Radius * 2.4f, 0.0f, Color.WithAlpha(std::min(0.3f * a * GlowScale.m_Strength, 1.0f)));
 		}
 		Sprites.End();
@@ -251,7 +485,7 @@ void CXcFloaters::OnRender()
 			const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
 			const float Twinkle = 0.8f + 0.2f * std::sin(Time * 2.0f + pFloater->m_Hue * 40.0f);
 			const float a = Alpha * pFloater->m_Life * pFloater->m_Depth * Twinkle;
-			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * (pFloater->m_Cube ? 2.6f : 3.2f);
+			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * (pFloater->m_Kind == KIND_CUBE ? 2.6f : (pFloater->m_Kind == KIND_ORB ? 3.2f : 1.3f));
 			DrawGlow(pFloater->m_Pos, Radius, Color.WithAlpha(0.32f * a));
 		}
 		Graphics()->QuadsEnd();
@@ -263,10 +497,23 @@ void CXcFloaters::OnRender()
 		const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
 		const float a = Alpha * pFloater->m_Life * (0.45f + 0.55f * pFloater->m_Depth);
 		const float FloaterSize = pFloater->m_Size * SizeScale * pFloater->m_Depth;
-		if(pFloater->m_Cube)
+		if(pFloater->m_Kind == KIND_CUBE)
 			DrawCube(*pFloater, pFloater->m_Pos, FloaterSize, Color, a);
 	}
 	Graphics()->QuadsEnd();
+	// fireflies, notes, runes and hearts go to the effect renderer
+	for(const SFloater *pFloater : vOrder)
+	{
+		if(pFloater->m_Kind == KIND_CUBE || pFloater->m_Kind == KIND_ORB)
+			continue;
+		float a = Alpha * pFloater->m_Life * (0.45f + 0.55f * pFloater->m_Depth);
+		if(pFloater->m_Kind == KIND_NOTE)
+			a *= m_NotesFade;
+		if(a <= 0.01f)
+			continue;
+		const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
+		DrawShape(*pFloater, pFloater->m_Size * SizeScale * pFloater->m_Depth, Color, a, Time);
+	}
 	// orbs: a bright core that is almost white in the middle
 	if(Soft)
 	{
@@ -275,7 +522,7 @@ void CXcFloaters::OnRender()
 			Sprites.Begin(Pass == 0 ? CXcSprites::SPRITE_GLOW : CXcSprites::SPRITE_CORE, true);
 			for(const SFloater *pFloater : vOrder)
 			{
-				if(pFloater->m_Cube)
+				if(pFloater->m_Kind != KIND_ORB)
 					continue;
 				const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
 				const float a = Alpha * pFloater->m_Life * (0.45f + 0.55f * pFloater->m_Depth);
@@ -293,7 +540,7 @@ void CXcFloaters::OnRender()
 	Graphics()->QuadsBegin();
 	for(const SFloater *pFloater : vOrder)
 	{
-		if(pFloater->m_Cube)
+		if(pFloater->m_Kind != KIND_ORB)
 			continue;
 		const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
 		const float a = Alpha * pFloater->m_Life * (0.45f + 0.55f * pFloater->m_Depth);
