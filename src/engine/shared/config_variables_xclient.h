@@ -565,6 +565,11 @@ MACRO_CONFIG_INT(XcGlowOthers, xc_glow_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG
 // Music player (system media sessions: browser tabs, Spotify...)
 MACRO_CONFIG_INT(XcMusic, xc_music, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player: show and control what plays in the browser or a music app")
 MACRO_CONFIG_INT(XcMusicToasts, xc_music_toasts, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player: a short note when the next track starts")
+MACRO_CONFIG_INT(XcLyrics, xc_lyrics, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Lyrics of the song in the music player, in time with it (from lrclib.net)")
+MACRO_CONFIG_INT(XcLyricsShow, xc_lyrics_show, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Where the lyrics show (0 = a plate on the screen, 1 = words on the map next to your tee, 2 = both)")
+MACRO_CONFIG_INT(XcLyricsSize, xc_lyrics_size, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the lyrics in percent")
+MACRO_CONFIG_INT(XcLyricsY, xc_lyrics_y, 78, 10, 95, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Height of the lyrics plate on the screen in percent from the top")
+MACRO_CONFIG_INT(XcLyricsOffset, xc_lyrics_offset, 0, -5000, 5000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shift of the lyrics against the music in ms (+ earlier, - later)")
 
 // Map editor
 MACRO_CONFIG_INT(XcEditorStyle, xc_editor_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Map editor in the Exora Client style: flat dark panels, accent selection, the menu font")

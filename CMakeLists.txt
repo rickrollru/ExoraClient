@@ -3127,6 +3127,8 @@ if(CLIENT)
     components/xclient/music/media_session_linux.cpp
     components/xclient/music/media_session_windows.cpp
     components/xclient/music/media_volume_windows.cpp
+    components/xclient/music/lyrics.cpp
+    components/xclient/music/lyrics.h
     components/xclient/music/music.cpp
     components/xclient/music/music.h
     components/xclient/streamer.cpp

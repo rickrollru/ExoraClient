@@ -1082,6 +1082,17 @@ void CXcMenu::RenderSettingsHud()
 		Description(Tr("Keys for play, next and previous are in Controls > Key binds"));
 		EndCard();
 	}
+	if(BeginCard("##lyrics", Tr("Song lyrics"), Tr("The words of the song in the player, in time with it: a plate on the screen and words on the map"), &g_Config.m_XcLyrics))
+	{
+		ParamLabel(Tr("Where"));
+		const char *apShow[] = {Tr("Plate"), Tr("On the map"), Tr("Both")};
+		ConfigSegmented("##lyrics_show", "xc_lyrics_show", &g_Config.m_XcLyricsShow, apShow, 3);
+		ConfigSlider(Tr("Size"), "xc_lyrics_size", &g_Config.m_XcLyricsSize, 50, 200, "%d%%");
+		ConfigSlider(Tr("Plate height"), "xc_lyrics_y", &g_Config.m_XcLyricsY, 10, 95, "%d%%");
+		ConfigSlider(Tr("Shift against the music"), "xc_lyrics_offset", &g_Config.m_XcLyricsOffset, -5000, 5000, "%d ms");
+		Description(Tr("The lyrics come from lrclib.net by the title and the artist. Not every song has timed lyrics there"));
+		EndCard();
+	}
 	if(BeginCard("##hud_scoreboard", Tr("Scoreboard"), Tr("The player list on Tab and the top of the server in the HUD")))
 	{
 		ToggleRow(Tr("Own scoreboard: teams, medals, times and pings"), "xc_scoreboard", &g_Config.m_XcScoreboard);

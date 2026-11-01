@@ -106,6 +106,7 @@
 #include "components/xclient/hud/xc_hud.h"
 #include "components/xclient/jump_fx.h"
 #include "components/xclient/sprite_fx.h"
+#include "components/xclient/music/lyrics.h"
 #include "components/xclient/music/music.h"
 #include "components/xclient/tee_glow.h"
 #include "components/xclient/trail_fx.h"
@@ -290,6 +291,7 @@ public:
 	CXcMenu m_XcMenu;
 	CXcHud m_XcHud;
 	CXcMusic m_XcMusic;
+	CXcLyrics m_XcLyrics; // XClient
 	CHookFx m_HookFx;
 	CJumpFx m_JumpFx;
 	CTeeGlow m_TeeGlow;
