@@ -218,7 +218,7 @@ void CXcMenu::RenderHatEditor(float Size)
 		const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, aInfo);
 		const ImVec2 BoxMin(Min.x + S(10.0f), Max.y - TextSize.y - S(20.0f));
 		pDraw->AddRectFilled(BoxMin, ImVec2(BoxMin.x + TextSize.x + S(16.0f), Max.y - S(10.0f)), Col(ImVec4(0, 0, 0, 0.55f)), S(6.0f));
-		pDraw->AddText(pFont, pFont->FontSize, ImVec2(BoxMin.x + S(8.0f), BoxMin.y + S(5.0f)), IM_COL32_WHITE, aInfo);
+		pDraw->AddText(pFont, pFont->FontSize, ImVec2(BoxMin.x + S(8.0f), BoxMin.y + S(5.0f)), Col(ImVec4(1, 1, 1, 1)), aInfo);
 	}
 }
 

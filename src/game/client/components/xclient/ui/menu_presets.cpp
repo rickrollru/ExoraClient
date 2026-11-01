@@ -200,7 +200,7 @@ void CXcMenu::RenderThemePresets()
 				OverTrash = ImGui::IsMouseHoveringRect(ImVec2(Center.x - Radius, Center.y - Radius), ImVec2(Center.x + Radius, Center.y + Radius));
 				pDraw->AddCircleFilled(Center, Radius, Armed ? Col(ImVec4(1.0f, 0.3f, 0.3f, 1.0f)) : Col(ImVec4(0, 0, 0, 1), OverTrash ? 0.8f : 0.55f), 24);
 				const ImVec2 IconSize = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, XC_ICON_TRASH);
-				pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(Center.x - IconSize.x * 0.5f, Center.y - IconSize.y * 0.5f), IM_COL32_WHITE, XC_ICON_TRASH);
+				pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(Center.x - IconSize.x * 0.5f, Center.y - IconSize.y * 0.5f), Col(ImVec4(1, 1, 1, 1)), XC_ICON_TRASH);
 				if(OverTrash)
 					ImGui::SetTooltip("%s", Armed ? Tr("Click again to delete") : Tr("Delete"));
 			}

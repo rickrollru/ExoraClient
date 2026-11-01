@@ -98,7 +98,7 @@ void CXcMenu::RenderMusicCard()
 	{
 		// a soft shadow of the cover's own colors under it
 		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ImVec2(ArtMin.x + S(4.0f), ArtMin.y + S(8.0f)), ImVec2(ArtMax.x - S(4.0f), ArtMax.y + S(6.0f)), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), 0.25f), Rounding);
-		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ArtMin, ArtMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, Rounding);
+		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ArtMin, ArtMax, ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1)), Rounding);
 	}
 	else
 	{

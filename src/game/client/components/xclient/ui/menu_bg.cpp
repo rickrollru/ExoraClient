@@ -133,7 +133,7 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 		const ImVec2 Fit = TextureAspect > Room.x / Room.y ? ImVec2(Room.x, Room.x / TextureAspect) : ImVec2(Room.y * TextureAspect, Room.y);
 		const ImVec2 ImgMin(Pos.x + (Width - Fit.x) * 0.5f, Pos.y + (ImageHeight - Fit.y) * 0.5f);
 		const float Lift = Hover * S(3.0f);
-		pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), ImVec2(ImgMin.x, ImgMin.y - Lift), ImVec2(ImgMin.x + Fit.x, ImgMin.y + Fit.y - Lift));
+		pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), ImVec2(ImgMin.x, ImgMin.y - Lift), ImVec2(ImgMin.x + Fit.x, ImgMin.y + Fit.y - Lift), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1)));
 	}
 	else if(Texture.IsValid() && !Texture.IsNullTexture())
 	{
@@ -152,7 +152,7 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 			Uv0.y = (1.0f - v) * 0.5f;
 			Uv1.y = (1.0f + v) * 0.5f;
 		}
-		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), Pos, ImageMax, Uv0, Uv1, IM_COL32_WHITE, Rounding);
+		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), Pos, ImageMax, Uv0, Uv1, Col(ImVec4(1, 1, 1, 1)), Rounding);
 	}
 	else
 	{
@@ -181,7 +181,7 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 		const ImVec2 BadgeSize = ImGui::CalcTextSize(pBadge);
 		const ImVec2 BadgeMin(ImageMax.x - BadgeSize.x - S(16.0f), ImageMax.y - BadgeSize.y - S(14.0f));
 		pDraw->AddRectFilled(BadgeMin, ImVec2(ImageMax.x - S(8.0f), ImageMax.y - S(8.0f)), Col(ImVec4(0, 0, 0, 0.6f)), S(6.0f));
-		pDraw->AddText(ImVec2(BadgeMin.x + S(4.0f), BadgeMin.y + S(3.0f)), IM_COL32_WHITE, pBadge);
+		pDraw->AddText(ImVec2(BadgeMin.x + S(4.0f), BadgeMin.y + S(3.0f)), Col(ImVec4(1, 1, 1, 1)), pBadge);
 		ImGui::PopFont();
 	}
 

@@ -240,6 +240,7 @@ void CXcMenu::UpdateStyle()
 	if(m_Backend.FontFamily() != g_Config.m_XcUiFont || m_Backend.FontScale() != Scale)
 	{
 		m_Backend.LoadFonts(g_Config.m_XcUiFont, Scale);
+		m_FontsRebuilt = true;
 		const CImGuiBackend::SFonts &BackendFonts = m_Backend.Fonts();
 		SFonts Fonts;
 		Fonts.m_pBody = BackendFonts.m_pBody;
@@ -495,6 +496,15 @@ void CXcMenu::OnRender()
 	}
 
 	UpdateStyle();
+	const vec2 Screen((float)Graphics()->ScreenWidth(), (float)Graphics()->ScreenHeight());
+	if(Screen != m_SettleScreen || m_FontsRebuilt)
+	{
+		m_SettleScreen = Screen;
+		m_FontsRebuilt = false;
+		m_SettleTime = 0.0f;
+	}
+	else
+		m_SettleTime += Dt;
 	RenderBackground();
 
 	m_Backend.NewFrame(Dt, Ui()->UpdatedMousePos());
@@ -509,6 +519,13 @@ void CXcMenu::OnRender()
 		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Width, Height));
 		RenderTools()->RenderCursor(Mouse, S(24.0f));
 	}
+}
+
+float CXcMenu::Settled() const
+{
+	// a few frames to measure the layout, then a soft fade in
+	const float x = std::clamp((m_SettleTime - 0.12f) / 0.3f, 0.0f, 1.0f);
+	return x * x * (3.0f - 2.0f * x);
 }
 
 void CXcMenu::RenderFrame()
@@ -528,8 +545,11 @@ void CXcMenu::RenderFrame()
 	else // darken the game or the map a little behind the menu
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, (IsOnline() ? 0.35f : 0.15f) * Open));
 
+	// the background is drawn, the content waits for the window and the fonts to settle
+	const float Shown = Open * Settled();
+	ImGui::GetStyle().Alpha = Shown;
 	const float Margin = S(24.0f);
-	const float Slide = (1.0f - Open) * S(14.0f);
+	const float Slide = (1.0f - Shown) * S(14.0f);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, Slide));
 	ImGui::SetNextWindowSize(Io.DisplaySize);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(Margin, S(20.0f)));
@@ -578,7 +598,7 @@ void CXcMenu::RenderFrame()
 		OpenSearch();
 	RenderSearch();
 	RenderConnectionPopup();
-	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Open);
+	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Shown);
 }
 
 void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size)

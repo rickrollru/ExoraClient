@@ -113,6 +113,13 @@ private:
 	static void PlayUiSoundCallback(void *pUser, int Sound);
 	bool m_Active = false;
 	float m_OpenAnimation = 0.0f;
+	// the content waits until the window size and the fonts stay the same for a moment (at the start the window
+	// is resized and the fonts are built again, the layout needs a frame to measure itself): it fades in then,
+	// instead of being seen jumping into place
+	float m_SettleTime = 0.0f;
+	vec2 m_SettleScreen = vec2(0.0f, 0.0f);
+	bool m_FontsRebuilt = true;
+	float Settled() const;
 	int m_Page = PAGE_HOME;
 	int m_SettingsSection = SETTINGS_INTERFACE;
 	int m_LastPageKey = -1;
