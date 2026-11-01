@@ -407,6 +407,12 @@ void CCamera::OnRender()
 	// demo always count as spectating
 	m_WasSpectating = GameClient()->m_Snap.m_SpecInfo.m_Active;
 
+	// XClient: smooth camera while spectating, only the view (the saved camera state above stays untouched)
+	{
+		const bool Demo = Client()->State() == IClient::STATE_DEMOPLAYBACK;
+		const bool Spectating = GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_MultiViewActivated && (!Demo || g_Config.m_XcSpecSmoothDemo);
+		m_Center = m_XcSpecCamera.Apply(m_Center, Client()->RenderFrameTime(), Spectating);
+	}
 	// XClient: camera shake, only the view moves (the saved camera state above stays untouched)
 	if(m_CamType == CAMTYPE_PLAYER && !m_CameraSmoothing)
 		m_Center += GameClient()->m_ScreenFx.ShakeOffset();
@@ -426,6 +432,7 @@ void CCamera::OnConsoleInit()
 void CCamera::OnReset()
 {
 	m_CameraSmoothing = false;
+	m_XcSpecCamera.Reset(); // XClient
 
 	m_Zoom = CCamera::ZoomStepsToValue(g_Config.m_ClDefaultZoom - 10);
 	m_Zooming = false;

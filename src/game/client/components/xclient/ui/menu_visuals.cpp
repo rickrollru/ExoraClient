@@ -831,6 +831,12 @@ void CXcMenu::RenderVisualsCrosshair()
 void CXcMenu::RenderVisualsWorld()
 {
 	BeginCardGrid("##vis_world", 2);
+	if(BeginCard("##spec_camera", Tr("Smooth spectator camera"), Tr("While spectating the camera glides after the mouse or the watched player, speeding up and slowing down softly. Only when spectating")))
+	{
+		ConfigSlider(Tr("Smoothness"), "xc_spec_smooth", &g_Config.m_XcSpecSmooth, 0, 100, "%d%%");
+		ToggleRow(Tr("In demos too"), "xc_spec_smooth_demo", &g_Config.m_XcSpecSmoothDemo);
+		EndCard();
+	}
 	if(BeginCard("##fx_3d", Tr("3D view"), Tr("The camera looks at the map from an angle and the blocks get depth. Only the picture: aiming and physics stay the same"), &g_Config.m_Xc3d))
 	{
 		if(!Graphics()->XcRenderAvailable())

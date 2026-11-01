@@ -50,6 +50,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##fx_cape", "Cape", "Cloth that hangs from the shoulders, flaps on jumps and streams away from the hook", "плащ накидка мантия королевский мех узор cape cloak royal fur pattern"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##fx_scarf", "Scarf", "A knitted scarf around the neck, its ends fly behind the tee", "шарф вязаный полосы бахрома scarf knitted stripes fringe"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_GENERAL, "##fx_glow_tune", "Glow", "How bright and how wide every effect glows", "свечение блум ореол яркость glow bloom brightness neon неон"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##spec_camera", "Smooth spectator camera", "While spectating the camera glides after the mouse or the watched player, speeding up and slowing down softly. Only when spectating", "плавная камера наблюдение спектейт спек spec spectate smooth camera"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WORLD, "##fx_items", "Pickups", "Hearts, armor, weapons and ninja softly glow", "предметы сердца броня оружие пикапы pickups items hearts armor"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_shots", "Shots", "A flash at the gun, light around bullets and grenades, comet tails", "пули гранаты выстрел вспышка ствол снаряды хвост дым bullets grenade muzzle projectiles trail smoke shots"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_WEAPONS, "##fx_projectiles", "Lasers", "Glow along rifle and shotgun lasers, or our own beam", "лазер дробовик луч laser rifle shotgun beam"},

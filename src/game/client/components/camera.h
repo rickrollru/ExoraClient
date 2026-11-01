@@ -9,6 +9,7 @@
 #include <engine/console.h>
 
 #include <game/client/component.h>
+#include <game/client/components/xclient/spec_camera.h> // XClient
 
 class CCamera : public CComponent
 {
@@ -26,6 +27,7 @@ private:
 	int m_CamType;
 	vec2 m_aLastPos[NUM_DUMMIES];
 	vec2 m_PrevCenter;
+	CXcSpecCamera m_XcSpecCamera; // XClient: smooth camera while spectating
 
 	int m_PrevSpecId;
 	bool m_WasSpectating;

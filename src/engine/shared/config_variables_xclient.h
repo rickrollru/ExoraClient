@@ -330,6 +330,8 @@ MACRO_CONFIG_INT(XcCrosshairTrail, xc_crosshair_trail, 0, 0, 1, CFGFLAG_CLIENT |
 MACRO_CONFIG_INT(XcCrosshairTrailLength, xc_crosshair_trail_length, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Length of the crosshair trail in percent")
 MACRO_CONFIG_INT(XcCrosshairKick, xc_crosshair_kick, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The crosshair pops bigger and springs back on every shot")
 MACRO_CONFIG_INT(XcCrosshairKickStrength, xc_crosshair_kick_strength, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the crosshair kick in percent")
+MACRO_CONFIG_INT(XcSpecSmooth, xc_spec_smooth, 40, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Smooth camera while spectating: how softly it follows (0 = off)")
+MACRO_CONFIG_INT(XcSpecSmoothDemo, xc_spec_smooth_demo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Smooth spectator camera in demos too")
 MACRO_CONFIG_INT(XcMotionBlur, xc_motion_blur, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Motion blur behind fast tees")
 MACRO_CONFIG_INT(XcMotionBlurStrength, xc_motion_blur_strength, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Length of the tee motion blur in percent")
 MACRO_CONFIG_INT(XcMotionBlurSelf, xc_motion_blur_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Motion blur on your tee")
