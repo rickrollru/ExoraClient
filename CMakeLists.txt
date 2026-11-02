@@ -2185,8 +2185,6 @@ set(EXPECTED_DATA
   touch_controls.json
   wordlist.txt
   xclient/fonts/Manrope-Bold.ttf
-  xclient/fonts/editor/OFL_Manrope.txt
-  xclient/fonts/editor/XClientUI.ttf
   xclient/fonts/Manrope-Regular.ttf
   xclient/fonts/Manrope-SemiBold.ttf
   xclient/fonts/OFL_Manrope.txt
@@ -2198,6 +2196,8 @@ set(EXPECTED_DATA
   xclient/fonts/Unbounded-Bold.ttf
   xclient/fonts/Unbounded-Regular.ttf
   xclient/fonts/Unbounded-SemiBold.ttf
+  xclient/fonts/editor/OFL_Manrope.txt
+  xclient/fonts/editor/XClientUI.ttf
   xclient/fx/CREDITS.txt
   xclient/fx/dash_bloom.png
   xclient/fx/dash_group1.png
@@ -2515,6 +2515,7 @@ set_src(ENGINE_INTERFACE GLOB src/engine
   uuid.h
   warning.h
   xc_render.h
+  xc_tilt.h
   # tidy-alphabetical-end
 )
 set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
@@ -3002,6 +3003,52 @@ if(CLIENT)
     components/voting.h
     components/xclient/accessory.cpp
     components/xclient/accessory.h
+    components/xclient/ambience.cpp
+    components/xclient/ambience.h
+    components/xclient/block_outline.cpp
+    components/xclient/block_outline.h
+    components/xclient/cape.cpp
+    components/xclient/cape.h
+    components/xclient/cursor.cpp
+    components/xclient/cursor.h
+    components/xclient/discord_rpc.cpp
+    components/xclient/discord_rpc.h
+    components/xclient/editor/automap_rules.cpp
+    components/xclient/editor/automap_rules.h
+    components/xclient/editor/editor_animate.cpp
+    components/xclient/editor/editor_guide.cpp
+    components/xclient/editor/editor_panels.cpp
+    components/xclient/editor/editor_prefs.cpp
+    components/xclient/editor/editor_style.cpp
+    components/xclient/editor/editor_style.h
+    components/xclient/editor/editor_tools.cpp
+    components/xclient/editor/gif_import.cpp
+    components/xclient/editor/image_tools.cpp
+    components/xclient/editor/image_tools.h
+    components/xclient/editor/xeditor.cpp
+    components/xclient/editor/xeditor.h
+    components/xclient/editor/xeditor_automap.cpp
+    components/xclient/editor/xeditor_coop.cpp
+    components/xclient/editor/xeditor_coop.h
+    components/xclient/editor/xeditor_coop_ui.cpp
+    components/xclient/editor/xeditor_depth.cpp
+    components/xclient/editor/xeditor_dialogs.cpp
+    components/xclient/editor/xeditor_docks.cpp
+    components/xclient/editor/xeditor_envelopes.cpp
+    components/xclient/editor/xeditor_files.cpp
+    components/xclient/editor/xeditor_images.cpp
+    components/xclient/editor/xeditor_live.cpp
+    components/xclient/editor/xeditor_live.h
+    components/xclient/editor/xeditor_lod.cpp
+    components/xclient/editor/xeditor_lod.h
+    components/xclient/editor/xeditor_prefabs.cpp
+    components/xclient/editor/xeditor_props.cpp
+    components/xclient/editor/xeditor_solver.cpp
+    components/xclient/editor/xeditor_solver.h
+    components/xclient/editor/xeditor_teleext.cpp
+    components/xclient/editor/xeditor_tune.cpp
+    components/xclient/editor/xeditor_wiki.cpp
+    components/xclient/editor/xeditor_wiki_pages.h
     components/xclient/event_fx.cpp
     components/xclient/event_fx.h
     components/xclient/floaters.cpp
@@ -3012,59 +3059,9 @@ if(CLIENT)
     components/xclient/hats.h
     components/xclient/hook_fx.cpp
     components/xclient/hook_fx.h
-    components/xclient/hud/xc_hud.cpp
-    components/xclient/ambience.cpp
-    components/xclient/ambience.h
-    components/xclient/block_outline.cpp
-    components/xclient/block_outline.h
-    components/xclient/world3d.cpp
-    components/xclient/editor/automap_rules.cpp
-    components/xclient/editor/automap_rules.h
-    components/xclient/editor/xeditor_automap.cpp
-    components/xclient/editor/xeditor_wiki.cpp
-    components/xclient/editor/xeditor_depth.cpp
-    components/xclient/editor/xeditor_teleext.cpp
-    components/xclient/editor/xeditor_wiki_pages.h
-    components/xclient/world3d.h
-    components/xclient/discord_rpc.cpp
-    components/xclient/discord_rpc.h
-    components/xclient/cape.cpp
-    components/xclient/cursor.cpp
-    components/xclient/cursor.h
-    components/xclient/motion_fx.cpp
-    components/xclient/motion_fx.h
-    components/xclient/cape.h
-    components/xclient/editor/editor_animate.cpp
-    components/xclient/editor/editor_guide.cpp
-    components/xclient/editor/editor_panels.cpp
-    components/xclient/editor/editor_prefs.cpp
-    components/xclient/editor/editor_style.cpp
-    components/xclient/editor/gif_import.cpp
-    components/xclient/editor/editor_style.h
-    components/xclient/editor/editor_tools.cpp
-    components/xclient/editor/image_tools.cpp
-    components/xclient/editor/image_tools.h
-    components/xclient/editor/xeditor.cpp
-    components/xclient/editor/xeditor.h
-    components/xclient/editor/xeditor_props.cpp
-    components/xclient/editor/xeditor_files.cpp
-    components/xclient/editor/xeditor_dialogs.cpp
-    components/xclient/editor/xeditor_docks.cpp
-    components/xclient/editor/xeditor_prefabs.cpp
-    components/xclient/editor/xeditor_images.cpp
-    components/xclient/editor/xeditor_envelopes.cpp
-    components/xclient/editor/xeditor_coop.cpp
-    components/xclient/editor/xeditor_coop.h
-    components/xclient/editor/xeditor_coop_ui.cpp
-    components/xclient/editor/xeditor_live.cpp
-    components/xclient/editor/xeditor_live.h
-    components/xclient/editor/xeditor_lod.cpp
-    components/xclient/editor/xeditor_lod.h
-    components/xclient/editor/xeditor_solver.cpp
-    components/xclient/editor/xeditor_solver.h
-    components/xclient/editor/xeditor_tune.cpp
     components/xclient/hud/xc_chat.cpp
     components/xclient/hud/xc_effects.cpp
+    components/xclient/hud/xc_hud.cpp
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/impact_fx.cpp
@@ -3075,25 +3072,27 @@ if(CLIENT)
     components/xclient/jelly.h
     components/xclient/jump_fx.cpp
     components/xclient/jump_fx.h
+    components/xclient/motion_fx.cpp
+    components/xclient/motion_fx.h
+    components/xclient/music/lyrics.cpp
+    components/xclient/music/lyrics.h
     components/xclient/music/media_session.cpp
     components/xclient/music/media_session.h
     components/xclient/music/media_session_linux.cpp
     components/xclient/music/media_session_windows.cpp
     components/xclient/music/media_volume_windows.cpp
-    components/xclient/music/lyrics.cpp
-    components/xclient/music/lyrics.h
     components/xclient/music/music.cpp
     components/xclient/music/music.h
-    components/xclient/streamer.cpp
-    components/xclient/streamer.h
-    components/xclient/tee_glow.cpp
-    components/xclient/tee_glow.h
     components/xclient/screen_blur.cpp
     components/xclient/screen_blur.h
     components/xclient/spec_camera.cpp
     components/xclient/spec_camera.h
     components/xclient/sprite_fx.cpp
     components/xclient/sprite_fx.h
+    components/xclient/streamer.cpp
+    components/xclient/streamer.h
+    components/xclient/tee_glow.cpp
+    components/xclient/tee_glow.h
     components/xclient/trail_fx.cpp
     components/xclient/trail_fx.h
     components/xclient/ui/backgrounds.cpp
@@ -3105,37 +3104,37 @@ if(CLIENT)
     components/xclient/ui/imgui_backend.h
     components/xclient/ui/lang.cpp
     components/xclient/ui/lang.h
+    components/xclient/ui/map_info.cpp
+    components/xclient/ui/map_info.h
+    components/xclient/ui/map_preview.cpp
+    components/xclient/ui/map_preview.h
     components/xclient/ui/menu.cpp
     components/xclient/ui/menu.h
     components/xclient/ui/menu_assets.cpp
-    components/xclient/ui/menu_mapinfo.cpp
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
     components/xclient/ui/menu_cosmetics.cpp
+    components/xclient/ui/menu_ddnet.cpp
     components/xclient/ui/menu_demoplayer.cpp
     components/xclient/ui/menu_demos.cpp
-    components/xclient/ui/menu_votes.cpp
-    components/xclient/ui/menus_classic.cpp
     components/xclient/ui/menu_home.cpp
+    components/xclient/ui/menu_mapinfo.cpp
     components/xclient/ui/menu_music.cpp
     components/xclient/ui/menu_presets.cpp
     components/xclient/ui/menu_search.cpp
     components/xclient/ui/menu_servers.cpp
-    components/xclient/ui/map_preview.cpp
-    components/xclient/ui/map_preview.h
-    components/xclient/ui/menu_status.cpp
     components/xclient/ui/menu_settings.cpp
-    components/xclient/ui/menu_tclient.cpp
-    components/xclient/ui/menu_warlist.cpp
-    components/xclient/ui/menu_topbar.cpp
-    components/xclient/ui/menu_ddnet.cpp
     components/xclient/ui/menu_settings_list.cpp
-    components/xclient/ui/settings_list.h
+    components/xclient/ui/menu_status.cpp
+    components/xclient/ui/menu_tclient.cpp
+    components/xclient/ui/menu_topbar.cpp
     components/xclient/ui/menu_visuals.cpp
-    components/xclient/ui/map_info.cpp
-    components/xclient/ui/map_info.h
+    components/xclient/ui/menu_votes.cpp
+    components/xclient/ui/menu_warlist.cpp
+    components/xclient/ui/menus_classic.cpp
     components/xclient/ui/player_stats.cpp
     components/xclient/ui/player_stats.h
+    components/xclient/ui/settings_list.h
     components/xclient/ui/theme.cpp
     components/xclient/ui/theme.h
     components/xclient/ui/widgets.cpp
@@ -3145,6 +3144,8 @@ if(CLIENT)
     components/xclient/weapon_view.h
     components/xclient/weather.cpp
     components/xclient/weather.h
+    components/xclient/world3d.cpp
+    components/xclient/world3d.h
     components/xclient/world_fx.cpp
     components/xclient/world_fx.h
     components/xclient/xc_helpers.cpp

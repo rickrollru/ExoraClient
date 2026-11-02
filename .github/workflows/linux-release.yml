@@ -1,0 +1,67 @@
+# Builds the Linux version of Exora Client and attaches it to the GitHub release.
+# Runs by itself when a release is published, or by hand (Actions -> Linux release -> Run workflow).
+name: Linux release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach the archive to (e.g. v0.4). Empty: only build, the archive is in the run artifacts'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    # Ubuntu 22.04: the archive runs on it and on everything newer (Debian 12, Fedora, Arch, Mint 21+...)
+    runs-on: ubuntu-22.04
+    env:
+      CARGO_HTTP_MULTIPLEXING: false
+      TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        submodules: recursive
+        ref: ${{ github.event.release.tag_name || github.event.inputs.tag || github.ref }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y \
+          cmake g++-12 glslang-tools libcurl4-openssl-dev libfreetype6-dev libglew-dev libnotify-dev \
+          libogg-dev libopus-dev libopusfile-dev libpng-dev libsdl2-dev libsqlite3-dev libssl-dev \
+          libvulkan-dev libwavpack-dev ninja-build pkg-config python3 spirv-tools
+
+    - name: Build
+      env:
+        CC: gcc-12
+        CXX: g++-12
+      run: |
+        mkdir release
+        cd release
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DVIDEORECORDER=OFF -DDOWNLOAD_GTEST=OFF -DPRECOMPILE_HEADERS=OFF ..
+        cmake --build . --target package_default
+
+    - name: Name the archive
+      run: |
+        mkdir artifacts
+        NAME=ExoraClient-linux_x86_64.tar.xz
+        if [ -n "$TAG" ]; then NAME="ExoraClient-$TAG-linux_x86_64.tar.xz"; fi
+        mv release/ExoraClient-linux_x86_64.tar.xz "artifacts/$NAME"
+        ls -la artifacts
+
+    - name: Upload the build
+      uses: actions/upload-artifact@v6
+      with:
+        name: exoraclient-linux
+        path: artifacts
+
+    - name: Attach to the release
+      if: env.TAG != ''
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release upload "$TAG" artifacts/*.tar.xz --clobber --repo "${{ github.repository }}"
