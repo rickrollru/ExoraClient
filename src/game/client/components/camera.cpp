@@ -411,7 +411,7 @@ void CCamera::OnRender()
 	{
 		const bool Demo = Client()->State() == IClient::STATE_DEMOPLAYBACK;
 		const bool Spectating = GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_MultiViewActivated && (!Demo || g_Config.m_XcSpecSmoothDemo);
-		m_Center = m_XcSpecCamera.Apply(m_Center, Client()->RenderFrameTime(), Spectating);
+		m_Center = m_XcSpecCamera.Apply(m_Center, Client()->RenderFrameTime(), Spectating, m_CamType == CAMTYPE_SPEC);
 	}
 	// XClient: camera shake, only the view moves (the saved camera state above stays untouched)
 	if(m_CamType == CAMTYPE_PLAYER && !m_CameraSmoothing)

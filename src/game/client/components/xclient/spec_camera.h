@@ -10,7 +10,8 @@ class CXcSpecCamera
 {
 public:
 	// Target: where the game puts the camera this frame. Returns where to show it.
-	vec2 Apply(vec2 Target, float Dt, bool Active);
+	// FreeView: the camera moved by the mouse (never jumps, only a fast player follow may jump)
+	vec2 Apply(vec2 Target, float Dt, bool Active, bool FreeView);
 	void Reset() { m_Valid = false; }
 
 private:

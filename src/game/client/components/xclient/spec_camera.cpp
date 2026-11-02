@@ -5,15 +5,16 @@
 #include <algorithm>
 #include <cmath>
 
-vec2 CXcSpecCamera::Apply(vec2 Target, float Dt, bool Active)
+vec2 CXcSpecCamera::Apply(vec2 Target, float Dt, bool Active, bool FreeView)
 {
 	if(!Active || g_Config.m_XcSpecSmooth <= 0)
 	{
 		m_Valid = false;
 		return Target;
 	}
-	// a jump of the target (a teleport, a respawn, another map part) is followed at once, not flown through
-	if(!m_Valid || distance(Target, m_LastTarget) > 900.0f || distance(Target, m_Pos) > 2500.0f)
+	// a jump of the watched player (a teleport, a respawn) is followed at once, not flown through; the free view
+	// moved by the mouse never jumps, however fast the mouse goes
+	if(!m_Valid || (!FreeView && distance(Target, m_LastTarget) > 900.0f))
 	{
 		m_Valid = true;
 		m_Pos = Target;
@@ -31,5 +32,9 @@ vec2 CXcSpecCamera::Apply(vec2 Target, float Dt, bool Active)
 	const vec2 Temp = (m_Vel + Change * Omega) * Dt;
 	m_Vel = (m_Vel - Temp * Omega) * Exp;
 	m_Pos = Target + (Change + Temp) * Exp;
+	// never too far behind: it is pulled along instead
+	const float MaxLag = 1500.0f;
+	if(distance(m_Pos, Target) > MaxLag)
+		m_Pos = Target + normalize(m_Pos - Target) * MaxLag;
 	return m_Pos;
 }

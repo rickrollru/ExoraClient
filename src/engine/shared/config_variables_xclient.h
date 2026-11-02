@@ -335,7 +335,7 @@ MACRO_CONFIG_INT(XcFastInputAuto, xc_fast_input_auto, 1, 0, 1, CFGFLAG_CLIENT | 
 MACRO_CONFIG_INT(XcFastInputAmount, xc_fast_input_amount, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Exora input: how much sooner, in milliseconds (when not automatic)")
 MACRO_CONFIG_INT(XcFastInputSmooth, xc_fast_input_smooth, 50, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Exora input: how softly the corrections after a new press melt (0 = snap)")
 MACRO_CONFIG_INT(XcFastInputOthers, xc_fast_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Exora input: also for other players, one tick ahead, only on servers that send their inputs ahead")
-MACRO_CONFIG_INT(XcSpecSmooth, xc_spec_smooth, 40, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Smooth camera while spectating: how softly it follows (0 = off)")
+MACRO_CONFIG_INT(XcSpecSmooth, xc_spec_smooth, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Smooth camera while spectating: how softly it follows (0 = off)")
 MACRO_CONFIG_INT(XcSpecSmoothDemo, xc_spec_smooth_demo, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Smooth spectator camera in demos too")
 MACRO_CONFIG_INT(XcMotionBlur, xc_motion_blur, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Motion blur behind fast tees")
 MACRO_CONFIG_INT(XcMotionBlurStrength, xc_motion_blur_strength, 50, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Motion blur of the tees in percent")
