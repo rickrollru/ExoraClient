@@ -248,7 +248,8 @@ void CXcLiveEdit::Update()
 	}
 	// only into the map that is played, on the local server
 	IClient *pClient = E.Client();
-	const bool OnServer = pClient->State() == IClient::STATE_ONLINE && net_addr_is_local(&pClient->ServerAddress()) && str_comp(pClient->ServerInfo().m_aMap, m_MapName.c_str()) == 0;
+	// only the host (logged into rcon on his server) sends, the server takes the blocks from him only
+	const bool OnServer = pClient->State() == IClient::STATE_ONLINE && pClient->RconAuthed() && net_addr_is_local(&pClient->ServerAddress()) && str_comp(pClient->ServerInfo().m_aMap, m_MapName.c_str()) == 0;
 	if(!OnServer)
 		return;
 	const float Now = pClient->GlobalTime();

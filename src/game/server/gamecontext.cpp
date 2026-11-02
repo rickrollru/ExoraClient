@@ -2798,6 +2798,10 @@ void CGameContext::OnXcLiveTilesNetMessage(CUnpacker *pUnpacker, int ClientId)
 {
 	if(!g_Config.m_SvXcLiveEdit)
 		return;
+	// only the one who runs the server (logged into rcon) changes the map: the changes of the friends in the
+	// shared editor reach his editor and go from there; other players cannot touch the map
+	if(Server()->GetAuthedState(ClientId) == AUTHED_NO)
+		return;
 	int Group, Layer, CellSize;
 	std::vector<XcLiveEdit::SRun> vRuns;
 	if(!XcLiveEdit::Read(pUnpacker, &Group, &Layer, &CellSize, &vRuns))
