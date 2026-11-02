@@ -100,6 +100,7 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_BACKGROUND, "##bg_maps", "Maps", "Animated DDNet maps behind the main menu", "карты карта темы map maps themes"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_PLAYER, "##profile", "Profile", "Name and clan of you and your dummy", "ник имя клан дамми name nick clan dummy"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_PLAYER, "##skin", "Skin", "Skin name and custom colors", "скин цвет skin color colour"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##fast_input", "Exora input", "Your tee on the screen answers your keys sooner and without jerks. Only the picture: what goes to the server stays the same", "быстрый ввод фаст инпут задержка инпут лаг отклик fast input delay latency input lag"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##mouse", "Mouse", "Sensitivity in game and in menus", "мышь чувствительность сенса mouse sensitivity sens"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##camera", "Camera", "Dynamic camera follows the mouse", "камера динамическая dyncam camera"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CONTROLS, "##binds", "Key binds", "Click a key and press a new one, Esc cancels", "бинды клавиши кнопки управление binds keys jump hook прыжок хук"},

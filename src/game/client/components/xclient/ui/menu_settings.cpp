@@ -442,6 +442,22 @@ void CXcMenu::RenderSettingsPlayer()
 void CXcMenu::RenderSettingsControls()
 {
 	BeginCardGrid("##controls", 2);
+	if(BeginCard("##fast_input", Tr("Exora input"), Tr("Your tee on the screen answers your keys sooner and without jerks. Only the picture: what goes to the server stays the same"), &g_Config.m_XcFastInput))
+	{
+		ToggleRow(Tr("Automatic amount"), "xc_fast_input_auto", &g_Config.m_XcFastInputAuto);
+		if(g_Config.m_XcFastInputAuto)
+		{
+			char aBuf[64];
+			str_format(aBuf, sizeof(aBuf), Tr("Now: %d ms sooner"), GameClient()->m_XcFastInput.AutoMs());
+			Description(aBuf);
+		}
+		else
+			ConfigSlider(Tr("How much sooner"), "xc_fast_input_amount", &g_Config.m_XcFastInputAmount, 1, 60, "%d ms");
+		ConfigSlider(Tr("Smooth corrections"), "xc_fast_input_smooth", &g_Config.m_XcFastInputSmooth, 0, 100, "%d%%");
+		ToggleRow(Tr("Other players too"), "xc_fast_input_others", &g_Config.m_XcFastInputOthers);
+		Description(Tr("Up to one game tick (20 ms) only hides the wait for the next tick. More shows your tee ahead of the server and can wobble"));
+		EndCard();
+	}
 	if(BeginCard("##mouse", Tr("Mouse"), Tr("Sensitivity in game and in menus")))
 	{
 		ConfigSlider(Tr("In game"), "inp_mousesens", &g_Config.m_InpMousesens, 1, 500);

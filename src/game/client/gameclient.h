@@ -104,6 +104,7 @@
 #include "components/xclient/jelly.h"
 #include "components/xclient/hud/xc_hud.h"
 #include "components/xclient/jump_fx.h"
+#include "components/xclient/fast_input.h"
 #include "components/xclient/screen_blur.h"
 #include "components/xclient/sprite_fx.h"
 #include "components/xclient/music/lyrics.h"
@@ -294,6 +295,7 @@ public:
 	CJumpFx m_JumpFx;
 	CTeeGlow m_TeeGlow;
 	CXcScreenBlur m_XcScreenBlur;
+	CXcFastInput m_XcFastInput;
 	CTrailFx m_TrailFx;
 	CItemFx m_ItemFx;
 	CXcImpactFx m_ImpactFx;

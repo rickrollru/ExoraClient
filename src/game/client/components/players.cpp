@@ -1168,7 +1168,7 @@ void CPlayers::OnRender()
 
 			Frozen = GameClient()->m_aClients[i].m_Predicted.m_FreezeEnd != 0;
 			// TClient
-			if(g_Config.m_TcFastInput)
+			if(CXcFastInput::On()) // XClient: Exora input too
 				Frozen = GameClient()->m_aClients[i].m_RegularPredicted.m_FreezeEnd != 0;
 		}
 		else

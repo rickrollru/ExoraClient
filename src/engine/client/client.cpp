@@ -3034,7 +3034,7 @@ void CClient::Update()
 					SendInput();
 				}
 
-				if(g_Config.m_TcFastInput && GameClient()->CheckNewInput())
+				if((g_Config.m_TcFastInput || g_Config.m_XcFastInput) && GameClient()->CheckNewInput()) // XClient: Exora input too
 				{
 					Repredict = true;
 				}

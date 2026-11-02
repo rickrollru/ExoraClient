@@ -144,6 +144,7 @@ void CGameClient::OnConsoleInit()
 					      &m_MapLayersBackground, // first to render
 					      &m_BgDraw, // TClient
 					      &m_XcScreenBlur, // XClient: motion blur of the map, right after the blocks
+					      &m_XcFastInput, // XClient: Exora input (automatic amount)
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
@@ -2841,14 +2842,14 @@ void CGameClient::OnPredict()
 	// predict
 
 	int FastInputTicks = 0;
-	if(g_Config.m_TcFastInput)
-		FastInputTicks = (g_Config.m_TcFastInputAmount + 19) / 20;
+	if(CXcFastInput::On()) // XClient: TClient fast input or Exora input
+		FastInputTicks = (CXcFastInput::AmountMs() + 19) / 20;
 
 	int FinalTickRegular = Client()->PredGameTick(g_Config.m_ClDummy); // The vanilla final tick disregarding fast input
 
 	int FinalTickSelf = FinalTickRegular + FastInputTicks; // the final tick for just our local tee
 	int FinalTickOthers = FinalTickSelf; // the final tick for all other tees
-	if(g_Config.m_TcFastInput && !g_Config.m_TcFastInputOthers)
+	if(CXcFastInput::On() && !CXcFastInput::Others()) // XClient
 		FinalTickOthers = FinalTickSelf - FastInputTicks;
 
 	int LocalTee = g_Config.m_ClDummy ^ m_IsDummySwapping;
@@ -2892,7 +2893,7 @@ void CGameClient::OnPredict()
 		CNetObj_PlayerInput DummyFastInput{};
 		bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
-		if(g_Config.m_TcFastInput && Tick > FinalTickRegular)
+		if(CXcFastInput::On() && Tick > FinalTickRegular) // XClient
 		{
 			pInputData = &m_Controls.m_aFastInput[LocalTee];
 			if(GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
@@ -4326,8 +4327,8 @@ void CGameClient::UpdateRenderedCharacters()
 
 			if(g_Config.m_TcRemoveAnti)
 				Pos = GetFreezePos(i);
-			else if(g_Config.m_TcFastInput && (i == m_Snap.m_LocalClientId || IsDummy))
-				Pos = GetFastInputPos(i);
+			else if(CXcFastInput::On() && (i == m_Snap.m_LocalClientId || IsDummy)) // XClient: Exora input smooths the corrections
+				Pos = m_XcFastInput.Smooth(i, GetFastInputPos(i));
 
 			if(i == m_Snap.m_LocalClientId || IsDummy)
 			{
@@ -4353,8 +4354,8 @@ void CGameClient::UpdateRenderedCharacters()
 
 				if(g_Config.m_TcRemoveAnti && m_pClient->m_IsLocalFrozen)
 					Pos = GetFreezePos(i);
-				else if(g_Config.m_TcFastInput && g_Config.m_TcFastInputOthers && !g_Config.m_TcAntiPingImproved)
-					Pos = GetFastInputPos(i);
+				else if(CXcFastInput::On() && CXcFastInput::Others() && !g_Config.m_TcAntiPingImproved) // XClient
+					Pos = m_XcFastInput.Smooth(i, GetFastInputPos(i));
 
 				if(g_Config.m_TcShowOthersGhosts && g_Config.m_TcSwapGhosts && !(m_aClients[i].m_FreezeEnd > 0 && g_Config.m_TcHideFrozenGhosts))
 					Pos = UnpredPos;
@@ -4505,7 +4506,7 @@ void CGameClient::DetectStrongHook()
 
 vec2 CGameClient::GetSmoothPos(int ClientId)
 {
-	const int FastInputTicks = g_Config.m_TcFastInput ? (g_Config.m_TcFastInputAmount + 19) / 20 : 0;
+	const int FastInputTicks = CXcFastInput::On() ? (CXcFastInput::AmountMs() + 19) / 20 : 0; // XClient
 	vec2 Pos = mix(m_aClients[ClientId].m_PrevPredicted.m_Pos, m_aClients[ClientId].m_Predicted.m_Pos, Client()->PredIntraGameTick(g_Config.m_ClDummy));
 	int64_t Now = time_get();
 	for(int i = 0; i < 2; i++)
@@ -4519,7 +4520,7 @@ vec2 CGameClient::GetSmoothPos(int ClientId)
 			float SmoothIntra;
 			Client()->GetSmoothTick(&SmoothTick, &SmoothIntra, MixAmount);
 
-			if(ClientId != m_Snap.m_LocalClientId && g_Config.m_TcFastInputOthers && FastInputTicks > 0)
+			if(ClientId != m_Snap.m_LocalClientId && CXcFastInput::Others() && FastInputTicks > 0) // XClient
 				SmoothTick += FastInputTicks;
 
 			if(SmoothTick > 0 &&
@@ -4537,8 +4538,8 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 
 	vec2 Pos = mix(m_aClients[ClientId].m_PrevPredicted.m_Pos, m_aClients[ClientId].m_Predicted.m_Pos, PredIntraTick);
 
-	float FastInputIntra = (g_Config.m_TcFastInputAmount % 20) / 20.0f;
-	int FastInputTicks = g_Config.m_TcFastInputAmount / 20;
+	float FastInputIntra = (CXcFastInput::AmountMs() % 20) / 20.0f; // XClient
+	int FastInputTicks = CXcFastInput::AmountMs() / 20;
 
 	float CombinedIntra = PredIntraTick + FastInputIntra;
 
@@ -4598,8 +4599,8 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	m_SmoothTick = SmoothTick;
 	m_SmoothIntraTick = SmoothIntra;
 
-	float FastInputIntra = (g_Config.m_TcFastInputAmount % 20) / 20.0f;
-	int FastInputTicks = g_Config.m_TcFastInputAmount / 20;
+	float FastInputIntra = (CXcFastInput::AmountMs() % 20) / 20.0f; // XClient
+	int FastInputTicks = CXcFastInput::AmountMs() / 20;
 
 	float CombinedIntra = SmoothIntra + FastInputIntra;
 
@@ -4610,12 +4611,12 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	FastInputTicks += CarryOverTicks;
 
 	const bool IsLocal = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]);
-	if(IsLocal && g_Config.m_TcFastInput)
+	if(IsLocal && CXcFastInput::On()) // XClient
 	{
 		SmoothTick += FastInputTicks;
 		SmoothIntra = FinalIntra;
 	}
-	else if(!IsLocal && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput)
+	else if(!IsLocal && CXcFastInput::Others() && CXcFastInput::On()) // XClient
 	{
 		SmoothTick += FastInputTicks;
 		SmoothIntra = FinalIntra;
@@ -5660,7 +5661,10 @@ void CGameClient::StoreSave(const char *pTeamMembers, const char *pGeneratedCode
 
 bool CGameClient::CheckNewInput()
 {
-	return m_Controls.CheckNewInput();
+	const bool New = m_Controls.CheckNewInput();
+	if(New)
+		CXcFastInput::NoteNewInput(); // XClient: Exora input smooths the change it makes
+	return New;
 }
 
 void CGameClient::SetConnectInfo(const NETADDR *pAddress)
