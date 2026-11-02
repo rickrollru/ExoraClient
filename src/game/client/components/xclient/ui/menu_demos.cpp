@@ -13,6 +13,8 @@
 
 #include <engine/client.h>
 #include <engine/demo.h>
+#include <engine/shared/config.h>
+#include <engine/shared/video.h>
 #include <engine/external/imgui/imgui.h>
 #include <engine/external/imgui/imgui_internal.h>
 #include <engine/storage.h>
@@ -303,6 +305,8 @@ void CXcMenu::RenderDemoDetails(SDemoEntry *pEntry, float Height)
 
 	if(Button(Tr("Watch"), true, -1.0f) && pEntry->m_Valid)
 		PlayDemo(*pEntry);
+	if(pEntry->m_Valid)
+		RenderDemoVideo(pEntry);
 
 	// rename: the field is filled again when another demo is picked
 	ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
@@ -468,4 +472,113 @@ void CXcMenu::RenderDemos()
 		else if(Entry.m_Valid)
 			PlayDemo(Entry);
 	}
+}
+
+// a demo into an mp4 video in the videos folder: the demo plays while it is written (as fast as the computer can)
+void CXcMenu::RenderDemoVideo(SDemoEntry *pEntry)
+{
+	ImGui::Dummy(ImVec2(0.0f, S(10.0f)));
+	Title(Tr("Video"));
+#if defined(CONF_VIDEORECORDER)
+	if(m_DemoVideoFor != pEntry->m_File)
+	{
+		m_DemoVideoFor = pEntry->m_File;
+		str_copy(m_aDemoVideoName, pEntry->m_Name.c_str());
+		m_DemoRenderReplace = false;
+	}
+	ParamLabel(Tr("File name"));
+	InputText("##video_name", m_aDemoVideoName, sizeof(m_aDemoVideoName));
+
+	// the speeds that make sense for a video
+	static const int s_aSpeedIndices[] = {2, 4, 7, 9};
+	const char *apSpeeds[] = {"0.5x", "1x", "2x", "4x"};
+	int SpeedChoice = 1;
+	for(int i = 0; i < 4; i++)
+		if(s_aSpeedIndices[i] == m_DemoRenderSpeed)
+			SpeedChoice = i;
+	ParamLabel(Tr("Speed"));
+	if(Segmented("##video_speed", &SpeedChoice, apSpeeds, 4))
+		m_DemoRenderSpeed = s_aSpeedIndices[SpeedChoice];
+
+	ToggleRow(Tr("Show the HUD"), "cl_video_showhud", &g_Config.m_ClVideoShowhud);
+	ToggleRow(Tr("Show the chat"), "cl_video_showchat", &g_Config.m_ClVideoShowChat);
+	ToggleRow(Tr("Sound"), "cl_video_sound_enable", &g_Config.m_ClVideoSndEnable);
+	ParamLabel(Tr("Key presses on the tees"));
+	const char *apKeys[] = {Tr("Off"), Tr("Others"), Tr("All"), Tr("Mine")};
+	ConfigSegmented("##video_keys", "cl_video_show_direction", &g_Config.m_ClVideoShowDirection, apKeys, 4);
+	ConfigSlider(Tr("Frames a second"), "cl_video_recorder_fps", &g_Config.m_ClVideoRecorderFPS, 30, 240);
+	// quality: the lower the CRF, the better; shown as a plain choice
+	ParamLabel(Tr("Quality"));
+	static const int s_aCrf[] = {28, 22, 18, 12};
+	const char *apQuality[] = {Tr("Small file"), Tr("Good"), Tr("High"), Tr("Best")};
+	int Quality = 2;
+	for(int i = 0; i < 4; i++)
+		if(g_Config.m_ClVideoX264Crf >= s_aCrf[i])
+		{
+			Quality = i;
+			break;
+		}
+	if(Segmented("##video_quality", &Quality, apQuality, 4))
+		g_Config.m_ClVideoX264Crf = s_aCrf[Quality];
+	ParamLabel(Tr("Encoding"));
+	static const int s_aPresets[] = {1, 4, 6};
+	const char *apPresets[] = {Tr("Fast"), Tr("Normal"), Tr("Smaller file")};
+	int PresetChoice = 1;
+	for(int i = 0; i < 3; i++)
+		if(g_Config.m_ClVideoX264Preset == s_aPresets[i])
+			PresetChoice = i;
+	if(Segmented("##video_preset", &PresetChoice, apPresets, 3))
+		g_Config.m_ClVideoX264Preset = s_aPresets[PresetChoice];
+
+	char aVideoPath[IO_MAX_PATH_LENGTH];
+	str_format(aVideoPath, sizeof(aVideoPath), "videos/%s.mp4", m_aDemoVideoName);
+	const bool Exists = m_aDemoVideoName[0] && Storage()->FileExists(aVideoPath, IStorage::TYPE_SAVE);
+	if(Exists && !m_DemoRenderReplace)
+		Description(Tr("A video with this name exists: the next click replaces it"));
+	if(Button(Tr("Render the video"), true, -1.0f) && m_aDemoVideoName[0] && !IVideo::Current())
+	{
+		if(!str_valid_filename(m_aDemoVideoName))
+			Toast(Tr("This name can not be used for a file"), TOAST_ERROR);
+		else if(Exists && !m_DemoRenderReplace)
+			m_DemoRenderReplace = true;
+		else
+		{
+			char aDemoPath[IO_MAX_PATH_LENGTH];
+			DemoPath(*pEntry, aDemoPath, sizeof(aDemoPath));
+			const char *pError = Client()->DemoPlayer_Render(aDemoPath, pEntry->m_StorageType, m_aDemoVideoName, m_DemoRenderSpeed, false);
+			m_DemoRenderReplace = false;
+			if(pError)
+				Toast(pError, TOAST_ERROR);
+			else
+			{
+				m_DemoRendering = true;
+				m_DemoRenderedName = m_aDemoVideoName;
+				SetActive(false);
+			}
+		}
+	}
+	if(Button(Tr("Open the videos folder"), false, -1.0f))
+	{
+		Storage()->CreateFolder("videos", IStorage::TYPE_SAVE);
+		char aFolder[IO_MAX_PATH_LENGTH];
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "videos", aFolder, sizeof(aFolder));
+		Client()->ViewFile(aFolder);
+	}
+	Description(Tr("The demo plays while the video is written, Esc stops it. The video goes to the videos folder"));
+#else
+	Description(Tr("This build has no video recording (FFmpeg is off when it was built)"));
+#endif
+}
+
+// the render ends when the demo stops playing: tell where the video is
+void CXcMenu::UpdateDemoRender()
+{
+#if defined(CONF_VIDEORECORDER)
+	if(!m_DemoRendering || IVideo::Current())
+		return;
+	m_DemoRendering = false;
+	char aText[256];
+	str_format(aText, sizeof(aText), Tr("The video is ready: videos/%s.mp4"), m_DemoRenderedName.c_str());
+	Toast(aText);
+#endif
 }

@@ -440,6 +440,7 @@ void CXcMenu::RenderAnimatedBackground(ImDrawList *pDraw, float Alpha)
 
 void CXcMenu::OnRender()
 {
+	UpdateDemoRender();
 	if(!m_Backend.IsReady() || !g_Config.m_XcNewMenu)
 	{
 		// switched to the classic menu (or no fonts): hand the screen over to it, otherwise nothing shows

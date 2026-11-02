@@ -384,6 +384,15 @@ private:
 	int m_DemoSort = 0;
 	char m_aDemoRename[128] = {};
 	std::string m_DemoRenameFor;
+	// rendering a demo into a video (needs the build with FFmpeg)
+	char m_aDemoVideoName[128] = {};
+	std::string m_DemoVideoFor;
+	int m_DemoRenderSpeed = 4; // index into DEMO_SPEEDS, 1x
+	bool m_DemoRenderReplace = false;
+	bool m_DemoRendering = false;
+	std::string m_DemoRenderedName;
+	void RenderDemoVideo(SDemoEntry *pEntry);
+	void UpdateDemoRender();
 	std::string m_DemoDeleteArmed;
 	float m_DemoDeleteArmedUntil = 0.0f;
 	static int DemoListCallback(const CFsFileInfo *pInfo, int IsDir, int StorageType, void *pUser);
