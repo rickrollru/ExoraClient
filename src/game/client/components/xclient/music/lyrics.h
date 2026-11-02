@@ -35,6 +35,10 @@ public:
 	// the plate and the words in the new HUD style; called by the HUD inside its ImGui frame
 	bool WantsHud() const { return m_Fade > 0.0f || !m_vWords.empty(); }
 	void RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, float Alpha);
+	// with the render module: the words and the line sung now as neon (captured, blurred by a shader into a glow,
+	// a light rim around the letters), drawn after the HUD frame
+	void RenderNeon(class CImGuiBackend &Backend, ImFont *pBold, float Alpha);
+	bool NeonActive() const;
 	// the HUD fonts have Latin and Cyrillic only; other letters (Japanese, Korean...) take the game font
 	static bool OwnFontCovers(const char *pText);
 
@@ -111,6 +115,8 @@ private:
 	// the lines spread evenly over the track (lyrics without times)
 	std::vector<SLine> SpreadPlain(const std::string &Text) const;
 	int m_PlateLine = -1;
+	float m_NowRect[3] = {0.0f, 0.0f, 0.0f}; // the line sung now on the plate: x, y, size in pixels
+	float m_NowFade = 0.0f;
 	double m_PlatePosition = 0.0;
 	void PlaceWord(SWord &Word);
 	// how a word looks now: false while it is hidden

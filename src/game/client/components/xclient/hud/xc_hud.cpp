@@ -1178,6 +1178,9 @@ void CXcHud::OnRender()
 		RenderScoreboard(ImGui::GetForegroundDrawList(), Dt);
 	BlurChat();
 	m_Backend.Render();
+	// XClient lyrics: the neon words and line go through the render module, after the HUD frame
+	if(Lyrics && !m_Editing)
+		GameClient()->m_XcLyrics.RenderNeon(m_Backend, m_Backend.Fonts().m_pHeader, Alpha);
 
 	if(m_Editing || ScoreboardMouse())
 	{

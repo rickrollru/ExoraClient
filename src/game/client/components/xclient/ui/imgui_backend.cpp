@@ -355,6 +355,20 @@ void CImGuiBackend::Render()
 	}
 }
 
+void CImGuiBackend::RenderDrawList(ImDrawList *pList, float DisplayWidth, float DisplayHeight)
+{
+	ImDrawData Data;
+	Data.Valid = true;
+	Data.CmdLists.push_back(pList);
+	Data.CmdListsCount = 1;
+	Data.TotalVtxCount = pList->VtxBuffer.Size;
+	Data.TotalIdxCount = pList->IdxBuffer.Size;
+	Data.DisplayPos = ImVec2(0.0f, 0.0f);
+	Data.DisplaySize = ImVec2(DisplayWidth, DisplayHeight);
+	Data.FramebufferScale = ImVec2(1.0f, 1.0f);
+	RenderDrawData(&Data);
+}
+
 void CImGuiBackend::RenderDrawData(ImDrawData *pDrawData)
 {
 	if(!pDrawData || pDrawData->TotalVtxCount == 0)

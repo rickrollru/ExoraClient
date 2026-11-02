@@ -46,6 +46,8 @@ public:
 	void OnMouseMove(vec2 MousePos);
 	void NewFrame(float Dt, vec2 MousePos);
 	void Render();
+	// draws one draw list made outside the frame (an effect that goes through the render module in between)
+	void RenderDrawList(struct ImDrawList *pList, float DisplayWidth, float DisplayHeight);
 
 	// Lets ImGui draw a DDNet texture, e.g. skin previews.
 	void *TextureId(IGraphics::CTextureHandle Texture);

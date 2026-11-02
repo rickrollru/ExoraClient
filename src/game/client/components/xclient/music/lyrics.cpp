@@ -18,8 +18,13 @@
 #include <game/client/gameclient.h>
 
 #include <engine/external/imgui/imgui.h>
+#include <engine/external/imgui/imgui_internal.h>
+#include <engine/xc_render.h>
+
+#include <game/client/components/xclient/ui/imgui_backend.h>
 
 #include <algorithm>
+#include <functional>
 #include <cmath>
 
 using namespace XcHelpers;
@@ -549,7 +554,8 @@ void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, floa
 		{
 			float WordAlpha, Pop;
 			vec2 WorldPos;
-			if(!OwnFontCovers(Word.m_Text.c_str()) || !WordLook(Word, WordAlpha, Pop, WorldPos))
+			// drawn as neon by the render module (RenderNeon)
+			if(NeonActive() || !OwnFontCovers(Word.m_Text.c_str()) || !WordLook(Word, WordAlpha, Pop, WorldPos))
 				continue;
 			WordAlpha *= Alpha;
 			const float TextSize = Size * Pop;
@@ -627,6 +633,12 @@ void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, floa
 	Centered(pSmall, SmallSize, Top, Col(t.m_TextMuted, Fade), pBefore);
 	Centered(pSmall, SmallSize, Top + SmallSize + Size + 14.0f * k, Col(t.m_TextMuted, Fade), pAfter);
 	const float NowY = Top + SmallSize + 7.0f * k;
+	m_NowRect[0] = (Display.x - Width(pBold, Size, pNow)) * 0.5f;
+	m_NowRect[1] = NowY;
+	m_NowRect[2] = Size;
+	m_NowFade = Fade;
+	if(NeonActive())
+		return; // the line sung now: neon, drawn by RenderNeon
 	Centered(pBold, Size, NowY, Col(t.m_Text, Fade), pNow);
 	// the part already sung once more in the accent color, cut at the progress
 	const double Start = m_vLines[Line].m_Time;
@@ -715,4 +727,96 @@ void CXcLyrics::RenderWordsClassic()
 	}
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 	TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
+}
+
+bool CXcLyrics::NeonActive() const
+{
+	return GameClient()->m_FxRenderer.ModuleActive() && g_Config.m_XcLyricsGlow > 0;
+}
+
+// one piece of neon: the letters go into a capture, the render module blurs their shape into the glow around them,
+// draws a light rim at their edge and the letters on top (the same as the neon outline of the tees)
+void CXcLyrics::RenderNeon(CImGuiBackend &Backend, ImFont *pBold, float Alpha)
+{
+	if(!NeonActive() || Alpha <= 0.0f || !pBold)
+		return;
+	const ImVec2 Display = ImGui::GetIO().DisplaySize;
+	const ImTextureID FontTexture = ImGui::GetIO().Fonts->TexID;
+	const auto Rgba = [](ColorRGBA c, float a) { return ImGui::GetColorU32(ImVec4(c.r, c.g, c.b, c.a * a)); };
+	const float GlowAmount = g_Config.m_XcLyricsGlow / 100.0f;
+	const float GlowSize = g_Config.m_XcLyricsGlowSize / 100.0f;
+
+	// a piece of text at a pixel rectangle: captured, glowing in Color
+	const auto Neon = [&](float x0, float y0, float x1, float y1, float TextSize, ColorRGBA Color, float PieceAlpha, const std::function<void(ImDrawList &)> &fnDraw) {
+		const float Reach = TextSize * 0.45f * GlowSize + 4.0f;
+		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Display.x, Display.y));
+		const float aRect[4] = {x0 - Reach * 2.0f, y0 - Reach * 2.0f, x1 + Reach * 2.0f, y1 + Reach * 2.0f};
+		Graphics()->XcCaptureBegin(aRect);
+		ImDrawList List(ImGui::GetDrawListSharedData());
+		List._ResetForNewFrame();
+		List.PushClipRectFullScreen();
+		List.PushTextureID(FontTexture);
+		fnDraw(List);
+		Backend.RenderDrawList(&List, Display.x, Display.y);
+		XcRender::SGlowSettings Settings;
+		Settings.m_Color = Color.WithAlpha(PieceAlpha);
+		Settings.m_RimColor = ColorRGBA(mix(Color.r, 1.0f, 0.35f), mix(Color.g, 1.0f, 0.35f), mix(Color.b, 1.0f, 0.35f), 0.9f * PieceAlpha);
+		Settings.m_Radius = Reach;
+		Settings.m_Strength = 2.6f * GlowAmount;
+		Settings.m_RimWidth = std::max(TextSize * 0.04f, 1.0f);
+		Settings.m_DoGlow = true;
+		Graphics()->XcCaptureEnd(Settings);
+	};
+
+	// the words on the map
+	if(!m_vWords.empty())
+	{
+		const vec2 Camera = GameClient()->m_Camera.m_Center;
+		const CScreenRect World = Graphics()->MapScreenToWorld(Camera.x, Camera.y, 100.0f, 100.0f, 100.0f, 0.0f, 0.0f, Graphics()->ScreenAspect(), GameClient()->m_Camera.m_Zoom);
+		const float PerUnit = Display.y / std::max(World.m_BottomRight.y - World.m_TopLeft.y, 1.0f);
+		const auto ToScreen = [&](vec2 Pos) { return ImVec2((Pos.x - World.m_TopLeft.x) / (World.m_BottomRight.x - World.m_TopLeft.x) * Display.x, (Pos.y - World.m_TopLeft.y) / (World.m_BottomRight.y - World.m_TopLeft.y) * Display.y); };
+		const float Size = WORD_SIZE * g_Config.m_XcLyricsSize / 100.0f * PerUnit;
+		for(const SWord &Word : m_vWords)
+		{
+			float WordAlpha, Pop;
+			vec2 WorldPos;
+			if(!OwnFontCovers(Word.m_Text.c_str()) || !WordLook(Word, WordAlpha, Pop, WorldPos))
+				continue;
+			WordAlpha *= Alpha;
+			const float TextSize = Size * Pop;
+			const char *pText = Word.m_Text.c_str();
+			const ImVec2 Dim = pBold->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pText);
+			const ImVec2 Center = ToScreen(WorldPos);
+			const ImVec2 Pos(Center.x - Dim.x * 0.5f, Center.y - Dim.y * 0.5f);
+			if(Pos.x > Display.x || Pos.y > Display.y || Pos.x + Dim.x < 0.0f || Pos.y + Dim.y < 0.0f)
+				continue;
+			const ColorRGBA Color = WordColor(Word);
+			const float White = g_Config.m_XcLyricsColor == 0 ? 0.85f : 0.25f;
+			const ColorRGBA Letters(mix(Color.r, 1.0f, White), mix(Color.g, 1.0f, White), mix(Color.b, 1.0f, White), 1.0f);
+			Neon(Pos.x, Pos.y, Pos.x + Dim.x, Pos.y + Dim.y, TextSize, Color, WordAlpha, [&](ImDrawList &List) {
+				List.AddText(pBold, TextSize, Pos, Rgba(Letters, WordAlpha), pText);
+			});
+		}
+	}
+
+	// the line sung now on the plate: white, the sung part in the accent, all of it glowing in the accent
+	const int Line = m_PlateLine;
+	if(Line >= 0 && Line < (int)m_vLines.size() && m_NowFade > 0.0f && OwnFontCovers(m_vLines[Line].m_Text.c_str()))
+	{
+		const char *pNow = m_vLines[Line].m_Text.c_str();
+		const float Size = m_NowRect[2];
+		const ImVec2 Dim = pBold->CalcTextSizeA(Size, FLT_MAX, 0.0f, pNow);
+		const ImVec2 Pos(m_NowRect[0], m_NowRect[1]);
+		const ColorRGBA Accent = EffectColor(GameClient(), 0, 0, -1);
+		const double Start = m_vLines[Line].m_Time;
+		const double End = Line + 1 < (int)m_vLines.size() ? m_vLines[Line + 1].m_Time : Start + 4.0;
+		const float Progress = (float)std::clamp((m_PlatePosition - Start) / std::max(End - Start, 0.1), 0.0, 1.0);
+		const float Fade = m_NowFade;
+		Neon(Pos.x, Pos.y, Pos.x + Dim.x, Pos.y + Dim.y, Size, Accent, Fade * 0.8f, [&](ImDrawList &List) {
+			List.AddText(pBold, Size, Pos, Rgba(ColorRGBA(0.95f, 0.95f, 0.97f, 1.0f), Fade), pNow);
+			List.PushClipRect(ImVec2(Pos.x, Pos.y - Size * 0.2f), ImVec2(Pos.x + Dim.x * Progress, Pos.y + Size * 1.4f), true);
+			List.AddText(pBold, Size, Pos, Rgba(Accent, Fade), pNow);
+			List.PopClipRect();
+		});
+	}
 }
