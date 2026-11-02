@@ -2111,6 +2111,7 @@ void CXcEditorUi::RenderStatusBar()
 		{&E.m_QuickActionHistory, Tr("History")},
 		{&E.m_QuickActionServerSettings, Tr("Server settings")},
 		{&E.m_QuickActionEnvelopes, Tr("Envelopes")},
+		{nullptr, Tr("Zoom in game")}, // the preview of how the layers look with the in game zoom
 	};
 	for(const SDockButton &Dock : aDocks)
 	{
@@ -2123,12 +2124,19 @@ void CXcEditorUi::RenderStatusBar()
 		const bool Clicked = ImGui::InvisibleButton("##dock", ImVec2(Width, Max.y - Min.y));
 		const bool Hovered = ImGui::IsItemHovered();
 		ImGui::PopID();
-		const bool Active = Dock.m_pAction->Active() || Dock.m_pAction->Color() == 1;
+		const bool Active = Dock.m_pAction ? (Dock.m_pAction->Active() || Dock.m_pAction->Color() == 1) : E.Map()->m_PreviewZoom;
+		if(Hovered && !Dock.m_pAction)
+			str_copy(E.m_aTooltip, Tr("How the layers move with the zoom players see in the game"));
 		if(Active || Hovered)
 			pDraw->AddRectFilled(Min, Max, Col(Active ? t.m_Accent : t.m_Track, Active ? 0.25f : 0.7f), S(6.0f));
 		pDraw->AddText(pFont, FontSize, ImVec2(Min.x + S(8.0f), TextY), Col(Active ? t.m_Text : t.m_TextSecondary), Dock.m_pLabel);
 		if(Clicked)
-			Dock.m_pAction->Call();
+		{
+			if(Dock.m_pAction)
+				Dock.m_pAction->Call();
+			else
+				E.Map()->m_PreviewZoom = !E.Map()->m_PreviewZoom;
+		}
 		Right -= S(4.0f);
 	}
 	const float RightWidth = pFont->CalcTextSizeA(FontSize, FLT_MAX, 0.0f, aRight).x;
@@ -2170,6 +2178,7 @@ void CXcEditorUi::RenderPalette()
 	vEntries.push_back({Tr("Tune zones..."), "Tune zones gravity tuning", Tr("Gravity, jumps, the hook and more inside a zone, with explanations"), false, false, [&]() { m_TuneRequest = true; }});
 	vEntries.push_back({Tr("Edit together..."), "Edit together coop", Tr("One map with friends over LAN or Radmin VPN"), false, m_Coop.Role() != CXcCoop::ROLE_NONE, [&]() { m_CoopRequest = true; }});
 	vEntries.push_back({Tr("Properties panel"), "Properties panel", nullptr, false, m_ShowProperties, [&]() { m_ShowProperties = !m_ShowProperties; }});
+	vEntries.push_back({Tr("Zoom in game"), "Zoom in game preview", Tr("How the layers move with the zoom players see in the game"), false, E.Map()->m_PreviewZoom, [&]() { E.Map()->m_PreviewZoom = !E.Map()->m_PreviewZoom; }});
 	vEntries.push_back({Tr("Hide the interface"), "Hide interface", nullptr, false, false, [&]() { E.m_GuiActive = false; }});
 	vEntries.push_back({Tr("Editor wiki"), "Wiki help automapper rules guide", Tr("Articles about the automapper and its builder, with pictures"), false, false, [&]() { OpenWiki(); }});
 	vEntries.push_back({Tr("Make the layer 3D..."), "3D depth parallax", Tr("Depth for every player: darker parallax copies of the selected tile layer"), false, false, [&]() { OpenDepthDialog(); }});

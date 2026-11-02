@@ -922,6 +922,8 @@ namespace XcUi
 			{"Up to one game tick (20 ms) only hides the wait for the next tick. More shows your tee ahead of the server and can wobble. Beyond 40 ms the tee glides on with its speed and stops at walls", "До одного тика (20 мс) убирается только ожидание следующего тика. Больше — ти показывается впереди сервера и может пошатываться. Дальше 40 мс ти просто скользит по своей скорости и останавливается у стен"},
 			{"This server sends the inputs of other players ahead: they are shown one tick sooner by their real keys", "Этот сервер присылает нажатия других игроков заранее: они показываются на тик раньше по их настоящим кнопкам"},
 			{"Works only on servers that send the inputs of other players ahead, here they stay as they are", "Работает только на серверах, которые присылают нажатия других игроков заранее, здесь они остаются как есть"},
+			{"Zoom in game", "Зум в игре"},
+			{"How the layers move with the zoom players see in the game", "Как слои двигаются при зуме, который видят игроки в игре"},
 			{"Words on the map", "Слова на карте"},
 			{"Theme color", "Цвет темы"},
 			{"White", "Белый"},
