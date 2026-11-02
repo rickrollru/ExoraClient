@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_XCLIENT_UI_WIDGETS_H
 #define GAME_CLIENT_COMPONENTS_XCLIENT_UI_WIDGETS_H
 
+#include <algorithm>
 #include <engine/external/imgui/imgui.h>
 
 // XClient widgets in the style of the design spec. Every state change is animated,

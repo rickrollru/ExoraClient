@@ -43,7 +43,7 @@ jobs:
       run: |
         mkdir release
         cd release
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DVIDEORECORDER=OFF -DDOWNLOAD_GTEST=OFF -DPRECOMPILE_HEADERS=OFF ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DVIDEORECORDER=OFF -DDOWNLOAD_GTEST=OFF ..
         cmake --build . --target package_default
 
     - name: Name the archive
