@@ -3,6 +3,8 @@
 #include "fast_input.h"
 #include "fx_renderer.h"
 #include "xc_helpers.h"
+#include "ui/feedback.h"
+#include "ui/lang.h"
 
 #include <engine/client.h>
 #include <engine/shared/config.h>
@@ -93,8 +95,41 @@ void CXcPrediction::OnRender()
 		}
 	}
 
+	TurnOffTClientTwins();
 	if(g_Config.m_XcPredGhost && (Online || Client()->State() == IClient::STATE_DEMOPLAYBACK))
 		RenderGhosts();
+}
+
+void CXcPrediction::TurnOffTClientTwins()
+{
+	struct STwin
+	{
+		bool m_OursOn;
+		int *m_pTheirs;
+		const char *m_pName;
+	};
+	const STwin aTwins[] = {
+		{g_Config.m_XcFastInput != 0, &g_Config.m_TcFastInput, "fast input"},
+		{g_Config.m_XcFastInput != 0, &g_Config.m_TcFastInputOthers, "fast input for others"},
+		{g_Config.m_XcPredGhost != 0, &g_Config.m_TcShowOthersGhosts, "ghosts"},
+		{g_Config.m_XcPredAutoMargin != 0, &g_Config.m_TcSmoothPredictionMargin, "smooth prediction margin"},
+	};
+	char aNames[256] = "";
+	for(const STwin &Twin : aTwins)
+	{
+		if(!Twin.m_OursOn || !*Twin.m_pTheirs)
+			continue;
+		*Twin.m_pTheirs = 0;
+		if(aNames[0])
+			str_append(aNames, ", ");
+		str_append(aNames, XcUi::Tr(Twin.m_pName));
+	}
+	if(aNames[0])
+	{
+		char aText[384];
+		str_format(aText, sizeof(aText), XcUi::Tr("Turned off in TClient, ours does it: %s"), aNames);
+		XcUi::Toast(aText, XcUi::TOAST_INFO);
+	}
 }
 
 // where the server has a tee: a soft ring, only when it is noticeably away from where the tee is drawn

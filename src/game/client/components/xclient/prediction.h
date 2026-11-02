@@ -54,6 +54,8 @@ private:
 	bool m_WasFrozen = false;
 
 	void RenderGhosts();
+	// the same things in TClient are turned off while ours are on (both at once would fight)
+	void TurnOffTClientTwins();
 };
 
 #endif

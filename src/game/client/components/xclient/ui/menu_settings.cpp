@@ -447,10 +447,13 @@ void CXcMenu::RenderSettingsControls()
 		ParamLabel(Tr("Preset"));
 		const char *apPresets[] = {Tr("Responsive"), Tr("Balanced"), Tr("Stable"), Tr("Own")};
 		int Preset = CXcPrediction::CurrentPreset();
-		if(ConfigSegmented("##pred_preset", "xc_pred_preset", &Preset, apPresets, 4) && Preset < CXcPrediction::PRESET_CUSTOM)
-			CXcPrediction::ApplyPreset(Preset);
-		else
-			g_Config.m_XcPredPreset = Preset;
+		if(Segmented("##pred_preset", &Preset, apPresets, 4))
+		{
+			if(Preset < CXcPrediction::PRESET_CUSTOM)
+				CXcPrediction::ApplyPreset(Preset);
+			else
+				g_Config.m_XcPredPreset = CXcPrediction::PRESET_CUSTOM;
+		}
 		const CXcPrediction &Prediction = GameClient()->m_XcPrediction;
 		char aStatus[160];
 		if(Client()->State() == IClient::STATE_ONLINE)
