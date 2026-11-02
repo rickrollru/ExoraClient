@@ -48,7 +48,7 @@ void CXcPrediction::NoteSnapshot(int Tick, bool HasPredicted, vec2 Predicted, ve
 		{
 			m_CorrectionsWindow++;
 			m_CorrectionSize = mix(m_CorrectionSize, Error, 0.2f);
-			CXcFastInput::NoteNewInput(); // the jump it makes melts away
+			CXcFastInput::NoteCorrection(); // the jump it makes melts away
 		}
 	}
 }
@@ -71,7 +71,7 @@ void CXcPrediction::OnRender()
 	{
 		const bool Frozen = GameClient()->m_aClients[Local].m_Predicted.m_FreezeEnd != 0;
 		if(Frozen != m_WasFrozen && g_Config.m_XcPredSmartFreeze)
-			CXcFastInput::NoteNewInput();
+			CXcFastInput::NoteCorrection();
 		m_WasFrozen = Frozen;
 	}
 

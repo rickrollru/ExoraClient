@@ -15,8 +15,9 @@ static constexpr float TICK_MS = 20.0f;
 // ahead wobbles a lot on every new press)
 static constexpr int PHYSICS_HORIZON_MS = 40;
 
-static int s_AutoMs = 20;
+static float s_AutoMs = 20.0f;
 static int s_NewInputFrames = 0;
+static int s_CorrectionFrames = 0;
 static float s_LastPreInput = -100.0f;
 static float s_Now = 0.0f;
 
@@ -25,17 +26,27 @@ bool CXcFastInput::On()
 	return g_Config.m_XcFastInput || g_Config.m_TcFastInput;
 }
 
-int CXcFastInput::AmountMs()
+float CXcFastInput::AmountMsF()
 {
 	if(!g_Config.m_XcFastInput)
-		return g_Config.m_TcFastInputAmount;
-	return g_Config.m_XcFastInputAuto ? s_AutoMs : g_Config.m_XcFastInputAmount;
+		return (float)g_Config.m_TcFastInputAmount;
+	return g_Config.m_XcFastInputAuto ? s_AutoMs : (float)g_Config.m_XcFastInputAmount;
+}
+
+float CXcFastInput::PhysicsMsF()
+{
+	const float Amount = AmountMsF();
+	return g_Config.m_XcFastInput ? std::min(Amount, (float)PHYSICS_HORIZON_MS) : Amount;
+}
+
+int CXcFastInput::AmountMs()
+{
+	return (int)std::round(AmountMsF());
 }
 
 int CXcFastInput::PhysicsMs()
 {
-	const int Amount = AmountMs();
-	return g_Config.m_XcFastInput ? std::min(Amount, PHYSICS_HORIZON_MS) : Amount;
+	return (int)std::round(PhysicsMsF());
 }
 
 bool CXcFastInput::Others()
@@ -56,13 +67,22 @@ void CXcFastInput::NotePreInput(float Now)
 	s_LastPreInput = Now;
 }
 
+bool CXcFastInput::HasPreInput(int ClientId, int Tick) const
+{
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS || Tick < 0)
+		return false;
+	return GameClient()->m_aClients[ClientId].m_aPreInputs[Tick % 200].m_IntendedTick == Tick;
+}
+
 vec2 CXcFastInput::Extend(int ClientId, vec2 Pos)
 {
-	const int Extra = AmountMs() - PhysicsMs();
-	if(!g_Config.m_XcFastInput || Extra <= 0 || ClientId < 0 || ClientId >= MAX_CLIENTS)
+	const float Extra = AmountMsF() - PhysicsMsF();
+	if(!g_Config.m_XcFastInput || Extra <= 0.0f || ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return Pos;
-	// the speed the prediction has now, per tick
-	const vec2 Vel = GameClient()->m_aClients[ClientId].m_RegularPredicted.m_Vel;
+	// the speed of the prediction, blended between its two ticks like the position: taken once a tick it would
+	// make the glide jump on every tick while the tee speeds up or slows down
+	const auto &Data = GameClient()->m_aClients[ClientId];
+	const vec2 Vel = mix(Data.m_PrevPredicted.m_Vel, Data.m_Predicted.m_Vel, Client()->PredIntraGameTick(g_Config.m_ClDummy));
 	const vec2 Target = Pos + Vel * (Extra / TICK_MS);
 	vec2 Before;
 	if(Collision()->IntersectLine(Pos, Target, nullptr, &Before))
@@ -76,6 +96,11 @@ void CXcFastInput::NoteNewInput()
 	s_NewInputFrames = 2;
 }
 
+void CXcFastInput::NoteCorrection()
+{
+	s_CorrectionFrames = 2;
+}
+
 void CXcFastInput::OnReset()
 {
 	for(SState &State : m_aState)
@@ -86,14 +111,27 @@ void CXcFastInput::OnReset()
 void CXcFastInput::OnRender()
 {
 	// automatic amount: a whole tick hides the wait for the next tick; when the prediction ahead keeps being
-	// corrected a lot (jumpy servers, a lot of hooking), less of it looks calmer
-	const float Target = std::clamp(TICK_MS - (m_CorrectionAvg - 2.0f) * 2.0f, 10.0f, TICK_MS);
+	// corrected a lot (jumpy servers, a lot of hooking), less of it looks calmer. The target must hold for two
+	// seconds before it is followed, then the amount glides there at 4 ms a second: every change of the amount
+	// moves the tee a little, so it changes rarely and never by steps
 	const float Dt = std::clamp(Client()->RenderFrameTime(), 0.0f, 0.1f);
-	m_AutoMs += (Target - m_AutoMs) * (1.0f - std::exp(-Dt / 1.5f));
 	s_Now = Client()->LocalTime();
-	s_AutoMs = std::clamp((int)std::round(m_AutoMs), 1, 100);
+	const float Target = std::round(std::clamp(TICK_MS - (m_CorrectionAvg - 2.0f) * 2.0f, 10.0f, TICK_MS) / 2.0f) * 2.0f;
+	if(std::abs(Target - m_AutoTarget) >= 2.0f)
+	{
+		m_AutoTarget = Target;
+		m_AutoTargetSince = s_Now;
+	}
+	if(s_Now - m_AutoTargetSince >= 2.0f)
+	{
+		const float Step = 4.0f * Dt;
+		m_AutoMs = m_AutoMs < m_AutoTarget ? std::min(m_AutoMs + Step, m_AutoTarget) : std::max(m_AutoMs - Step, m_AutoTarget);
+	}
+	s_AutoMs = std::clamp(m_AutoMs, 1.0f, 100.0f);
 	if(s_NewInputFrames > 0)
 		s_NewInputFrames--;
+	if(s_CorrectionFrames > 0)
+		s_CorrectionFrames--;
 }
 
 vec2 CXcFastInput::Smooth(int ClientId, vec2 Target)
@@ -123,11 +161,15 @@ vec2 CXcFastInput::Smooth(int ClientId, vec2 Target)
 	// where the tee would be now if nothing had changed
 	const vec2 Expected = State.m_Last + State.m_Vel * Dt;
 	const vec2 Jump = Target - Expected;
-	if(s_NewInputFrames > 0 && length(Jump) > 0.5f)
+	const float Strength = g_Config.m_XcFastInputSmooth / 100.0f;
+	if((s_NewInputFrames > 0 || s_CorrectionFrames > 0) && length(Jump) > 0.5f)
 	{
-		// a new press moved the prediction ahead: keep showing the old path and let the difference melt
+		// keep showing the old path and let the difference melt: a wrong guess slowly (up to 80 ms), the change of a
+		// new press quickly (up to 25 ms), it is the answer to the key and must not lag
 		State.m_Err -= Jump;
-		m_CorrectionAvg += (length(Jump) - m_CorrectionAvg) * 0.1f;
+		State.m_Tau = s_CorrectionFrames > 0 ? 0.08f * Strength : 0.025f * Strength;
+		if(s_NewInputFrames > 0)
+			m_CorrectionAvg += (length(Jump) - m_CorrectionAvg) * 0.1f;
 	}
 	else
 		State.m_Vel = (Target - State.m_Last) / Dt;
@@ -135,9 +177,7 @@ vec2 CXcFastInput::Smooth(int ClientId, vec2 Target)
 	const float MaxErr = 12.0f;
 	if(length(State.m_Err) > MaxErr)
 		State.m_Err = normalize(State.m_Err) * MaxErr;
-	// 0..100 % = melts in 0..60 ms
-	const float Tau = 0.06f * g_Config.m_XcFastInputSmooth / 100.0f;
-	State.m_Err *= std::exp(-Dt / std::max(Tau, 0.001f));
+	State.m_Err *= std::exp(-Dt / std::max(State.m_Tau, 0.001f));
 	State.m_Last = Target;
 	State.m_Time = Now;
 	return Target + State.m_Err;

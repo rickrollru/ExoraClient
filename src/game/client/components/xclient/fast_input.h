@@ -26,16 +26,26 @@ public:
 
 	// the switches the prediction code reads: ours when on, else TClient's
 	static bool On();
-	// the whole amount, and the part the game physics is run for (beyond two ticks the tee only glides on)
+	// the whole amount, and the part the game physics is run for (beyond two ticks the tee only glides on);
+	// the float ones change smoothly (the automatic amount glides, it never steps by whole milliseconds)
 	static int AmountMs();
 	static int PhysicsMs();
+	static float AmountMsF();
+	static float PhysicsMsF();
+	// whole ticks the physics runs ahead for this amount
+	static int PhysicsTicks() { return (int)std::ceil(PhysicsMsF() / 20.0f - 0.001f); }
 	// for other players: only with Exora input while the server sends their inputs ahead (pre-input), one tick
 	static bool Others();
 	static int OthersMs();
 	// the server sent the inputs of other players ahead
 	static void NotePreInput(float Now);
-	// a new key press was just put into the prediction (called from the client before it predicts again)
+	// a new key press was just put into the prediction (called from the client before it predicts again):
+	// its change is softened only a little, it is the quick answer we want
 	static void NoteNewInput();
+	// the prediction was wrong (the server had the tee elsewhere) or the freeze changed: melts away slower
+	static void NoteCorrection();
+	// the server sent this player's input for this tick ahead
+	bool HasPreInput(int ClientId, int Tick) const;
 
 	// the position to draw a predicted tee at, with the corrections smoothed
 	vec2 Smooth(int ClientId, vec2 Target);
@@ -51,9 +61,12 @@ private:
 		vec2 m_Vel = vec2(0.0f, 0.0f);
 		vec2 m_Err = vec2(0.0f, 0.0f);
 		float m_Time = 0.0f;
+		float m_Tau = 0.03f; // how fast the current difference melts
 	};
 	SState m_aState[MAX_CLIENTS];
 	float m_AutoMs = 20.0f;
+	float m_AutoTarget = 20.0f;
+	float m_AutoTargetSince = 0.0f;
 	float m_CorrectionAvg = 0.0f; // how far the prediction ahead moves on new presses, units
 };
 

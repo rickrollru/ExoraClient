@@ -2845,7 +2845,7 @@ void CGameClient::OnPredict()
 
 	int FastInputTicks = 0;
 	if(CXcFastInput::On()) // XClient: TClient fast input or Exora input
-		FastInputTicks = (CXcFastInput::PhysicsMs() + 19) / 20;
+		FastInputTicks = CXcFastInput::PhysicsTicks();
 
 	int FinalTickRegular = Client()->PredGameTick(g_Config.m_ClDummy); // The vanilla final tick disregarding fast input
 
@@ -4518,7 +4518,7 @@ void CGameClient::DetectStrongHook()
 
 vec2 CGameClient::GetSmoothPos(int ClientId)
 {
-	const int FastInputTicks = CXcFastInput::On() ? (CXcFastInput::PhysicsMs() + 19) / 20 : 0; // XClient
+	const int FastInputTicks = CXcFastInput::On() ? CXcFastInput::PhysicsTicks() : 0; // XClient
 	vec2 Pos = mix(m_aClients[ClientId].m_PrevPredicted.m_Pos, m_aClients[ClientId].m_Predicted.m_Pos, Client()->PredIntraGameTick(g_Config.m_ClDummy));
 	int64_t Now = time_get();
 	for(int i = 0; i < 2; i++)
@@ -4552,9 +4552,12 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 
 	// XClient: the physics part of the amount; other players only one tick (their inputs come one tick ahead)
 	const bool XcLocal = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]);
-	const int XcMs = XcLocal ? CXcFastInput::PhysicsMs() : std::min(CXcFastInput::PhysicsMs(), CXcFastInput::OthersMs());
-	float FastInputIntra = (XcMs % 20) / 20.0f;
-	int FastInputTicks = XcMs / 20;
+	float XcMs = XcLocal ? CXcFastInput::PhysicsMsF() : std::min(CXcFastInput::PhysicsMsF(), (float)CXcFastInput::OthersMs());
+	// another player only where the server sent his input for that tick (others are not guessed ahead blindly)
+	if(!XcLocal && g_Config.m_XcFastInput && !m_XcFastInput.HasPreInput(ClientId, PredTick + 1))
+		XcMs = 0.0f;
+	float FastInputIntra = std::fmod(XcMs, 20.0f) / 20.0f;
+	int FastInputTicks = (int)(XcMs / 20.0f);
 
 	float CombinedIntra = PredIntraTick + FastInputIntra;
 
@@ -4614,8 +4617,8 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	m_SmoothTick = SmoothTick;
 	m_SmoothIntraTick = SmoothIntra;
 
-	float FastInputIntra = (CXcFastInput::PhysicsMs() % 20) / 20.0f; // XClient
-	int FastInputTicks = CXcFastInput::PhysicsMs() / 20;
+	float FastInputIntra = std::fmod(CXcFastInput::PhysicsMsF(), 20.0f) / 20.0f; // XClient
+	int FastInputTicks = (int)(CXcFastInput::PhysicsMsF() / 20.0f);
 
 	float CombinedIntra = SmoothIntra + FastInputIntra;
 
