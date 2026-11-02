@@ -143,6 +143,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
 					      &m_BgDraw, // TClient
+					      &m_XcScreenBlur, // XClient: motion blur of the map, right after the blocks
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
@@ -169,7 +170,9 @@ void CGameClient::OnConsoleInit()
 					      &m_XcHats, // XClient: own hats, over the queued effects
 					      &m_TeeGlow, // XClient
 					      &m_MovingTilesBackground, // TClient
+					      &m_XcScreenBlur.m_ForegroundBegin, // XClient: the front map layers are captured for the motion blur
 					      &m_MapLayersForeground,
+					      &m_XcScreenBlur.m_ForegroundEnd, // XClient
 					      &m_XcOverTiles, // XClient: effects and hats over the blocks (xc_fx_over_tiles, xc_hats_over_tiles)
 					      &m_XcFloaters, // XClient: floating cubes and orbs, over the map
 					      &m_XcBlockOutline, // XClient: frame around the block under the crosshair

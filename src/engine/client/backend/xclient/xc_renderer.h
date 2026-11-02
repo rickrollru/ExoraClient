@@ -53,6 +53,7 @@ private:
 	unsigned m_GlowProgram = 0;
 	unsigned m_BlocksProgram = 0;
 	unsigned m_CopyProgram = 0;
+	unsigned m_MotionProgram = 0;
 
 	unsigned m_ShapeVao = 0;
 	unsigned m_QuadVbo = 0;
@@ -107,6 +108,10 @@ private:
 	int m_LocBlocksPass = -1;
 	int m_LocBlocksFog = -1;
 	int m_LocCopyTex = -1;
+	int m_LocMotionTex = -1;
+	int m_LocMotionDir = -1;
+	int m_LocMotionSamples = -1;
+	int m_LocGlowMotion = -1;
 	STarget m_Blocks;
 	unsigned m_BlocksDepth = 0;
 	unsigned m_BlocksGrid = 0;
@@ -123,6 +128,7 @@ private:
 	bool Init();
 	void DrawShapes(const XcRender::SCommand_DrawShapes *pCommand);
 	void BlurScreen(const XcRender::SCommand_BlurScreen *pCommand);
+	void MotionBlur(const XcRender::SCommand_MotionBlur *pCommand);
 	void CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand);
 	void CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand);
 	void DrawBlocks3D(const XcRender::SCommand_DrawBlocks3D *pCommand);

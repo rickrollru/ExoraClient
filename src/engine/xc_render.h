@@ -60,6 +60,13 @@ namespace XcRender
 		float m_aaRects[MAX_RECTS][4] = {};
 	};
 
+	// Motion blur of everything drawn so far (the map): each pixel averages the frame along a line.
+	struct SMotionBlurSettings
+	{
+		float m_DirX = 0.0f, m_DirY = 0.0f; // the whole smear in screen parts (0..1), top left origin
+		int m_Samples = 16;
+	};
+
 	// Neon outline around captured sprites (tees), see IGraphics::XcCaptureBegin.
 	struct SGlowSettings
 	{
@@ -77,6 +84,8 @@ namespace XcRender
 		float m_FillTime = 0.0f; // seconds, moves the pattern
 		float m_KeepShade = 0.7f; // keep the dark and light parts of the skin under the pattern
 		bool m_DoGlow = true; // false: only the pattern, no glow or outline around
+		// motion blur of the captured sprites: the whole smear in pixels (top left origin), 0 = none
+		float m_MotionX = 0.0f, m_MotionY = 0.0f;
 	};
 
 	// Set by the render thread once the module has initialized successfully.

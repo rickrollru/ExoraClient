@@ -88,7 +88,7 @@ void CXcMotion::OnRender()
 		Prune(vPath, Time, PATH_KEEP);
 		if(g_Config.m_XcSpeedLines)
 			RenderSpeedLines(ClientId, Time, Alpha);
-		if(g_Config.m_XcMotionBlur)
+		if(g_Config.m_XcMotionBlur && !GameClient()->m_XcScreenBlur.Active())
 			RenderTeeBlur(ClientId, Time, Alpha);
 	}
 }

@@ -38,7 +38,9 @@ bool CTeeGlow::Begin(int ClientId)
 {
 	if(!GameClient()->m_FxRenderer.ModuleActive() || !in_range(ClientId, MAX_CLIENTS - 1))
 		return false;
-	if(!HasGlow(ClientId) && !HasShader(ClientId))
+	const vec2 Smear = GameClient()->m_XcScreenBlur.TeeSmear(ClientId);
+	const bool Motion = Smear != vec2(0.0f, 0.0f);
+	if(!HasGlow(ClientId) && !HasShader(ClientId) && !Motion)
 		return false;
 	if(PlayerAlpha(GameClient(), ClientId) <= 0.0f)
 		return false;
@@ -46,7 +48,14 @@ bool CTeeGlow::Begin(int ClientId)
 	// the tee, its weapon and room for the glow
 	const vec2 Pos = GameClient()->m_aClients[ClientId].m_RenderPos;
 	// the blur reaches up to twice the radius (its levels are powers of two)
-	const float Extent = 80.0f + 2.0f * GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius;
+	float Extent = 80.0f + (HasGlow(ClientId) ? 2.0f * GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius : 0.0f);
+	// room for the motion smear (pixels to world units)
+	if(Motion)
+	{
+		const CScreenRect Screen = Graphics()->GetScreen();
+		const float WorldWidth = Screen.m_BottomRight.x - Screen.m_TopLeft.x;
+		Extent += length(Smear) * 0.5f * (WorldWidth > 0.0f ? WorldWidth / Graphics()->ScreenWidth() : 1.0f) + 8.0f;
+	}
 	const float aWorldRect[4] = {Pos.x - Extent, Pos.y - Extent, Pos.x + Extent, Pos.y + Extent};
 	Graphics()->XcCaptureBegin(aWorldRect);
 	return true;
@@ -84,5 +93,8 @@ void CTeeGlow::End(int ClientId)
 		Settings.m_FillTime = Client()->GlobalTime() * g_Config.m_XcTeeShaderSpeed / 100.0f + ClientId * 0.37f;
 		Settings.m_KeepShade = g_Config.m_XcTeeShaderShade / 100.0f;
 	}
+	const vec2 Smear = GameClient()->m_XcScreenBlur.TeeSmear(ClientId);
+	Settings.m_MotionX = Smear.x;
+	Settings.m_MotionY = Smear.y;
 	Graphics()->XcCaptureEnd(Settings);
 }

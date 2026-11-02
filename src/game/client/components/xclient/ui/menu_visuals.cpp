@@ -525,10 +525,18 @@ void CXcMenu::RenderVisualsMovement()
 		ConfigColorRow(Tr("Catches a player"), &g_Config.m_ClHookCollColorTeeColl, false);
 		EndCard();
 	}
-	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Fast tees leave a soft smear of copies behind them"), &g_Config.m_XcMotionBlur))
+	if(BeginCard("##fx_motion_blur", Tr("Motion blur"), Tr("Like a camera: at speed the blocks and the background smear along the motion, fast tees smear along theirs"), &g_Config.m_XcMotionBlur))
 	{
-		ConfigSlider(Tr("Blur length"), "xc_motion_blur_strength", &g_Config.m_XcMotionBlurStrength, 10, 100, "%d%%");
+		if(!Graphics()->XcRenderAvailable())
+			Description(Tr("Needs OpenGL 3.3: on this renderer only soft copies behind the tees are drawn"));
+		ConfigSlider(Tr("Blocks and background"), "xc_motion_blur_world", &g_Config.m_XcMotionBlurWorld, 0, 200, "%d%%");
+		ConfigSlider(Tr("Tees"), "xc_motion_blur_strength", &g_Config.m_XcMotionBlurStrength, 0, 200, "%d%%");
+		ConfigSlider(Tr("From speed"), "xc_motion_blur_min", &g_Config.m_XcMotionBlurMin, 0, 3000);
+		ParamLabel(Tr("Quality"));
+		const char *apQuality[] = {Tr("Low"), Tr("Medium"), Tr("High")};
+		ConfigSegmented("##motion_blur_quality", "xc_motion_blur_quality", &g_Config.m_XcMotionBlurQuality, apQuality, 3);
 		TargetChips("##motion_blur_targets", &g_Config.m_XcMotionBlurSelf, &g_Config.m_XcMotionBlurDummy, &g_Config.m_XcMotionBlurOthers);
+		Description(Tr("Your own tee, followed by the camera, stays sharp: the world flies past it. With the 3D view the blur is off"));
 		EndCard();
 	}
 	if(BeginCard("##fx_speed_lines", Tr("Speed lines"), Tr("Thin streaks behind the tee at high speed, like in anime"), &g_Config.m_XcSpeedLines))

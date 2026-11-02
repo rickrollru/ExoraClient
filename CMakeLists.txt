@@ -3088,6 +3088,8 @@ if(CLIENT)
     components/xclient/streamer.h
     components/xclient/tee_glow.cpp
     components/xclient/tee_glow.h
+    components/xclient/screen_blur.cpp
+    components/xclient/screen_blur.h
     components/xclient/spec_camera.cpp
     components/xclient/spec_camera.h
     components/xclient/sprite_fx.cpp

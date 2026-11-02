@@ -17,6 +17,7 @@ namespace XcRender
 		CMD_XC_CAPTURE_BEGIN,
 		CMD_XC_CAPTURE_END,
 		CMD_XC_DRAW_BLOCKS3D,
+		CMD_XC_MOTION_BLUR,
 		CMD_XC_LAST,
 	};
 
@@ -67,6 +68,14 @@ namespace XcRender
 			SCommand(CMD_XC_BLUR_SCREEN) {}
 
 		SBlurSettings m_Settings;
+	};
+
+	struct SCommand_MotionBlur : public CCommandBuffer::SCommand
+	{
+		SCommand_MotionBlur() :
+			SCommand(CMD_XC_MOTION_BLUR) {}
+
+		SMotionBlurSettings m_Settings;
 	};
 
 	// 3D view: the sides of the blocks, extruded behind the world plane, drawn with their own depth

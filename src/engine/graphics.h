@@ -188,6 +188,7 @@ namespace XcRender
 	struct SShapeGpu;
 	struct SDrawSettings;
 	struct SBlurSettings;
+	struct SMotionBlurSettings;
 	struct SGlowSettings;
 } // namespace XcRender
 
@@ -356,6 +357,8 @@ public:
 	virtual bool XcRenderAvailable() const = 0;
 	virtual void XcDrawShapes(const XcRender::SShapeGpu *pAlpha, int NumAlpha, const XcRender::SShapeGpu *pAdditive, int NumAdditive, const XcRender::SDrawSettings &Settings) = 0;
 	virtual void XcBlurScreen(const XcRender::SBlurSettings &Settings) = 0;
+	// smears everything drawn so far along a line (the map while the camera moves)
+	virtual void XcMotionBlur(const XcRender::SMotionBlurSettings &Settings) = 0;
 	// Everything drawn between these two calls gets a neon glow and outline around its silhouette.
 	// WorldRect (x0, y0, x1, y1, current screen mapping) limits the work to that area.
 	virtual void XcCaptureBegin(const float *pWorldRect) = 0;

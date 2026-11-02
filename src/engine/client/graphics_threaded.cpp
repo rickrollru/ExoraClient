@@ -3201,6 +3201,15 @@ void CGraphics_Threaded::XcBlurScreen(const XcRender::SBlurSettings &Settings)
 	m_pCommandBuffer->AddRenderCalls(1);
 }
 
+void CGraphics_Threaded::XcMotionBlur(const XcRender::SMotionBlurSettings &Settings)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcMotionBlur while drawing");
+	XcRender::SCommand_MotionBlur Cmd;
+	Cmd.m_Settings = Settings;
+	AddCmd(Cmd);
+	m_pCommandBuffer->AddRenderCalls(1);
+}
+
 void CGraphics_Threaded::XcCaptureBegin(const float *pWorldRect)
 {
 	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcCaptureBegin while drawing");

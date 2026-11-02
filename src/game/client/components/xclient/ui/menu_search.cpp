@@ -39,7 +39,7 @@ namespace
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_NAMES, "##fx_name_gradient", "Gradient name", "The name above the tee in a smooth gradient that can flow", "градиент ник имя радуга gradient name nickname rainbow"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_NAMES, "##fx_flying_names", "Flying names", "Names follow the tees on a soft spring, like kites", "летающие ники пружина змей flying names nameplates kite"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_TEE, "##fx_jelly", "Jelly tee", "Squashes when landing, stretches when jumping and wobbles back", "желе желейный сплющивание пружина jelly squash stretch"},
-		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_motion_blur", "Motion blur", "Fast tees leave a soft smear of copies behind them", "размытие движения моушен блюр смаз motion blur"},
+		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_motion_blur", "Motion blur", "Like a camera: at speed the blocks and the background smear along the motion, fast tees smear along theirs", "размытие движения моушен блюр смаз блоки фон камера решейдер motion blur reshade"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_speed_lines", "Speed lines", "Thin streaks behind the tee at high speed, like in anime", "линии скорости штрихи аниме speed lines"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_COSMETICS, "##fx_accessory", "Accessory", "Something on the head that sways with the tee", "аксессуар шапка нимб корона конус china hat halo crown"},
 		{CXcMenu::PAGE_VISUALS, CXcMenu::VISUALS_MOVEMENT, "##fx_jump", "Jumps", "Effect under the feet on every jump", "прыжки прыжок кольца искры звёзды двойной jump circles rings double air"},

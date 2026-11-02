@@ -411,6 +411,29 @@ void main()
 }
 )";
 
+// motion blur: the frame averaged along the direction of the motion, a box shutter
+static const char *const s_pMotionFragment = R"(#version 330 core
+in vec2 v_Uv;
+uniform sampler2D u_Tex;
+uniform vec2 u_Dir;
+uniform int u_Samples;
+out vec4 FragColor;
+void main()
+{
+	vec4 Sum = vec4(0.0);
+	float Total = 0.0;
+	for(int i = 0; i < u_Samples; i++)
+	{
+		float t = float(i) / float(u_Samples - 1) - 0.5;
+		// a little more weight in the middle: soft ends instead of hard copies
+		float w = 1.0 - abs(t) * 0.8;
+		Sum += texture(u_Tex, v_Uv + u_Dir * t) * w;
+		Total += w;
+	}
+	FragColor = Sum / Total;
+}
+)";
+
 static const char *const s_pFullscreenVertex = R"(#version 330 core
 out vec2 v_Uv;
 void main()
@@ -489,6 +512,7 @@ uniform float u_FillAlpha;
 uniform float u_FillScale;
 uniform float u_FillTime;
 uniform float u_KeepShade;
+uniform vec2 u_Motion; // the smear of the captured sprites in uv, 0 = none
 out vec4 FragColor;
 
 vec3 Hue(float h)
@@ -547,9 +571,30 @@ float Coverage(vec2 Uv)
 	return sqrt(clamp(texture(u_Capture, Uv).a, 0.0, 1.0));
 }
 
+// the captured sprites, smeared along their motion: true coverage and premultiplied color averaged
+vec4 Captured(vec2 Uv)
+{
+	if(dot(u_Motion, u_Motion) < 1e-10)
+		return texture(u_Capture, Uv);
+	vec3 Rgb = vec3(0.0);
+	float A = 0.0, Total = 0.0;
+	for(int i = 0; i < 24; i++)
+	{
+		float t = float(i) / 23.0 - 0.5;
+		float w = 1.0 - abs(t) * 0.9;
+		vec4 s = texture(u_Capture, Uv + u_Motion * t);
+		Rgb += s.rgb * w;
+		A += sqrt(clamp(s.a, 0.0, 1.0)) * w;
+		Total += w;
+	}
+	A /= Total;
+	// back to the stored form (alpha squared) the rest of the shader expects
+	return vec4(Rgb / Total, A * A);
+}
+
 void main()
 {
-	vec4 c = texture(u_Capture, v_Uv);
+	vec4 c = Captured(v_Uv);
 	float a = sqrt(clamp(c.a, 0.0, 1.0));
 
 	float Rim = 0.0;
@@ -732,7 +777,8 @@ bool CXcRenderer::Init()
 	m_GlowProgram = LinkProgram(s_pFullscreenVertex, s_pGlowFragment, "glow");
 	m_BlocksProgram = LinkProgram(s_pBlocksVertex, s_pBlocksFragment, "blocks3d");
 	m_CopyProgram = LinkProgram(s_pFullscreenVertex, s_pCopyFragment, "copy");
-	if(!m_ShapeProgram || !m_DownProgram || !m_UpProgram || !m_CompositeProgram || !m_GlowProgram || !m_BlocksProgram || !m_CopyProgram)
+	m_MotionProgram = LinkProgram(s_pFullscreenVertex, s_pMotionFragment, "motion_blur");
+	if(!m_MotionProgram || !m_ShapeProgram || !m_DownProgram || !m_UpProgram || !m_CompositeProgram || !m_GlowProgram || !m_BlocksProgram || !m_CopyProgram)
 		return false;
 	m_LocBlocksMatrix = glGetUniformLocation(m_BlocksProgram, "u_Matrix");
 	m_LocBlocksGrid = glGetUniformLocation(m_BlocksProgram, "u_Grid");
@@ -745,6 +791,10 @@ bool CXcRenderer::Init()
 	m_LocBlocksPass = glGetUniformLocation(m_BlocksProgram, "u_Pass");
 	m_LocBlocksFog = glGetUniformLocation(m_BlocksProgram, "u_Fog");
 	m_LocCopyTex = glGetUniformLocation(m_CopyProgram, "u_Tex");
+	m_LocMotionTex = glGetUniformLocation(m_MotionProgram, "u_Tex");
+	m_LocMotionDir = glGetUniformLocation(m_MotionProgram, "u_Dir");
+	m_LocMotionSamples = glGetUniformLocation(m_MotionProgram, "u_Samples");
+	m_LocGlowMotion = glGetUniformLocation(m_GlowProgram, "u_Motion");
 	m_LocUseTilt = glGetUniformLocation(m_ShapeProgram, "u_UseTilt");
 	m_LocTilt = glGetUniformLocation(m_ShapeProgram, "u_Tilt");
 	m_LocGlowCapture = glGetUniformLocation(m_GlowProgram, "u_Capture");
@@ -831,6 +881,7 @@ void CXcRenderer::Shutdown()
 	glDeleteProgram(m_GlowProgram);
 	glDeleteProgram(m_BlocksProgram);
 	glDeleteProgram(m_CopyProgram);
+	glDeleteProgram(m_MotionProgram);
 	if(m_BlocksGrid)
 		glDeleteTextures(1, &m_BlocksGrid);
 	m_BlocksGrid = 0;
@@ -900,6 +951,7 @@ bool CXcRenderer::RunCommand(const CCommandBuffer::SCommand *pCommand)
 	{
 	case XcRender::CMD_XC_DRAW_SHAPES: DrawShapes(static_cast<const XcRender::SCommand_DrawShapes *>(pCommand)); break;
 	case XcRender::CMD_XC_BLUR_SCREEN: BlurScreen(static_cast<const XcRender::SCommand_BlurScreen *>(pCommand)); break;
+	case XcRender::CMD_XC_MOTION_BLUR: MotionBlur(static_cast<const XcRender::SCommand_MotionBlur *>(pCommand)); break;
 	case XcRender::CMD_XC_CAPTURE_BEGIN: CaptureBegin(static_cast<const XcRender::SCommand_CaptureBegin *>(pCommand)); break;
 	case XcRender::CMD_XC_CAPTURE_END: CaptureEnd(static_cast<const XcRender::SCommand_CaptureEnd *>(pCommand)); break;
 	case XcRender::CMD_XC_DRAW_BLOCKS3D: DrawBlocks3D(static_cast<const XcRender::SCommand_DrawBlocks3D *>(pCommand)); break;
@@ -1208,6 +1260,38 @@ void CXcRenderer::BlurScreen(const XcRender::SCommand_BlurScreen *pCommand)
 	}
 }
 
+void CXcRenderer::MotionBlur(const XcRender::SCommand_MotionBlur *pCommand)
+{
+	const XcRender::SMotionBlurSettings &Settings = pCommand->m_Settings;
+	if(Settings.m_Samples < 2)
+		return;
+	CGlStateGuard Guard;
+	const GLint *pViewport = Guard.Viewport();
+	const int Width = pViewport[2];
+	const int Height = pViewport[3];
+	if(Width <= 0 || Height <= 0)
+		return;
+	EnsureTargets(Width, Height);
+
+	// copy the current frame, then draw it back smeared
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, Guard.DrawFbo());
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_aBlur[0].m_Fbo);
+	glBlitFramebuffer(pViewport[0], pViewport[1], pViewport[0] + Width, pViewport[1] + Height, 0, 0, Width, Height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, Guard.DrawFbo());
+	glViewport(pViewport[0], pViewport[1], pViewport[2], pViewport[3]);
+	glDisable(GL_BLEND);
+	glDisable(GL_SCISSOR_TEST);
+	glActiveTexture(GL_TEXTURE0);
+	glBindSampler(0, m_Sampler);
+	glUseProgram(m_MotionProgram);
+	glUniform1i(m_LocMotionTex, 0);
+	// the texture has its origin at the bottom
+	glUniform2f(m_LocMotionDir, Settings.m_DirX, -Settings.m_DirY);
+	glUniform1i(m_LocMotionSamples, std::clamp(Settings.m_Samples, 2, 64));
+	DrawFullscreen(m_MotionProgram, m_aBlur[0].m_Texture);
+}
+
 void CXcRenderer::CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand)
 {
 	if(m_Capturing)
@@ -1326,6 +1410,7 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 		glUniform1f(m_LocGlowFillScale, Settings.m_FillScale);
 		glUniform1f(m_LocGlowFillTime, Settings.m_FillTime);
 		glUniform1f(m_LocGlowKeepShade, Settings.m_KeepShade);
+		glUniform2f(m_LocGlowMotion, Settings.m_MotionX / Width, -Settings.m_MotionY / Height);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, m_aBloom[0].m_Texture);
 		glBindSampler(1, m_Sampler);
