@@ -452,10 +452,12 @@ void CXcMenu::RenderSettingsControls()
 			Description(aBuf);
 		}
 		else
-			ConfigSlider(Tr("How much sooner"), "xc_fast_input_amount", &g_Config.m_XcFastInputAmount, 1, 60, "%d ms");
+			ConfigSlider(Tr("How much sooner"), "xc_fast_input_amount", &g_Config.m_XcFastInputAmount, 1, 100, "%d ms");
 		ConfigSlider(Tr("Smooth corrections"), "xc_fast_input_smooth", &g_Config.m_XcFastInputSmooth, 0, 100, "%d%%");
 		ToggleRow(Tr("Other players too"), "xc_fast_input_others", &g_Config.m_XcFastInputOthers);
-		Description(Tr("Up to one game tick (20 ms) only hides the wait for the next tick. More shows your tee ahead of the server and can wobble"));
+		if(g_Config.m_XcFastInputOthers)
+			Description(CXcFastInput::Others() ? Tr("This server sends the inputs of other players ahead: they are shown one tick sooner by their real keys") : Tr("Works only on servers that send the inputs of other players ahead, here they stay as they are"));
+		Description(Tr("Up to one game tick (20 ms) only hides the wait for the next tick. More shows your tee ahead of the server and can wobble. Beyond 40 ms the tee glides on with its speed and stops at walls"));
 		EndCard();
 	}
 	if(BeginCard("##mouse", Tr("Mouse"), Tr("Sensitivity in game and in menus")))

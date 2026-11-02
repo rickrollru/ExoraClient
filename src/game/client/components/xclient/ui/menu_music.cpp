@@ -96,8 +96,12 @@ void CXcMenu::RenderMusicCard()
 	const IGraphics::CTextureHandle Art = Music.Art();
 	if(HasTrack && Art.IsValid() && !Art.IsNullTexture())
 	{
-		// a soft shadow of the cover's own colors under it
-		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ImVec2(ArtMin.x + S(4.0f), ArtMin.y + S(8.0f)), ImVec2(ArtMax.x - S(4.0f), ArtMax.y + S(6.0f)), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), 0.25f), Rounding);
+		// a soft shadow under the cover
+		for(int i = 3; i >= 1; i--)
+		{
+			const float Grow = i * S(2.5f);
+			pDraw->AddRectFilled(ImVec2(ArtMin.x - Grow, ArtMin.y - Grow + S(4.0f)), ImVec2(ArtMax.x + Grow, ArtMax.y + Grow + S(4.0f)), Col(ImVec4(0, 0, 0, 1), 0.08f), Rounding + Grow);
+		}
 		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ArtMin, ArtMax, ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1)), Rounding);
 	}
 	else

@@ -26,13 +26,21 @@ public:
 
 	// the switches the prediction code reads: ours when on, else TClient's
 	static bool On();
+	// the whole amount, and the part the game physics is run for (beyond two ticks the tee only glides on)
 	static int AmountMs();
+	static int PhysicsMs();
+	// for other players: only with Exora input while the server sends their inputs ahead (pre-input), one tick
 	static bool Others();
+	static int OthersMs();
+	// the server sent the inputs of other players ahead
+	static void NotePreInput(float Now);
 	// a new key press was just put into the prediction (called from the client before it predicts again)
 	static void NoteNewInput();
 
 	// the position to draw a predicted tee at, with the corrections smoothed
 	vec2 Smooth(int ClientId, vec2 Target);
+	// beyond the physics horizon: the tee glides on with its speed, stopping at walls
+	vec2 Extend(int ClientId, vec2 Pos);
 	int AutoMs() const { return (int)std::round(m_AutoMs); }
 
 private:
