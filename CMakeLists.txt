@@ -3085,6 +3085,8 @@ if(CLIENT)
     components/xclient/music/media_volume_windows.cpp
     components/xclient/music/music.cpp
     components/xclient/music/music.h
+    components/xclient/prediction.cpp
+    components/xclient/prediction.h
     components/xclient/screen_blur.cpp
     components/xclient/screen_blur.h
     components/xclient/spec_camera.cpp

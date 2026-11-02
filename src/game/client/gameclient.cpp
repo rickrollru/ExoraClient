@@ -160,6 +160,7 @@ void CGameClient::OnConsoleInit()
 					      &m_XcCape, // XClient: cape with cloth physics behind the tees
 					      &m_XcHatsBehind, // XClient: wings and capes behind the tees
 					      &m_Players,
+					      &m_XcPrediction, // XClient: prediction ghosts, automatic margin
 					      &m_XcCape.m_Front, // XClient: the scarf around the neck, over the tee
 					      &m_JumpFx, // XClient
 					      &m_WorldFx, // XClient: freeze and hammer effects
@@ -4036,6 +4037,14 @@ void CGameClient::UpdatePrediction()
 		return;
 	}
 
+	// XClient: how the prediction did: the predicted spot of this tick against the one the server sent
+	{
+		const int XcTick = Client()->GameTick(g_Config.m_ClDummy);
+		const int XcLocal = m_Snap.m_LocalClientId;
+		const bool XcHas = XcLocal >= 0 && m_aClients[XcLocal].m_aPredTick[XcTick % 200] == XcTick;
+		m_XcPrediction.NoteSnapshot(XcTick, XcHas, XcHas ? m_aClients[XcLocal].m_aPredPos[XcTick % 200] : vec2(0.0f, 0.0f), vec2(m_Snap.m_pLocalCharacter->m_X, m_Snap.m_pLocalCharacter->m_Y));
+	}
+
 	if(m_Snap.m_pLocalCharacter->m_AmmoCount > 0 && m_Snap.m_pLocalCharacter->m_Weapon != WEAPON_NINJA)
 		m_GameWorld.m_WorldConfig.m_InfiniteAmmo = false;
 	m_GameWorld.m_WorldConfig.m_IsSolo = !m_Snap.m_aCharacters[m_Snap.m_LocalClientId].m_HasExtendedData && !m_aTuning[g_Config.m_ClDummy].m_PlayerCollision && !m_aTuning[g_Config.m_ClDummy].m_PlayerHooking;
@@ -4328,8 +4337,10 @@ void CGameClient::UpdateRenderedCharacters()
 
 			if(g_Config.m_TcRemoveAnti)
 				Pos = GetFreezePos(i);
-			else if(CXcFastInput::On() && (i == m_Snap.m_LocalClientId || IsDummy)) // XClient: Exora input smooths the corrections
-				Pos = m_XcFastInput.Smooth(i, m_XcFastInput.Extend(i, GetFastInputPos(i)));
+			else if(CXcFastInput::On() && (i == m_Snap.m_LocalClientId || IsDummy)) // XClient: Exora input glides beyond the physics
+				Pos = m_XcFastInput.Extend(i, GetFastInputPos(i));
+			if(i == m_Snap.m_LocalClientId || IsDummy) // XClient: corrections of the prediction melt away
+				Pos = m_XcFastInput.Smooth(i, Pos);
 
 			if(i == m_Snap.m_LocalClientId || IsDummy)
 			{

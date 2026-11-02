@@ -98,7 +98,8 @@ void CXcFastInput::OnRender()
 
 vec2 CXcFastInput::Smooth(int ClientId, vec2 Target)
 {
-	if(!g_Config.m_XcFastInput || g_Config.m_XcFastInputSmooth <= 0 || ClientId < 0 || ClientId >= MAX_CLIENTS)
+	// with Exora input, or for the corrections of the prediction alone (xc_pred_smooth)
+	if(!(g_Config.m_XcFastInput || g_Config.m_XcPredSmooth) || g_Config.m_XcFastInputSmooth <= 0 || ClientId < 0 || ClientId >= MAX_CLIENTS)
 	{
 		if(ClientId >= 0 && ClientId < MAX_CLIENTS)
 			m_aState[ClientId].m_Valid = false;

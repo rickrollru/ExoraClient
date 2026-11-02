@@ -623,13 +623,21 @@ void CXcHud::RenderLatency(ImDrawList *pDraw, float Alpha)
 		const char *m_pCaption;
 		char m_aValue[16];
 		float m_Ms;
+		int m_Kind; // 0 = a delay in ms, 1 = the prediction ahead in ms, 2 = corrections per second
 	};
-	SCell aCells[3] = {{Tr("Keys"), "", m_KeyDelay}, {Tr("Mouse"), "", m_MouseDelay}, {Tr("Frame time"), "", m_FrameMs}};
+	const CXcPrediction &Prediction = GameClient()->m_XcPrediction;
+	const bool Online = Client()->State() == IClient::STATE_ONLINE;
+	SCell aCells[5] = {{Tr("Keys"), "", m_KeyDelay, 0}, {Tr("Mouse"), "", m_MouseDelay, 0}, {Tr("Frame time"), "", m_FrameMs, 0},
+		{Tr("Prediction"), "", Online ? (float)Client()->GetPredictionTime() : -1.0f, 1}, {Tr("Fixes/s"), "", Online ? Prediction.CorrectionsPerSecond() : -1.0f, 2}};
+	const int NumCells = g_Config.m_XcHudLatencyPred ? 5 : 3;
 	float Width = 14.0f * U;
-	for(SCell &Cell : aCells)
+	for(int i = 0; i < NumCells; i++)
 	{
+		SCell &Cell = aCells[i];
 		if(Cell.m_Ms < 0.0f)
 			str_copy(Cell.m_aValue, "–");
+		else if(Cell.m_Kind == 2)
+			str_format(Cell.m_aValue, sizeof(Cell.m_aValue), "%.1f", Cell.m_Ms);
 		else
 			str_format(Cell.m_aValue, sizeof(Cell.m_aValue), Cell.m_Ms < 10.0f ? "%.1f" : "%.0f", Cell.m_Ms);
 		Width += std::max(pLabel->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, "00.0 ms").x, pSmall->CalcTextSizeA(CaptionSize, FLT_MAX, 0.0f, Cell.m_pCaption).x) + 16.0f * U;
@@ -638,12 +646,22 @@ void CXcHud::RenderLatency(ImDrawList *pDraw, float Alpha)
 	const ImVec2 Min = PlaceRect(ELEMENT_LATENCY, ImVec2(Width, Height));
 	RenderPlate(pDraw, Min, ImVec2(Min.x + Width, Min.y + Height), U, Alpha);
 	float x = Min.x + 14.0f * U;
-	for(const SCell &Cell : aCells)
+	for(int i = 0; i < NumCells; i++)
 	{
-		// green when it is quick, orange and red when it lags
-		const ImVec4 Color = Cell.m_Ms < 0.0f ? t.m_TextMuted : Cell.m_Ms < 12.0f ? ImVec4(0.24f, 0.84f, 0.64f, 1.0f) : Cell.m_Ms < 25.0f ? ImVec4(1.0f, 0.62f, 0.3f, 1.0f) : ImVec4(1.0f, 0.36f, 0.36f, 1.0f);
+		const SCell &Cell = aCells[i];
+		// green when it is quick, orange and red when it lags; the prediction ahead is only told (it is the ping),
+		// the corrections are green when there are none
+		const ImVec4 Green(0.24f, 0.84f, 0.64f, 1.0f), Orange(1.0f, 0.62f, 0.3f, 1.0f), Red(1.0f, 0.36f, 0.36f, 1.0f);
+		ImVec4 Color = Cell.m_Ms < 0.0f ? t.m_TextMuted : Cell.m_Ms < 12.0f ? Green : Cell.m_Ms < 25.0f ? Orange : Red;
+		if(Cell.m_Ms >= 0.0f && Cell.m_Kind == 1)
+			Color = t.m_Text;
+		else if(Cell.m_Ms >= 0.0f && Cell.m_Kind == 2)
+			Color = Cell.m_Ms < 0.3f ? Green : Cell.m_Ms < 2.0f ? Orange : Red;
 		char aText[32];
-		str_format(aText, sizeof(aText), "%s %s", Cell.m_aValue, Tr("ms"));
+		if(Cell.m_Kind == 2)
+			str_copy(aText, Cell.m_aValue);
+		else
+			str_format(aText, sizeof(aText), "%s %s", Cell.m_aValue, Tr("ms"));
 		pDraw->AddText(pLabel, ValueSize, ImVec2(x, Min.y + 6.0f * U), Col(Color, Alpha), aText);
 		pDraw->AddText(pSmall, CaptionSize, ImVec2(x, Min.y + 25.0f * U), Col(t.m_TextMuted, Alpha), Cell.m_pCaption);
 		x += std::max(pLabel->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, "00.0 ms").x, pSmall->CalcTextSizeA(CaptionSize, FLT_MAX, 0.0f, Cell.m_pCaption).x) + 16.0f * U;

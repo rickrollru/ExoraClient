@@ -442,6 +442,46 @@ void CXcMenu::RenderSettingsPlayer()
 void CXcMenu::RenderSettingsControls()
 {
 	BeginCardGrid("##controls", 2);
+	if(BeginCard("##prediction", Tr("Prediction"), Tr("How the game guesses ahead of the server, so it plays without delay. Only the picture: what goes to the server stays the same")))
+	{
+		ParamLabel(Tr("Preset"));
+		const char *apPresets[] = {Tr("Responsive"), Tr("Balanced"), Tr("Stable"), Tr("Own")};
+		int Preset = CXcPrediction::CurrentPreset();
+		if(ConfigSegmented("##pred_preset", "xc_pred_preset", &Preset, apPresets, 4) && Preset < CXcPrediction::PRESET_CUSTOM)
+			CXcPrediction::ApplyPreset(Preset);
+		else
+			g_Config.m_XcPredPreset = Preset;
+		const CXcPrediction &Prediction = GameClient()->m_XcPrediction;
+		char aStatus[160];
+		if(Client()->State() == IClient::STATE_ONLINE)
+			str_format(aStatus, sizeof(aStatus), Tr("Now: %d ms ahead, connection jitter %.1f ms, %.1f corrections a second"), Client()->GetPredictionTime(), Prediction.JitterMs(), Prediction.CorrectionsPerSecond());
+		else
+			str_copy(aStatus, Tr("Join a server to see how the prediction does"));
+		Description(aStatus);
+		// a change by hand makes the preset the own one
+		const auto Key = []() { return g_Config.m_XcPredAutoMargin + g_Config.m_XcPredSmooth * 2 + g_Config.m_XcPredSmartFreeze * 4 + g_Config.m_ClAntiPing * 8 + g_Config.m_ClAntiPingPreInput * 16 + g_Config.m_XcPredGhost * 32 + (g_Config.m_XcPredAutoMargin ? 0 : g_Config.m_ClPredictionMargin * 128); };
+		const int KeyBefore = Key();
+		ToggleRow(Tr("Margin by itself"), "xc_pred_auto_margin", &g_Config.m_XcPredAutoMargin);
+		if(g_Config.m_XcPredAutoMargin)
+		{
+			str_format(aStatus, sizeof(aStatus), Tr("Margin %d ms: as much as the connection needs, changed slowly"), g_Config.m_ClPredictionMargin);
+			Description(aStatus);
+		}
+		else
+			ConfigSlider(Tr("Prediction margin"), "cl_prediction_margin", &g_Config.m_ClPredictionMargin, 1, 100, "%d ms");
+		ToggleRow(Tr("Smooth corrections of your tee"), "xc_pred_smooth", &g_Config.m_XcPredSmooth);
+		ToggleRow(Tr("Calm freeze: no jumps entering and leaving it"), "xc_pred_smart_freeze", &g_Config.m_XcPredSmartFreeze);
+		ToggleRow(Tr("Predict other players"), "cl_antiping", &g_Config.m_ClAntiPing);
+		if(g_Config.m_ClAntiPing)
+			ToggleRow(Tr("By their real inputs from the server"), "cl_antiping_preinput", &g_Config.m_ClAntiPingPreInput);
+		ParamLabel(Tr("Where the server has the tees"));
+		const char *apGhost[] = {Tr("Off"), Tr("Others"), Tr("Everyone")};
+		ConfigSegmented("##pred_ghost", "xc_pred_ghost", &g_Config.m_XcPredGhost, apGhost, 3);
+		if(Key() != KeyBefore)
+			g_Config.m_XcPredPreset = CXcPrediction::PRESET_CUSTOM;
+		ToggleRow(Tr("Prediction in the latency plate of the HUD"), "xc_hud_latency_pred", &g_Config.m_XcHudLatencyPred);
+		EndCard();
+	}
 	if(BeginCard("##fast_input", Tr("Exora input"), Tr("Your tee on the screen answers your keys sooner and without jerks. Only the picture: what goes to the server stays the same"), &g_Config.m_XcFastInput))
 	{
 		ToggleRow(Tr("Automatic amount"), "xc_fast_input_auto", &g_Config.m_XcFastInputAuto);
