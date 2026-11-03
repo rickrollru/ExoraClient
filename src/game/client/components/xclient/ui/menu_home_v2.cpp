@@ -129,86 +129,91 @@ void CXcMenu::RenderHomeStage(float Width, float Height)
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	PanelRect(pDraw, Min, Max, S(14.0f), t.m_Card);
 
-	// the stage: a soft light from below and a floor glow
-	const float StageHeight = Height - S(196.0f);
-	const ImVec2 StageCenter((Min.x + Max.x) * 0.5f, Min.y + StageHeight * 0.55f);
-	const float FloorY = Min.y + StageHeight * 0.9f;
-	pDraw->AddEllipseFilled(ImVec2(StageCenter.x, FloorY), ImVec2(Width * 0.3f, S(9.0f)), Col(t.m_Accent, 0.2f), 0.0f, 48);
-
-	// the tee, as big as the stage allows, with its cape, hat, accessory, neon and shader
-	const float TeeBox = std::min(Width * 0.72f, StageHeight * 0.82f);
-	const ImVec2 TeeMin(StageCenter.x - TeeBox * 0.5f, FloorY - TeeBox * 0.86f);
-	AddTeePreview(pDraw, TeeMin, ImVec2(TeeMin.x + TeeBox, TeeMin.y + TeeBox));
-
-	// the look of the tee: a small square button in the corner
-	ImGui::SetCursorScreenPos(ImVec2(Max.x - S(14.0f) - S(40.0f), Min.y + S(14.0f)));
+	const float Pad = S(22.0f);
 	const auto OpenLook = [&]() {
 		m_Page = PAGE_VISUALS;
 		m_VisualsSection = VISUALS_COSMETICS;
 	};
-	if(IconSquare("##look", XC_ICON_BRUSH, S(40.0f), Tr("Look of your tee")))
-		OpenLook();
 
-	// the name and what is worn
-	float y = Min.y + StageHeight + S(4.0f);
-	const float Pad = S(22.0f);
-	ImFont *pName = Fonts().m_pHeader;
-	pDraw->AddText(pName, pName->FontSize, ImVec2(Min.x + Pad, y), Col(t.m_Text), Client()->PlayerName());
-	y += pName->FontSize + S(10.0f);
-	struct SWorn
-	{
-		const char *m_pLabel;
-		bool m_Accent;
-	};
-	std::vector<SWorn> vWorn;
+	// what is worn: plain plates, all alike
+	std::vector<const char *> vWorn;
 	static const char *const s_apAccessories[] = {"", "Cone hat", "Halo", "Crown", "Horns", "Sprout", "Stars", "Flame", "Bow", "Sign", "Cross"};
 	if(g_Config.m_XcAccessory > 0 && g_Config.m_XcAccessory < (int)std::size(s_apAccessories) && g_Config.m_XcAccessorySelf)
-		vWorn.push_back({Tr(s_apAccessories[g_Config.m_XcAccessory]), false});
+		vWorn.push_back(Tr(s_apAccessories[g_Config.m_XcAccessory]));
 	if(g_Config.m_XcHat && g_Config.m_XcHatSelf)
-		vWorn.push_back({Tr("Own hat"), false});
+		vWorn.push_back(Tr("Own hat"));
 	if(g_Config.m_XcCape && g_Config.m_XcCapeSelf)
-		vWorn.push_back({Tr("Cape"), false});
+		vWorn.push_back(Tr("Cape"));
 	if(g_Config.m_XcScarf && g_Config.m_XcScarfSelf)
-		vWorn.push_back({Tr("Scarf"), false});
+		vWorn.push_back(Tr("Scarf"));
 	static const char *const s_apShaders[] = {"", "Gradient", "Rainbow", "Galaxy", "Waves", "Chrome"};
 	char aShader[64] = "";
 	if(g_Config.m_XcTeeShader > 0 && g_Config.m_XcTeeShader < (int)std::size(s_apShaders) && g_Config.m_XcTeeShaderSelf)
 	{
 		str_format(aShader, sizeof(aShader), "%s · %s", Tr("Shader"), Tr(s_apShaders[g_Config.m_XcTeeShader]));
-		vWorn.push_back({aShader, true});
+		vWorn.push_back(aShader);
 	}
 	if(g_Config.m_XcGlow && g_Config.m_XcGlowSelf)
-		vWorn.push_back({Tr("Neon outline"), true});
+		vWorn.push_back(Tr("Neon outline"));
+
+	// the plates wrap into rows; the block of the name and the plates sits right over the buttons and grows upwards
 	ImFont *pChip = Fonts().m_pSmall;
-	float x = Min.x + Pad;
 	const float ChipHeight = pChip->FontSize + S(10.0f);
-	if(vWorn.empty())
+	const float ChipGap = S(6.0f);
+	std::vector<ImVec2> vChipPos(vWorn.size());
+	std::vector<float> vChipWidth(vWorn.size());
+	int Rows = 1;
 	{
-		pDraw->AddText(pChip, pChip->FontSize, ImVec2(x, y + S(5.0f)), Col(t.m_TextMuted), Tr("Nothing worn yet: dress up in Visuals"));
+		float x = 0.0f;
+		for(size_t i = 0; i < vWorn.size(); i++)
+		{
+			vChipWidth[i] = pChip->CalcTextSizeA(pChip->FontSize, FLT_MAX, 0.0f, vWorn[i]).x + S(18.0f);
+			if(x > 0.0f && x + vChipWidth[i] > Width - Pad * 2.0f)
+			{
+				x = 0.0f;
+				Rows++;
+			}
+			vChipPos[i] = ImVec2(x, (Rows - 1) * (ChipHeight + ChipGap));
+			x += vChipWidth[i] + ChipGap;
+		}
 	}
+	const float RowHeight = S(54.0f);
+	const float RowY = Max.y - Pad - RowHeight;
+	const float ChipsHeight = Rows * ChipHeight + (Rows - 1) * ChipGap;
+	const float ChipsY = RowY - S(18.0f) - ChipsHeight;
+	ImFont *pName = Fonts().m_pHeader;
+	const float NameY = ChipsY - S(10.0f) - pName->FontSize;
+
+	// the stage takes the rest: the tee with its cape, hat, accessory, neon and shader. Not bigger than the skin
+	// picture allows (its body is about 96 pixels): stretched further it gets blurry
+	const float StageHeight = std::max(NameY - Min.y - S(4.0f), S(120.0f));
+	const ImVec2 StageCenter((Min.x + Max.x) * 0.5f, Min.y + StageHeight * 0.5f + S(10.0f));
+	const float TeeBox = std::min({Width * 0.6f, StageHeight * 0.75f, 96.0f * 1.7f / 0.62f});
+	const ImVec2 TeeMin(StageCenter.x - TeeBox * 0.5f, StageCenter.y - TeeBox * 0.5f);
+	AddTeePreview(pDraw, TeeMin, ImVec2(TeeMin.x + TeeBox, TeeMin.y + TeeBox));
+
+	// the look of the tee: a small square button in the corner
+	ImGui::SetCursorScreenPos(ImVec2(Max.x - S(14.0f) - S(40.0f), Min.y + S(14.0f)));
+	if(IconSquare("##look", XC_ICON_BRUSH, S(40.0f), Tr("Look of your tee")))
+		OpenLook();
+
+	pDraw->AddText(pName, pName->FontSize, ImVec2(Min.x + Pad, NameY), Col(t.m_Text), Client()->PlayerName());
+	if(vWorn.empty())
+		pDraw->AddText(pChip, pChip->FontSize, ImVec2(Min.x + Pad, ChipsY + S(5.0f)), Col(t.m_TextMuted), Tr("Nothing worn yet: dress up in Visuals"));
 	for(size_t i = 0; i < vWorn.size(); i++)
 	{
-		const float ChipWidth = pChip->CalcTextSizeA(pChip->FontSize, FLT_MAX, 0.0f, vWorn[i].m_pLabel).x + S(18.0f);
-		if(x + ChipWidth > Max.x - Pad && x > Min.x + Pad)
-		{
-			x = Min.x + Pad;
-			y += ChipHeight + S(6.0f);
-		}
-		ImGui::SetCursorScreenPos(ImVec2(x, y));
+		const ImVec2 P(Min.x + Pad + vChipPos[i].x, ChipsY + vChipPos[i].y);
+		ImGui::SetCursorScreenPos(P);
 		char aId[16];
 		str_format(aId, sizeof(aId), "##worn%d", (int)i);
-		if(ImGui::InvisibleButton(aId, ImVec2(ChipWidth, ChipHeight)))
+		if(ImGui::InvisibleButton(aId, ImVec2(vChipWidth[i], ChipHeight)))
 			OpenLook();
 		const bool Hovered = ImGui::IsItemHovered();
-		const ImVec4 Fill = vWorn[i].m_Accent ? t.m_Accent : t.m_Text;
-		pDraw->AddRectFilled(ImVec2(x, y), ImVec2(x + ChipWidth, y + ChipHeight), Col(Fill, vWorn[i].m_Accent ? (Hovered ? 0.26f : 0.16f) : (Hovered ? 0.1f : 0.06f)), S(6.0f));
-		pDraw->AddText(pChip, pChip->FontSize, ImVec2(x + S(9.0f), y + S(5.0f)), Col(vWorn[i].m_Accent ? Mix(t.m_Accent, ImVec4(1, 1, 1, 1), 0.5f) : t.m_TextSecondary), vWorn[i].m_pLabel);
-		x += ChipWidth + S(6.0f);
+		pDraw->AddRectFilled(P, ImVec2(P.x + vChipWidth[i], P.y + ChipHeight), Col(t.m_Text, Hovered ? 0.1f : 0.06f), S(6.0f));
+		pDraw->AddText(pChip, pChip->FontSize, ImVec2(P.x + S(9.0f), std::floor(P.y + ChipHeight * 0.5f - TextMiddle(pChip, pChip->FontSize) + 0.5f)), Col(Hovered ? t.m_Text : t.m_TextSecondary), vWorn[i]);
 	}
 
 	// play, the map editor and the local server
-	const float RowHeight = S(54.0f);
-	const float RowY = Max.y - Pad - RowHeight;
 	const float IconGap = S(10.0f);
 	const float PlayWidth = Width - Pad * 2.0f - (RowHeight + IconGap) * 2.0f;
 	ImGui::SetCursorScreenPos(ImVec2(Min.x + Pad, RowY));
@@ -663,7 +668,7 @@ void CXcMenu::RenderHomeFooter(float Width, float Height)
 	float x = Min.x + Width - Size;
 	const float y = Min.y + (Height - Size) * 0.5f;
 	ImGui::SetCursorScreenPos(ImVec2(x, y));
-	if(IconSquare("##link_dev", XC_ICON_USER, Size, Tr("Developer on Discord: rickroll.ru (click copies the name)")))
+	if(IconSquare("##link_dev", XC_ICON_USER, Size, Tr("Developer on Discord: rickroll.ru")))
 	{
 		Input()->SetClipboardText("rickroll.ru");
 		Toast(Tr("Discord name copied"));

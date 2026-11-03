@@ -45,6 +45,33 @@ static void DrawSegment(IGraphics *pGraphics, vec2 a, vec2 b, float Width, const
 	pGraphics->QuadsDrawFreeform(&Item, 1);
 }
 
+// a line through many points as one smooth band, inside an open QuadsBegin: the sides meet at every point (no gaps,
+// no overlapping ends that would show as bright dots with added light)
+static void DrawRibbon(IGraphics *pGraphics, const vec2 *pPoints, const ColorRGBA *pColors, int Num, float Width)
+{
+	if(Num < 2)
+		return;
+	std::vector<vec2> vSide(Num);
+	for(int i = 0; i < Num; i++)
+	{
+		const vec2 In = i > 0 ? pPoints[i] - pPoints[i - 1] : pPoints[i + 1] - pPoints[i];
+		const vec2 Out = i + 1 < Num ? pPoints[i + 1] - pPoints[i] : In;
+		const vec2 a = length(In) > 0.001f ? normalize(In) : vec2(1.0f, 0.0f);
+		const vec2 b = length(Out) > 0.001f ? normalize(Out) : a;
+		vec2 Normal(-(a.y + b.y), a.x + b.x);
+		Normal = length(Normal) > 0.001f ? normalize(Normal) : vec2(-a.y, a.x);
+		// the corner keeps the band's width, but a sharp turn does not shoot out a long spike
+		const float Cos = std::max(dot(Normal, vec2(-a.y, a.x)), 0.5f);
+		vSide[i] = Normal * (Width * 0.5f / Cos);
+	}
+	for(int i = 0; i + 1 < Num; i++)
+	{
+		pGraphics->SetColor4(pColors[i], pColors[i + 1], pColors[i], pColors[i + 1]);
+		const IGraphics::CFreeformItem Item(pPoints[i] + vSide[i], pPoints[i + 1] + vSide[i + 1], pPoints[i] - vSide[i], pPoints[i + 1] - vSide[i + 1]);
+		pGraphics->QuadsDrawFreeform(&Item, 1);
+	}
+}
+
 // a filled circle as a fan of freeform quads, inside an open QuadsBegin
 static void DrawDisc(IGraphics *pGraphics, vec2 Center, float Radius, const ColorRGBA &Color, int Segments = 10)
 {
@@ -311,8 +338,10 @@ void CXcCape::GlowLine(const vec2 *pPoints, int Num, const ColorRGBA *pColors, f
 		Graphics()->TextureClear();
 		Graphics()->BlendAdditive();
 		Graphics()->QuadsBegin();
-		for(int i = 0; i + 1 < Num; i++)
-			DrawSegment(Graphics(), pPoints[i], pPoints[i + 1], Width, Hot(pColors[i], 0.45f).WithMultipliedAlpha(0.9f), 0.0f); // added light: overlaps would be bright dots
+		std::vector<ColorRGBA> vHot(Num);
+		for(int i = 0; i < Num; i++)
+			vHot[i] = Hot(pColors[i], 0.45f).WithMultipliedAlpha(0.9f);
+		DrawRibbon(Graphics(), pPoints, vHot.data(), Num, Width);
 		Graphics()->QuadsEnd();
 		Graphics()->BlendNormal();
 		return;
@@ -575,11 +604,11 @@ void CXcCape::RenderCloth(const SState &State, float Scale, int ClientId, float 
 				}
 				else
 				{
-					// energy: thin light in the middle, bright at the edges and where the wave runs
-					const bool Edge = cc == 0 || cc == COLS - 1 || rr == ROWS - 1;
+					// energy: an even veil of light, brighter where the wave runs and fading to the bottom; the same
+					// for every cell of a row, so no single cells stand out as squares (the edge is the glowing line)
 					Shade = 1.0f;
-					CornerAlpha *= (Inside ? 0.24f : 0.34f) + (Edge ? 0.3f : 0.0f) + 0.6f * aWave[rr];
-					CornerAlpha *= 1.0f - 0.3f * (float)rr / (ROWS - 1);
+					CornerAlpha *= (Inside ? 0.22f : 0.3f) + 0.45f * aWave[rr];
+					CornerAlpha *= 1.0f - 0.35f * (float)rr / (ROWS - 1);
 				}
 				aCorner[k] = Shaded(pColors[rr], Shade, CornerAlpha);
 			}
@@ -623,16 +652,7 @@ void CXcCape::RenderCloth(const SState &State, float Scale, int ClientId, float 
 		Graphics()->BlendNormal();
 	}
 
-	if(Look == LOOK_ENERGY && GameClient()->m_XcSprites.Enabled() && FxGlow::g_Current.m_Strength > 0.0f)
-	{
-		// soft light filling the cloth
-		CXcSprites &Sprites = GameClient()->m_XcSprites;
-		Sprites.Begin(CXcSprites::SPRITE_GLOW, true);
-		for(int r = 1; r < ROWS; r += 2)
-			for(int c = 0; c < COLS; c++)
-				Sprites.Draw(Cloth.m_aPoints[r][c], BottomWidth * 0.55f * FxGlow::g_Current.m_Radius, 0.0f, aLight[r].WithAlpha(Opacity * (0.05f + 0.12f * aWave[r]) * std::min(FxGlow::g_Current.m_Strength, 2.0f)));
-		Sprites.End();
-	}
+	// (the energy cape had spots of light on the points of its grid: they showed as random blobs, removed)
 
 	// the glowing edge, in the trim color when the cape has an edge
 	const int Trim = g_Config.m_XcCapeTrim;

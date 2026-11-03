@@ -35,7 +35,7 @@ namespace XcUi
 			{"Hold Shift to drag precisely", "Зажми Shift, чтобы тянуть точнее"},
 			{"All updates", "Все обновления"},
 			{"Back to the game", "Вернуться в игру"},
-			{"Developer on Discord: rickroll.ru (click copies the name)", "Разработчик в Discord: rickroll.ru (клик копирует ник)"},
+			{"Developer on Discord: rickroll.ru", "Разработчик в Discord: rickroll.ru"},
 			{"Discord server of the client", "Discord-сервер клиента"},
 			{"Local server: running, click to join (right click stops it)", "Локальный сервер запущен: клик — зайти, ПКМ — остановить"},
 			{"Look of your tee", "Внешний вид ти"},
