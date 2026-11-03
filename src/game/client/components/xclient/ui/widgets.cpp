@@ -467,6 +467,16 @@ namespace XcUi
 		const ImVec2 HighlightMin(Rect.Min.x + Inset + SegmentWidth * Shown, Rect.Min.y + Inset);
 		pDraw->AddRectFilled(HighlightMin, ImVec2(HighlightMin.x + SegmentWidth, Rect.Max.y - Inset), Col(t.m_Accent), S(7.0f));
 
+		// one text size for all parts: the longest word decides how much smaller they get, down to 70%
+		const float Room = SegmentWidth - S(10.0f);
+		float Size = pFont->FontSize;
+		for(int i = 0; i < NumItems; i++)
+		{
+			const float FullWidth = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, ppItems[i]).x;
+			if(FullWidth > Room)
+				Size = std::min(Size, std::max(pFont->FontSize * Room / FullWidth, pFont->FontSize * 0.7f));
+		}
+
 		bool Changed = false;
 		for(int i = 0; i < NumItems; i++)
 		{
@@ -485,8 +495,21 @@ namespace XcUi
 			const float Under = std::clamp(1.0f - std::abs(Shown - i), 0.0f, 1.0f);
 			const float Hover = Animate(SegmentId, Hovered ? 1.0f : 0.0f, 18.0f);
 			const ImVec4 TextColor = Mix(Mix(t.m_TextSecondary, t.m_Text, Hover), t.m_OnAccent, Under);
-			const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, ppItems[i]);
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Segment.GetCenter().x - TextSize.x * 0.5f, Segment.GetCenter().y - TextSize.y * 0.5f), Col(TextColor), ppItems[i]);
+			// still too long at the smallest size: cut with "...", it never runs into the next part
+			const float TextWidth = std::min(pFont->CalcTextSizeA(Size, FLT_MAX, 0.0f, ppItems[i]).x, Room);
+			const ImVec2 TextPos(std::floor(Segment.GetCenter().x - TextWidth * 0.5f), std::floor(Segment.GetCenter().y - TextMiddle(pFont, Size) + 0.5f));
+			if(pFont->CalcTextSizeA(Size, FLT_MAX, 0.0f, ppItems[i]).x <= Room)
+				pDraw->AddText(pFont, Size, TextPos, Col(TextColor), ppItems[i]);
+			else
+			{
+				ImGui::PushFont(pFont);
+				ImGui::PushStyleColor(ImGuiCol_Text, TextColor);
+				ImGui::RenderTextEllipsis(pDraw, TextPos, ImVec2(TextPos.x + Room, Segment.Max.y), TextPos.x + Room, TextPos.x + Room, ppItems[i], nullptr, nullptr);
+				ImGui::PopStyleColor();
+				ImGui::PopFont();
+				if(Hovered)
+					ImGui::SetTooltip("%s", ppItems[i]);
+			}
 		}
 		if(Changed)
 			ImGui::MarkItemEdited(Id);

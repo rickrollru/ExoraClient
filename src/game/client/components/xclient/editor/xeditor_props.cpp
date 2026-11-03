@@ -79,7 +79,27 @@ void CXcEditorUi::RenderProp(int Kind, int Call, int Index, const SXcCapturedPro
 	ImFont *pSmall = Fonts().m_pSmall;
 	const float RowHeight = S(28.0f);
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
-	ImGui::GetWindowDrawList()->AddText(pSmall, pSmall->FontSize, ImVec2(Start.x, Start.y + (RowHeight - pSmall->FontSize) * 0.5f), Col(t.m_TextSecondary), Tr(Prop.m_Name.c_str()));
+	{
+		// the name never runs into the control: a long one gets a bit smaller, then cut with "..." (full on hover)
+		const char *pName = Tr(Prop.m_Name.c_str());
+		const float Room = LabelWidth - S(8.0f);
+		const float FullWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pName).x;
+		const float Size = FullWidth > Room ? std::max(pSmall->FontSize * Room / FullWidth, pSmall->FontSize * 0.85f) : pSmall->FontSize;
+		const ImVec2 TextPos(Start.x, std::floor(Start.y + (RowHeight - Size) * 0.5f));
+		ImDrawList *pList = ImGui::GetWindowDrawList();
+		if(pSmall->CalcTextSizeA(Size, FLT_MAX, 0.0f, pName).x <= Room)
+			pList->AddText(pSmall, Size, TextPos, Col(t.m_TextSecondary), pName);
+		else
+		{
+			ImGui::PushFont(pSmall);
+			ImGui::PushStyleColor(ImGuiCol_Text, t.m_TextSecondary);
+			ImGui::RenderTextEllipsis(pList, TextPos, ImVec2(Start.x + Room, Start.y + RowHeight), Start.x + Room, Start.x + Room, pName, nullptr, nullptr);
+			ImGui::PopStyleColor();
+			ImGui::PopFont();
+			if(ImGui::IsMouseHoveringRect(Start, ImVec2(Start.x + Room, Start.y + RowHeight)))
+				ImGui::SetTooltip("%s", pName);
+		}
+	}
 	const float ControlX = Start.x + LabelWidth;
 	const float ControlWidth = m_CardInnerWidth - LabelWidth;
 	ImGui::SetCursorScreenPos(ImVec2(ControlX, Start.y));
@@ -369,7 +389,13 @@ void CXcEditorUi::RenderCaptureCard(int Kind, const char *pId, const char *pTitl
 	ImGui::Dummy(ImVec2(Width - Pad * 2.0f, S(4.0f)));
 
 	m_CardInnerWidth = Width - Pad * 2.0f;
-	const float LabelWidth = m_CardInnerWidth * 0.38f;
+	// the name column fits the longest name, between 30% and 48% of the card
+	float LongestName = 0.0f;
+	for(const auto &vProps : Result.m_vvProps)
+		for(const SXcCapturedProp &Prop : vProps)
+			if(Prop.m_Type != PROPTYPE_NULL)
+				LongestName = std::max(LongestName, Fonts().m_pSmall->CalcTextSizeA(Fonts().m_pSmall->FontSize, FLT_MAX, 0.0f, Tr(Prop.m_Name.c_str())).x);
+	const float LabelWidth = std::clamp(LongestName + S(12.0f), m_CardInnerWidth * 0.3f, m_CardInnerWidth * 0.48f);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(S(4.0f), 0.0f));
 	for(int Call = 0; Call < (int)Result.m_vvProps.size(); Call++)
 	{
