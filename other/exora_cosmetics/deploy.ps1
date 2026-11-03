@@ -8,7 +8,8 @@ param(
 	[string]$User = "root",
 	[int]$Port = 8770
 )
-$ErrorActionPreference = "Stop"
+# not "Stop": Windows PowerShell turns any text ssh writes to stderr (a refused key) into a stopping error
+$ErrorActionPreference = "Continue"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 if(-not $Server) { $Server = Read-Host "Server IP or domain" }
@@ -27,12 +28,18 @@ if(Test-Path $SshDir) {
 		$Head = Get-Content $File.FullName -TotalCount 1 -ErrorAction SilentlyContinue
 		if($Head -notmatch "PRIVATE KEY") { continue }
 		Write-Host "Trying key $($File.Name)..."
-		& ssh -i $File.FullName -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new $Target "echo ok" 2>$null | Out-Null
+		$Null = cmd /c "ssh -i `"$($File.FullName)`" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new $Target echo ok 2>nul"
 		if($LASTEXITCODE -eq 0) { $Key = $File.FullName; break }
+		Write-Host "  does not fit"
 	}
 }
 if($Key) { Write-Host "Key works: $Key" -ForegroundColor Green }
-else { Write-Host "No key fits. ssh will ask for the server password now (once)." -ForegroundColor Yellow }
+else {
+	Write-Host "No key fits for $Target." -ForegroundColor Yellow
+	$Other = Read-Host "Login name on the server (Enter = $User)"
+	if($Other) { $User = $Other; $Target = "$User@$Server" }
+	Write-Host "ssh will ask for the password of $Target now (once)." -ForegroundColor Yellow
+}
 
 # 2. what runs on the server: the files go inside as base64 (no trouble with Windows line ends)
 $ServerPy = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $Here "server.py")))
