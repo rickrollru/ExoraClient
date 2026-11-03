@@ -197,6 +197,35 @@ void CXcMenu::RenderHomeStage(float Width, float Height)
 	if(IconSquare("##look", XC_ICON_BRUSH, S(40.0f), Tr("Look of your tee")))
 		OpenLook();
 
+	// how many Exora clients run now: a plate in the other corner, same height as the button
+	const int Online = GameClient()->m_XcCosmetics.Online();
+	if(Online >= 0)
+	{
+		char aOnline[64];
+		str_format(aOnline, sizeof(aOnline), "%d", Online);
+		const char *pLabel = Tr("in Exora now");
+		ImFont *pBold = Fonts().m_pTitle;
+		ImFont *pText = Fonts().m_pSmall;
+		const float Height = S(40.0f);
+		const float NumberWidth = pBold->CalcTextSizeA(pBold->FontSize, FLT_MAX, 0.0f, aOnline).x;
+		const float LabelWidth = pText->CalcTextSizeA(pText->FontSize, FLT_MAX, 0.0f, pLabel).x;
+		const ImVec2 PMin(Min.x + S(14.0f), Min.y + S(14.0f));
+		const ImVec2 PMax(PMin.x + S(14.0f) + S(8.0f) + S(8.0f) + NumberWidth + S(6.0f) + LabelWidth + S(12.0f), PMin.y + Height);
+		const ImVec4 Mint(0.24f, 0.84f, 0.64f, 1.0f);
+		pDraw->AddRectFilled(PMin, PMax, Col(t.m_Track), S(10.0f));
+		pDraw->AddRect(PMin, PMax, Col(t.m_Border), S(10.0f), 0, 1.0f);
+		// a calm "live" dot: it breathes a little, no glow around
+		const float Breath = 0.75f + 0.25f * std::sin(Client()->GlobalTime() * 2.2f);
+		const ImVec2 Dot(PMin.x + S(14.0f) + S(4.0f), (PMin.y + PMax.y) * 0.5f);
+		pDraw->AddRectFilled(ImVec2(Dot.x - S(4.0f), Dot.y - S(4.0f)), ImVec2(Dot.x + S(4.0f), Dot.y + S(4.0f)), Col(Mint, Breath), S(2.5f));
+		const float TextX = Dot.x + S(4.0f) + S(8.0f);
+		const float MidY = (PMin.y + PMax.y) * 0.5f;
+		pDraw->AddText(pBold, pBold->FontSize, ImVec2(TextX, std::floor(MidY - TextMiddle(pBold, pBold->FontSize) + 0.5f)), Col(t.m_Text), aOnline);
+		pDraw->AddText(pText, pText->FontSize, ImVec2(TextX + NumberWidth + S(6.0f), std::floor(MidY - TextMiddle(pText, pText->FontSize) + 0.5f)), Col(t.m_TextSecondary), pLabel);
+		if(ImGui::IsMouseHoveringRect(PMin, PMax))
+			ImGui::SetTooltip("%s", Tr("Exora clients running right now, in the game and in the menu"));
+	}
+
 	pDraw->AddText(pName, pName->FontSize, ImVec2(Min.x + Pad, NameY), Col(t.m_Text), Client()->PlayerName());
 	if(vWorn.empty())
 		pDraw->AddText(pChip, pChip->FontSize, ImVec2(Min.x + Pad, ChipsY + S(5.0f)), Col(t.m_TextMuted), Tr("Nothing worn yet: dress up in Visuals"));

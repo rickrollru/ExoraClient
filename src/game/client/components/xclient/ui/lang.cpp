@@ -30,6 +30,8 @@ namespace XcUi
 			{"Theme", "Тема"},
 			{"Profile", "Профиль"},
 			{"Classic menu", "Классическое меню"},
+			{"Exora clients running right now, in the game and in the menu", "Сколько клиентов Exora запущено прямо сейчас — в игре и в меню"},
+			{"in Exora now", "сейчас в Exora"},
 			{"Only the look is shared, by a random id of this client: no nick is stored", "Передаётся только внешний вид, по случайному ID клиента: ник не хранится"},
 			{"Join a server: the sets are shared while you play", "Зайди на сервер: косметикой обмениваются во время игры"},
 			{"The cosmetics service does not answer, trying again", "Сервис косметики не отвечает, пробую ещё"},

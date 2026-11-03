@@ -28,6 +28,11 @@ MAX_BODY = 8192
 MAX_BUNDLE = 4096
 RATE_WINDOW = 10.0
 RATE_LIMIT = 40  # requests per window and address
+ONLINE_TTL = 75.0  # a client counts as online this long after its last beat
+NEW_IDS_PER_HOUR = 10  # new client ids one address may make in an hour (no filling the disk with made-up ids)
+MAX_CLIENTS = 500000  # all ids together, then new ones wait until the old ones are cleaned up
+MAX_CONNECTIONS = 200  # connections handled at once; more get "busy"
+SOCKET_TIMEOUT = 10  # seconds a connection may take, slow ones are dropped
 
 ID_RE = re.compile(r"^[0-9a-f]{16}$")
 SECRET_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -37,6 +42,9 @@ SERVER_RE = re.compile(r"^[0-9a-fA-F.:\[\]]{3,64}$")
 lock = threading.Lock()
 presence = {}  # server address -> {client id: (player number, name, set hash, time)}
 rates = {}  # remote address -> [window start, count]
+seen = {}  # client id -> time of the last beat: how many play now, in memory only
+new_ids = {}  # remote address -> [hour start, new ids]
+slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
 
 
 def db():
@@ -60,6 +68,15 @@ def cleanup_loop():
 
 class Handler(BaseHTTPRequestHandler):
 	server_version = "ExoraCosmetics/1"
+	timeout = SOCKET_TIMEOUT
+
+	def handle(self):
+		if not slots.acquire(blocking=False):
+			return  # too many at once: drop, the client tries again later
+		try:
+			super().handle()
+		finally:
+			slots.release()
 
 	def log_message(self, fmt, *args):
 		pass  # no access log: nothing about the players is written to the disk
@@ -110,6 +127,11 @@ class Handler(BaseHTTPRequestHandler):
 			return self.reply(200, {"hash": h, "data": row[0]})
 		if url.path == "/v1/ping":
 			return self.reply(200, {"ok": True})
+		if url.path == "/v1/stats":
+			now = time.time()
+			with lock:
+				online = sum(1 for t in seen.values() if now - t < ONLINE_TTL)
+			return self.reply(200, {"online": online})
 		return self.reply(404, {"error": "not found"})
 
 	def do_POST(self):
@@ -142,6 +164,20 @@ class Handler(BaseHTTPRequestHandler):
 			row = conn.execute("SELECT secret FROM clients WHERE id = ?", (cid_id,)).fetchone()
 			if row and row[0] != secret_hash:
 				return self.reply(403, {"error": "not yours"})
+			if not row:
+				# a new id: only a few per address and hour, and not past the limit of all ids
+				addr_ip = self.client_address[0]
+				with lock:
+					entry = new_ids.get(addr_ip)
+					if not entry or now - entry[0] > 3600:
+						entry = new_ids[addr_ip] = [now, 0]
+					if entry[1] >= NEW_IDS_PER_HOUR:
+						return self.reply(429, {"error": "too many new ids"})
+					entry[1] += 1
+					if len(new_ids) > 100000:
+						new_ids.clear()
+				if conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0] >= MAX_CLIENTS:
+					return self.reply(503, {"error": "full"})
 			if bundle is not None and h:
 				if hashlib.sha256(bundle.encode()).hexdigest()[: len(h)] != h:
 					return self.reply(400, {"error": "hash does not match"})
@@ -153,6 +189,10 @@ class Handler(BaseHTTPRequestHandler):
 					conn.execute("UPDATE bundles SET seen = ? WHERE hash = ?", (now, h))
 			conn.execute("INSERT OR REPLACE INTO clients (id, secret, hash, seen) VALUES (?, ?, ?, ?)", (cid_id, secret_hash, h or None, now))
 		with lock:
+			seen[cid_id] = now
+			if len(seen) > 200000:
+				for key in [k for k, t in seen.items() if now - t >= ONLINE_TTL]:
+					del seen[key]
 			for players in presence.values():
 				players.pop(cid_id, None)
 			if SERVER_RE.match(addr) and 0 <= player < 128 and h and not need:

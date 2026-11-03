@@ -160,7 +160,7 @@ void CXcCosmeticsSync::OnReset()
 
 void CXcCosmeticsSync::OnShutdown()
 {
-	for(auto *ppRequest : {&m_pBeat, &m_pServer})
+	for(auto *ppRequest : {&m_pBeat, &m_pServer, &m_pStats})
 		if(*ppRequest)
 			(*ppRequest)->Abort();
 	for(auto &Pending : m_vpBundles)
@@ -297,6 +297,8 @@ void CXcCosmeticsSync::Finish()
 			if(m_NeedBundle && !m_BeatHadBundle)
 				m_NextBeat = 0.0f; // the service does not know the set: send it now
 			m_Status = STATUS_OK;
+			if(m_Online <= 0)
+				m_NextStats = std::min(m_NextStats, Now + 1.0f);
 		}
 		else
 		{
@@ -374,10 +376,40 @@ void CXcCosmeticsSync::Finish()
 		m_NumRemote += HasRemote(i);
 }
 
+// how many clients run now: a short beat every half a minute also from the menu, and the count from the service
+void CXcCosmeticsSync::UpdateOnline()
+{
+	const float Now = Client()->GlobalTime();
+	if(m_pStats && m_pStats->Done())
+	{
+		json_value *pJson = m_pStats->State() == EHttpState::DONE ? m_pStats->ResultJson() : nullptr;
+		const json_value *pOnline = pJson && pJson->type == json_object ? json_object_get(pJson, "online") : nullptr;
+		if(pOnline && pOnline->type == json_integer)
+			m_Online = (int)json_int_get(pOnline);
+		if(pJson)
+			json_value_free(pJson);
+		m_pStats = nullptr;
+	}
+	if(!m_pStats && Now >= m_NextStats)
+	{
+		char aUrl[256];
+		str_format(aUrl, sizeof(aUrl), "%s/v1/stats", g_Config.m_XcCosmeticsUrl);
+		m_pStats = HttpGet(aUrl);
+		m_pStats->Timeout(CTimeout{4000, 8000, 100, 5});
+		m_pStats->LogProgress(HTTPLOG::NONE);
+		m_pStats->AllowInsecure(true);
+		Http()->Run(m_pStats);
+		m_NextStats = Now + 30.0f;
+	}
+}
+
 void CXcCosmeticsSync::OnRender()
 {
+	if(!g_Config.m_XcCosmeticsUrl[0])
+		return;
+	UpdateOnline();
 	const bool Online = Client()->State() == IClient::STATE_ONLINE;
-	if(!Online || !g_Config.m_XcCosmeticsUrl[0] || (!g_Config.m_XcCosmeticsShare && !g_Config.m_XcCosmeticsOthers))
+	if(!Online || (!g_Config.m_XcCosmeticsShare && !g_Config.m_XcCosmeticsOthers))
 	{
 		if(m_NumRemote || !m_Address.empty())
 		{
@@ -385,6 +417,30 @@ void CXcCosmeticsSync::OnRender()
 			m_Address.clear();
 		}
 		m_Status = g_Config.m_XcCosmeticsShare || g_Config.m_XcCosmeticsOthers ? STATUS_WAITING : STATUS_OFF;
+		// in the menu: only "this client runs", to be counted online (not when sharing is off altogether)
+		const float Now = Client()->GlobalTime();
+		if(m_pBeat && m_pBeat->Done())
+		{
+			// the first beat went through: ask the count again soon, this client is in it now
+			if(m_Online <= 0)
+				m_NextStats = std::min(m_NextStats, Now + 1.0f);
+			m_pBeat = nullptr;
+		}
+		if(!m_pBeat && Now >= m_NextBeat && (g_Config.m_XcCosmeticsShare || g_Config.m_XcCosmeticsOthers))
+		{
+			EnsureIdentity();
+			char aUrl[256];
+			str_format(aUrl, sizeof(aUrl), "%s/v1/beat", g_Config.m_XcCosmeticsUrl);
+			char aJson[160];
+			str_format(aJson, sizeof(aJson), "{\"id\":\"%s\",\"secret\":\"%s\"}", g_Config.m_XcCosmeticsId, g_Config.m_XcCosmeticsSecret);
+			m_pBeat = HttpPostJson(aUrl, aJson);
+			m_pBeat->Timeout(CTimeout{4000, 8000, 100, 5});
+			m_pBeat->LogProgress(HTTPLOG::NONE);
+			m_pBeat->AllowInsecure(true);
+			Http()->Run(m_pBeat);
+			m_BeatHadBundle = false;
+			m_NextBeat = Now + 30.0f;
+		}
 		return;
 	}
 	char aAddress[NETADDR_MAXSTRSIZE];

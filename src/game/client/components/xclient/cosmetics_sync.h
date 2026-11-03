@@ -30,6 +30,8 @@ public:
 	// what the service says, for the menu
 	const char *Status() const;
 	int NumSeen() const { return m_NumRemote; }
+	// how many Exora clients are running now (in the game or the menu), -1 while unknown
+	int Online() const { return m_Online; }
 
 	// while it lives, the settings of the effects are the ones of that player (when he has a set)
 	class CScope
@@ -64,6 +66,10 @@ private:
 
 	std::shared_ptr<IHttpRequest> m_pBeat;
 	std::shared_ptr<IHttpRequest> m_pServer;
+	std::shared_ptr<IHttpRequest> m_pStats;
+	float m_NextStats = 0.0f;
+	int m_Online = -1;
+	void UpdateOnline();
 	std::vector<std::pair<std::string, std::shared_ptr<IHttpRequest>>> m_vpBundles;
 	bool m_BeatHadBundle = false;
 	float m_NextBeat = 0.0f;
