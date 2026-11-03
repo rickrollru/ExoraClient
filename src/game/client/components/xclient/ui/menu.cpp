@@ -15,6 +15,7 @@
 #include <engine/graphics.h>
 #include <engine/serverbrowser.h>
 #include <engine/shared/config.h>
+#include <engine/xc_render.h>
 #include <engine/storage.h>
 
 #include <game/client/animstate.h>
@@ -734,6 +735,15 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	const bool Extras = !Dummy && !Data.m_aSkin[0];
 	const bool Hat = Extras && g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
 	const bool Cloth = Extras && (g_Config.m_XcCapeSelf || g_Config.m_XcScarfSelf) && Max.y - Min.y > 64.0f;
+	// the big preview of your own tee shows its neon outline and shader too (the render module captures the tee)
+	XcRender::SGlowSettings GlowSettings;
+	const bool Neon = Extras && Max.y - Min.y > 96.0f && GameClient()->m_TeeGlow.PreviewSettings(Info.m_Size / 64.0f, ImGui::GetStyle().Alpha, GlowSettings);
+	if(Neon)
+	{
+		const float Reach = Info.m_Size * 1.4f + GlowSettings.m_Radius * 2.0f;
+		const float aRect[4] = {Center.x - Reach, Center.y - Reach, Center.x + Reach, Center.y + Reach};
+		Graphics()->XcCaptureBegin(aRect);
+	}
 	if(Cloth)
 		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, ImGui::GetStyle().Alpha, Client()->GlobalTime());
 	if(Hat && g_Config.m_XcHatBehind)
@@ -745,6 +755,11 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	{
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
 	}
+	if(Neon)
+		Graphics()->XcCaptureEnd(GlowSettings);
+	// the accessory (cone, halo, horns...) of the big preview, over the outline like in the game
+	if(Extras && Max.y - Min.y > 96.0f && g_Config.m_XcAccessorySelf)
+		GameClient()->m_Accessory.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha, Client()->GlobalTime());
 	Graphics()->WrapClamp();
 }
 
@@ -789,234 +804,3 @@ bool CXcMenu::HomeTile(const char *pId, const char *pIconGlyph, const char *pLab
 	return Clicked;
 }
 
-void CXcMenu::RenderHome()
-{
-	const STheme &t = Theme();
-	if(!m_ServersRequested)
-	{
-		// the server list also tells which friends are online
-		m_ServersRequested = true;
-		ServerBrowser()->Refresh(IServerBrowser::TYPE_INTERNET);
-	}
-
-	BeginCardGrid("##home", 2);
-
-	if(IsOnline() && g_Config.m_XcMenuMapInfo)
-		RenderMapInfoCard();
-
-	// profile with the tee
-	if(BeginCard("##hero", Client()->PlayerName(), g_Config.m_PlayerClan[0] ? g_Config.m_PlayerClan : Tr("Profile")))
-	{
-		const float PreviewSize = S(112.0f);
-		const ImVec2 Pos = ImGui::GetCursorScreenPos();
-		ImDrawList *pDraw = ImGui::GetWindowDrawList();
-		const ImVec2 Center(Pos.x + PreviewSize * 0.5f, Pos.y + PreviewSize * 0.5f);
-		pDraw->AddCircleFilled(Center, PreviewSize * 0.46f, Col(t.m_Accent, 0.10f), 64);
-		pDraw->AddCircle(Center, PreviewSize * 0.46f, Col(t.m_Accent, 0.35f), 64, S(1.5f));
-		AddTeePreview(pDraw, Pos, ImVec2(Pos.x + PreviewSize, Pos.y + PreviewSize));
-		ImGui::Dummy(ImVec2(PreviewSize, PreviewSize));
-
-		ImGui::SameLine(0.0f, S(16.0f));
-		ImGui::BeginGroup();
-		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-		ImGui::PushFont(Fonts().m_pHeader);
-		ImGui::TextColored(t.m_Text, "%s", Client()->PlayerName());
-		ImGui::PopFont();
-		char aStatus[160];
-		if(IsOnline())
-			str_format(aStatus, sizeof(aStatus), "%s: %s", Tr("Connected"), Client()->ServerInfo().m_aMap);
-		else
-			str_copy(aStatus, Tr("Offline"));
-		Description(aStatus);
-		ParamLabel(Tr("Skin"));
-		ImGui::SameLine();
-		ImGui::TextColored(t.m_Text, "%s", g_Config.m_ClPlayerSkin);
-		ImGui::EndGroup();
-		ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
-		RenderPlayerStats();
-
-		ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-		if(IsOnline())
-		{
-			if(Button(Tr("Disconnect"), false, -1.0f))
-				Client()->Disconnect();
-		}
-		else if(Button(Tr("Play"), true, -1.0f))
-		{
-			m_Page = PAGE_SERVERS;
-		}
-		EndCard();
-	}
-
-	// the music right after the profile: the top of the second column, always in sight
-	RenderMusicCard();
-
-	// friends that are on a server right now
-	if(BeginCard("##friends", Tr("Friends online"), nullptr))
-	{
-		int Shown = 0;
-		IServerBrowser *pBrowser = ServerBrowser();
-		for(int i = 0; i < pBrowser->NumServers() && Shown < 12; i++)
-		{
-			const CServerInfo *pInfo = pBrowser->Get(i);
-			if(!pInfo || pInfo->m_FriendNum <= 0)
-				continue;
-			for(const CServerInfo::CClient &Player : pInfo->m_vClients)
-			{
-				if(Player.m_FriendState == IFriends::FRIEND_NO || Shown >= 12)
-					continue;
-				ImGui::PushFont(Fonts().m_pLabel);
-				ImGui::TextColored(t.m_Accent, "%s", Player.m_aName);
-				ImGui::PopFont();
-				ImGui::SameLine();
-				ImGui::PushFont(Fonts().m_pSmall);
-				ImGui::TextColored(t.m_TextMuted, "%s", pInfo->m_aName);
-				ImGui::PopFont();
-				Shown++;
-			}
-		}
-		if(Shown == 0)
-			Description(GameClient()->Friends()->NumFriends() == 0 ? Tr("Add friends in the scoreboard or the classic menu") : Tr("None of your friends is online"));
-		EndCard();
-	}
-
-	// map editor and the local server
-	if(BeginCard("##tools", Tr("Tools"), Tr("Make your own maps and play them on a server right on your computer")))
-	{
-		const bool Running = GameClient()->m_LocalServer.IsServerRunning();
-		const bool OnLocal = Running && IsOnline() && (str_startswith(Client()->ConnectAddressString(), "localhost") || str_startswith(Client()->ConnectAddressString(), "127.0.0.1"));
-		const float Gap = S(10.0f);
-		const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
-		const float TileHeight = S(78.0f);
-		const float RunGlow = Animate(ImGui::GetID("##server_glow"), Running ? 1.0f : 0.0f, 8.0f);
-		if(HomeTile("##editor", XC_ICON_MAP, Tr("Map editor"), GameClient()->Editor()->HasUnsavedData() ? Tr("Unsaved changes") : Tr("Open"), TileWidth, TileHeight))
-		{
-			g_Config.m_ClEditor = 1;
-			Input()->MouseModeRelative();
-		}
-		ImGui::SameLine(0.0f, Gap);
-		if(HomeTile("##server", XC_ICON_SERVER, Tr("Local server"), Running ? Tr("Running, click to stop") : Tr("Start"), TileWidth, TileHeight, RunGlow))
-		{
-			if(Running)
-			{
-				GameClient()->m_LocalServer.KillServer();
-				Toast(Tr("Local server stopped"), TOAST_INFO);
-			}
-			else if(GameClient()->m_LocalServer.RunServer({}))
-				Toast(Tr("Local server started"));
-			else
-				Toast(Tr("Could not start the server"), TOAST_ERROR);
-		}
-		ImGui::SameLine(0.0f, Gap);
-		ImGui::BeginDisabled(!Running || OnLocal);
-		if(HomeTile("##join", XC_ICON_PLAY, Tr("Join"), OnLocal ? Tr("You are here") : (Running ? Tr("Your local server") : Tr("Start the server first")), TileWidth, TileHeight))
-			Client()->Connect("localhost:8303");
-		ImGui::EndDisabled();
-		EndCard();
-	}
-
-	// versions and the way back to the classic menu
-	if(BeginCard("##client", XC_CLIENT_NAME, Tr("Based on TClient and DDNet. The developer on Discord: rickroll.ru")))
-	{
-		// links of the project; empty links are placeholders for now
-		{
-			struct SLink
-			{
-				const char *m_pIcon;
-				const char *m_pLabel;
-				const char *m_pUrl;
-				const char *m_pCopy; // copied to the clipboard instead of opened
-			};
-			const SLink aLinks[] = {
-				{XC_ICON_CODE, "GitHub", g_Config.m_XcLinkGithub, nullptr},
-				{XC_ICON_COMMENTS, "Discord", g_Config.m_XcLinkDiscord, nullptr},
-				{XC_ICON_USER, "rickroll.ru", "", "rickroll.ru"},
-			};
-			const float Gap = S(10.0f);
-			const float TileWidth = (AvailWidth() - Gap * 2.0f) / 3.0f;
-			for(int i = 0; i < 3; i++)
-			{
-				const SLink &Link = aLinks[i];
-				if(i > 0)
-					ImGui::SameLine(0.0f, Gap);
-				char aId[16];
-				str_format(aId, sizeof(aId), "##link%d", i);
-				if(HomeTile(aId, Link.m_pIcon, Link.m_pLabel, nullptr, TileWidth, S(64.0f)))
-				{
-					if(Link.m_pCopy)
-					{
-						Input()->SetClipboardText(Link.m_pCopy);
-						Toast(Tr("Discord name copied"));
-					}
-					else if(Link.m_pUrl[0])
-						Client()->ViewLink(Link.m_pUrl);
-					else
-						Toast(Tr("Coming soon"), TOAST_INFO);
-				}
-			}
-			ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-		}
-		char aBuf[128];
-		const auto VersionRow = [&](const char *pName, const char *pVersion) {
-			const float StartX = ImGui::GetCursorPosX();
-			const float Width = AvailWidth();
-			ImGui::AlignTextToFramePadding();
-			ParamLabel(pName);
-			ImGui::SameLine();
-			ImGui::SetCursorPosX(StartX + Width - ImGui::CalcTextSize(pVersion).x);
-			ImGui::AlignTextToFramePadding();
-			ImGui::TextColored(t.m_Text, "%s", pVersion);
-		};
-		VersionRow("DDNet", GAME_RELEASE_VERSION);
-		VersionRow("TClient", TCLIENT_VERSION);
-		const char *pLatest = Client()->LatestVersion();
-		if(pLatest[0] && str_comp(pLatest, "0") != 0 && str_comp(pLatest, GAME_RELEASE_VERSION) != 0)
-		{
-			str_format(aBuf, sizeof(aBuf), "%s: DDNet %s", Tr("Update available"), pLatest);
-			Description(aBuf);
-		}
-		if(Button(Tr("Classic menu"), false, -1.0f))
-			m_WantClassic = true;
-		EndCard();
-	}
-	// DDNet news: lines between | are headlines
-	if(BeginCard("##news", Tr("DDNet news"), nullptr))
-	{
-		const char *pNews = Client()->News();
-		if(!pNews[0])
-			Description(Tr("No news loaded"));
-		BeginInnerScroll("##news_text", ImVec2(0.0f, S(140.0f)));
-		char aLine[256];
-		const char *pStr = pNews;
-		while((pStr = str_next_token(pStr, "\n", aLine, sizeof(aLine))))
-		{
-			const int Length = str_length(aLine);
-			if(Length > 1 && aLine[0] == '|' && aLine[Length - 1] == '|')
-			{
-				aLine[Length - 1] = '\0';
-				ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-				ImGui::PushFont(Fonts().m_pLabel);
-				ImGui::TextColored(t.m_Text, "%s", aLine + 1);
-				ImGui::PopFont();
-			}
-			else
-			{
-				ImGui::PushFont(Fonts().m_pSmall);
-				ImGui::PushTextWrapPos(0.0f);
-				ImGui::TextColored(t.m_TextSecondary, "%s", aLine);
-				ImGui::PopTextWrapPos();
-				ImGui::PopFont();
-			}
-		}
-		EndInnerScroll();
-		EndCard();
-	}
-
-	EndCardGrid();
-
-	if(m_WantClassic)
-	{
-		m_WantClassic = false;
-		OpenClassicMenu();
-	}
-}

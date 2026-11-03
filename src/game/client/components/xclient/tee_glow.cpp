@@ -98,3 +98,30 @@ void CTeeGlow::End(int ClientId)
 	Settings.m_MotionY = Smear.y;
 	Graphics()->XcCaptureEnd(Settings);
 }
+
+bool CTeeGlow::PreviewSettings(float PixelsPerUnit, float Alpha, XcRender::SGlowSettings &Settings) const
+{
+	const bool Glow = g_Config.m_XcGlow && g_Config.m_XcGlowSelf;
+	const bool Shader = g_Config.m_XcTeeShader && g_Config.m_XcTeeShaderSelf;
+	if(!GameClient()->m_FxRenderer.ModuleActive() || (!Glow && !Shader))
+		return false;
+	const int Local = GameClient()->m_Snap.m_LocalClientId;
+	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcGlowColorMode, g_Config.m_XcGlowColor, Local);
+	Settings.m_Color = Color.WithAlpha(Alpha);
+	Settings.m_RimColor = ColorRGBA(mix(Color.r, 1.0f, 0.2f), mix(Color.g, 1.0f, 0.2f), mix(Color.b, 1.0f, 0.2f), Alpha);
+	Settings.m_Radius = GLOW_RADIUS * g_Config.m_XcGlowSize / 100.0f * FxGlow::For(-1).m_Radius * PixelsPerUnit;
+	Settings.m_Strength = 2.4f * g_Config.m_XcGlowStrength / 100.0f * FxGlow::For(-1).m_Strength;
+	Settings.m_RimWidth = OUTLINE_WIDTH * g_Config.m_XcGlowOutline / 100.0f * PixelsPerUnit;
+	Settings.m_DoGlow = Glow;
+	if(Shader)
+	{
+		Settings.m_FillMode = g_Config.m_XcTeeShader;
+		Settings.m_FillColor = EffectColor(GameClient(), g_Config.m_XcTeeShaderColorMode, g_Config.m_XcTeeShaderColor, Local);
+		Settings.m_FillColor2 = HslConfigColor(g_Config.m_XcTeeShaderColor2);
+		Settings.m_FillAlpha = g_Config.m_XcTeeShaderAlpha / 100.0f;
+		Settings.m_FillScale = 64.0f * PixelsPerUnit * g_Config.m_XcTeeShaderScale / 100.0f;
+		Settings.m_FillTime = Client()->GlobalTime() * g_Config.m_XcTeeShaderSpeed / 100.0f;
+		Settings.m_KeepShade = g_Config.m_XcTeeShaderShade / 100.0f;
+	}
+	return true;
+}

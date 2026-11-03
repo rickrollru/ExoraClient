@@ -139,6 +139,31 @@ void CAccessory::OnRender()
 	}
 }
 
+void CAccessory::RenderPreview(vec2 TeePos, float TeeSize, float Alpha, float Time)
+{
+	if(g_Config.m_XcAccessory == ACCESSORY_OFF || Alpha <= 0.0f)
+		return;
+	m_ColorClient = GameClient()->m_Snap.m_LocalClientId;
+	Alpha *= g_Config.m_XcAccessoryAlpha / 100.0f;
+	const float TeeScale = TeeSize / 64.0f;
+	const float Scale = TeeScale * g_Config.m_XcAccessorySize / 100.0f;
+	const vec2 Head = TeePos + vec2(0.0f, -HEAD_OFFSET * TeeScale);
+	switch(g_Config.m_XcAccessory)
+	{
+	case ACCESSORY_CONE: RenderCone(Head, Scale, 0.0f, 1.0f, Alpha); break;
+	case ACCESSORY_HALO: RenderHalo(Head + vec2(0.0f, std::sin(Time * 2.2f) * 2.0f * Scale), Scale, 0.0f, 1.0f, Alpha); break;
+	case ACCESSORY_CROWN: RenderCrown(Head, Scale, 0.0f, 1.0f, Alpha); break;
+	case ACCESSORY_HORNS: RenderHorns(Head, Scale, 0.0f, 1.0f, Alpha); break;
+	case ACCESSORY_SPROUT: RenderSprout(Head, Scale, 0.0f, 1.0f, Alpha, 0.0f); break;
+	case ACCESSORY_STARS: RenderStars(Head, Scale, 0.0f, 1.0f, Alpha); break;
+	case ACCESSORY_FLAME: RenderFlame(Head, Scale, 0.0f, 1.0f, Alpha, vec2(0.0f, 0.0f)); break;
+	case ACCESSORY_BOW: RenderBow(Head, Scale, 0.0f, 1.0f, Alpha); break;
+	case ACCESSORY_SIGN: RenderSign(Head + vec2(0.0f, std::sin(Time * 2.6f) * 1.5f * Scale), Scale, 0.0f, 1.0f, Alpha, false); break;
+	case ACCESSORY_CROSS: RenderCross(Head + vec2(0.0f, std::sin(Time * 2.0f) * 2.0f * Scale), Scale, 0.0f, 1.0f, Alpha); break;
+	}
+	GameClient()->m_FxRenderer.FlushNow();
+}
+
 ColorRGBA CAccessory::BaseColor(float Offset, float Alpha) const
 {
 	return EffectColor(GameClient(), g_Config.m_XcAccessoryColorMode, g_Config.m_XcAccessoryColor, m_ColorClient, Offset, Alpha);

@@ -32,6 +32,8 @@ public:
 	void OnRender() override;
 	void OnReset() override;
 	void OnMapLoad() override;
+	// the accessory on a tee drawn anywhere (the tee preview in the menu), with the current screen mapping
+	void RenderPreview(vec2 TeePos, float TeeSize, float Alpha, float Time);
 
 private:
 	struct SState

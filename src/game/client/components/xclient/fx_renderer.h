@@ -145,6 +145,12 @@ public:
 	static void AppendGlowing(std::vector<SFxShape> &vShapes, const SFxShape &Shape, float GlowRadius, float GlowStrength);
 	// Draw shapes right now with the current screen mapping.
 	void Draw(const std::vector<SFxShape> &vShapes, bool AllowBloom);
+	// draws the queued shapes now, in any state (the tee preview in the menu), and clears them
+	void FlushNow()
+	{
+		Draw(m_vWorld, false);
+		m_vWorld.clear();
+	}
 
 	// Blurs everything drawn so far, used under the in-game menu. Amount 0..1 fades it in.
 	void BlurBackground(float Amount, bool Force = false); // Force: ignore xc_menu_blur

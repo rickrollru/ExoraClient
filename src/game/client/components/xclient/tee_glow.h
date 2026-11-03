@@ -8,6 +8,11 @@
 // Neon glow and outline around the silhouette of tees (body, feet, eyes and weapon),
 // and the tee shader: a moving pattern (gradient, rainbow, galaxy...) painted over the skin.
 // CPlayers wraps the drawing of a player with Begin/End, the render module does the rest.
+namespace XcRender
+{
+struct SGlowSettings;
+}
+
 class CTeeGlow : public CComponent
 {
 public:
@@ -15,6 +20,8 @@ public:
 
 	// Returns true when this player gets a glow, then End must be called after drawing it.
 	bool Begin(int ClientId);
+	// the neon outline and the tee shader of your own tee for a preview (the menu): false when neither is on
+	bool PreviewSettings(float PixelsPerUnit, float Alpha, XcRender::SGlowSettings &Settings) const;
 	void End(int ClientId);
 
 private:
