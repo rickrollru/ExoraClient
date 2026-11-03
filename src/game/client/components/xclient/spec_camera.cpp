@@ -23,7 +23,11 @@ vec2 CXcSpecCamera::Apply(vec2 Target, float Dt, bool Active, bool FreeView)
 	m_LastTarget = Target;
 	Dt = std::clamp(Dt, 0.0f, 0.1f);
 	// the time the camera needs to catch up: 0.05 s (barely) .. 0.6 s (very soft)
-	const float SmoothTime = 0.05f + 0.55f * std::pow(g_Config.m_XcSpecSmooth / 100.0f, 1.5f);
+	float SmoothTime = 0.05f + 0.55f * std::pow(g_Config.m_XcSpecSmooth / 100.0f, 1.5f);
+	// the free view is moved by the mouse itself: a long glide there feels like a broken mouse sensitivity (the
+	// view comes late), so it only takes the edge off; following a player keeps the full softness
+	if(FreeView)
+		SmoothTime = std::min(SmoothTime, 0.03f + 0.07f * g_Config.m_XcSpecSmooth / 100.0f);
 	// a critically damped spring, exact for any frame time (the same glide at 30 and at 500 fps)
 	const float Omega = 2.0f / SmoothTime;
 	const float x = Omega * Dt;

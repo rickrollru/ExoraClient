@@ -130,6 +130,7 @@ private:
 
 	// servers page
 	std::string m_SelectedServer; // address
+	bool m_ScrollToSelected = false; // the list scrolls to the selected server once (the play button of the home page)
 	bool m_ServersRequested = false; // the home page asks for the list too
 	bool m_BrowserOpened = false;
 	int m_ServerPanel = 0; // the right panel: server, friends, filters

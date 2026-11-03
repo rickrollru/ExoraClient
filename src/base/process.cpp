@@ -45,6 +45,24 @@ PROCESS process_execute(const char *file, EShellExecuteWindowState window_state,
 	const std::wstring wide_file = windows_utf8_to_wide(file);
 	std::wstring wide_arguments = windows_args_to_wide(arguments, num_arguments);
 
+	// XClient: hidden means no console at all. Hiding the window of ShellExecute does not always work (Windows
+	// Terminal, some consoles show it anyway), a process made without a console never has one.
+	if(window_state == EShellExecuteWindowState::HIDDEN)
+	{
+		std::wstring command_line = L"\"" + wide_file + L"\"";
+		if(num_arguments > 0)
+			command_line += L" " + wide_arguments;
+		STARTUPINFOW startup_info;
+		mem_zero(&startup_info, sizeof(startup_info));
+		startup_info.cb = sizeof(startup_info);
+		PROCESS_INFORMATION process_info;
+		mem_zero(&process_info, sizeof(process_info));
+		if(!CreateProcessW(wide_file.c_str(), command_line.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup_info, &process_info))
+			return INVALID_PROCESS;
+		CloseHandle(process_info.hThread);
+		return process_info.hProcess;
+	}
+
 	SHELLEXECUTEINFOW info;
 	mem_zero(&info, sizeof(SHELLEXECUTEINFOW));
 	info.cbSize = sizeof(SHELLEXECUTEINFOW);
@@ -58,9 +76,6 @@ PROCESS process_execute(const char *file, EShellExecuteWindowState window_state,
 		break;
 	case EShellExecuteWindowState::BACKGROUND:
 		info.nShow = SW_SHOWMINNOACTIVE;
-		break;
-	case EShellExecuteWindowState::HIDDEN: // XClient
-		info.nShow = SW_HIDE;
 		break;
 	default:
 		dbg_assert_failed("Invalid window_state: %d", static_cast<int>(window_state));

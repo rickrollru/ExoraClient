@@ -404,6 +404,14 @@ bool CXcMenu::RenderServerCard(const CServerInfo *pInfo, float Width, float Heig
 	const ImGuiID Id = ImGui::GetItemID();
 	ImGui::PopID();
 
+	// the play button of the home page: the last server is picked and scrolled into sight (a server may list
+	// several addresses, the last one is one of them)
+	if(m_ScrollToSelected && !m_SelectedServer.empty() && str_find(pInfo->m_aAddress, m_SelectedServer.c_str()))
+	{
+		m_SelectedServer = pInfo->m_aAddress;
+		ImGui::SetScrollHereY(0.3f);
+		m_ScrollToSelected = false;
+	}
 	const bool Selected = m_SelectedServer == pInfo->m_aAddress;
 	const float Hover = Animate(Id, Hovered ? 1.0f : 0.0f, 16.0f);
 	const float Select = Animate(Id + 1, Selected ? 1.0f : 0.0f, 16.0f);

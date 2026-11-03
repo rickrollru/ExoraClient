@@ -265,10 +265,17 @@ void CXcMenu::RenderHomeStage(float Width, float Height)
 		PlayUiSound(SOUND_CLICK);
 		if(IsOnline())
 			SetActive(false);
-		else if(HasLast)
-			Client()->Connect(pLast);
 		else
+		{
+			// the server list, with the last server picked and in sight: its plate shows what is there
 			m_Page = PAGE_SERVERS;
+			m_ScrollTarget = 0.0f;
+			if(HasLast)
+			{
+				m_SelectedServer = pLast;
+				m_ScrollToSelected = true;
+			}
+		}
 	}
 	ImGui::SetCursorScreenPos(ImVec2(PlayMax.x + IconGap, RowY));
 	if(IconSquare("##home_editor", XC_ICON_MAP, RowHeight, GameClient()->Editor()->HasUnsavedData() ? Tr("Map editor: unsaved changes") : Tr("Map editor")))
