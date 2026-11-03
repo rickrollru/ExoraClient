@@ -127,9 +127,10 @@ bool CXcMenu::TopbarButtonAction(int Button)
 void CXcMenu::RenderTopBar(float Width)
 {
 	const STheme &t = Theme();
-	const bool Panel = g_Config.m_XcTopbarStyle == 1;
-	const float BarHeight = Panel ? S(56.0f) : S(40.0f);
-	const float Pad = Panel ? S(10.0f) : 0.0f;
+	// side menu: the tabs are in the column on the left (RenderSideRail), the bar keeps the page name and the buttons
+	const bool Side = g_Config.m_XcTopbarStyle == 1;
+	const float BarHeight = S(40.0f);
+	const float Pad = 0.0f;
 	const ImVec2 Start = ImGui::GetCursorScreenPos();
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	const float MidY = Start.y + BarHeight * 0.5f;
@@ -137,29 +138,33 @@ void CXcMenu::RenderTopBar(float Width)
 	ImFont *pSmall = Fonts().m_pSmall;
 	ImFont *pLabel = Fonts().m_pLabel;
 	const auto TextWidth = [](ImFont *pFont, const char *pText) { return pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, pText).x; };
-	if(Panel)
-		PanelRect(pDraw, Start, ImVec2(Start.x + Width, Start.y + BarHeight), S(16.0f), t.m_Panel);
-
-	// left: logo, the client name and, on the panel, where you are
-	const float LogoSize = Panel ? S(32.0f) : S(30.0f);
-	DrawLogo(pDraw, ImVec2(Start.x + Pad + LogoSize * 0.5f + (Panel ? 0.0f : S(2.0f)), MidY), LogoSize, t.m_Accent);
-	const float TextX = Start.x + Pad + LogoSize + (Panel ? S(10.0f) : S(12.0f));
+	// left: the logo and the client name; with the side menu (the logo is there) the open page and where you are
 	char aStatus[128] = "";
-	if(Panel)
+	const char *pLeftTitle = CLIENT_NAME;
+	float TextX = Start.x;
+	if(Side)
 	{
+		for(const auto &Tab : s_aTabs)
+			if(Tab.m_Page == m_Page)
+				pLeftTitle = Tr(Tab.m_pLabel);
 		if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
 			str_copy(aStatus, Tr("Watching a demo"));
 		else if(IsOnline() && Client()->ServerInfo().m_aMap[0])
 			str_format(aStatus, sizeof(aStatus), "%s · %s", Tr("In game"), Client()->ServerInfo().m_aMap);
-		else
-			str_copy(aStatus, Tr("Main menu"));
-		const float TextTop = MidY - (pTitle->FontSize + pSmall->FontSize + S(1.0f)) * 0.5f;
-		pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(TextX, TextTop), Col(t.m_Text), CLIENT_NAME);
-		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(TextX, TextTop + pTitle->FontSize + S(1.0f)), Col(t.m_TextMuted), aStatus);
+		const float Lines = pTitle->FontSize * 1.15f + (aStatus[0] ? pSmall->FontSize + S(1.0f) : 0.0f);
+		const float TextTop = MidY - Lines * 0.5f;
+		pDraw->AddText(pTitle, pTitle->FontSize * 1.15f, ImVec2(TextX + S(4.0f), TextTop), Col(t.m_Text), pLeftTitle);
+		if(aStatus[0])
+			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(TextX + S(4.0f), TextTop + pTitle->FontSize * 1.15f + S(1.0f)), Col(t.m_TextMuted), aStatus);
 	}
 	else
+	{
+		const float LogoSize = S(30.0f);
+		DrawLogo(pDraw, ImVec2(Start.x + LogoSize * 0.5f + S(2.0f), MidY), LogoSize, t.m_Accent);
+		TextX = Start.x + LogoSize + S(12.0f);
 		pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(TextX, MidY - pTitle->FontSize * 0.5f), Col(t.m_Text), CLIENT_NAME);
-	const float LeftEnd = TextX + std::max(TextWidth(pTitle, CLIENT_NAME), TextWidth(pSmall, aStatus)) + S(20.0f);
+	}
+	const float LeftEnd = TextX + std::max(TextWidth(pTitle, pLeftTitle) * 1.15f, TextWidth(pSmall, aStatus)) + S(20.0f);
 
 	// what the player put on the bar; voting only exists on a server
 	const bool CanVote = IsOnline() && Client()->State() != IClient::STATE_DEMOPLAYBACK;
@@ -200,40 +205,22 @@ void CXcMenu::RenderTopBar(float Width)
 		return Total;
 	};
 
-	// widths of the right side; the panel has wide search and profile, which fold into icons when space runs out
+	// widths of the right side: square buttons
 	const float ButtonSize = S(34.0f);
 	const float Gap = S(8.0f);
 	const char *pName = Client()->PlayerName();
-	const float NameWidth = std::min(TextWidth(pLabel, pName), S(130.0f));
-	const float LangWidth = Panel ? std::max(TextWidth(pLabel, "RU") + S(24.0f), ButtonSize) : ButtonSize;
-	const auto ButtonWidth = [&](int Button, bool Compact) {
-		if(Panel && !Compact && Button == BUTTON_SEARCH)
-			return S(180.0f);
-		if(Panel && !Compact && Button == BUTTON_PROFILE)
-			return ButtonSize + S(20.0f) + NameWidth;
-		if(Button == BUTTON_LANGUAGE)
-			return LangWidth;
-		return ButtonSize;
-	};
-	const auto RightWidth = [&](bool Compact) {
-		float Total = Pad + ButtonSize + (Panel ? Gap + S(6.0f) : Gap);
-		if(HasMore)
-			Total += ButtonSize + Gap;
-		for(int Button : vButtons)
-			Total += ButtonWidth(Button, Compact) + Gap;
-		return Total;
-	};
+	float RightWidth = Pad + ButtonSize + Gap + (HasMore ? ButtonSize + Gap : 0.0f);
+	for(size_t i = 0; i < vButtons.size(); i++)
+		RightWidth += ButtonSize + Gap;
+	// the tabs lose their names when the bar gets narrow
 	const float Room = Width - (LeftEnd - Start.x) - S(20.0f);
-	int Level = 0;
-	if(CapsuleWidthOf(true) + RightWidth(false) > Room)
-		Level = CapsuleWidthOf(true) + RightWidth(true) > Room ? 2 : 1;
-	const bool Compact = !Panel || Level >= 1;
+	const int Level = CapsuleWidthOf(true) + RightWidth > Room ? 2 : 0;
 
-	// middle: the tabs, centered, but never under the logo or the buttons
-	if(NumTabs > 0)
+	// middle: the tabs, centered, but never under the logo or the buttons (with the side menu they are on the left)
+	if(NumTabs > 0 && !Side)
 	{
 		const float CapsuleWidth = CapsuleWidthOf(Level < 2);
-		const float RightStart = Start.x + Width - RightWidth(Compact);
+		const float RightStart = Start.x + Width - RightWidth;
 		const float CapsuleX = std::clamp(Start.x + (Width - CapsuleWidth) * 0.5f, LeftEnd, std::max(RightStart - S(12.0f) - CapsuleWidth, LeftEnd));
 		ImGui::SetCursorScreenPos(ImVec2(CapsuleX, MidY - S(20.0f)));
 		int Selected = Current;
@@ -261,7 +248,7 @@ void CXcMenu::RenderTopBar(float Width)
 		const bool Pressed = ImGui::InvisibleButton(pId, ImVec2(PillWidth, ButtonSize));
 		const bool Hovered = ImGui::IsItemHovered();
 		const float Hover = Animate(ImGui::GetItemID(), (Hovered || Selected) ? 1.0f : 0.0f, 18.0f);
-		const float Base = Panel ? 0.55f : 0.0f;
+		const float Base = 0.0f;
 		pDraw->AddRectFilled(Pos, ImVec2(Pos.x + PillWidth, Pos.y + ButtonSize), Col(Selected ? ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f) : t.m_Track, Selected ? 1.0f : Base + Hover * (1.4f - Base)), S(10.0f));
 		if(Pressed)
 			PlayUiSound(SOUND_CLICK);
@@ -286,11 +273,6 @@ void CXcMenu::RenderTopBar(float Width)
 	}
 	else if(IconButton(XC_ICON_POWER, Tr("Quit")))
 		Client()->Quit();
-	if(Panel)
-	{
-		pDraw->AddLine(ImVec2(Right + Gap * 0.5f - S(2.0f), MidY - S(12.0f)), ImVec2(Right + Gap * 0.5f - S(2.0f), MidY + S(12.0f)), Col(t.m_Border), 1.0f);
-		Right -= S(6.0f);
-	}
 
 	if(HasMore)
 	{
@@ -349,28 +331,16 @@ void CXcMenu::RenderTopBar(float Width)
 	for(auto It = vButtons.rbegin(); It != vButtons.rend(); ++It)
 	{
 		const int Button = *It;
-		const float ItemWidth = ButtonWidth(Button, Compact);
+		const float ItemWidth = ButtonSize;
 		ImGui::PushID(Button);
 		switch(Button)
 		{
 		case BUTTON_SEARCH:
 		{
-			const auto [Pressed, Pos] = Pill("##search", ItemWidth, m_SearchOpen, Compact ? Tr("Search (Ctrl+F)") : nullptr);
+			const auto [Pressed, Pos] = Pill("##search", ItemWidth, m_SearchOpen, Tr("Search (Ctrl+F)"));
 			if(Pressed)
 				TopbarButtonAction(Button);
-			if(Compact)
-				CenteredText(Pos, ItemWidth, XC_ICON_SEARCH, m_SearchOpen ? t.m_Accent : t.m_TextSecondary);
-			else
-			{
-				// looks like a field, with the shortcut on the right
-				DrawIcon(pDraw, pLabel, pLabel->FontSize, ImVec2(Pos.x + S(12.0f) + TextWidth(pLabel, XC_ICON_SEARCH) * 0.5f, MidY), Col(t.m_TextMuted), XC_ICON_SEARCH);
-				pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + S(20.0f) + TextWidth(pLabel, XC_ICON_SEARCH), std::floor(MidY - TextMiddle(pLabel, pLabel->FontSize) + 0.5f)), Col(t.m_TextMuted), Tr("Search"));
-				const char *pKeys = "Ctrl F";
-				const ImVec2 KeySize = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pKeys);
-				const ImVec2 KeyMin(Pos.x + ItemWidth - KeySize.x - S(20.0f), MidY - KeySize.y * 0.5f - S(3.0f));
-				pDraw->AddRect(KeyMin, ImVec2(KeyMin.x + KeySize.x + S(10.0f), KeyMin.y + KeySize.y + S(6.0f)), Col(t.m_Border), S(5.0f));
-				pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(KeyMin.x + S(5.0f), KeyMin.y + S(3.0f)), Col(t.m_TextMuted), pKeys);
-			}
+			CenteredText(Pos, ItemWidth, XC_ICON_SEARCH, m_SearchOpen ? t.m_Accent : t.m_TextSecondary);
 			break;
 		}
 		case BUTTON_LANGUAGE:
@@ -379,7 +349,7 @@ void CXcMenu::RenderTopBar(float Width)
 			if(Pressed)
 				TopbarButtonAction(Button);
 			// the panel shows the current language, the classic bar a globe
-			CenteredText(Pos, ItemWidth, Panel ? (IsRussian() ? "RU" : "EN") : XC_ICON_GLOBE, t.m_TextSecondary);
+			CenteredText(Pos, ItemWidth, XC_ICON_GLOBE, t.m_TextSecondary);
 			break;
 		}
 		case BUTTON_THEME:
@@ -401,19 +371,14 @@ void CXcMenu::RenderTopBar(float Width)
 		case BUTTON_PROFILE:
 		{
 			const bool Selected = m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_PLAYER;
-			const auto [Pressed, Pos] = Pill("##profile", ItemWidth, Selected, Compact ? pName : Tr("Profile"));
+			const auto [Pressed, Pos] = Pill("##profile", ItemWidth, Selected, pName);
 			if(Pressed)
 				TopbarButtonAction(Button);
-			// the own tee; on the panel with the name next to it
-			const float TeeSize = ButtonSize * (Panel ? 0.86f : 1.0f);
-			const ImVec2 TeeCenter(Compact ? Pos.x + ButtonSize * 0.5f : Pos.x + S(4.0f) + TeeSize * 0.5f, MidY);
-			const float Reach = Panel ? 0.65f : 0.7f;
+			// the own tee
+			const float TeeSize = ButtonSize;
+			const ImVec2 TeeCenter(Pos.x + ButtonSize * 0.5f, MidY);
+			const float Reach = 0.7f;
 			AddTeePreview(pDraw, ImVec2(TeeCenter.x - TeeSize * Reach, TeeCenter.y - TeeSize * Reach), ImVec2(TeeCenter.x + TeeSize * Reach, TeeCenter.y + TeeSize * Reach));
-			if(!Compact)
-			{
-				const ImVec4 Clip(Pos.x, Pos.y, Pos.x + ButtonSize + S(6.0f) + NameWidth, Pos.y + ButtonSize);
-				pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + ButtonSize + S(6.0f), MidY - pLabel->FontSize * 0.5f), Col(Selected ? t.m_Accent : t.m_Text), pName, nullptr, 0.0f, &Clip);
-			}
 			break;
 		}
 		}
@@ -428,13 +393,107 @@ void CXcMenu::RenderTopBar(float Width)
 	}
 }
 
+float CXcMenu::SideRailWidth() const
+{
+	return g_Config.m_XcTopbarStyle == 1 ? S(68.0f) : 0.0f;
+}
+
+void CXcMenu::RenderSideRail(ImVec2 Min, float Height)
+{
+	const STheme &t = Theme();
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	const float Width = SideRailWidth();
+	PanelRect(pDraw, Min, ImVec2(Min.x + Width, Min.y + Height), S(18.0f), t.m_Panel);
+	const float CenterX = Min.x + Width * 0.5f;
+	DrawLogo(pDraw, ImVec2(CenterX, Min.y + S(34.0f)), S(34.0f), t.m_Accent);
+
+	// the same tabs and order as the top bar; voting only on a server; settings stay at the bottom
+	const bool CanVote = IsOnline() && Client()->State() != IClient::STATE_DEMOPLAYBACK;
+	std::vector<int> vTabs = ParseOrder(g_Config.m_XcTopbarTabs, s_aTabs);
+	vTabs.erase(std::remove_if(vTabs.begin(), vTabs.end(), [&](int Tab) { return s_aTabs[Tab].m_Page == PAGE_VOTES && !CanVote; }), vTabs.end());
+	const auto SettingsIt = std::find_if(vTabs.begin(), vTabs.end(), [](int Tab) { return s_aTabs[Tab].m_Page == PAGE_SETTINGS; });
+	int SettingsTab = -1;
+	if(SettingsIt != vTabs.end())
+	{
+		SettingsTab = *SettingsIt;
+		vTabs.erase(SettingsIt);
+	}
+
+	const float Size = S(48.0f);
+	const float Gap = S(8.0f);
+	const ImGuiID RailId = ImGui::GetID("##side_rail");
+	float SelectedY = -1.0f;
+	ImFont *pIcons = Fonts().m_pIcons;
+	const auto Item = [&](int Tab, float y) {
+		const auto &Info = s_aTabs[Tab];
+		const bool Selected = Info.m_Page == m_Page;
+		const ImVec2 BMin(CenterX - Size * 0.5f, y);
+		const ImVec2 BMax(BMin.x + Size, y + Size);
+		ImGui::SetCursorScreenPos(BMin);
+		ImGui::PushID(Tab);
+		const bool Pressed = ImGui::InvisibleButton("##side_tab", ImVec2(Size, Size));
+		const bool Hovered = ImGui::IsItemHovered();
+		const float Hover = Animate(ImGui::GetItemID(), Hovered ? 1.0f : 0.0f, 18.0f);
+		ImGui::PopID();
+		if(Selected)
+			SelectedY = y;
+		else if(Hover > 0.01f)
+			pDraw->AddRectFilled(BMin, BMax, Col(t.m_Track, 1.4f * Hover), S(14.0f));
+		if(Hovered)
+			ImGui::SetTooltip("%s", Tr(Info.m_pLabel));
+		if(Pressed && !Selected)
+		{
+			m_Page = Info.m_Page;
+			m_ScrollTarget = 0.0f;
+			m_DemosDirty = true;
+			PlayUiSound(SOUND_TAB);
+		}
+		return std::make_tuple(BMin, Selected, Hover);
+	};
+	// first the buttons (to know where the selected one is), then the sliding highlight, then the icons over it
+	struct SDrawn
+	{
+		int m_Tab;
+		ImVec2 m_Min;
+		bool m_Selected;
+		float m_Hover;
+	};
+	std::vector<SDrawn> vDrawn;
+	float y = Min.y + S(72.0f);
+	for(int Tab : vTabs)
+	{
+		const auto [BMin, Selected, Hover] = Item(Tab, y);
+		vDrawn.push_back({Tab, BMin, Selected, Hover});
+		y += Size + Gap;
+	}
+	if(SettingsTab >= 0)
+	{
+		const auto [BMin, Selected, Hover] = Item(SettingsTab, Min.y + Height - S(14.0f) - Size);
+		vDrawn.push_back({SettingsTab, BMin, Selected, Hover});
+	}
+	const float HighlightY = Animate(RailId, SelectedY >= 0.0f ? SelectedY : Min.y + S(72.0f), 16.0f);
+	const float HighlightAlpha = Animate(RailId + 1, SelectedY >= 0.0f ? 1.0f : 0.0f, 16.0f);
+	if(HighlightAlpha > 0.01f)
+	{
+		const ImVec2 HMin(CenterX - Size * 0.5f, HighlightY);
+		const ImVec2 HMax(HMin.x + Size, HighlightY + Size);
+		pDraw->AddRectFilled(HMin, HMax, Col(t.m_Accent, 0.18f * HighlightAlpha), S(14.0f));
+		pDraw->AddRect(HMin, HMax, Col(t.m_Accent, 0.45f * HighlightAlpha), S(14.0f), 0, 1.0f);
+	}
+	for(const SDrawn &Drawn : vDrawn)
+	{
+		const ImVec4 Color = Drawn.m_Selected ? t.m_Accent : Mix(t.m_TextMuted, t.m_Text, Drawn.m_Hover);
+		DrawIcon(pDraw, pIcons, pIcons->FontSize * 1.15f, ImVec2(Drawn.m_Min.x + Size * 0.5f, Drawn.m_Min.y + Size * 0.5f), Col(Color), s_aTabs[Drawn.m_Tab].m_pIcon);
+	}
+}
+
 // Settings > Interface: the look of the bar, which tabs and buttons it has and their order
 void CXcMenu::RenderTopbarCard()
 {
 	if(!BeginCard("##topbar", Tr("Top bar"), Tr("Turn tabs and buttons on or off and move them. The ones you turn off are in the ... menu of the bar")))
 		return;
 	ParamLabel(Tr("Look"));
-	const char *apStyles[] = {Tr("Classic"), Tr("Panel")};
+	const char *apStyles[] = {Tr("Classic"), Tr("Side menu")};
 	ConfigSegmented("##topbar_style", "xc_topbar_style", &g_Config.m_XcTopbarStyle, apStyles, 2);
 
 	const STheme &t = Theme();

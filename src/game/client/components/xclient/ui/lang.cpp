@@ -30,6 +30,7 @@ namespace XcUi
 			{"Theme", "Тема"},
 			{"Profile", "Профиль"},
 			{"Classic menu", "Классическое меню"},
+			{"Side menu", "Боковое меню"},
 			{"Hold Shift to drag precisely", "Зажми Shift, чтобы тянуть точнее"},
 			{"All updates", "Все обновления"},
 			{"Back to the game", "Вернуться в игру"},

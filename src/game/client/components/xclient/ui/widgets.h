@@ -44,6 +44,10 @@ namespace XcUi
 	float DragFraction(ImGuiID Id, float Current, float TrackLeft, float TrackWidth);
 	// true while the drag of Id goes slow with Shift
 	bool DragIsFine(ImGuiID Id);
+	// true while any drag goes slow with Shift (the menu then slows the mouse itself down)
+	bool AnyDragIsFine();
+	// the menu slows the cursor down during a Shift drag, then the value follows the cursor 1:1
+	void SetCursorSlowsDown(bool SlowsDown);
 
 	// --- text
 	void Header(const char *pText);

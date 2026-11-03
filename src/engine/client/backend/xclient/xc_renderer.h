@@ -112,6 +112,8 @@ private:
 	int m_LocMotionDir = -1;
 	int m_LocMotionSamples = -1;
 	int m_LocGlowMotion = -1;
+	int m_LocGlowRegion = -1;
+	int m_LocGlowEdgeFade = -1;
 	STarget m_Blocks;
 	unsigned m_BlocksDepth = 0;
 	unsigned m_BlocksGrid = 0;

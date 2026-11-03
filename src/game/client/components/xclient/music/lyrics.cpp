@@ -536,6 +536,21 @@ ColorRGBA CXcLyrics::WordColor(const SWord &Word) const
 }
 
 // the plate and the words with the HUD fonts: clean letters over the soft light, staying where they appeared
+// text at a position between pixels: ImGui puts text on whole pixels, so a word gliding slowly would step from
+// pixel to pixel; the letters are drawn on the pixel and then moved by the rest
+static void AddTextSmooth(ImDrawList &List, ImFont *pFont, float Size, ImVec2 Pos, ImU32 Color, const char *pText)
+{
+	const ImVec2 Base(std::floor(Pos.x), std::floor(Pos.y));
+	const int First = List.VtxBuffer.Size;
+	List.AddText(pFont, Size, Base, Color, pText);
+	const float dx = Pos.x - Base.x, dy = Pos.y - Base.y;
+	for(int i = First; i < List.VtxBuffer.Size; i++)
+	{
+		List.VtxBuffer[i].pos.x += dx;
+		List.VtxBuffer[i].pos.y += dy;
+	}
+}
+
 void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, float Alpha)
 {
 	const ImVec2 Display = ImGui::GetIO().DisplaySize;
@@ -585,14 +600,14 @@ void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, floa
 					for(int i = 0; i < STEPS; i++)
 					{
 						const float Angle = (i + Ring * 0.5f) * 2.0f * pi / STEPS;
-						pDraw->AddText(pBold, TextSize, ImVec2(Pos.x + std::cos(Angle) * r, Pos.y + std::sin(Angle) * r), Col32, pText);
+						AddTextSmooth(*pDraw, pBold, TextSize, ImVec2(Pos.x + std::cos(Angle) * r, Pos.y + std::sin(Angle) * r), Col32, pText);
 					}
 				}
 			}
 			// the letters: white with a touch of the color, or the color itself
 			const float White = g_Config.m_XcLyricsColor == 0 ? 0.85f : 0.25f;
 			const ColorRGBA Letters(mix(Color.r, 1.0f, White), mix(Color.g, 1.0f, White), mix(Color.b, 1.0f, White), 1.0f);
-			pDraw->AddText(pBold, TextSize, Pos, Rgba(Letters, WordAlpha), pText);
+			AddTextSmooth(*pDraw, pBold, TextSize, Pos, Rgba(Letters, WordAlpha), pText);
 		}
 	}
 
@@ -750,7 +765,8 @@ void CXcLyrics::RenderNeon(CImGuiBackend &Backend, ImFont *pBold, float Alpha)
 	const auto Neon = [&](float x0, float y0, float x1, float y1, float TextSize, ColorRGBA Color, float PieceAlpha, const std::function<void(ImDrawList &)> &fnDraw) {
 		const float Reach = TextSize * 0.45f * GlowSize + 4.0f;
 		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Display.x, Display.y));
-		const float aRect[4] = {x0 - Reach * 2.0f, y0 - Reach * 2.0f, x1 + Reach * 2.0f, y1 + Reach * 2.0f};
+		// room for the whole glow, it fades out softly before the edge
+		const float aRect[4] = {x0 - Reach * 3.0f, y0 - Reach * 3.0f, x1 + Reach * 3.0f, y1 + Reach * 3.0f};
 		Graphics()->XcCaptureBegin(aRect);
 		ImDrawList List(ImGui::GetDrawListSharedData());
 		List._ResetForNewFrame();
@@ -763,7 +779,7 @@ void CXcLyrics::RenderNeon(CImGuiBackend &Backend, ImFont *pBold, float Alpha)
 		Settings.m_RimColor = ColorRGBA(mix(Color.r, 1.0f, 0.35f), mix(Color.g, 1.0f, 0.35f), mix(Color.b, 1.0f, 0.35f), 0.9f * PieceAlpha);
 		Settings.m_Radius = Reach;
 		Settings.m_Strength = 2.6f * GlowAmount;
-		Settings.m_RimWidth = std::max(TextSize * 0.04f, 1.0f);
+		Settings.m_RimWidth = 0.0f; // no rim: it made a hollow ring around each letter
 		Settings.m_DoGlow = true;
 		Graphics()->XcCaptureEnd(Settings);
 	};
@@ -794,7 +810,7 @@ void CXcLyrics::RenderNeon(CImGuiBackend &Backend, ImFont *pBold, float Alpha)
 			const float White = g_Config.m_XcLyricsColor == 0 ? 0.85f : 0.25f;
 			const ColorRGBA Letters(mix(Color.r, 1.0f, White), mix(Color.g, 1.0f, White), mix(Color.b, 1.0f, White), 1.0f);
 			Neon(Pos.x, Pos.y, Pos.x + Dim.x, Pos.y + Dim.y, TextSize, Color, WordAlpha, [&](ImDrawList &List) {
-				List.AddText(pBold, TextSize, Pos, Rgba(Letters, WordAlpha), pText);
+				AddTextSmooth(List, pBold, TextSize, Pos, Rgba(Letters, WordAlpha), pText);
 			});
 		}
 	}
@@ -813,9 +829,9 @@ void CXcLyrics::RenderNeon(CImGuiBackend &Backend, ImFont *pBold, float Alpha)
 		const float Progress = (float)std::clamp((m_PlatePosition - Start) / std::max(End - Start, 0.1), 0.0, 1.0);
 		const float Fade = m_NowFade;
 		Neon(Pos.x, Pos.y, Pos.x + Dim.x, Pos.y + Dim.y, Size, Accent, Fade * 0.8f, [&](ImDrawList &List) {
-			List.AddText(pBold, Size, Pos, Rgba(ColorRGBA(0.95f, 0.95f, 0.97f, 1.0f), Fade), pNow);
+			AddTextSmooth(List, pBold, Size, Pos, Rgba(ColorRGBA(0.95f, 0.95f, 0.97f, 1.0f), Fade), pNow);
 			List.PushClipRect(ImVec2(Pos.x, Pos.y - Size * 0.2f), ImVec2(Pos.x + Dim.x * Progress, Pos.y + Size * 1.4f), true);
-			List.AddText(pBold, Size, Pos, Rgba(Accent, Fade), pNow);
+			AddTextSmooth(List, pBold, Size, Pos, Rgba(Accent, Fade), pNow);
 			List.PopClipRect();
 		});
 	}

@@ -513,6 +513,8 @@ uniform float u_FillScale;
 uniform float u_FillTime;
 uniform float u_KeepShade;
 uniform vec2 u_Motion; // the smear of the captured sprites in uv, 0 = none
+uniform vec4 u_Region; // the captured rectangle in window pixels: the glow fades out before its edges
+uniform float u_EdgeFade; // pixels of that fade
 out vec4 FragColor;
 
 vec3 Hue(float h)
@@ -609,6 +611,10 @@ void main()
 		Rim = clamp(Dilated - a, 0.0, 1.0);
 	}
 	float Glow = clamp(texture(u_Blur, v_Uv).a * u_Strength, 0.0, 1.0);
+	// the far tail of the glow goes softly to nothing at the edge of the captured rectangle, so the rectangle
+	// never shows as a lighter square
+	vec2 FromEdge = min(gl_FragCoord.xy - u_Region.xy, u_Region.zw - gl_FragCoord.xy);
+	Glow *= smoothstep(0.0, u_EdgeFade, min(FromEdge.x, FromEdge.y));
 
 	// light only outside the silhouette, the sprites themselves stay untouched.
 	// Part of the light also covers the background, so the color stays visible on bright maps.
@@ -795,6 +801,8 @@ bool CXcRenderer::Init()
 	m_LocMotionDir = glGetUniformLocation(m_MotionProgram, "u_Dir");
 	m_LocMotionSamples = glGetUniformLocation(m_MotionProgram, "u_Samples");
 	m_LocGlowMotion = glGetUniformLocation(m_GlowProgram, "u_Motion");
+	m_LocGlowRegion = glGetUniformLocation(m_GlowProgram, "u_Region");
+	m_LocGlowEdgeFade = glGetUniformLocation(m_GlowProgram, "u_EdgeFade");
 	m_LocUseTilt = glGetUniformLocation(m_ShapeProgram, "u_UseTilt");
 	m_LocTilt = glGetUniformLocation(m_ShapeProgram, "u_Tilt");
 	m_LocGlowCapture = glGetUniformLocation(m_GlowProgram, "u_Capture");
@@ -1411,6 +1419,13 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 		glUniform1f(m_LocGlowFillTime, Settings.m_FillTime);
 		glUniform1f(m_LocGlowKeepShade, Settings.m_KeepShade);
 		glUniform2f(m_LocGlowMotion, Settings.m_MotionX / Width, -Settings.m_MotionY / Height);
+		{
+			const float x0 = (float)(pViewport[0] + m_aCaptureRegion[0]);
+			const float y0 = (float)(pViewport[1] + m_aCaptureRegion[1]);
+			glUniform4f(m_LocGlowRegion, x0, y0, x0 + m_aCaptureRegion[2], y0 + m_aCaptureRegion[3]);
+			const float Smallest = (float)std::min(m_aCaptureRegion[2], m_aCaptureRegion[3]);
+			glUniform1f(m_LocGlowEdgeFade, std::clamp(Settings.m_Radius, 4.0f, std::max(Smallest * 0.3f, 4.0f)));
+		}
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, m_aBloom[0].m_Texture);
 		glBindSampler(1, m_Sampler);

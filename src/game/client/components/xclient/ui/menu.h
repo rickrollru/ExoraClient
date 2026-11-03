@@ -248,6 +248,9 @@ private:
 	float m_BackgroundTime = 0.0f;
 	void RenderFrame();
 	void RenderTopBar(float Width);
+	// the side menu (xc_topbar_style 1): a column of square page buttons on the left of the menu
+	void RenderSideRail(ImVec2 Min, float Height);
+	float SideRailWidth() const;
 	void RenderTopbarCard(); // Settings > Interface
 	bool TopbarButtonAction(int Button);
 	void RenderHome();

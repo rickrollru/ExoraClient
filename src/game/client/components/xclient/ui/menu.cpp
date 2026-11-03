@@ -165,6 +165,12 @@ bool CXcMenu::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 	if(!m_Active && !DemoBar)
 		return false;
 	Ui()->ConvertMouseMove(&x, &y, CursorType);
+	// a slider dragged with Shift: the mouse itself moves 10 times slower, for exact values
+	if(AnyDragIsFine())
+	{
+		x *= 0.1f;
+		y *= 0.1f;
+	}
 	Ui()->OnCursorMove(x, y);
 	m_Backend.OnMouseMove(Ui()->UpdatedMousePos());
 	return true;
@@ -510,7 +516,9 @@ void CXcMenu::OnRender()
 	RenderBackground();
 
 	m_Backend.NewFrame(Dt, Ui()->UpdatedMousePos());
+	SetCursorSlowsDown(true); // OnCursorMove slows the mouse during Shift drags of the menu
 	RenderFrame();
+	SetCursorSlowsDown(false);
 	m_Backend.Render();
 
 	if(m_Active)
@@ -560,7 +568,15 @@ void CXcMenu::RenderFrame()
 	ImGui::PopStyleVar(2);
 	ImGui::PushFont(Fonts().m_pBody);
 
-	RenderTopBar(Io.DisplaySize.x - Margin * 2.0f);
+	// the side menu takes a column on the left, the bar and the page move right of it
+	const float Rail = SideRailWidth();
+	if(Rail > 0.0f)
+	{
+		const ImVec2 RailMin = ImGui::GetCursorScreenPos();
+		RenderSideRail(RailMin, Io.DisplaySize.y - Margin + Slide - RailMin.y);
+		ImGui::SetCursorScreenPos(ImVec2(RailMin.x + Rail + S(16.0f), RailMin.y));
+	}
+	RenderTopBar(Io.DisplaySize.x - Margin * 2.0f - (Rail > 0.0f ? Rail + S(16.0f) : 0.0f));
 
 	// big rounded panel with the page
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + S(6.0f));
@@ -737,25 +753,27 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	// the big preview of your own tee shows its neon outline and shader too (the render module captures the tee)
 	XcRender::SGlowSettings GlowSettings;
 	const bool Neon = Extras && Max.y - Min.y > 96.0f && GameClient()->m_TeeGlow.PreviewSettings(Info.m_Size / 64.0f, ImGui::GetStyle().Alpha, GlowSettings);
-	if(Neon)
-	{
-		const float Reach = Info.m_Size * 1.4f + GlowSettings.m_Radius * 2.0f;
-		const float aRect[4] = {Center.x - Reach, Center.y - Reach, Center.x + Reach, Center.y + Reach};
-		Graphics()->XcCaptureBegin(aRect);
-	}
+	// the cape and the hat behind come first and stay as they are: the shader and the outline are only for the
+	// tee itself (over the cape they made it a grey see-through sheet)
 	if(Cloth)
 		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, ImGui::GetStyle().Alpha, Client()->GlobalTime());
 	if(Hat && g_Config.m_XcHatBehind)
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
+	if(Neon)
+	{
+		// on the stage only the crisp outline, no wide glow behind the tee
+		GlowSettings.m_Strength = 0.0f;
+		const float Reach = Info.m_Size * 0.9f + GlowSettings.m_RimWidth * 4.0f;
+		const float aRect[4] = {Center.x - Reach, Center.y - Reach, Center.x + Reach, Center.y + Reach};
+		Graphics()->XcCaptureBegin(aRect);
+	}
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
+	if(Neon)
+		Graphics()->XcCaptureEnd(GlowSettings);
 	if(Cloth && g_Config.m_XcScarfSelf)
 		GameClient()->m_XcCape.RenderPreviewFront(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha);
 	if(Hat && !g_Config.m_XcHatBehind)
-	{
 		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
-	}
-	if(Neon)
-		Graphics()->XcCaptureEnd(GlowSettings);
 	// the accessory (cone, halo, horns...) of the big preview, over the outline like in the game
 	if(Extras && Max.y - Min.y > 96.0f && g_Config.m_XcAccessorySelf)
 		GameClient()->m_Accessory.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha, Client()->GlobalTime());

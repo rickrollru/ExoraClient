@@ -132,8 +132,6 @@ void CXcMenu::RenderHomeStage(float Width, float Height)
 	// the stage: a soft light from below and a floor glow
 	const float StageHeight = Height - S(196.0f);
 	const ImVec2 StageCenter((Min.x + Max.x) * 0.5f, Min.y + StageHeight * 0.55f);
-	for(int i = 6; i >= 1; i--)
-		pDraw->AddCircleFilled(StageCenter, StageHeight * 0.08f * i, Col(t.m_Accent, 0.022f), 48);
 	const float FloorY = Min.y + StageHeight * 0.9f;
 	pDraw->AddEllipseFilled(ImVec2(StageCenter.x, FloorY), ImVec2(Width * 0.3f, S(9.0f)), Col(t.m_Accent, 0.2f), 0.0f, 48);
 

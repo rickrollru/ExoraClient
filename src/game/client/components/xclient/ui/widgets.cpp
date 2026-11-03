@@ -90,6 +90,17 @@ namespace XcUi
 	static float s_DragAnchorFraction = 0.0f;
 	static float s_DragAnchorMouse = 0.0f;
 	static float s_DragLast = 0.0f;
+	static bool s_CursorSlowsDown = false;
+
+	void SetCursorSlowsDown(bool SlowsDown)
+	{
+		s_CursorSlowsDown = SlowsDown;
+	}
+
+	bool AnyDragIsFine()
+	{
+		return s_DragShift && s_DragFrame >= ImGui::GetFrameCount() - 1;
+	}
 
 	float DragFraction(ImGuiID Id, float Current, float TrackLeft, float TrackWidth)
 	{
@@ -120,7 +131,9 @@ namespace XcUi
 			s_DragLast = std::clamp((Mouse - TrackLeft) / Width, 0.0f, 1.0f);
 		else
 		{
-			s_DragLast = std::clamp(s_DragAnchorFraction + (Mouse - s_DragAnchorMouse) / Width * (Shift ? 0.1f : 1.0f), 0.0f, 1.0f);
+			// slower with Shift; where the cursor itself is slowed down, the value stays right under it
+			const float Factor = Shift && !s_CursorSlowsDown ? 0.1f : 1.0f;
+			s_DragLast = std::clamp(s_DragAnchorFraction + (Mouse - s_DragAnchorMouse) / Width * Factor, 0.0f, 1.0f);
 			// the mouse ran off the track end while slow: keep the anchor there so going back answers at once
 			if(s_DragLast <= 0.0f || s_DragLast >= 1.0f)
 			{
@@ -372,15 +385,31 @@ namespace XcUi
 		if(Hovered && !Held)
 			ImGui::SetItemTooltip("%s", Tr("Hold Shift to drag precisely"));
 
-		const float Shown = Animate(Id, *pFraction, Held ? 40.0f : 16.0f);
+		// while dragged the grab is exactly where the value is, no lag; it glides only on its own
+		const float Shown = Animate(Id, *pFraction, Held ? 1000.0f : 16.0f);
 		const float Focus = Animate(Id + 1, (Hovered || Held) ? 1.0f : 0.0f, 18.0f);
-		pDraw->AddRectFilled(ImVec2(TrackLeft, TrackY - TrackHeight * 0.5f), ImVec2(TrackRight, TrackY + TrackHeight * 0.5f), Col(t.m_Track), TrackHeight);
 		const float FillX = TrackLeft + (TrackRight - TrackLeft) * Shown;
-		pDraw->AddRectFilled(ImVec2(TrackLeft, TrackY - TrackHeight * 0.5f), ImVec2(FillX, TrackY + TrackHeight * 0.5f), Col(t.m_Accent), TrackHeight);
-		// soft halo around the grab while hovered
-		pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius * (1.0f + 0.7f * Focus), Col(t.m_Accent, 0.18f * Focus), 24);
-		pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius, Col(t.m_Accent), 24);
-		pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius * 0.42f, Col(t.m_OnAccent), 16);
+		// the line stops at the grab on both sides: nothing shows through it (also when the slider is off and
+		// everything is half transparent)
+		const bool Disabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+		const float Cut = GrabRadius + S(2.0f);
+		if(FillX + Cut < TrackRight)
+			pDraw->AddRectFilled(ImVec2(FillX + Cut, TrackY - TrackHeight * 0.5f), ImVec2(TrackRight, TrackY + TrackHeight * 0.5f), Col(t.m_Track), TrackHeight);
+		if(FillX - Cut > TrackLeft)
+			pDraw->AddRectFilled(ImVec2(TrackLeft, TrackY - TrackHeight * 0.5f), ImVec2(FillX - Cut, TrackY + TrackHeight * 0.5f), Col(Disabled ? t.m_TextMuted : t.m_Accent, Disabled ? 0.6f : 1.0f), TrackHeight);
+		if(Disabled)
+		{
+			// off: a calm grey grab, no halo and no dot
+			pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius * 0.8f, Col(t.m_TextMuted, 0.8f), 24);
+		}
+		else
+		{
+			// soft halo around the grab while hovered
+			if(Focus > 0.01f)
+				pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius * (1.0f + 0.7f * Focus), Col(t.m_Accent, 0.18f * Focus), 24);
+			pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius, Col(t.m_Accent), 24);
+			pDraw->AddCircleFilled(ImVec2(FillX, TrackY), GrabRadius * 0.42f, Col(t.m_OnAccent), 16);
+		}
 		if(Changed)
 			ImGui::MarkItemEdited(Id);
 		return Changed;
