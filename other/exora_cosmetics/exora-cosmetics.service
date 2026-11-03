@@ -1,0 +1,19 @@
+[Unit]
+Description=Exora Client cosmetics service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/exora-cosmetics/server.py
+Restart=always
+RestartSec=3
+DynamicUser=yes
+StateDirectory=exora-cosmetics
+Environment=EXORA_COSMETICS_DB=/var/lib/exora-cosmetics/cosmetics.db
+Environment=EXORA_COSMETICS_PORT=8770
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
