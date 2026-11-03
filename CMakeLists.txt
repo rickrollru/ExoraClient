@@ -4193,6 +4193,10 @@ if(TARGET_OS AND TARGET_BITS)
 endif()
 
 set(CPACK_PACKAGE_FILE_NAME ExoraClient-${CPACK_SYSTEM_NAME}) # XClient: the release archive, the version goes into the release tag
+if(TARGET_OS STREQUAL "windows")
+  # XClient: the Windows zip is uploaded by hand, so it carries the version itself (the Linux workflow adds it)
+  set(CPACK_PACKAGE_FILE_NAME ExoraClient-v${XC_VERSION_STRING}-${CPACK_SYSTEM_NAME})
+endif()
 set(CPACK_ARCHIVE_PORTABLE_FILE_NAME ${CPACK_PACKAGE_FILE_NAME})
 set(CPACK_SOURCE_PACKAGE_FILE_NAME ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-src)
 set(CPACK_SOURCE_FILES
