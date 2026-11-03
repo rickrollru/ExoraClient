@@ -405,6 +405,10 @@ void CXcMenu::RenderVisualsTee()
 		ConfigSlider(Tr("Pattern size"), "xc_tee_shader_scale", &g_Config.m_XcTeeShaderScale, 25, 400, "%d%%");
 		ConfigSlider(Tr("Speed"), "xc_tee_shader_speed", &g_Config.m_XcTeeShaderSpeed, 0, 400, "%d%%");
 		ConfigSlider(Tr("Keep the skin shading"), "xc_tee_shader_shade", &g_Config.m_XcTeeShaderShade, 0, 100, "%d%%");
+		ParamLabel(Tr("On which parts"));
+		const char *apParts[] = {Tr("Tee"), Tr("Weapon"), Tr("Hook")};
+		FlagChips("##tee_shader_parts", &g_Config.m_XcTeeShaderParts, apParts, 3);
+		ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
 		TargetChips("##tee_shader_targets", &g_Config.m_XcTeeShaderSelf, &g_Config.m_XcTeeShaderDummy, &g_Config.m_XcTeeShaderOthers);
 		EndCard();
 	}

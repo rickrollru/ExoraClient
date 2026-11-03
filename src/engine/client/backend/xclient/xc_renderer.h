@@ -113,6 +113,7 @@ private:
 	int m_LocMotionSamples = -1;
 	int m_LocGlowMotion = -1;
 	int m_LocGlowRegion = -1;
+	int m_LocGlowFillOrigin = -1;
 	int m_LocGlowEdgeFade = -1;
 	STarget m_Blocks;
 	unsigned m_BlocksDepth = 0;
@@ -121,11 +122,17 @@ private:
 	int m_BlocksGridH = 0;
 
 	// sprite capture for the neon outline
-	STarget m_Capture;
-	bool m_Capturing = false;
-	int m_CaptureSavedDraw = 0;
-	int m_CaptureSavedRead = 0;
-	int m_aCaptureRegion[4] = {};
+	// captures can be nested once: the tee shader of a part goes into the capture of the whole player
+	static constexpr int MAX_CAPTURE_DEPTH = 2;
+	static constexpr int MAX_CAPTURE_CALLS = 8;
+	STarget m_aCapture[MAX_CAPTURE_DEPTH];
+	int m_CaptureDepth = 0;
+	int m_aCaptureSavedDraw[MAX_CAPTURE_DEPTH] = {};
+	int m_aCaptureSavedRead[MAX_CAPTURE_DEPTH] = {};
+	int m_aaCaptureRegion[MAX_CAPTURE_DEPTH][4] = {};
+	// every begin has its end: a begin that captured nothing (off screen, too deep) ends nothing
+	int m_CaptureCalls = 0;
+	bool m_aCaptureReal[MAX_CAPTURE_CALLS] = {};
 
 	bool Init();
 	void DrawShapes(const XcRender::SCommand_DrawShapes *pCommand);

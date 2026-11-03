@@ -763,6 +763,9 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	{
 		// on the stage only the crisp outline, no wide glow behind the tee
 		GlowSettings.m_Strength = 0.0f;
+		// the pattern stays on the tee, not on the screen
+		GlowSettings.m_FillOriginX = Center.x;
+		GlowSettings.m_FillOriginY = Center.y;
 		const float Reach = Info.m_Size * 0.9f + GlowSettings.m_RimWidth * 4.0f;
 		const float aRect[4] = {Center.x - Reach, Center.y - Reach, Center.x + Reach, Center.y + Reach};
 		Graphics()->XcCaptureBegin(aRect);

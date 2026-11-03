@@ -109,15 +109,14 @@ namespace XcUi
 			const ImVec2 Min((DisplaySize.x - Width) * 0.5f, y);
 			const ImVec2 Max(Min.x + Width, y + Height);
 
-			// soft shadow, pill, icon dot, text
-			for(int s = 3; s >= 1; s--)
-				pDraw->AddRectFilled(ImVec2(Min.x - s * 2.0f, Min.y - s + S(4.0f)), ImVec2(Max.x + s * 2.0f, Max.y + s * 2.0f + S(4.0f)), Col(ImVec4(0, 0, 0, 1), 0.06f * a), Height * 0.5f + s * 2.0f);
-			pDraw->AddRectFilled(Min, Max, Col(t.m_Card, a / std::max(t.m_Card.w, 0.01f) * 0.98f), Height * 0.5f);
-			pDraw->AddRect(Min, Max, Col(t.m_Border, a), Height * 0.5f, 0, 1.0f);
+			// a rounded card like the rest of the interface (no pill, no dark shadow), icon plate, text
+			const float Rounding = S(12.0f);
+			pDraw->AddRectFilled(Min, Max, Col(t.m_Card, a / std::max(t.m_Card.w, 0.01f) * 0.98f), Rounding);
+			pDraw->AddRect(Min, Max, Col(t.m_Border, a), Rounding, 0, 1.0f);
 			const ImVec2 Dot(Min.x + Height * 0.5f, Min.y + Height * 0.5f);
 			pDraw->AddRectFilled(ImVec2(Dot.x - (Height * 0.30f), Dot.y - (Height * 0.30f)), ImVec2(Dot.x + (Height * 0.30f), Dot.y + (Height * 0.30f)), Col(IconColor, 0.18f * a), S(6.0f));
 			DrawIcon(pDraw, pIconFont, pIconFont->FontSize, Dot, Col(IconColor, a), pIcon);
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + Height + S(4.0f), Min.y + (Height - TextSize.y) * 0.5f), Col(t.m_Text, a), Toast.m_Text.c_str());
+			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + Height + S(4.0f), std::floor(Min.y + Height * 0.5f - TextMiddle(pFont, pFont->FontSize) + 0.5f)), Col(t.m_Text, a), Toast.m_Text.c_str());
 		}
 	}
 } // namespace XcUi

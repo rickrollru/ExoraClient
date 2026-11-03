@@ -640,6 +640,7 @@ MACRO_CONFIG_INT(XcTeeShaderAlpha, xc_tee_shader_alpha, 85, 0, 100, CFGFLAG_CLIE
 MACRO_CONFIG_INT(XcTeeShaderScale, xc_tee_shader_scale, 100, 25, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader: size of the pattern")
 MACRO_CONFIG_INT(XcTeeShaderSpeed, xc_tee_shader_speed, 100, 0, 400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader: speed of the pattern")
 MACRO_CONFIG_INT(XcTeeShaderShade, xc_tee_shader_shade, 70, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader: keep the shading of the skin")
+MACRO_CONFIG_INT(XcTeeShaderParts, xc_tee_shader_parts, 3, 0, 7, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which parts get the tee shader (sum: 1 = the tee, 2 = the weapon and hands, 4 = the hook)")
 MACRO_CONFIG_INT(XcTeeShaderSelf, xc_tee_shader_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader on yourself")
 MACRO_CONFIG_INT(XcTeeShaderDummy, xc_tee_shader_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader on your dummy")
 MACRO_CONFIG_INT(XcTeeShaderOthers, xc_tee_shader_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Tee shader on other players")

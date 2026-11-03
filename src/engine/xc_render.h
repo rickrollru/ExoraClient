@@ -83,6 +83,9 @@ namespace XcRender
 		float m_FillScale = 1.0f; // pixels of one tee width, the pattern size follows the zoom
 		float m_FillTime = 0.0f; // seconds, moves the pattern
 		float m_KeepShade = 0.7f; // keep the dark and light parts of the skin under the pattern
+		// where the pattern is pinned, in pixels from the top left (the tee's center): it moves and zooms with the
+		// tee instead of sliding over it; negative = pinned to the screen
+		float m_FillOriginX = -1.0f, m_FillOriginY = -1.0f;
 		bool m_DoGlow = true; // false: only the pattern, no glow or outline around
 		// motion blur of the captured sprites: the whole smear in pixels (top left origin), 0 = none
 		float m_MotionX = 0.0f, m_MotionY = 0.0f;

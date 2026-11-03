@@ -805,6 +805,7 @@ void CPlayers::RenderPlayer(
 		GameClient()->m_Effects.SkidTrail(Position, Vel, Player.m_Direction, Alpha, Volume);
 
 	// draw gun
+	const bool XcWeaponShader = !RenderGhost && GameClient()->m_TeeGlow.PartBegin(ClientId, CTeeGlow::PART_WEAPON); // XClient: shader on the weapon only
 	if(Player.m_Weapon >= 0)
 	{
 		if(!(RenderInfo.m_TeeRenderFlags & TEE_NO_WEAPON))
@@ -1044,6 +1045,10 @@ void CPlayers::RenderPlayer(
 		}
 	}
 
+	if(XcWeaponShader)
+		GameClient()->m_TeeGlow.PartEnd(ClientId); // XClient
+	const bool XcTeeShader = !RenderGhost && GameClient()->m_TeeGlow.PartBegin(ClientId, CTeeGlow::PART_TEE); // XClient: shader on the tee only
+
 	// render the "shadow" tee
 	if(!RenderGhost && (g_Config.m_ClUnpredictedShadow == 3 || (Local && g_Config.m_ClUnpredictedShadow == 1) || (!Local && g_Config.m_ClUnpredictedShadow == 2)))
 	{
@@ -1058,6 +1063,8 @@ void CPlayers::RenderPlayer(
 	}
 
 	RenderTools()->RenderTee(&State, &RenderInfo, Player.m_Emote, Direction, Position, Alpha, Local);
+	if(XcTeeShader)
+		GameClient()->m_TeeGlow.PartEnd(ClientId); // XClient
 
 	float TeeAnimScale, TeeBaseSize;
 	CRenderTools::GetRenderTeeAnimScaleAndBaseSize(&RenderInfo, TeeAnimScale, TeeBaseSize);
@@ -1236,12 +1243,18 @@ void CPlayers::OnRender()
 		{
 			continue;
 		}
+		const bool XcHookShader = GameClient()->m_TeeGlow.PartBegin(ClientId, CTeeGlow::PART_HOOK); // XClient: shader on the hook
 		RenderHook(ScreenRect, &GameClient()->m_aClients[ClientId].m_RenderPrev, &GameClient()->m_aClients[ClientId].m_RenderCur, &aRenderInfo[ClientId], ClientId);
+		if(XcHookShader)
+			GameClient()->m_TeeGlow.PartEnd(ClientId); // XClient
 	}
 	if(LocalClientId != -1 && IsPlayerInfoAvailable(LocalClientId))
 	{
 		const CGameClient::CClientData *pLocalClientData = &GameClient()->m_aClients[LocalClientId];
+		const bool XcHookShader = GameClient()->m_TeeGlow.PartBegin(LocalClientId, CTeeGlow::PART_HOOK); // XClient: shader on the hook
 		RenderHook(ScreenRect, &pLocalClientData->m_RenderPrev, &pLocalClientData->m_RenderCur, &aRenderInfo[LocalClientId], LocalClientId);
+		if(XcHookShader)
+			GameClient()->m_TeeGlow.PartEnd(LocalClientId); // XClient
 	}
 
 	// render spectating players

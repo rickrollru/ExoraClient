@@ -76,6 +76,8 @@ namespace XcUi
 	bool EffectColorPicker(const char *pId, int *pMode, unsigned *pColor);
 	// three chips: show an effect for me, my dummy, other players
 	bool TargetChips(const char *pId, int *pSelf, int *pDummy, int *pOthers);
+	// chips that are each on or off, as bits of one value (chip i = bit i)
+	bool FlagChips(const char *pId, int *pMask, const char *const *ppLabels, int Num);
 	// one choice of many as rounded chips that wrap to new lines; pMarked puts a dot on chosen chips
 	bool ChoiceChips(const char *pId, int *pCurrent, const char *const *ppItems, int NumItems, const bool *pMarked = nullptr);
 	// a labeled row: name on the left, the next widget on the right

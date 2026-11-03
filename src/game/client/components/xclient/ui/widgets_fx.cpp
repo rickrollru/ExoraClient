@@ -129,47 +129,72 @@ namespace XcUi
 		return Changed;
 	}
 
-	bool TargetChips(const char *pId, int *pSelf, int *pDummy, int *pOthers)
+	// a row of chips that are each on or off on their own
+	static bool ToggleChipRow(const char *pId, const char *const *ppLabels, int **ppValues, int Num)
 	{
 		ImGuiWindow *pWindow = ImGui::GetCurrentWindow();
-		if(pWindow->SkipItems)
+		if(pWindow->SkipItems || Num <= 0)
 			return false;
 		ImGui::PushID(pId);
 		const STheme &t = Theme();
 		ImFont *pFont = Fonts().m_pLabel ? Fonts().m_pLabel : ImGui::GetFont();
-		const char *apLabels[] = {Tr("Mine"), Tr("Dummy"), Tr("Others")};
-		int *apValues[] = {pSelf, pDummy, pOthers};
 		const float Gap = S(6.0f);
-		const float Width = (AvailWidth() - Gap * 2.0f) / 3.0f;
+		const float Width = (AvailWidth() - Gap * (Num - 1)) / Num;
 		const float Height = S(30.0f);
 		const ImVec2 Start = ImGui::GetCursorScreenPos();
 		bool Changed = false;
-		for(int i = 0; i < 3; i++)
+		for(int i = 0; i < Num; i++)
 		{
 			const ImRect Rect(ImVec2(Start.x + i * (Width + Gap), Start.y), ImVec2(Start.x + i * (Width + Gap) + Width, Start.y + Height));
-			const ImGuiID Id = pWindow->GetID(apLabels[i]);
+			const ImGuiID Id = pWindow->GetID(ppLabels[i]);
 			ImGui::ItemSize(ImRect(Rect.Min, ImVec2(Rect.Max.x, Rect.Max.y)));
-			if(i < 2)
+			if(i < Num - 1)
 				ImGui::SameLine(0.0f, Gap);
 			if(!ImGui::ItemAdd(Rect, Id))
 				continue;
 			bool Hovered, Held;
 			if(ImGui::ButtonBehavior(Rect, Id, &Hovered, &Held))
 			{
-				*apValues[i] = !*apValues[i];
-				PlayUiSound(*apValues[i] ? SOUND_TOGGLE_ON : SOUND_TOGGLE_OFF);
+				*ppValues[i] = !*ppValues[i];
+				PlayUiSound(*ppValues[i] ? SOUND_TOGGLE_ON : SOUND_TOGGLE_OFF);
 				Changed = true;
 			}
-			const float On = Animate(Id, *apValues[i] ? 1.0f : 0.0f, 16.0f);
+			const float On = Animate(Id, *ppValues[i] ? 1.0f : 0.0f, 16.0f);
 			const float Hover = Animate(Id + 1, Hovered ? 1.0f : 0.0f, 18.0f);
 			ImDrawList *pDraw = pWindow->DrawList;
 			pDraw->AddRectFilled(Rect.Min, Rect.Max, Col(Mix(t.m_Track, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.22f), On), 1.0f + Hover * 0.3f), S(8.0f));
 			pDraw->AddRect(Rect.Min, Rect.Max, Col(t.m_Accent, On * 0.8f), S(8.0f), 0, 1.0f);
-			const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, apLabels[i]);
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Rect.GetCenter().x - TextSize.x * 0.5f, Rect.GetCenter().y - TextSize.y * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, std::max(On, Hover))), apLabels[i]);
+			const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, ppLabels[i]);
+			pDraw->AddText(pFont, pFont->FontSize, ImVec2(std::floor(Rect.GetCenter().x - TextSize.x * 0.5f), std::floor(Rect.GetCenter().y - TextMiddle(pFont, pFont->FontSize) + 0.5f)), Col(Mix(t.m_TextMuted, t.m_Text, std::max(On, Hover))), ppLabels[i]);
 		}
 		ImGui::PopID();
 		return Changed;
+	}
+
+	bool TargetChips(const char *pId, int *pSelf, int *pDummy, int *pOthers)
+	{
+		const char *apLabels[] = {Tr("Mine"), Tr("Dummy"), Tr("Others")};
+		int *apValues[] = {pSelf, pDummy, pOthers};
+		return ToggleChipRow(pId, apLabels, apValues, 3);
+	}
+
+	bool FlagChips(const char *pId, int *pMask, const char *const *ppLabels, int Num)
+	{
+		int aOn[8] = {};
+		int *apValues[8];
+		Num = std::min(Num, 8);
+		for(int i = 0; i < Num; i++)
+		{
+			aOn[i] = (*pMask >> i) & 1;
+			apValues[i] = &aOn[i];
+		}
+		if(!ToggleChipRow(pId, ppLabels, apValues, Num))
+			return false;
+		int Mask = 0;
+		for(int i = 0; i < Num; i++)
+			Mask |= aOn[i] << i;
+		*pMask = Mask;
+		return true;
 	}
 	bool ChoiceChips(const char *pId, int *pCurrent, const char *const *ppItems, int NumItems, const bool *pMarked)
 	{
