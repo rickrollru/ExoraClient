@@ -59,6 +59,9 @@ PROCESS process_execute(const char *file, EShellExecuteWindowState window_state,
 	case EShellExecuteWindowState::BACKGROUND:
 		info.nShow = SW_SHOWMINNOACTIVE;
 		break;
+	case EShellExecuteWindowState::HIDDEN: // XClient
+		info.nShow = SW_HIDE;
+		break;
 	default:
 		dbg_assert_failed("Invalid window_state: %d", static_cast<int>(window_state));
 	}

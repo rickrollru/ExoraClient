@@ -48,7 +48,8 @@ bool CLocalServer::RunServer(const std::vector<const char *> &vpArguments)
 	// No / in binary path means to search in $PATH, so it is expected that the file can't be opened. Just try executing anyway.
 	if(str_find(aBuf, "/") == nullptr || fs_is_file(aBuf))
 	{
-		m_Process = process_execute(aBuf, EShellExecuteWindowState::BACKGROUND, vpArgumentsWithAuth.data(), vpArgumentsWithAuth.size());
+		// XClient: no console window, the server is started and stopped from the menu
+		m_Process = process_execute(aBuf, EShellExecuteWindowState::HIDDEN, vpArgumentsWithAuth.data(), vpArgumentsWithAuth.size());
 		if(m_Process != INVALID_PROCESS)
 		{
 			GameClient()->m_Menus.ForceRefreshLanPage();

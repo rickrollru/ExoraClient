@@ -201,6 +201,10 @@ if(NOT VERSION)
   set(VERSION ${PROJECT_VERSION})
 endif()
 
+# XClient: the client's own version (for the Windows file properties)
+file(STRINGS src/game/version.h XC_VERSION_LINE REGEX "^#define XCLIENT_VERSION ")
+string(REGEX REPLACE ".*\"(.*)\".*" "\\1" XC_VERSION_STRING "${XC_VERSION_LINE}")
+
 set(OpenGL_GL_PREFERENCE LEGACY)
 
 # Set the default build type to Release
@@ -3409,7 +3413,12 @@ if(CLIENT)
 
   if(TARGET_OS STREQUAL "windows")
     set(VERSION_EXECUTABLE "${CLIENT_EXECUTABLE}")
-    set(VERSION_COMPANY "${CLIENT_EXECUTABLE} Team")
+    # XClient: the file says what it is (a modified DDNet client), unnamed files look suspicious to antivirus programs
+    set(VERSION_COMPANY "Exora Client")
+    set(VERSION_PRODUCT "Exora Client")
+    set(VERSION_DESCRIPTION "Exora Client - DDraceNetwork game client")
+    set(VERSION_COMMENTS "Modified DDNet / TClient game client, zlib license, https://github.com/rickrollru/ExoraClient")
+    set(VERSION_PRODUCT_VERSION "${XC_VERSION_STRING} (DDNet ${VERSION})")
     configure_file("other/versioninfo/versioninfo.rc.in" "client.versioninfo.rc")
     configure_file("other/manifest/client.manifest.in" "client.manifest")
     set(CLIENT_ICON "other/icons/DDNet.rc")
@@ -3668,7 +3677,11 @@ if(SERVER)
   set(SERVER_SRC ${ENGINE_SERVER_WITHOUT_MAIN} ${GAME_SERVER} ${GAME_GENERATED_SERVER})
   if(TARGET_OS STREQUAL "windows")
     set(VERSION_EXECUTABLE "${SERVER_EXECUTABLE}")
-    set(VERSION_COMPANY "${CLIENT_EXECUTABLE} Team")
+    set(VERSION_COMPANY "Exora Client") # XClient
+    set(VERSION_PRODUCT "Exora Client server")
+    set(VERSION_DESCRIPTION "DDraceNetwork game server (Exora Client build)")
+    set(VERSION_COMMENTS "Modified DDNet game server, zlib license, https://github.com/rickrollru/ExoraClient")
+    set(VERSION_PRODUCT_VERSION "${XC_VERSION_STRING} (DDNet ${VERSION})")
     configure_file("other/versioninfo/versioninfo.rc.in" "server.versioninfo.rc")
     set(SERVER_ICON "other/icons/DDNet-Server.rc")
     set(SERVER_VERSIONINFO "${CMAKE_CURRENT_BINARY_DIR}/server.versioninfo.rc")
