@@ -216,12 +216,6 @@ void CXcMenu::RenderHomeStage(float Width, float Height)
 	const float Hover = Animate(ImGui::GetID("##home_play_hover"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
 	const ImVec2 PlayMin(Min.x + Pad, RowY);
 	const ImVec2 PlayMax(PlayMin.x + PlayWidth, RowY + RowHeight);
-	// a neon glow around the play button
-	for(int i = 3; i >= 1; i--)
-	{
-		const float Grow = S(3.0f) * i * (1.0f + 0.4f * Hover);
-		pDraw->AddRectFilled(ImVec2(PlayMin.x - Grow, PlayMin.y - Grow), ImVec2(PlayMax.x + Grow, PlayMax.y + Grow), Col(t.m_Accent, 0.07f + 0.03f * Hover), S(14.0f) + Grow);
-	}
 	pDraw->AddRectFilled(PlayMin, PlayMax, Col(Mix(t.m_Accent, ImVec4(1, 1, 1, 1), 0.1f * Hover)), S(14.0f));
 	const char *pPlay = IsOnline() ? Tr("Back to the game") : Tr("Play");
 	ImFont *pPlayFont = Fonts().m_pTitle;
@@ -316,11 +310,6 @@ void CXcMenu::RenderMusicBar(float Width, float Height)
 	const float ArtSize = BarHeight - Pad * 1.4f;
 	const ImVec2 ArtMin(Min.x + Pad * 0.8f, Min.y + (BarHeight - ArtSize) * 0.5f);
 	const ImVec2 ArtMax(ArtMin.x + ArtSize, ArtMin.y + ArtSize);
-	for(int i = 3; i >= 1; i--)
-	{
-		const float Grow = i * S(2.0f);
-		pDraw->AddRectFilled(ImVec2(ArtMin.x - Grow, ArtMin.y - Grow + S(3.0f)), ImVec2(ArtMax.x + Grow, ArtMax.y + Grow + S(3.0f)), Col(ImVec4(0, 0, 0, 1), 0.08f), S(12.0f) + Grow);
-	}
 	if(HasArt)
 		pDraw->AddImageRounded((ImTextureID)(uintptr_t)m_Backend.TextureId(Art), ArtMin, ArtMax, ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1)), S(12.0f));
 	else
