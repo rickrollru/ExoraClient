@@ -493,7 +493,7 @@ void CXcMenu::UpdateClientUpdates()
 	{
 		m_UpdatesRequested = true;
 		char aUrl[256];
-		str_format(aUrl, sizeof(aUrl), "https://api.github.com/repos/rickrollru/ExoraClient/releases?per_page=1");
+		str_copy(aUrl, "https://api.github.com/repos/rickrollru/ExoraClient/releases?per_page=1");
 		m_pUpdatesRequest = HttpGet(aUrl);
 		m_pUpdatesRequest->HeaderString("User-Agent", "ExoraClient");
 		m_pUpdatesRequest->HeaderString("Accept", "application/vnd.github+json");
