@@ -1,7 +1,8 @@
-﻿# Exora Client: устанавливает сервис косметики на сервер (Linux с systemd).
-# Запуск: правой кнопкой по файлу -> "Выполнить с помощью PowerShell", или в PowerShell:
+# Exora Client: installs the cosmetics service on a server (Linux with systemd).
+# Run in PowerShell:
 #   powershell -ExecutionPolicy Bypass -File .\deploy.ps1 -Server 1.2.3.4
-# Скрипт сам перебирает ключи из папки .ssh; если ни один не подошёл, спросит пароль сервера.
+# It tries every key in the .ssh folder; if none fits, ssh asks for the server password.
+# ASCII only on purpose: Windows PowerShell reads scripts without a BOM in the local code page.
 param(
 	[string]$Server = "",
 	[string]$User = "root",
@@ -10,13 +11,13 @@ param(
 $ErrorActionPreference = "Stop"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-if(-not $Server) { $Server = Read-Host "IP или домен сервера" }
+if(-not $Server) { $Server = Read-Host "Server IP or domain" }
 if(-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
-	Write-Host "Нет команды ssh. Установи OpenSSH: Параметры -> Приложения -> Дополнительные компоненты -> Клиент OpenSSH" -ForegroundColor Red
+	Write-Host "No ssh command. Install OpenSSH Client: Settings -> Apps -> Optional features" -ForegroundColor Red
 	exit 1
 }
 
-# 1. какой ключ подходит
+# 1. which key fits
 $Target = "$User@$Server"
 $Key = $null
 $SshDir = Join-Path $env:USERPROFILE ".ssh"
@@ -25,15 +26,15 @@ if(Test-Path $SshDir) {
 		if($File.Extension -eq ".pub") { continue }
 		$Head = Get-Content $File.FullName -TotalCount 1 -ErrorAction SilentlyContinue
 		if($Head -notmatch "PRIVATE KEY") { continue }
-		Write-Host "Пробую ключ $($File.Name)..."
+		Write-Host "Trying key $($File.Name)..."
 		& ssh -i $File.FullName -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new $Target "echo ok" 2>$null | Out-Null
 		if($LASTEXITCODE -eq 0) { $Key = $File.FullName; break }
 	}
 }
-if($Key) { Write-Host "Подошёл ключ: $Key" -ForegroundColor Green }
-else { Write-Host "Ни один ключ не подошёл, сейчас ssh спросит пароль от сервера (один раз)." -ForegroundColor Yellow }
+if($Key) { Write-Host "Key works: $Key" -ForegroundColor Green }
+else { Write-Host "No key fits. ssh will ask for the server password now (once)." -ForegroundColor Yellow }
 
-# 2. что выполнить на сервере: файлы внутри скрипта в base64 (без проблем с переводами строк Windows)
+# 2. what runs on the server: the files go inside as base64 (no trouble with Windows line ends)
 $ServerPy = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $Here "server.py")))
 $Unit = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $Here "exora-cosmetics.service")))
 $Remote = @"
@@ -57,16 +58,16 @@ $Remote = $Remote -replace "`r", ""
 $Packed = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Remote))
 $Command = "echo $Packed | base64 -d | bash"
 
-Write-Host "Устанавливаю сервис на $Target..."
+Write-Host "Installing the service on $Target..."
 if($Key) { & ssh -i $Key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new $Target $Command }
 else { & ssh -o StrictHostKeyChecking=accept-new $Target $Command }
-if($LASTEXITCODE -ne 0) { Write-Host "На сервере что-то пошло не так, пришли этот текст." -ForegroundColor Red; exit 1 }
+if($LASTEXITCODE -ne 0) { Write-Host "Something went wrong on the server, send this text." -ForegroundColor Red; exit 1 }
 
-# 3. виден ли сервис снаружи
+# 3. can it be reached from outside
 try {
 	$Answer = Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 "http://${Server}:$Port/v1/ping"
-	Write-Host "Готово: сервис отвечает по адресу http://${Server}:$Port ($($Answer.Content))" -ForegroundColor Green
+	Write-Host "DONE: the service answers at http://${Server}:$Port ($($Answer.Content))" -ForegroundColor Green
 } catch {
-	Write-Host "Сервис запущен, но снаружи порт $Port закрыт. Открой его в панели хостинга (файрвол), затем запусти скрипт ещё раз." -ForegroundColor Yellow
+	Write-Host "The service runs, but port $Port is closed from outside. Open it in the firewall of the hosting panel and run the script again." -ForegroundColor Yellow
 }
-Read-Host "Нажми Enter, чтобы закрыть"
+Read-Host "Press Enter to close"
