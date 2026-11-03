@@ -274,7 +274,6 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 		Top -= 8.0f * U + HeaderH;
 		const ImVec2 Min(Left - 6.0f * U, Top);
 		const ImVec2 Max(Left + Width + 6.0f * U, mix(MessagesBottom + 6.0f * U, InputBottom + 6.0f * U, m_ChatOpen));
-		pDraw->AddRectFilled(ImVec2(Min.x, Min.y + 4.0f * U), ImVec2(Max.x, Max.y + 4.0f * U), Col(ImVec4(0, 0, 0, 1), 0.12f * PanelAlpha), 14.0f * U);
 		pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f), PanelAlpha), 14.0f * U);
 		pDraw->AddRect(Min, Max, Col(t.m_Border, PanelAlpha), 14.0f * U, 0, 1.0f);
 		if(HeaderH > 1.0f)
@@ -332,8 +331,7 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 		switch(Look)
 		{
 		case XC_CHAT_PLATES:
-			// a card of the menu: card color, 1 px border, a soft shadow
-			pDraw->AddRectFilled(ImVec2(BoxMin.x, BoxMin.y + 2.0f * U), ImVec2(BoxMax.x, BoxMax.y + 2.0f * U), Col(ImVec4(0, 0, 0, 1), 0.12f * a), Rounding);
+			// a card of the menu: card color, 1 px border
 			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, g_Config.m_XcChatOpacity / 100.0f), a), Rounding);
 			pDraw->AddRect(BoxMin, BoxMax, Col(t.m_Border, a), Rounding, 0, 1.0f);
 			break;
@@ -342,7 +340,6 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 			// glass: the game blurred behind it (render module), a light film and a bright top edge
 			if(a > 0.25f)
 				m_vChatBlurRects.push_back({BoxMin.x, BoxMin.y, BoxMax.x, BoxMax.y});
-			pDraw->AddRectFilled(ImVec2(BoxMin.x, BoxMin.y + 3.0f * U), ImVec2(BoxMax.x, BoxMax.y + 3.0f * U), Col(ImVec4(0, 0, 0, 1), 0.14f * a), Rounding);
 			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f * 0.55f), a), Rounding);
 			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(1, 1, 1, 1), 0.04f * a), Rounding);
 			pDraw->AddRectFilledMultiColor(ImVec2(BoxMin.x + Rounding * 0.5f, BoxMin.y + 1.0f), ImVec2(BoxMax.x - Rounding * 0.5f, BoxMin.y + (BoxMax.y - BoxMin.y) * 0.45f),
@@ -353,7 +350,6 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 		case XC_CHAT_BUBBLES:
 		{
 			const ImVec4 Fill = RightSide ? t.m_Accent : ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, std::max(g_Config.m_XcChatOpacity / 100.0f, 0.35f));
-			pDraw->AddRectFilled(ImVec2(BoxMin.x, BoxMin.y + 2.0f * U), ImVec2(BoxMax.x, BoxMax.y + 2.0f * U), Col(ImVec4(0, 0, 0, 1), 0.1f * a), Rounding);
 			pDraw->AddRectFilled(BoxMin, BoxMax, Col(Fill, a), Rounding);
 			// a small tail at the top corner on the side of the avatar
 			if(Item.m_Header && Line.m_ClientId >= 0)
@@ -486,7 +482,6 @@ void CXcHud::RenderChatInput(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float U,
 	}
 	else
 	{
-		pDraw->AddRectFilled(ImVec2(Min.x, Min.y + 3.0f * U), ImVec2(Max.x, Max.y + 3.0f * U), Col(ImVec4(0, 0, 0, 1), 0.14f * Alpha), Rounding);
 		pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.92f), Alpha), Rounding);
 	}
 	// the border of the menu panels, the accent glows softly around it while typing

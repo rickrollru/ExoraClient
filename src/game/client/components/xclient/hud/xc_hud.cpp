@@ -242,12 +242,7 @@ void CXcHud::RenderPlate(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float Unit, 
 {
 	const STheme &t = Theme();
 	const float Rounding = 12.0f * Unit;
-	// soft shadow in a few layers
-	for(int i = 3; i >= 1; i--)
-	{
-		const float Grow = i * 2.5f * Unit;
-		pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow + 3.0f * Unit), ImVec2(Max.x + Grow, Max.y + Grow + 3.0f * Unit), Col(ImVec4(0, 0, 0, 1), 0.07f * Alpha), Rounding + Grow);
-	}
+	// no shadow: over the game a dark rim around the plate looks cheap
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.86f), Alpha), Rounding);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), Rounding, 0, 1.0f);
 }

@@ -201,12 +201,7 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 	const float S = Scale; // everything below is placed in unscaled units and multiplied by S
 	const auto P = [&](float x, float y) { return ImVec2(Min.x + x * S, Min.y + y * S); };
 
-	// panel with a soft shadow and an accent line on top
-	for(int i = 4; i >= 1; i--)
-	{
-		const float Grow = i * 4.0f * U;
-		pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow + 6.0f * U), ImVec2(Max.x + Grow, Max.y + Grow + 6.0f * U), Col(ImVec4(0, 0, 0, 1), 0.06f * Alpha), 18.0f * U + Grow);
-	}
+	// panel with an accent line on top (no dark shadow around it)
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.97f), Alpha), 18.0f * U);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), 18.0f * U, 0, 1.0f);
 	pDraw->AddRectFilledMultiColor(ImVec2(Min.x + 40.0f * U, Min.y), ImVec2(Max.x - 40.0f * U, Min.y + 2.0f * U), Col(t.m_Accent, 0.0f), Col(t.m_Accent, Alpha), Col(t.m_Accent, Alpha), Col(t.m_Accent, 0.0f));
@@ -453,7 +448,6 @@ void CXcHud::RenderScoreboardPopup(ImDrawList *pDraw, float U, float Alpha)
 	m_aScoreboardPopupRect[2] = Max.x;
 	m_aScoreboardPopupRect[3] = Max.y;
 
-	pDraw->AddRectFilled(ImVec2(Min.x, Min.y + 6.0f * U), ImVec2(Max.x, Max.y + 6.0f * U), Col(ImVec4(0, 0, 0, 1), 0.25f * Alpha), 12.0f * U);
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Card.x, t.m_Card.y, t.m_Card.z, 1.0f), Alpha), 12.0f * U);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), 12.0f * U);
 	char aName[64];
