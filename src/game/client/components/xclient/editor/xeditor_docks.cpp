@@ -70,8 +70,7 @@ static bool DockIcon(const char *pId, const char *pIcon, const char *pTooltip, b
 	else if(Hovered && Enabled)
 		pDraw->AddRectFilled(Min, ImVec2(Min.x + Size, Min.y + Size), Col(t.m_Track), S(7.0f));
 	ImFont *pFont = Fonts().m_pSmall;
-	const ImVec2 TextSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, pIcon);
-	pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + (Size - TextSize.x) * 0.5f, Min.y + (Size - TextSize.y) * 0.5f), Col(Active ? ImVec4(1, 1, 1, 1) : (Enabled ? t.m_TextSecondary : t.m_TextMuted), Enabled ? 1.0f : 0.5f), pIcon);
+	DrawIcon(pDraw, pFont, pFont->FontSize, ImVec2(Min.x + Size * 0.5f, Min.y + Size * 0.5f), Col(Active ? ImVec4(1, 1, 1, 1) : (Enabled ? t.m_TextSecondary : t.m_TextMuted), Enabled ? 1.0f : 0.5f), pIcon);
 	if(Hovered && pTooltip)
 		ImGui::SetTooltip("%s", pTooltip);
 	return Clicked && Enabled;
@@ -402,7 +401,7 @@ void CXcEditorUi::RenderHistoryDock()
 			const float TextY = RowMin.y + (RowHeight - pSmall->FontSize) * 0.5f;
 			const ImVec4 Color = i < RedoSize ? t.m_TextMuted : (i == Current ? t.m_Text : t.m_TextSecondary);
 			const char *pIcon = i < RedoSize ? FontIcon::ARROW_ROTATE_RIGHT : (i == RedoSize + UndoSize ? FontIcon::FOLDER_OPEN : FontIcon::ARROW_ROTATE_LEFT);
-			pList->AddText(pSmall, pSmall->FontSize * 0.9f, ImVec2(RowMin.x + S(10.0f), TextY), Col(t.m_TextMuted, i < RedoSize ? 0.6f : 1.0f), pIcon);
+			DrawIcon(pList, pSmall, pSmall->FontSize * 0.9f, ImVec2(RowMin.x + S(18.0f), RowMin.y + RowHeight * 0.5f), Col(t.m_TextMuted, i < RedoSize ? 0.6f : 1.0f), pIcon);
 			pList->AddText(pSmall, pSmall->FontSize, ImVec2(RowMin.x + S(34.0f), TextY), Col(Color, i < RedoSize ? 0.7f : 1.0f), pText);
 			ImGui::PopID();
 		}

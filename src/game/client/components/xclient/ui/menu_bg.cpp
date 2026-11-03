@@ -156,10 +156,7 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 	}
 	else
 	{
-		ImGui::PushFont(m_Backend.Fonts().m_pIcons);
-		const ImVec2 IconSize = ImGui::CalcTextSize(XC_ICON_IMAGE);
-		pDraw->AddText(ImVec2(Pos.x + (Width - IconSize.x) * 0.5f, Pos.y + (ImageHeight - IconSize.y) * 0.5f), Col(t.m_TextMuted), XC_ICON_IMAGE);
-		ImGui::PopFont();
+		DrawIcon(pDraw, m_Backend.Fonts().m_pIcons, m_Backend.Fonts().m_pIcons->FontSize, ImVec2(Pos.x + Width * 0.5f, Pos.y + ImageHeight * 0.5f), Col(t.m_TextMuted), XC_ICON_IMAGE);
 	}
 	// hover lightens, selection draws an accent frame with a check mark
 	if(Hover > 0.0f)
@@ -169,11 +166,8 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 	{
 		const float Radius = S(11.0f);
 		const ImVec2 Center(Pos.x + S(8.0f) + Radius, Pos.y + S(8.0f) + Radius);
-		pDraw->AddCircleFilled(Center, Radius, Col(t.m_Accent, Select), 24);
-		ImGui::PushFont(m_Backend.Fonts().m_pSmall);
-		const ImVec2 CheckSize = ImGui::CalcTextSize(XC_ICON_CHECK);
-		pDraw->AddText(ImVec2(Center.x - CheckSize.x * 0.5f, Center.y - CheckSize.y * 0.5f), Col(t.m_OnAccent, Select), XC_ICON_CHECK);
-		ImGui::PopFont();
+		pDraw->AddRectFilled(ImVec2(Center.x - Radius, Center.y - Radius), ImVec2(Center.x + Radius, Center.y + Radius), Col(t.m_Accent, Select), S(6.0f));
+		DrawIcon(pDraw, m_Backend.Fonts().m_pSmall, m_Backend.Fonts().m_pSmall->FontSize, Center, Col(t.m_OnAccent, Select), XC_ICON_CHECK);
 	}
 	if(pBadge)
 	{
@@ -200,11 +194,8 @@ bool CXcMenu::BackgroundTile(const char *pId, IGraphics::CTextureHandle Texture,
 		const bool Armed = m_BgDeleteArmed == pId && ImGui::GetTime() < m_BgDeleteArmedUntil;
 		const bool OverTrash = ImGui::IsMouseHoveringRect(ImVec2(Center.x - Radius, Center.y - Radius), ImVec2(Center.x + Radius, Center.y + Radius));
 		const ImVec4 Red(1.0f, 0.30f, 0.30f, 1.0f);
-		pDraw->AddCircleFilled(Center, Radius, Armed ? Col(Red) : Col(ImVec4(0, 0, 0, OverTrash ? 0.8f : 0.55f), std::max(Hover, Armed ? 1.0f : 0.0f)), 24);
-		ImGui::PushFont(m_Backend.Fonts().m_pSmall);
-		const ImVec2 IconSize = ImGui::CalcTextSize(XC_ICON_TRASH);
-		pDraw->AddText(ImVec2(Center.x - IconSize.x * 0.5f, Center.y - IconSize.y * 0.5f), Col(ImVec4(1, 1, 1, 1), std::max(Hover, Armed ? 1.0f : 0.0f)), XC_ICON_TRASH);
-		ImGui::PopFont();
+		pDraw->AddRectFilled(ImVec2(Center.x - Radius, Center.y - Radius), ImVec2(Center.x + Radius, Center.y + Radius), Armed ? Col(Red) : Col(ImVec4(0, 0, 0, OverTrash ? 0.8f : 0.55f), std::max(Hover, Armed ? 1.0f : 0.0f)), S(7.0f));
+		DrawIcon(pDraw, m_Backend.Fonts().m_pSmall, m_Backend.Fonts().m_pSmall->FontSize, Center, Col(ImVec4(1, 1, 1, 1), std::max(Hover, Armed ? 1.0f : 0.0f)), XC_ICON_TRASH);
 		if(OverTrash)
 			ImGui::SetTooltip("%s", Armed ? Tr("Click again to delete") : Tr("Delete"));
 		DeleteClicked = Clicked && OverTrash;

@@ -9,6 +9,7 @@
 #include <engine/keys.h>
 #include <engine/storage.h>
 
+#include <cmath>
 #include <string>
 #include <tuple>
 
@@ -223,6 +224,30 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 	m_Fonts.m_pSmall = AddFont(pRegular, RegularSize, 13.0f);
 	m_Fonts.m_pIcons = AddFont(pSemiBold, SemiBoldSize, 18.0f);
 	pAtlas->Build();
+	// the icons inside text: each one is moved so its drawing sits on the middle of the capitals and in the middle
+	// of its own place, so icons next to words and icons in a column line up
+	for(ImFont *pFont : pAtlas->Fonts)
+	{
+		const ImFontGlyph *pCap = pFont->FindGlyphNoFallback((ImWchar)'H');
+		if(!pCap)
+			continue;
+		const float CapMiddle = (pCap->Y0 + pCap->Y1) * 0.5f;
+		for(ImFontGlyph &Glyph : pFont->Glyphs)
+		{
+			if(Glyph.Codepoint < 0xe000 || Glyph.Codepoint > 0xf8ff || !Glyph.Visible)
+				continue;
+			const float ShiftY = std::round(CapMiddle - (Glyph.Y0 + Glyph.Y1) * 0.5f);
+			Glyph.Y0 += ShiftY;
+			Glyph.Y1 += ShiftY;
+			const float Ink = Glyph.X1 - Glyph.X0;
+			if(Ink < Glyph.AdvanceX)
+			{
+				const float ShiftX = std::round((Glyph.AdvanceX - Ink) * 0.5f - Glyph.X0);
+				Glyph.X0 += ShiftX;
+				Glyph.X1 += ShiftX;
+			}
+		}
+	}
 
 	unsigned char *pPixels;
 	int Width, Height;

@@ -270,7 +270,8 @@ void CXcMenu::RenderTopBar(float Width)
 		return std::make_pair(Pressed, Pos);
 	};
 	const auto CenteredText = [&](ImVec2 Pos, float ItemWidth, const char *pText, const ImVec4 &Color) {
-		pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + (ItemWidth - TextWidth(pLabel, pText)) * 0.5f, MidY - pLabel->FontSize * 0.5f), Col(Color), pText);
+		// icons (and the short RU / EN) centered by their visible shape
+		DrawIcon(pDraw, pLabel, pLabel->FontSize, ImVec2(Pos.x + ItemWidth * 0.5f, MidY), Col(Color), pText);
 	};
 
 	Place(ButtonSize);
@@ -362,8 +363,8 @@ void CXcMenu::RenderTopBar(float Width)
 			else
 			{
 				// looks like a field, with the shortcut on the right
-				pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + S(12.0f), MidY - pLabel->FontSize * 0.5f), Col(t.m_TextMuted), XC_ICON_SEARCH);
-				pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + S(20.0f) + TextWidth(pLabel, XC_ICON_SEARCH), MidY - pLabel->FontSize * 0.5f), Col(t.m_TextMuted), Tr("Search"));
+				DrawIcon(pDraw, pLabel, pLabel->FontSize, ImVec2(Pos.x + S(12.0f) + TextWidth(pLabel, XC_ICON_SEARCH) * 0.5f, MidY), Col(t.m_TextMuted), XC_ICON_SEARCH);
+				pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Pos.x + S(20.0f) + TextWidth(pLabel, XC_ICON_SEARCH), std::floor(MidY - TextMiddle(pLabel, pLabel->FontSize) + 0.5f)), Col(t.m_TextMuted), Tr("Search"));
 				const char *pKeys = "Ctrl F";
 				const ImVec2 KeySize = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pKeys);
 				const ImVec2 KeyMin(Pos.x + ItemWidth - KeySize.x - S(20.0f), MidY - KeySize.y * 0.5f - S(3.0f));

@@ -354,7 +354,7 @@ void CXcMenu::RenderDemoBar(float Alpha)
 		const ImVec2 Size = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, aName);
 		const ImVec2 Min(BarPos.x + S(14.0f), BarPos.y - Size.y - S(14.0f));
 		pBack->AddRectFilled(Min, ImVec2(Min.x + Size.x + S(28.0f), Min.y + Size.y + S(8.0f)), Col(t.m_Panel, 0.85f * Alpha), S(8.0f));
-		pBack->AddText(Fonts().m_pIcons ? Fonts().m_pIcons : pFont, pFont->FontSize, ImVec2(Min.x + S(7.0f), Min.y + S(4.0f)), Col(t.m_Accent, Alpha), XC_ICON_FILM);
+		DrawIcon(pBack, pFont, pFont->FontSize, ImVec2(Min.x + S(13.0f), Min.y + S(4.0f) + TextMiddle(pFont, pFont->FontSize)), Col(t.m_Accent, Alpha), XC_ICON_FILM);
 		pBack->AddText(pFont, pFont->FontSize, ImVec2(Min.x + S(22.0f), Min.y + S(4.0f)), Col(t.m_TextSecondary, Alpha), aName);
 	}
 

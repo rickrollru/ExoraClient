@@ -233,8 +233,7 @@ void CXcMenu::RenderSearch()
 
 	// input with a search icon
 	ImFont *pIcons = Fonts().m_pLabel;
-	const ImVec2 IconSize = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, XC_ICON_SEARCH);
-	pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(Min.x + S(20.0f), Min.y + (InputHeight - IconSize.y) * 0.5f), Col(t.m_TextMuted), XC_ICON_SEARCH);
+	DrawIcon(pDraw, pIcons, pIcons->FontSize, ImVec2(Min.x + S(27.0f), Min.y + InputHeight * 0.5f), Col(t.m_TextMuted), XC_ICON_SEARCH);
 	ImGui::SetCursorScreenPos(ImVec2(Min.x + S(44.0f), Min.y + (InputHeight - S(34.0f)) * 0.5f));
 	if(m_SearchFocus)
 	{
@@ -288,9 +287,8 @@ void CXcMenu::RenderSearch()
 		// icon, title, breadcrumb
 		const char *pIcon = s_apPageIcons[Entry.m_Page];
 		const ImVec2 IconCenter(RowMin.x + S(26.0f), y + RowHeight * 0.5f);
-		pDraw->AddCircleFilled(IconCenter, S(15.0f), Col(t.m_Track), 24);
-		const ImVec2 Size = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, pIcon);
-		pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(IconCenter.x - Size.x * 0.5f, IconCenter.y - Size.y * 0.5f), Col(Mix(t.m_TextSecondary, t.m_Accent, Select)), pIcon);
+		pDraw->AddRectFilled(ImVec2(IconCenter.x - (S(15.0f)), IconCenter.y - (S(15.0f))), ImVec2(IconCenter.x + (S(15.0f)), IconCenter.y + (S(15.0f))), Col(t.m_Track), S(8.0f));
+		DrawIcon(pDraw, pIcons, pIcons->FontSize, IconCenter, Col(Mix(t.m_TextSecondary, t.m_Accent, Select)), pIcon);
 		ImFont *pTitle = Fonts().m_pLabel;
 		ImFont *pSmall = Fonts().m_pSmall;
 		pDraw->AddText(pTitle, pTitle->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(8.0f)), Col(t.m_Text), Tr(Entry.m_pTitle));
@@ -304,8 +302,7 @@ void CXcMenu::RenderSearch()
 		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(RowMin.x + S(54.0f), y + S(28.0f)), Col(t.m_TextMuted), aPath);
 		if(m_SearchSelected == i)
 		{
-			const ImVec2 ArrowSize = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, XC_ICON_ARROW_RIGHT);
-			pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(RowMax.x - S(16.0f) - ArrowSize.x, y + (RowHeight - ArrowSize.y) * 0.5f), Col(t.m_Accent, Select), XC_ICON_ARROW_RIGHT);
+			DrawIcon(pDraw, pIcons, pIcons->FontSize, ImVec2(RowMax.x - S(24.0f), y + RowHeight * 0.5f), Col(t.m_Accent, Select), XC_ICON_ARROW_RIGHT);
 		}
 		y += RowHeight;
 	}

@@ -26,6 +26,16 @@ namespace XcUi
 	// call when a page or section opens: its cards appear one after another
 	void PageEntered();
 
+	// --- icons
+	// Icons are placed by their visible shape, not by the text line: the drawing is centered exactly on Center and
+	// snapped to whole pixels. The nearest size the atlas has baked is used, so icons stay sharp; pFont only says
+	// which atlas (menu, HUD or editor) to take it from. Works for any short text too.
+	void DrawIcon(ImDrawList *pDraw, ImFont *pFont, float Size, ImVec2 Center, ImU32 Color, const char *pIcon);
+	// the height of the middle of the capitals above the line top: an icon next to text is centered on it
+	float TextMiddle(ImFont *pFont, float Size);
+	// an icon in a slot of SlotWidth left at x, next to text whose line starts at TextY
+	void DrawIconBesideText(ImDrawList *pDraw, ImFont *pFont, float Size, float x, float SlotWidth, float TextY, ImU32 Color, const char *pIcon);
+
 	// --- text
 	void Header(const char *pText);
 	void Title(const char *pText);

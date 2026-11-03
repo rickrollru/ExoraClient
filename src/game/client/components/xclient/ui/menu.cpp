@@ -652,9 +652,8 @@ void CXcMenu::RenderPlaceholder(const char *pIcon, const char *pTitle, const cha
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max((Avail.y - BlockHeight) * 0.4f, 0.0f));
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	const ImVec2 Center(ImGui::GetCursorScreenPos().x + Avail.x * 0.5f, ImGui::GetCursorScreenPos().y + S(34.0f));
-	pDraw->AddCircleFilled(Center, S(34.0f), Col(t.m_Accent, 0.14f), 48);
-	const ImVec2 IconSize = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, pIcon);
-	pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(Center.x - IconSize.x * 0.5f, Center.y - IconSize.y * 0.5f), Col(t.m_Accent), pIcon);
+	pDraw->AddRectFilled(ImVec2(Center.x - (S(34.0f)), Center.y - (S(34.0f))), ImVec2(Center.x + (S(34.0f)), Center.y + (S(34.0f))), Col(t.m_Accent, 0.14f), S(14.0f));
+	DrawIcon(pDraw, pIcons, pIcons->FontSize, Center, Col(t.m_Accent), pIcon);
 	ImGui::Dummy(ImVec2(0.0f, S(80.0f)));
 
 	const auto Centered = [&](ImFont *pFont, const ImVec4 &Color, const char *pStr) {
@@ -786,8 +785,7 @@ bool CXcMenu::HomeTile(const char *pId, const char *pIconGlyph, const char *pLab
 	const float IconSize = S(26.0f);
 	const float ContentHeight = IconSize + S(10.0f) + Fonts().m_pLabel->FontSize + (pNote ? S(4.0f) + Fonts().m_pSmall->FontSize : 0.0f);
 	float y = (Min.y + Max.y - ContentHeight) * 0.5f;
-	const ImVec2 IconDim = pIcon->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, pIconGlyph);
-	pDraw->AddText(pIcon, IconSize, ImVec2((Min.x + Max.x - IconDim.x) * 0.5f, y), Col(IconColor, Fade), pIconGlyph);
+	DrawIcon(pDraw, pIcon, IconSize, ImVec2((Min.x + Max.x) * 0.5f, y + IconSize * 0.5f), Col(IconColor, Fade), pIconGlyph);
 	y += IconSize + S(10.0f);
 	ImFont *pLabelFont = Fonts().m_pLabel;
 	const ImVec2 LabelDim = pLabelFont->CalcTextSizeA(pLabelFont->FontSize, FLT_MAX, 0.0f, pLabel);

@@ -17,6 +17,7 @@
 #include <game/client/components/xclient/ui/icons.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
+#include <game/client/components/xclient/ui/widgets.h>
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
 
@@ -385,8 +386,7 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 			else
 			{
 				const char *pIcon = XC_ICON_SERVER;
-				const ImVec2 Dim = pName->CalcTextSizeA(Avatar * 0.5f, FLT_MAX, 0.0f, pIcon);
-				pDraw->AddText(pName, Avatar * 0.5f, ImVec2(Center.x - Dim.x * 0.5f, Center.y - Dim.y * 0.5f), Col(t.m_TextMuted, a), pIcon);
+				DrawIcon(pDraw, pName, Avatar * 0.5f, Center, Col(t.m_TextMuted, a), pIcon);
 			}
 		}
 

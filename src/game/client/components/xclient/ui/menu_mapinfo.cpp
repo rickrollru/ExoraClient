@@ -133,7 +133,7 @@ void CXcMenu::RenderMapInfoCard()
 		for(int i = 0; i < 5; i++)
 		{
 			const bool Filled = i < m_MapInfo.m_Stars;
-			pDraw->AddText(pIcons, StarSize, ImVec2(x, Pos.y + (ChipHeight - StarSize) * 0.5f), Filled ? Col(t.m_Accent) : Col(t.m_TextMuted, 0.35f), XC_ICON_STAR);
+			DrawIcon(pDraw, pIcons, StarSize, ImVec2(x + StarSize * 0.5f, Pos.y + ChipHeight * 0.5f), Filled ? Col(t.m_Accent) : Col(t.m_TextMuted, 0.35f), XC_ICON_STAR);
 			x += StarSize + S(4.0f);
 		}
 		char aPoints[64];

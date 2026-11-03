@@ -130,8 +130,7 @@ void CXcHud::DrawEffectIcon(ImDrawList *pDraw, int Effect, ImVec2 Min, float Siz
 	const char *pGlyph = Effect == EFFECT_SUPER ? XC_ICON_BOLT : XC_ICON_STAR;
 	ImFont *pFont = m_Backend.Fonts().m_pLabel;
 	const float TextSize = Size * 0.55f;
-	const ImVec2 Dim = pFont->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pGlyph);
-	pDraw->AddText(pFont, TextSize, ImVec2(C.x - Dim.x * 0.5f, C.y - Dim.y * 0.5f), Col(Color, Alpha), pGlyph);
+	DrawIcon(pDraw, pFont, TextSize, C, Col(Color, Alpha), pGlyph);
 }
 
 void CXcHud::RenderEffects(ImDrawList *pDraw, float Alpha, float Dt)

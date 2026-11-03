@@ -194,10 +194,9 @@ bool CXcMenu::RenderDemoCard(int Index, float Width, float Height)
 	// icon in a round plate on the left
 	const float IconRadius = S(18.0f);
 	const ImVec2 IconCenter(Min.x + Pad + IconRadius, Min.y + Height * 0.5f);
-	pDraw->AddCircleFilled(IconCenter, IconRadius, Col(Entry.m_IsDir ? t.m_Track : ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.14f)), 32);
+	pDraw->AddRectFilled(ImVec2(IconCenter.x - (IconRadius), IconCenter.y - (IconRadius)), ImVec2(IconCenter.x + (IconRadius), IconCenter.y + (IconRadius)), Col(Entry.m_IsDir ? t.m_Track : ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.14f)), S(10.0f));
 	const char *pIcon = Entry.m_IsDir ? XC_ICON_FOLDER : XC_ICON_FILM;
-	const ImVec2 IconSize = pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, pIcon);
-	pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(IconCenter.x - IconSize.x * 0.5f, IconCenter.y - IconSize.y * 0.5f), Col(Entry.m_IsDir ? t.m_TextSecondary : t.m_Accent), pIcon);
+	DrawIcon(pDraw, pLabel, pLabel->FontSize, IconCenter, Col(Entry.m_IsDir ? t.m_TextSecondary : t.m_Accent), pIcon);
 
 	const float TextX = IconCenter.x + IconRadius + S(12.0f);
 	const ImVec4 ClipRect(TextX, Min.y, Max.x - Pad, Max.y);

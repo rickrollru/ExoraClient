@@ -50,10 +50,7 @@ bool CXcMenu::IconSquare(const char *pId, const char *pIcon, float Size, const c
 	const ImVec4 Tint = Kind == 1 ? Discord : (Kind == 2 ? Green : t.m_Accent);
 	pDraw->AddRectFilled(Pos, Max, Col(Mix(t.m_Track, Tint, (Kind ? 0.18f : 0.0f) + 0.14f * Hover)), S(10.0f));
 	pDraw->AddRect(Pos, Max, Col(Mix(t.m_Border, Tint, Kind ? 0.5f + 0.5f * Hover : Hover)), S(10.0f), 0, 1.0f);
-	ImFont *pFont = Fonts().m_pLabel;
-	const float IconSize = Size * 0.42f;
-	const ImVec2 Dim = pFont->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, pIcon);
-	pDraw->AddText(pFont, IconSize, ImVec2(Pos.x + (Size - Dim.x) * 0.5f, Pos.y + (Size - Dim.y) * 0.5f), Col(Kind ? Mix(Tint, ImVec4(1, 1, 1, 1), 0.45f) : Mix(t.m_TextSecondary, t.m_Text, Hover)), pIcon);
+	DrawIcon(pDraw, Fonts().m_pLabel, Size * 0.42f, ImVec2(Pos.x + Size * 0.5f, Pos.y + Size * 0.5f), Col(Kind ? Mix(Tint, ImVec4(1, 1, 1, 1), 0.45f) : Mix(t.m_TextSecondary, t.m_Text, Hover)), pIcon);
 	if(Hovered && pTip)
 		ImGui::SetTooltip("%s", pTip);
 	if(Clicked)
@@ -300,9 +297,9 @@ void CXcMenu::RenderMusicBar(float Width, float Height)
 	if(!HasTrack)
 	{
 		const char *pText = !Music.Supported() ? Tr("The music player needs playerctl or the Windows build with it") : (!g_Config.m_XcMusic ? Tr("Music player is off") : Tr("Turn on music in the browser or a player, it shows up here"));
-		ImFont *pFont = Fonts().m_pBody;
-		pDraw->AddText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(Min.x + Pad + S(30.0f), Min.y + (BarHeight - pFont->FontSize) * 0.5f), Col(t.m_TextSecondary), pText);
-		pDraw->AddText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(Min.x + Pad, Min.y + (BarHeight - pFont->FontSize) * 0.5f), Col(t.m_Accent), XC_ICON_MUSIC);
+		ImFont *pFont = Fonts().m_pLabel;
+		pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + Pad + S(30.0f), std::floor(Min.y + BarHeight * 0.5f - TextMiddle(pFont, pFont->FontSize) + 0.5f)), Col(t.m_TextSecondary), pText);
+		DrawIcon(pDraw, Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(Min.x + Pad + S(9.0f), Min.y + BarHeight * 0.5f), Col(t.m_Accent), XC_ICON_MUSIC);
 		if(Available || !Music.Supported())
 		{
 			ImGui::Dummy(ImVec2(Width, BarHeight));
@@ -332,8 +329,7 @@ void CXcMenu::RenderMusicBar(float Width, float Height)
 	{
 		pDraw->AddRectFilled(ArtMin, ArtMax, Col(t.m_Accent, 0.18f), S(12.0f));
 		ImFont *pIcons = Fonts().m_pHeader;
-		const ImVec2 Dim = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, XC_ICON_MUSIC);
-		pDraw->AddText(pIcons, pIcons->FontSize, ImVec2((ArtMin.x + ArtMax.x - Dim.x) * 0.5f, (ArtMin.y + ArtMax.y - Dim.y) * 0.5f), Col(t.m_Accent), XC_ICON_MUSIC);
+		DrawIcon(pDraw, pIcons, pIcons->FontSize, ImVec2((ArtMin.x + ArtMax.x) * 0.5f, (ArtMin.y + ArtMax.y) * 0.5f), Col(t.m_Accent), XC_ICON_MUSIC);
 	}
 
 	// the buttons on the right: rounded squares
@@ -346,10 +342,7 @@ void CXcMenu::RenderMusicBar(float Width, float Height)
 		const float H = Animate(ImGui::GetID(pId) + 7, ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
 		const ImVec2 BMin = ImGui::GetItemRectMin(), BMax = ImGui::GetItemRectMax();
 		pDraw->AddRectFilled(BMin, BMax, Main ? Col(Mix(ImVec4(1, 1, 1, 1), t.m_Accent, 0.15f * H)) : Col(ImVec4(1, 1, 1, 1), 0.1f + 0.08f * H), S(10.0f));
-		ImFont *pFont = Fonts().m_pLabel;
-		const float IconSize = Size * 0.4f;
-		const ImVec2 Dim = pFont->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, pIcon);
-		pDraw->AddText(pFont, IconSize, ImVec2((BMin.x + BMax.x - Dim.x) * 0.5f, (BMin.y + BMax.y - Dim.y) * 0.5f), Main ? Col(ImVec4(0.08f, 0.09f, 0.12f, 1.0f)) : Col(ImVec4(1, 1, 1, 1)), pIcon);
+		DrawIcon(pDraw, Fonts().m_pLabel, Size * 0.4f, ImVec2((BMin.x + BMax.x) * 0.5f, (BMin.y + BMax.y) * 0.5f), Main ? Col(ImVec4(0.08f, 0.09f, 0.12f, 1.0f)) : Col(ImVec4(1, 1, 1, 1)), pIcon);
 		if(Pressed)
 			PlayUiSound(SOUND_CLICK);
 		return Pressed;

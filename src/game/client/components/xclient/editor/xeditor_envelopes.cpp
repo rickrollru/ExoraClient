@@ -210,7 +210,7 @@ void CXcEditorUi::RenderEnvelopesDock()
 			else if(Hovered)
 				pDraw->AddRectFilled(RowMin, ImVec2(RowMin.x + RowWidth, RowMin.y + RowHeight), Col(t.m_Card), S(6.0f));
 			const float TextY = RowMin.y + (RowHeight - pSmall->FontSize) * 0.5f;
-			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(RowMin.x + S(8.0f), TextY), Col(t.m_TextMuted), TypeIcon(Env));
+			DrawIcon(pDraw, pSmall, pSmall->FontSize, ImVec2(RowMin.x + S(15.0f), RowMin.y + RowHeight * 0.5f), Col(t.m_TextMuted), TypeIcon(Env));
 			char aName[64];
 			if(Env.m_aName[0])
 				str_copy(aName, Env.m_aName);

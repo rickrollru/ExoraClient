@@ -276,7 +276,7 @@ void CXcMenu::RenderBrowserTabs(float Width)
 		if(Tab.m_pCommunity)
 			DrawCommunityIcon(pDraw, Tab.m_pCommunity, ImVec2(x, CenterY - IconHeight * 0.5f), IconHeight);
 		else
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(x, CenterY - LabelSize.y * 0.5f), Col(TextColor), Tab.m_pIcon);
+			DrawIcon(pDraw, pFont, pFont->FontSize, ImVec2(x + IconWidth * 0.5f, CenterY), Col(TextColor), Tab.m_pIcon);
 		x += IconWidth + S(8.0f);
 		if(WithLabel)
 			pDraw->AddText(pFont, pFont->FontSize, ImVec2(x, CenterY - LabelSize.y * 0.5f), Col(TextColor), Tab.m_pLabel);
@@ -727,8 +727,7 @@ void CXcMenu::RenderBrowserFriends()
 			AddTeeSkin(pDraw, ImVec2(x, Min.y + S(2.0f)), ImVec2(x + RowHeight - S(4.0f), Max.y - S(2.0f)), pClient->m_aSkin, pClient->m_CustomSkinColors, pClient->m_CustomSkinColorBody, pClient->m_CustomSkinColorFeet);
 		else
 		{
-			const ImVec2 IconSize = pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, XC_ICON_USER);
-			pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(x + (RowHeight - S(4.0f) - IconSize.x) * 0.5f, Min.y + (RowHeight - IconSize.y) * 0.5f), Col(t.m_TextMuted), XC_ICON_USER);
+			DrawIcon(pDraw, pLabel, pLabel->FontSize, ImVec2(x + (RowHeight - S(4.0f)) * 0.5f, Min.y + RowHeight * 0.5f), Col(t.m_TextMuted), XC_ICON_USER);
 		}
 		x += RowHeight;
 		const ImVec4 Clip(x, Min.y, Max.x - S(30.0f), Max.y);
@@ -745,7 +744,7 @@ void CXcMenu::RenderBrowserFriends()
 			// the cross on the right removes the friend
 			const ImVec2 CrossMin(Max.x - S(26.0f), Min.y + (RowHeight - S(20.0f)) * 0.5f);
 			const bool OverCross = ImGui::IsMouseHoveringRect(CrossMin, ImVec2(CrossMin.x + S(20.0f), CrossMin.y + S(20.0f)));
-			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(CrossMin.x + S(4.0f), CrossMin.y + S(3.0f)), Col(OverCross ? ImVec4(1.0f, 0.36f, 0.36f, 1.0f) : t.m_TextMuted), XC_ICON_USER_XMARK);
+			DrawIcon(pDraw, pSmall, pSmall->FontSize, ImVec2(CrossMin.x + S(10.0f), CrossMin.y + S(10.0f)), Col(OverCross ? ImVec4(1.0f, 0.36f, 0.36f, 1.0f) : t.m_TextMuted), XC_ICON_USER_XMARK);
 			if(OverCross)
 				ImGui::SetTooltip("%s", Tr("Remove from friends"));
 			if(Clicked && OverCross)
@@ -917,7 +916,7 @@ void CXcMenu::RenderBrowserFilters()
 			str_format(aPlayers, sizeof(aPlayers), "%d %s", Community.NumPlayers(), XC_ICON_USER);
 			const float PlayersWidth = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aPlayers).x;
 			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(StarMin.x - S(8.0f) - PlayersWidth, Min.y + (RowHeight - pSmall->FontSize) * 0.5f), Col(t.m_TextMuted), aPlayers);
-			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(StarMin.x + S(6.0f), Min.y + (RowHeight - pSmall->FontSize) * 0.5f), Col(Favorite ? t.m_Accent : (OverStar ? t.m_Text : t.m_TextMuted), Favorite || OverStar ? 1.0f : 0.5f), XC_ICON_STAR);
+			DrawIcon(pDraw, pSmall, pSmall->FontSize, ImVec2(StarMin.x + S(12.0f), Min.y + RowHeight * 0.5f), Col(Favorite ? t.m_Accent : (OverStar ? t.m_Text : t.m_TextMuted), Favorite || OverStar ? 1.0f : 0.5f), XC_ICON_STAR);
 			if(OverStar)
 				ImGui::SetTooltip("%s", Favorite ? Tr("Remove the tab of this community") : Tr("Add a tab for this community"));
 			if(Clicked && OverStar)

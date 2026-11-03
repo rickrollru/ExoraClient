@@ -14,6 +14,87 @@
 
 namespace XcUi
 {
+	// the visible box of a text drawn at Size from (0, 0)
+	static bool InkBounds(ImFont *pFont, float Size, const char *pText, ImVec2 &Min, ImVec2 &Max)
+	{
+		const float Scale = Size / pFont->FontSize;
+		float x = 0.0f;
+		bool Any = false;
+		Min = ImVec2(FLT_MAX, FLT_MAX);
+		Max = ImVec2(-FLT_MAX, -FLT_MAX);
+		for(const char *p = pText; *p;)
+		{
+			unsigned int Char = 0;
+			p += ImTextCharFromUtf8(&Char, p, nullptr);
+			const ImFontGlyph *pGlyph = pFont->FindGlyph((ImWchar)Char);
+			if(!pGlyph)
+				continue;
+			if(pGlyph->Visible)
+			{
+				Min.x = std::min(Min.x, x + pGlyph->X0 * Scale);
+				Min.y = std::min(Min.y, pGlyph->Y0 * Scale);
+				Max.x = std::max(Max.x, x + pGlyph->X1 * Scale);
+				Max.y = std::max(Max.y, pGlyph->Y1 * Scale);
+				Any = true;
+			}
+			x += pGlyph->AdvanceX * Scale;
+		}
+		return Any;
+	}
+
+	// the baked font of the same atlas closest to Size that has the glyph: drawn at its own size it stays sharp
+	static ImFont *SharpFont(ImFont *pFont, float Size, const char *pText, float *pDrawSize)
+	{
+		*pDrawSize = Size;
+		if(!pFont || !pFont->ContainerAtlas)
+			return pFont;
+		unsigned int Char = 0;
+		ImTextCharFromUtf8(&Char, pText, nullptr);
+		ImFont *pBest = pFont;
+		float BestDiff = std::fabs(pFont->FontSize - Size);
+		for(ImFont *pOther : pFont->ContainerAtlas->Fonts)
+		{
+			const float Diff = std::fabs(pOther->FontSize - Size);
+			if(Diff < BestDiff && pOther->FindGlyphNoFallback((ImWchar)Char))
+			{
+				pBest = pOther;
+				BestDiff = Diff;
+			}
+		}
+		// a size close to a baked one is snapped to it (a pixel or so smaller or bigger looks the same)
+		if(BestDiff <= std::max(1.5f, Size * 0.12f))
+			*pDrawSize = pBest->FontSize;
+		return pBest;
+	}
+
+	void DrawIcon(ImDrawList *pDraw, ImFont *pFont, float Size, ImVec2 Center, ImU32 Color, const char *pIcon)
+	{
+		if(!pIcon || !pIcon[0])
+			return;
+		if(!pFont)
+			pFont = ImGui::GetFont();
+		float DrawSize;
+		ImFont *pUse = SharpFont(pFont, Size, pIcon, &DrawSize);
+		ImVec2 Min, Max;
+		if(!InkBounds(pUse, DrawSize, pIcon, Min, Max))
+			return;
+		const ImVec2 Pos(std::floor(Center.x - (Min.x + Max.x) * 0.5f + 0.5f), std::floor(Center.y - (Min.y + Max.y) * 0.5f + 0.5f));
+		pDraw->AddText(pUse, DrawSize, Pos, Color, pIcon);
+	}
+
+	float TextMiddle(ImFont *pFont, float Size)
+	{
+		ImVec2 Min, Max;
+		if(!pFont || !InkBounds(pFont, Size, "H", Min, Max))
+			return Size * 0.5f;
+		return (Min.y + Max.y) * 0.5f;
+	}
+
+	void DrawIconBesideText(ImDrawList *pDraw, ImFont *pFont, float Size, float x, float SlotWidth, float TextY, ImU32 Color, const char *pIcon)
+	{
+		DrawIcon(pDraw, pFont, Size, ImVec2(x + SlotWidth * 0.5f, TextY + TextMiddle(pFont, Size)), Color, pIcon);
+	}
+
 	static SFonts s_Fonts;
 	static std::unordered_map<ImGuiID, float> s_Animations;
 
@@ -425,8 +506,7 @@ namespace XcUi
 		const float Hover = Animate(Id, (Hovered || Selected) ? 1.0f : 0.0f, 18.0f);
 		ImDrawList *pDraw = pWindow->DrawList;
 		pDraw->AddRectFilled(Rect.Min, Rect.Max, Col(Selected ? ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f) : t.m_Track, Selected ? 1.0f : Hover * 1.4f), S(10.0f));
-		const ImVec2 IconSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, pIcon);
-		pDraw->AddText(pFont, pFont->FontSize, ImVec2(Rect.GetCenter().x - IconSize.x * 0.5f, Rect.GetCenter().y - IconSize.y * 0.5f), Col(Selected ? t.m_Accent : Mix(t.m_TextSecondary, t.m_Text, Hover)), pIcon);
+		DrawIcon(pDraw, pFont, pFont->FontSize, Rect.GetCenter(), Col(Selected ? t.m_Accent : Mix(t.m_TextSecondary, t.m_Text, Hover)), pIcon);
 		if(pTooltip && Hovered)
 			ImGui::SetTooltip("%s", pTooltip);
 		return Pressed;
@@ -564,9 +644,10 @@ namespace XcUi
 			const float Under = HighlightW > S(2.0f) ? std::clamp(1.0f - std::abs(HighlightX - Tab.Min.x) / std::max(aWidths[i], 1.0f), 0.0f, 1.0f) : 0.0f;
 			const float Hover = Animate(Id + 10 + i, Hovered ? 1.0f : 0.0f, 18.0f);
 			const ImVec4 TextColor = Mix(Mix(t.m_TextMuted, t.m_Text, Hover), t.m_OnAccent, Under);
-			const float TextY = Rect.GetCenter().y - pFont->FontSize * 0.5f;
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(x + TabPadding, TextY), Col(TextColor), ppIcons[i]);
+			// text and icon both centered on the middle of the capitals
+			const float TextY = std::floor(Rect.GetCenter().y - TextMiddle(pFont, pFont->FontSize) + 0.5f);
 			const float IconWidth = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, ppIcons[i]).x;
+			DrawIcon(pDraw, pFont, pFont->FontSize, ImVec2(x + TabPadding + IconWidth * 0.5f, Rect.GetCenter().y), Col(TextColor), ppIcons[i]);
 			pDraw->AddText(pFont, pFont->FontSize, ImVec2(x + TabPadding + IconWidth + IconGap, TextY), Col(TextColor), ppLabels[i]);
 			x += aWidths[i];
 		}
@@ -609,8 +690,9 @@ namespace XcUi
 			}
 			const float Hover = Animate(Id + 10 + i, (Hovered || *pCurrent == i) ? 1.0f : 0.0f, 18.0f);
 			const ImVec4 TextColor = Mix(t.m_TextMuted, t.m_Text, Hover);
-			const float TextY = Item.GetCenter().y - pFont->FontSize * 0.5f;
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Item.Min.x + S(18.0f), TextY), Col(*pCurrent == i ? t.m_Accent : TextColor), ppIcons[i]);
+			const float TextY = std::floor(Item.GetCenter().y - TextMiddle(pFont, pFont->FontSize) + 0.5f);
+			// the icons in one column: each centered in the same slot
+			DrawIcon(pDraw, pFont, pFont->FontSize, ImVec2(Item.Min.x + S(27.0f), Item.GetCenter().y), Col(*pCurrent == i ? t.m_Accent : TextColor), ppIcons[i]);
 			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Item.Min.x + S(44.0f), TextY), Col(TextColor), ppLabels[i]);
 		}
 		return Changed;

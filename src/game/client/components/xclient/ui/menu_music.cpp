@@ -42,14 +42,13 @@ static bool RoundButton(const char *pId, const char *pIcon, float Radius, bool M
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	if(Main)
 	{
-		pDraw->AddCircleFilled(Center, Size + S(5.0f) * Hover, Col(t.m_Accent, 0.18f * Hover), 40);
-		pDraw->AddCircleFilled(Center, Size, Col(Mix(t.m_Accent, ImVec4(1, 1, 1, 1), 0.1f * Hover)), 40);
+		pDraw->AddRectFilled(ImVec2(Center.x - (Size + S(5.0f) * Hover), Center.y - (Size + S(5.0f) * Hover)), ImVec2(Center.x + (Size + S(5.0f) * Hover), Center.y + (Size + S(5.0f) * Hover)), Col(t.m_Accent, 0.18f * Hover), S(10.0f) + S(5.0f) * Hover);
+		pDraw->AddRectFilled(ImVec2(Center.x - (Size), Center.y - (Size)), ImVec2(Center.x + (Size), Center.y + (Size)), Col(Mix(t.m_Accent, ImVec4(1, 1, 1, 1), 0.1f * Hover)), S(10.0f));
 	}
 	else
-		pDraw->AddCircleFilled(Center, Size, Col(Mix(t.m_Track, t.m_Accent, 0.25f * Hover)), 40);
+		pDraw->AddRectFilled(ImVec2(Center.x - (Size), Center.y - (Size)), ImVec2(Center.x + (Size), Center.y + (Size)), Col(Mix(t.m_Track, t.m_Accent, 0.25f * Hover)), S(10.0f));
 	const float IconSize = Radius * (Main ? 0.78f : 0.7f);
-	const ImVec2 IconDim = pIconFont->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, pIcon);
-	pDraw->AddText(pIconFont, IconSize, ImVec2(Center.x - IconDim.x * 0.5f, Center.y - IconDim.y * 0.5f), Col(Main ? t.m_OnAccent : t.m_Text), pIcon);
+	DrawIcon(pDraw, pIconFont, IconSize, Center, Col(Main ? t.m_OnAccent : t.m_Text), pIcon);
 	if(Clicked)
 		PlayUiSound(SOUND_CLICK);
 	return Clicked;
@@ -109,8 +108,7 @@ void CXcMenu::RenderMusicCard()
 		pDraw->AddRectFilled(ArtMin, ArtMax, Col(t.m_Accent, 0.16f), Rounding);
 		ImFont *pIcons = Fonts().m_pHeader;
 		const float IconSize = ArtSize * 0.34f;
-		const ImVec2 IconDim = pIcons->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, XC_ICON_MUSIC);
-		pDraw->AddText(pIcons, IconSize, ImVec2((ArtMin.x + ArtMax.x - IconDim.x) * 0.5f, (ArtMin.y + ArtMax.y - IconDim.y) * 0.5f), Col(t.m_Accent), XC_ICON_MUSIC);
+		DrawIcon(pDraw, pIcons, IconSize, ImVec2((ArtMin.x + ArtMax.x) * 0.5f, (ArtMin.y + ArtMax.y) * 0.5f), Col(t.m_Accent), XC_ICON_MUSIC);
 	}
 	ImGui::Dummy(ImVec2(ArtSize, ArtSize));
 	ImGui::SameLine(0.0f, S(16.0f));
@@ -241,8 +239,7 @@ void CXcMenu::RenderMusicCard()
 		}
 		if(IconHovered)
 			ImGui::SetTooltip("%s", Volume > 0.0f ? Tr("Mute") : Tr("Unmute"));
-		const ImVec2 IconDim = pIcons->CalcTextSizeA(pIcons->FontSize, FLT_MAX, 0.0f, pSpeaker);
-		pDraw->AddText(pIcons, pIcons->FontSize, ImVec2(RowPos.x + (IconWidth - IconDim.x) * 0.5f, RowPos.y + (RowHeight - IconDim.y) * 0.5f), Col(IconHovered ? t.m_Text : t.m_TextSecondary), pSpeaker);
+		DrawIcon(pDraw, pIcons, pIcons->FontSize, ImVec2(RowPos.x + IconWidth * 0.5f, RowPos.y + RowHeight * 0.5f), Col(IconHovered ? t.m_Text : t.m_TextSecondary), pSpeaker);
 
 		char aPercent[16];
 		if(VolumeKnown)

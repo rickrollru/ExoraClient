@@ -228,9 +228,8 @@ bool CXcEditorUi::IconButton(const char *pId, const char *pIcon, const char *pTo
 		pDraw->AddRectFilled(Min, Max, Col(t.m_Track, Hover), S(8.0f));
 	ImFont *pFont = Fonts().m_pLabel;
 	const float FontSize = pFont->FontSize * 1.05f;
-	const ImVec2 TextSize = pFont->CalcTextSizeA(FontSize, FLT_MAX, 0.0f, pIcon);
 	const ImVec4 IconColor = Active ? t.m_OnAccent : (Enabled ? (Hovered ? t.m_Text : t.m_TextSecondary) : t.m_TextMuted);
-	pDraw->AddText(pFont, FontSize, ImVec2(Min.x + (Size - TextSize.x) * 0.5f, Min.y + (Size - TextSize.y) * 0.5f), Col(IconColor, Enabled ? 1.0f : 0.5f), pIcon);
+	DrawIcon(pDraw, pFont, FontSize, ImVec2(Min.x + Size * 0.5f, Min.y + Size * 0.5f), Col(IconColor, Enabled ? 1.0f : 0.5f), pIcon);
 	if(Hovered && pTooltip && pTooltip[0])
 		ImGui::SetTooltip("%s", pTooltip);
 	return Clicked && Enabled;
@@ -705,8 +704,8 @@ void CXcEditorUi::RenderTopBar()
 		const bool Hovered = ImGui::IsItemHovered();
 		pDraw->AddRectFilled(Min, Max, Col(t.m_Accent, Hovered ? 1.0f : 0.9f), S(8.0f));
 		const char *pIcon = ICON_SAVE;
-		pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(12.0f), Mid - pLabel->FontSize * 0.5f), Col(t.m_OnAccent), pIcon);
-		pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(30.0f), Mid - pLabel->FontSize * 0.5f), Col(t.m_OnAccent), pSave);
+		DrawIcon(pDraw, pLabel, pLabel->FontSize, ImVec2(Min.x + S(19.0f), Mid), Col(t.m_OnAccent), pIcon);
+		pDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(30.0f), std::floor(Mid - TextMiddle(pLabel, pLabel->FontSize) + 0.5f)), Col(t.m_OnAccent), pSave);
 		if(Hovered)
 			ImGui::SetTooltip("%s", Tr("Save the map (Ctrl+S)"));
 		if(Clicked)
@@ -1143,8 +1142,7 @@ void CXcEditorUi::RenderMapTabs(float x0, float x1, float Mid)
 		{
 			if(CloseHovered)
 				pDraw->AddCircleFilled(CloseCenter, S(10.0f), Col(t.m_Track), 16);
-			const ImVec2 CrossSize = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, FontIcon::XMARK);
-			pDraw->AddText(pFont, pFont->FontSize, ImVec2(CloseCenter.x - CrossSize.x * 0.5f, Mid - CrossSize.y * 0.5f), Col(CloseHovered ? t.m_Text : t.m_TextMuted), FontIcon::XMARK);
+			DrawIcon(pDraw, pFont, pFont->FontSize, ImVec2(CloseCenter.x, CloseCenter.y), Col(CloseHovered ? t.m_Text : t.m_TextMuted), FontIcon::XMARK);
 		}
 		x += TabWidth + S(4.0f);
 	}
@@ -1561,8 +1559,7 @@ void CXcEditorUi::RenderLayersTree()
 				// type icon
 				const char *pIcon = LayerIcon(pMap, pLayer.get());
 				const float IconSize = pFont->FontSize * 0.9f;
-				const ImVec2 IconDim = pFont->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, pIcon);
-				pDraw->AddText(pFont, IconSize, ImVec2(LMin.x + S(30.0f) - IconDim.x * 0.5f, LMin.y + (RowHeight - IconDim.y) * 0.5f), Col(LayerColor(pMap, pLayer.get()), pLayer->m_Visible ? 1.0f : 0.45f), pIcon);
+				DrawIcon(pDraw, pFont, IconSize, ImVec2(LMin.x + S(30.0f), LMin.y + RowHeight * 0.5f), Col(LayerColor(pMap, pLayer.get()), pLayer->m_Visible ? 1.0f : 0.45f), pIcon);
 				const float LNameX = LMin.x + S(44.0f);
 				if(m_RenameGroup == g && m_RenameLayer == i)
 				{
@@ -1722,8 +1719,7 @@ void CXcEditorUi::RenderLayersTree()
 		if(m_pDragIcon)
 		{
 			const float IconSize = pFont->FontSize * 0.9f;
-			const ImVec2 IconDim = pFont->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, m_pDragIcon);
-			pFg->AddText(pFont, IconSize, ImVec2(CMin.x + S(14.0f) - IconDim.x * 0.5f, CMin.y + (RowHeight - IconDim.y) * 0.5f), Col(m_DragIconColor), m_pDragIcon);
+			DrawIcon(pFg, pFont, IconSize, ImVec2(CMin.x + S(14.0f), CMin.y + RowHeight * 0.5f), Col(m_DragIconColor), m_pDragIcon);
 		}
 		pFg->AddText(pLabel, pFont->FontSize, ImVec2(CMin.x + S(28.0f), CMin.y + (RowHeight - pFont->FontSize) * 0.5f), Col(t.m_Text), m_DragLabel.c_str());
 
@@ -1948,7 +1944,7 @@ void CXcEditorUi::RenderSoundsPanel()
 			});
 		});
 		pDraw->AddRectFilled(Min, Max, Col(Selected ? t.m_Accent : t.m_Track, Selected ? 0.22f : (Hovered ? 0.8f : 0.45f)), S(8.0f));
-		pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + S(10.0f), Min.y + (RowHeight - pFont->FontSize) * 0.5f), Col(ImVec4(0.75f, 0.6f, 1.0f, 1.0f)), ICON_SOUNDS);
+		DrawIcon(pDraw, pFont, pFont->FontSize, ImVec2(Min.x + S(18.0f), Min.y + RowHeight * 0.5f), Col(ImVec4(0.75f, 0.6f, 1.0f, 1.0f)), ICON_SOUNDS);
 		char aName[64];
 		XcFitText(pFont, pFont->FontSize, pSound->m_aName, Width - S(46.0f), aName, sizeof(aName));
 		pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + S(34.0f), Min.y + (RowHeight - pFont->FontSize) * 0.5f), Col(Used ? t.m_Text : t.m_TextMuted), aName);

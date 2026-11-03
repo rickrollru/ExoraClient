@@ -115,9 +115,8 @@ namespace XcUi
 			pDraw->AddRectFilled(Min, Max, Col(t.m_Card, a / std::max(t.m_Card.w, 0.01f) * 0.98f), Height * 0.5f);
 			pDraw->AddRect(Min, Max, Col(t.m_Border, a), Height * 0.5f, 0, 1.0f);
 			const ImVec2 Dot(Min.x + Height * 0.5f, Min.y + Height * 0.5f);
-			pDraw->AddCircleFilled(Dot, Height * 0.30f, Col(IconColor, 0.18f * a), 24);
-			const ImVec2 IconSize = pIconFont->CalcTextSizeA(pIconFont->FontSize, FLT_MAX, 0.0f, pIcon);
-			pDraw->AddText(pIconFont, pIconFont->FontSize, ImVec2(Dot.x - IconSize.x * 0.5f, Dot.y - IconSize.y * 0.5f), Col(IconColor, a), pIcon);
+			pDraw->AddRectFilled(ImVec2(Dot.x - (Height * 0.30f), Dot.y - (Height * 0.30f)), ImVec2(Dot.x + (Height * 0.30f), Dot.y + (Height * 0.30f)), Col(IconColor, 0.18f * a), S(6.0f));
+			DrawIcon(pDraw, pIconFont, pIconFont->FontSize, Dot, Col(IconColor, a), pIcon);
 			pDraw->AddText(pFont, pFont->FontSize, ImVec2(Min.x + Height + S(4.0f), Min.y + (Height - TextSize.y) * 0.5f), Col(t.m_Text, a), Toast.m_Text.c_str());
 		}
 	}

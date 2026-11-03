@@ -18,6 +18,7 @@
 #include <game/client/components/xclient/ui/icons.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
+#include <game/client/components/xclient/ui/widgets.h>
 #include <game/client/components/xclient/streamer.h>
 #include <game/client/gameclient.h>
 
@@ -326,7 +327,7 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 			NameX += std::min(NameDim.x, NameEnd - NameX) + 8.0f * U * S;
 			if(ClientData.m_Friend)
 			{
-				pDraw->AddText(pSmall, NameSize * 0.85f, ImVec2(NameX, MidY - NameSize * 0.45f), Col(ImVec4(1.0f, 0.80f, 0.25f, 1.0f), RowAlpha), XC_ICON_STAR);
+				DrawIcon(pDraw, pSmall, NameSize * 0.85f, ImVec2(NameX + NameSize * 0.45f, MidY), Col(ImVec4(1.0f, 0.80f, 0.25f, 1.0f), RowAlpha), XC_ICON_STAR);
 				NameX += NameSize + 4.0f * U * S;
 			}
 			if(ClientData.m_Afk)
@@ -471,7 +472,7 @@ void CXcHud::RenderScoreboardPopup(ImDrawList *pDraw, float U, float Alpha)
 			pDraw->AddRectFilled(RowMin, RowMax, Col(t.m_Accent, 0.18f * Alpha), 8.0f * U);
 		const ImVec4 IconColor = Action.m_On ? t.m_Accent : t.m_TextMuted;
 		const float MidY = (RowMin.y + RowMax.y) * 0.5f;
-		pDraw->AddText(pSmall, 13.0f * U, ImVec2(RowMin.x + 8.0f * U, MidY - 7.0f * U), Col(IconColor, Alpha), Action.m_pIcon);
+		DrawIcon(pDraw, pSmall, 13.0f * U, ImVec2(RowMin.x + 17.0f * U, MidY), Col(IconColor, Alpha), Action.m_pIcon);
 		pDraw->AddText(pSmall, 13.5f * U, ImVec2(RowMin.x + 32.0f * U, MidY - 7.5f * U), Col(Hovered ? t.m_Text : t.m_TextSecondary, Alpha), Action.m_pLabel);
 		y += RowHeight;
 		if(!Hovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -553,7 +554,7 @@ void CXcHud::RenderMiniTop(ImDrawList *pDraw, float Alpha)
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	RenderPlate(pDraw, Min, Max, U, Alpha);
 
-	pDraw->AddText(pLabel, TextSize, ImVec2(Min.x + Pad, Min.y + Pad - 2.0f * U), Col(t.m_Accent, Alpha), XC_ICON_STAR);
+	DrawIcon(pDraw, pLabel, TextSize, ImVec2(Min.x + Pad + 8.0f * U, Min.y + Pad - 2.0f * U + TextMiddle(pLabel, TextSize)), Col(t.m_Accent, Alpha), XC_ICON_STAR);
 	pDraw->AddText(pLabel, TextSize, ImVec2(Min.x + Pad + 20.0f * U, Min.y + Pad - 2.0f * U), Col(t.m_Text, Alpha), Tr("Top of the server"));
 
 	float y = Min.y + Pad + TitleHeight;

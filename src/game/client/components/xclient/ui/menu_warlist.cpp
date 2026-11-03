@@ -182,7 +182,7 @@ void CXcMenu::RenderSettingsWarList()
 			{
 				const ImVec2 CrossMin(Max.x - S(30.0f), Min.y + (RowHeight - S(22.0f)) * 0.5f);
 				OverCross = ImGui::IsMouseHoveringRect(CrossMin, ImVec2(CrossMin.x + S(22.0f), CrossMin.y + S(22.0f)));
-				pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(CrossMin.x + S(5.0f), CrossMin.y + S(4.0f)), Col(OverCross ? ImVec4(1.0f, 0.36f, 0.36f, 1.0f) : t.m_TextMuted), XC_ICON_TRASH);
+				DrawIcon(pDraw, pSmall, pSmall->FontSize, ImVec2(CrossMin.x + S(11.0f), CrossMin.y + S(11.0f)), Col(OverCross ? ImVec4(1.0f, 0.36f, 0.36f, 1.0f) : t.m_TextMuted), XC_ICON_TRASH);
 				ImGui::SetTooltip("%s", OverCross ? Tr("Remove") : Tr("Click to edit"));
 			}
 			if(Clicked && OverCross)

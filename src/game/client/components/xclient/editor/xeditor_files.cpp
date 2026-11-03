@@ -249,7 +249,7 @@ void CXcEditorUi::RenderFileDialog()
 					pListDraw->AddRectFilled(Min, Max, Col(t.m_Card, 1.0f), S(7.0f));
 				const char *pIcon = B.DetermineFileFontIcon(pItem);
 				const ImVec4 IconColor = pItem->m_IsDir ? ImVec4(1.0f, 0.78f, 0.35f, 1.0f) : t.m_TextSecondary;
-				pListDraw->AddText(pLabel, pLabel->FontSize, ImVec2(Min.x + S(12.0f), Min.y + (RowHeight - pLabel->FontSize) * 0.5f), Col(IconColor), pIcon);
+				DrawIcon(pListDraw, pLabel, pLabel->FontSize, ImVec2(Min.x + S(20.0f), Min.y + RowHeight * 0.5f), Col(IconColor), pIcon);
 				char aName[IO_MAX_PATH_LENGTH];
 				XcFitText(pSmall, pSmall->FontSize, pItem->m_aDisplayName, RowWidth - S(200.0f), aName, sizeof(aName));
 				pListDraw->AddText(pSmall, pSmall->FontSize, ImVec2(Min.x + S(38.0f), Min.y + (RowHeight - pSmall->FontSize) * 0.5f), Col(Selected ? t.m_Text : t.m_TextSecondary), aName);

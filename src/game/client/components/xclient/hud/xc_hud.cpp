@@ -331,8 +331,9 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 		x += Gap;
 		pDraw->AddLine(ImVec2(x, MidY - 8.0f * U), ImVec2(x, MidY + 8.0f * U), Col(t.m_Border, 2.0f * Alpha), 1.0f);
 		x += 1.0f + Gap;
-		pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_Accent, Alpha), apIcons[i]);
-		x += pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap;
+		const float IconWidth = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x;
+		DrawIconBesideText(pDraw, pLabel, TextSize, x, IconWidth, MidY - TextSize * 0.55f, Col(t.m_Accent, Alpha), apIcons[i]);
+		x += IconWidth + IconGap;
 		pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(i == 0 ? t.m_Text : t.m_TextSecondary, Alpha), apTexts[i]);
 		x += aTextWidths[i];
 	}
@@ -369,7 +370,7 @@ void CXcHud::RenderTimer(ImDrawList *pDraw, float Alpha)
 
 	const float MidY = Min.y + Height * 0.5f;
 	const ImVec4 IconColor = Racing ? t.m_Accent : t.m_TextMuted;
-	pDraw->AddText(pSmall, IconSize, ImVec2(Min.x + 18.0f * U, MidY - IconSize * 0.55f), Col(IconColor, Alpha), XC_ICON_CLOCK);
+	DrawIcon(pDraw, pSmall, IconSize, ImVec2(Min.x + 18.0f * U + IconSize * 0.5f, MidY - TimeSize * 0.56f + TextMiddle(pBold, TimeSize)), Col(IconColor, Alpha), XC_ICON_CLOCK);
 	pDraw->AddText(pBold, TimeSize, ImVec2(Min.x + 18.0f * U + IconSize + 10.0f * U, MidY - TimeSize * 0.56f), Col(t.m_Text, Alpha), aTime);
 }
 
@@ -392,7 +393,7 @@ void CXcHud::RenderSpeed(ImDrawList *pDraw, float Alpha)
 	const float Pad = 14.0f * U;
 	const float ValueSize = 20.0f * U;
 	const float SmallSize = 12.0f * U;
-	pDraw->AddText(pSmall, SmallSize, ImVec2(Min.x + Pad, Min.y + 10.0f * U), Col(t.m_Accent, Alpha), XC_ICON_GAUGE);
+	DrawIcon(pDraw, pSmall, SmallSize, ImVec2(Min.x + Pad + 7.0f * U, Min.y + 6.0f * U + TextMiddle(pBold, ValueSize)), Col(t.m_Accent, Alpha), XC_ICON_GAUGE);
 	pDraw->AddText(pBold, ValueSize, ImVec2(Min.x + Pad + 20.0f * U, Min.y + 6.0f * U), Col(t.m_Text, Alpha), aSpeed);
 	const float ValueWidth = pBold->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, aSpeed).x;
 	pDraw->AddText(pSmall, SmallSize, ImVec2(Min.x + Pad + 24.0f * U + ValueWidth, Min.y + 13.0f * U), Col(t.m_TextMuted, Alpha), Tr("blocks/s"));
@@ -793,8 +794,7 @@ void CXcHud::RenderMusic(ImDrawList *pDraw, float Alpha)
 		pDraw->AddRectFilledMultiColor(ArtMin, ArtMax, Col(t.m_Accent, Alpha), Col(t.m_Accent, Alpha), Col(Dark, Alpha), Col(Dark, Alpha));
 		pDraw->AddRect(ArtMin, ArtMax, Col(t.m_Panel, Alpha), ArtRounding, 0, 3.0f * U); // rounds the gradient corners off
 		const float IconSize = 18.0f * U;
-		const ImVec2 IconDim = pLabel->CalcTextSizeA(IconSize, FLT_MAX, 0.0f, XC_ICON_MUSIC);
-		pDraw->AddText(pLabel, IconSize, ImVec2((ArtMin.x + ArtMax.x - IconDim.x) * 0.5f, (ArtMin.y + ArtMax.y - IconDim.y) * 0.5f), Col(t.m_OnAccent, Alpha), XC_ICON_MUSIC);
+		DrawIcon(pDraw, pLabel, IconSize, ImVec2((ArtMin.x + ArtMax.x) * 0.5f, (ArtMin.y + ArtMax.y) * 0.5f), Col(t.m_OnAccent, Alpha), XC_ICON_MUSIC);
 	}
 
 	// equalizer bars on the right while playing, a pause sign otherwise
