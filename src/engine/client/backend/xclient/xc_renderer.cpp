@@ -516,6 +516,7 @@ uniform vec2 u_FillOrigin; // window pixels the pattern is pinned to
 uniform vec2 u_Motion; // the smear of the captured sprites in uv, 0 = none
 uniform vec4 u_Region; // the captured rectangle in window pixels: the glow fades out before its edges
 uniform float u_EdgeFade; // pixels of that fade
+uniform vec4 u_CaptureUv; // the captured rectangle in texture coordinates: outside it the texture holds old frames
 out vec4 FragColor;
 
 vec3 Hue(float h)
@@ -569,23 +570,32 @@ vec3 Pattern(vec2 p)
 
 // DDNet blends with glBlendFunc(SRC_ALPHA, ONE_MINUS_SRC_ALPHA) for all channels, so on a
 // transparent target the stored alpha is a*a and the color is premultiplied by a
+// only what was captured this time: the rest of the texture still holds older captures (words, other tees), the
+// motion smear and the outline must not pick those up
+vec4 CapTex(vec2 Uv)
+{
+	if(Uv.x < u_CaptureUv.x || Uv.y < u_CaptureUv.y || Uv.x > u_CaptureUv.z || Uv.y > u_CaptureUv.w)
+		return vec4(0.0);
+	return texture(u_Capture, Uv);
+}
+
 float Coverage(vec2 Uv)
 {
-	return sqrt(clamp(texture(u_Capture, Uv).a, 0.0, 1.0));
+	return sqrt(clamp(CapTex(Uv).a, 0.0, 1.0));
 }
 
 // the captured sprites, smeared along their motion: true coverage and premultiplied color averaged
 vec4 Captured(vec2 Uv)
 {
 	if(dot(u_Motion, u_Motion) < 1e-10)
-		return texture(u_Capture, Uv);
+		return CapTex(Uv);
 	vec3 Rgb = vec3(0.0);
 	float A = 0.0, Total = 0.0;
 	for(int i = 0; i < 24; i++)
 	{
 		float t = float(i) / 23.0 - 0.5;
 		float w = 1.0 - abs(t) * 0.9;
-		vec4 s = texture(u_Capture, Uv + u_Motion * t);
+		vec4 s = CapTex(Uv + u_Motion * t);
 		Rgb += s.rgb * w;
 		A += sqrt(clamp(s.a, 0.0, 1.0)) * w;
 		Total += w;
@@ -804,6 +814,7 @@ bool CXcRenderer::Init()
 	m_LocGlowMotion = glGetUniformLocation(m_GlowProgram, "u_Motion");
 	m_LocGlowRegion = glGetUniformLocation(m_GlowProgram, "u_Region");
 	m_LocGlowFillOrigin = glGetUniformLocation(m_GlowProgram, "u_FillOrigin");
+	m_LocGlowCaptureUv = glGetUniformLocation(m_GlowProgram, "u_CaptureUv");
 	m_LocGlowEdgeFade = glGetUniformLocation(m_GlowProgram, "u_EdgeFade");
 	m_LocUseTilt = glGetUniformLocation(m_ShapeProgram, "u_UseTilt");
 	m_LocTilt = glGetUniformLocation(m_ShapeProgram, "u_Tilt");
@@ -1450,6 +1461,7 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 			const float x0 = (float)(pViewport[0] + pRegion[0]);
 			const float y0 = (float)(pViewport[1] + pRegion[1]);
 			glUniform4f(m_LocGlowRegion, x0, y0, x0 + pRegion[2], y0 + pRegion[3]);
+			glUniform4f(m_LocGlowCaptureUv, pRegion[0] / (float)Width, pRegion[1] / (float)Height, (pRegion[0] + pRegion[2]) / (float)Width, (pRegion[1] + pRegion[3]) / (float)Height);
 			const float Smallest = (float)std::min(pRegion[2], pRegion[3]);
 			glUniform1f(m_LocGlowEdgeFade, std::clamp(Settings.m_Radius, 4.0f, std::max(Smallest * 0.3f, 4.0f)));
 		}

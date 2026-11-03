@@ -114,6 +114,7 @@ private:
 	int m_LocGlowMotion = -1;
 	int m_LocGlowRegion = -1;
 	int m_LocGlowFillOrigin = -1;
+	int m_LocGlowCaptureUv = -1;
 	int m_LocGlowEdgeFade = -1;
 	STarget m_Blocks;
 	unsigned m_BlocksDepth = 0;
