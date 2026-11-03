@@ -302,8 +302,9 @@ void CXcMenu::RenderSettingsBackground()
 		// add by path, or open the folder in the file manager
 		const float ButtonWidth = S(130.0f);
 		const float FolderWidth = S(150.0f);
+		const float RefreshWidth = S(130.0f);
 		const float Gap = S(8.0f);
-		InputText("##bg_path", m_aBgPath, sizeof(m_aBgPath), Tr("Path to a picture, gif or map"), std::max(AvailWidth() - ButtonWidth - FolderWidth - Gap * 2.0f, S(100.0f)));
+		InputText("##bg_path", m_aBgPath, sizeof(m_aBgPath), Tr("Path to a picture, gif or map"), std::max(AvailWidth() - ButtonWidth - FolderWidth - RefreshWidth - Gap * 3.0f, S(100.0f)));
 		const bool Enter = ImGui::IsItemDeactivated() && (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter));
 		ImGui::SameLine(0.0f, Gap);
 		if((Button(Tr("Add"), true, ButtonWidth) || Enter) && m_aBgPath[0])
@@ -316,6 +317,15 @@ void CXcMenu::RenderSettingsBackground()
 			Client()->ViewFile(aFolder);
 			// files copied there by hand show up when the page is opened again
 			m_BackgroundsScanned = false;
+		}
+		ImGui::SameLine(0.0f, Gap);
+		// files put into the folder by hand show up at once
+		char aRefresh[64];
+		str_format(aRefresh, sizeof(aRefresh), "%s  %s", XC_ICON_ROTATE, Tr("Refresh"));
+		if(Button(aRefresh, false, RefreshWidth))
+		{
+			m_BackgroundsScanned = false;
+			Toast(Tr("Backgrounds refreshed"), TOAST_INFO);
 		}
 		EndCard();
 	}
