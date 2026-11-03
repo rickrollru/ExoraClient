@@ -29,10 +29,10 @@ using namespace XcUi;
 
 // what is new when the releases can not be read (offline): the main points of this version
 static const char *const s_aaBuiltinUpdates[][4] = {
-	{"Exora input and a new prediction", "Your tee answers sooner and without jerks, presets in Settings > Controls", "Ввод Exora и новое предсказание", "Ти откликается раньше и без рывков, пресеты в Настройки → Управление"},
-	{"Song lyrics in neon", "The words of the track in time with the music, on a plate and around your tee", "Текст песен неоном", "Слова трека в такт музыке — на плашке и вокруг ти"},
-	{"Motion blur and demo videos", "A real smear at speed, demos rendered into videos", "Размытие в движении и видео из демок", "Настоящий смаз на скорости, демки сразу в видео"},
-};
+	{"Shared cosmetics", "Other Exora players see your cape, scarf, accessory, shader and neon, and you see theirs", "Общая косметика", "Другие игроки Exora видят твой плащ, шарф, аксессуар, шейдер и неон, а ты — их"},
+	{"New home page", "Your tee on a stage, music, friends, what is new and how many play Exora now", "Новая главная", "Твой ти на сцене, музыка, друзья, что нового и сколько сейчас в Exora"},
+	{"Tee shader by parts", "The pattern on the tee, the weapon or the hook, each on its own", "Шейдер на ти по частям", "Узор на ти, оружии или хуке — по отдельности"},
+}
 
 // a square button with an icon (the style of the interface: a rounded square, never a circle)
 bool CXcMenu::IconSquare(const char *pId, const char *pIcon, float Size, const char *pTip, int Kind)
