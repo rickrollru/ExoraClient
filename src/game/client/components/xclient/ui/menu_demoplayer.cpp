@@ -173,7 +173,8 @@ void CXcMenu::RenderDemoBar(float Alpha)
 		// the knob
 		pDraw->AddCircleFilled(ImVec2(PlayedX, Mid), S(6.0f) + S(2.0f) * Grow, Col(ImVec4(1, 1, 1, 1)));
 		pDraw->AddCircle(ImVec2(PlayedX, Mid), S(6.0f) + S(2.0f) * Grow, Col(t.m_Accent), 0, S(2.0f));
-		const float Ratio = std::clamp((Io.MousePos.x - Rect.Min.x) / Width, 0.0f, 1.0f);
+		// dragging: slower with Shift, for an exact moment
+		const float Ratio = Held ? DragFraction(Id, Shown, Rect.Min.x, Width) : std::clamp((Io.MousePos.x - Rect.Min.x) / Width, 0.0f, 1.0f);
 		if(Held)
 		{
 			// seek while dragging; the demo pauses meanwhile like in the stock player

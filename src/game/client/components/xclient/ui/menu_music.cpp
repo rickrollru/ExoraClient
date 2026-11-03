@@ -154,7 +154,9 @@ void CXcMenu::RenderMusicCard()
 		ImGui::InvisibleButton("##seek", ImVec2(Width, HitHeight));
 		const bool Hovered = ImGui::IsItemHovered() && CanSeek;
 		const bool Dragging = ImGui::IsItemActive() && CanSeek;
-		const float MouseFill = std::clamp((ImGui::GetIO().MousePos.x - BarPos.x) / Width, 0.0f, 1.0f);
+		// while dragging: the place under the mouse, slower with Shift
+		const float Played = (float)std::clamp(Position / State.m_Duration, 0.0, 1.0);
+		const float MouseFill = ImGui::IsItemActive() || ImGui::IsItemDeactivated() ? DragFraction(ImGui::GetItemID(), Played, BarPos.x, Width) : std::clamp((ImGui::GetIO().MousePos.x - BarPos.x) / Width, 0.0f, 1.0f);
 		if(Hovered || Dragging)
 			ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 		if(ImGui::IsItemDeactivated() && CanSeek)
@@ -253,7 +255,7 @@ void CXcMenu::RenderMusicCard()
 		ImGui::InvisibleButton("##volume", ImVec2(BarWidth, RowHeight));
 		const bool Hovered = ImGui::IsItemHovered();
 		const bool Dragging = ImGui::IsItemActive();
-		const float MouseLevel = std::clamp((ImGui::GetIO().MousePos.x - BarX) / BarWidth, 0.0f, 1.0f);
+		const float MouseLevel = Dragging ? DragFraction(ImGui::GetItemID(), Volume, BarX, BarWidth) : std::clamp((ImGui::GetIO().MousePos.x - BarX) / BarWidth, 0.0f, 1.0f);
 		if(Dragging && std::abs(MouseLevel - Volume) > 0.005f)
 			Music.SetVolume(MouseLevel);
 		if(Hovered)

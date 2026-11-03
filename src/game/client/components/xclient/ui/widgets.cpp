@@ -1,6 +1,7 @@
 #include "widgets.h"
 
 #include "feedback.h"
+#include "lang.h"
 #include "theme.h"
 
 #include <engine/external/imgui/imgui_internal.h>
@@ -80,6 +81,59 @@ namespace XcUi
 			return;
 		const ImVec2 Pos(std::floor(Center.x - (Min.x + Max.x) * 0.5f + 0.5f), std::floor(Center.y - (Min.y + Max.y) * 0.5f + 0.5f));
 		pDraw->AddText(pUse, DrawSize, Pos, Color, pIcon);
+	}
+
+	static ImGuiID s_DragId = 0;
+	static int s_DragFrame = -10;
+	static bool s_DragRelative = false;
+	static bool s_DragShift = false;
+	static float s_DragAnchorFraction = 0.0f;
+	static float s_DragAnchorMouse = 0.0f;
+	static float s_DragLast = 0.0f;
+
+	float DragFraction(ImGuiID Id, float Current, float TrackLeft, float TrackWidth)
+	{
+		const ImGuiIO &Io = ImGui::GetIO();
+		const int Frame = ImGui::GetFrameCount();
+		const float Width = std::max(TrackWidth, 1.0f);
+		if(s_DragId != Id || s_DragFrame < Frame - 1)
+		{
+			// a new drag: the mouse decides, as before
+			s_DragId = Id;
+			s_DragRelative = false;
+			s_DragShift = false;
+		}
+		if(s_DragFrame == Frame)
+			return s_DragLast;
+		s_DragFrame = Frame;
+		const float Mouse = Io.MousePos.x;
+		const bool Shift = Io.KeyShift;
+		if(Shift != s_DragShift)
+		{
+			// Shift pressed or let go: go on from where the value is now
+			s_DragShift = Shift;
+			s_DragAnchorFraction = s_DragRelative ? s_DragLast : Current;
+			s_DragAnchorMouse = Mouse;
+			s_DragRelative = true;
+		}
+		if(!s_DragRelative)
+			s_DragLast = std::clamp((Mouse - TrackLeft) / Width, 0.0f, 1.0f);
+		else
+		{
+			s_DragLast = std::clamp(s_DragAnchorFraction + (Mouse - s_DragAnchorMouse) / Width * (Shift ? 0.1f : 1.0f), 0.0f, 1.0f);
+			// the mouse ran off the track end while slow: keep the anchor there so going back answers at once
+			if(s_DragLast <= 0.0f || s_DragLast >= 1.0f)
+			{
+				s_DragAnchorFraction = s_DragLast;
+				s_DragAnchorMouse = Mouse;
+			}
+		}
+		return s_DragLast;
+	}
+
+	bool DragIsFine(ImGuiID Id)
+	{
+		return s_DragId == Id && s_DragShift && s_DragFrame >= ImGui::GetFrameCount() - 1;
 	}
 
 	float TextMiddle(ImFont *pFont, float Size)
@@ -302,7 +356,7 @@ namespace XcUi
 		const float TrackRight = Rect.Max.x - GrabRadius;
 		if(Held)
 		{
-			const float NewFraction = std::clamp((ImGui::GetIO().MousePos.x - TrackLeft) / std::max(TrackRight - TrackLeft, 1.0f), 0.0f, 1.0f);
+			const float NewFraction = DragFraction(Id, *pFraction, TrackLeft, TrackRight - TrackLeft);
 			if(NewFraction != *pFraction)
 			{
 				*pFraction = NewFraction;
@@ -313,7 +367,10 @@ namespace XcUi
 		ImDrawList *pDraw = pWindow->DrawList;
 		pDraw->AddText(pLabelFont, pLabelFont->FontSize, Pos, Col(t.m_TextSecondary), pLabel);
 		const ImVec2 ValueSize = pLabelFont->CalcTextSizeA(pLabelFont->FontSize, FLT_MAX, 0.0f, pValueText);
-		pDraw->AddText(pLabelFont, pLabelFont->FontSize, ImVec2(Rect.Max.x - ValueSize.x, Pos.y), Col(t.m_Text), pValueText);
+		// the value turns accent while Shift drags it slowly
+		pDraw->AddText(pLabelFont, pLabelFont->FontSize, ImVec2(Rect.Max.x - ValueSize.x, Pos.y), Col(Held && DragIsFine(Id) ? t.m_Accent : t.m_Text), pValueText);
+		if(Hovered && !Held)
+			ImGui::SetItemTooltip("%s", Tr("Hold Shift to drag precisely"));
 
 		const float Shown = Animate(Id, *pFraction, Held ? 40.0f : 16.0f);
 		const float Focus = Animate(Id + 1, (Hovered || Held) ? 1.0f : 0.0f, 18.0f);

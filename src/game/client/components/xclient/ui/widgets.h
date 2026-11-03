@@ -36,6 +36,15 @@ namespace XcUi
 	// an icon in a slot of SlotWidth left at x, next to text whose line starts at TextY
 	void DrawIconBesideText(ImDrawList *pDraw, ImFont *pFont, float Size, float x, float SlotWidth, float TextY, ImU32 Color, const char *pIcon);
 
+	// --- dragging
+	// The place 0..1 on a track under the mouse while it is dragged. With Shift held it moves 10 times slower from
+	// where it was, for exact values; after Shift the drag stays relative until the mouse is let go, so nothing
+	// jumps. Current is the value now (the start for Shift). Call it every frame while the item is held, and in the
+	// frame it is let go.
+	float DragFraction(ImGuiID Id, float Current, float TrackLeft, float TrackWidth);
+	// true while the drag of Id goes slow with Shift
+	bool DragIsFine(ImGuiID Id);
+
 	// --- text
 	void Header(const char *pText);
 	void Title(const char *pText);

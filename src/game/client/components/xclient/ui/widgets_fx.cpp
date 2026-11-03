@@ -39,7 +39,7 @@ namespace XcUi
 		bool Changed = false;
 		if(Held)
 		{
-			const float Hue = std::clamp((ImGui::GetIO().MousePos.x - Rect.Min.x) / Width, 0.0f, 0.999f);
+			const float Hue = std::min(DragFraction(Id, *pHue, Rect.Min.x, Width), 0.999f);
 			if(Hue != *pHue)
 			{
 				*pHue = Hue;

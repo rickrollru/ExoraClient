@@ -2468,7 +2468,7 @@ bool ImGui::DragBehaviorT(ImGuiDataType data_type, TYPE* v, float v_speed, const
         if (g.IO.KeyAlt && !(flags & ImGuiSliderFlags_NoSpeedTweaks))
             adjust_delta *= 1.0f / 100.0f;
         if (g.IO.KeyShift && !(flags & ImGuiSliderFlags_NoSpeedTweaks))
-            adjust_delta *= 10.0f;
+            adjust_delta *= 1.0f / 10.0f; // XClient: Shift drags slower and precise, like the sliders of the menu
     }
     else if (g.ActiveIdSource == ImGuiInputSource_Keyboard || g.ActiveIdSource == ImGuiInputSource_Gamepad)
     {

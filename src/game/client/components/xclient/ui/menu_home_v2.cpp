@@ -379,13 +379,15 @@ void CXcMenu::RenderMusicBar(float Width, float Height)
 		const float Fill = (float)std::clamp(Position / State.m_Duration, 0.0, 1.0);
 		ImGui::SetCursorScreenPos(ImVec2(TextX, LineY - S(7.0f)));
 		ImGui::InvisibleButton("##mb_seek", ImVec2(TextWidth, S(14.0f)));
-		const float Mouse = std::clamp((ImGui::GetIO().MousePos.x - TextX) / std::max(TextWidth, 1.0f), 0.0f, 1.0f);
+		const bool Dragging = (ImGui::IsItemActive() || ImGui::IsItemDeactivated()) && State.m_CanSeek;
+		// slower with Shift, the line shows where it will jump
+		const float Mouse = Dragging ? DragFraction(ImGui::GetItemID(), Fill, TextX, TextWidth) : Fill;
 		if(ImGui::IsItemDeactivated() && State.m_CanSeek)
 			Music.Seek(Mouse * State.m_Duration);
 		const bool Hovered = ImGui::IsItemHovered() && State.m_CanSeek;
 		const float Thick = Hovered ? S(5.0f) : S(3.0f);
 		pDraw->AddRectFilled(ImVec2(TextX, LineY - Thick * 0.5f), ImVec2(TextX + TextWidth, LineY + Thick * 0.5f), Col(ImVec4(1, 1, 1, 1), 0.16f), S(2.0f));
-		pDraw->AddRectFilled(ImVec2(TextX, LineY - Thick * 0.5f), ImVec2(TextX + TextWidth * Fill, LineY + Thick * 0.5f), Col(ImVec4(1, 1, 1, 1), 0.9f), S(2.0f));
+		pDraw->AddRectFilled(ImVec2(TextX, LineY - Thick * 0.5f), ImVec2(TextX + TextWidth * (Dragging ? Mouse : Fill), LineY + Thick * 0.5f), Col(ImVec4(1, 1, 1, 1), 0.9f), S(2.0f));
 	}
 	ImGui::SetCursorScreenPos(Min);
 	ImGui::Dummy(ImVec2(Width, BarHeight));

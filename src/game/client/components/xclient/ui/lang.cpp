@@ -30,6 +30,7 @@ namespace XcUi
 			{"Theme", "Тема"},
 			{"Profile", "Профиль"},
 			{"Classic menu", "Классическое меню"},
+			{"Hold Shift to drag precisely", "Зажми Shift, чтобы тянуть точнее"},
 			{"All updates", "Все обновления"},
 			{"Back to the game", "Вернуться в игру"},
 			{"Developer on Discord: rickroll.ru (click copies the name)", "Разработчик в Discord: rickroll.ru (клик копирует ник)"},
