@@ -109,6 +109,7 @@
 #include "components/xclient/screen_blur.h"
 #include "components/xclient/sprite_fx.h"
 #include "components/xclient/music/lyrics.h"
+#include "components/xclient/cosmetics_sync.h"
 #include "components/xclient/music/music.h"
 #include "components/xclient/tee_glow.h"
 #include "components/xclient/trail_fx.h"
@@ -292,6 +293,7 @@ public:
 	CXcHud m_XcHud;
 	CXcMusic m_XcMusic;
 	CXcLyrics m_XcLyrics; // XClient
+	CXcCosmeticsSync m_XcCosmetics; // XClient: cosmetics of other Exora players
 	CHookFx m_HookFx;
 	CJumpFx m_JumpFx;
 	CTeeGlow m_TeeGlow;

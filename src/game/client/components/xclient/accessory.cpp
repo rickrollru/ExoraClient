@@ -84,7 +84,7 @@ void CAccessory::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
-	if(g_Config.m_XcAccessory == ACCESSORY_OFF)
+	if(g_Config.m_XcAccessory == ACCESSORY_OFF && !GameClient()->m_XcCosmetics.AnyRemote())
 	{
 		OnReset();
 		return;
@@ -96,7 +96,9 @@ void CAccessory::OnRender()
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
 		SState &State = m_aStates[ClientId];
-		if(!GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||
+		// a player with a shared set wears his own accessory
+		const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
+		if(g_Config.m_XcAccessory == ACCESSORY_OFF || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||
 			(!ShowFor(GameClient(), ClientId, g_Config.m_XcAccessorySelf, g_Config.m_XcAccessoryDummy, g_Config.m_XcAccessoryOthers) &&
 				!(g_Config.m_XcAccessoryFriends && GameClient()->m_aClients[ClientId].m_Friend)))
 		{

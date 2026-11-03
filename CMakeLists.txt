@@ -3013,6 +3013,8 @@ if(CLIENT)
     components/xclient/block_outline.h
     components/xclient/cape.cpp
     components/xclient/cape.h
+    components/xclient/cosmetics_sync.cpp
+    components/xclient/cosmetics_sync.h
     components/xclient/cursor.cpp
     components/xclient/cursor.h
     components/xclient/discord_rpc.cpp

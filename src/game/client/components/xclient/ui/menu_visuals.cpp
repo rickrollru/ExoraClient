@@ -570,6 +570,33 @@ void CXcMenu::CapePreview(const char *pId)
 		Description(Tr("Turn on \"Mine\" below to see it here"));
 }
 
+// the first card of the cosmetics: who sees what
+void CXcMenu::RenderSharedCosmeticsCard()
+{
+	BeginCardGrid("##vis_shared", 1);
+	if(BeginCard("##fx_shared", Tr("Shared cosmetics"), Tr("Other Exora players see your cape, scarf, accessory, shader and neon, and you see theirs")))
+	{
+		ToggleRow(Tr("Others see my cosmetics"), "xc_cosmetics_share", &g_Config.m_XcCosmeticsShare);
+		ToggleRow(Tr("See the cosmetics of others"), "xc_cosmetics_others", &g_Config.m_XcCosmeticsOthers);
+		const CXcCosmeticsSync &Sync = GameClient()->m_XcCosmetics;
+		char aStatus[128];
+		const char *pStatus = Sync.Status();
+		if(str_comp(pStatus, "ok") == 0)
+			str_format(aStatus, sizeof(aStatus), Tr("Connected. Players with a set on this server: %d"), Sync.NumSeen());
+		else if(str_comp(pStatus, "failed") == 0)
+			str_copy(aStatus, Tr("The cosmetics service does not answer, trying again"));
+		else if(str_comp(pStatus, "waiting") == 0)
+			str_copy(aStatus, Tr("Join a server: the sets are shared while you play"));
+		else
+			str_copy(aStatus, Tr("Off"));
+		Description(aStatus);
+		Description(Tr("Only the look is shared, by a random id of this client: no nick is stored"));
+		EndCard();
+	}
+	EndCardGrid();
+	ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
+}
+
 void CXcMenu::RenderVisualsCosmeticsExtra()
 {
 	BeginCardGrid("##vis_cosmetics_extra", 2);
@@ -1161,6 +1188,7 @@ void CXcMenu::RenderVisuals()
 	case VISUALS_TEE: RenderVisualsTee(); break;
 	case VISUALS_MOVEMENT: RenderVisualsMovement(); break;
 	case VISUALS_COSMETICS:
+		RenderSharedCosmeticsCard();
 		RenderVisualsCosmetics();
 		RenderVisualsCosmeticsExtra();
 		break;

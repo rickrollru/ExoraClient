@@ -950,7 +950,7 @@ void CXcCape::OnRender()
 	const bool Online = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	m_Pictures.Update(g_Config.m_XcCape && g_Config.m_XcCapePattern == PATTERN_PICTURE ? g_Config.m_XcCapeFile : "", Dt, 1.0f);
-	if((!g_Config.m_XcCape && !g_Config.m_XcScarf) || !Online)
+	if((!g_Config.m_XcCape && !g_Config.m_XcScarf && !GameClient()->m_XcCosmetics.AnyRemote()) || !Online)
 	{
 		OnReset();
 		m_Particles.Clear();
@@ -961,6 +961,8 @@ void CXcCape::OnRender()
 	{
 		SState &State = m_aStates[ClientId];
 		State.m_DrawFront = false;
+		// a player with a shared set is drawn with his own cape and scarf
+		const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
 		const bool Cape = g_Config.m_XcCape && ShowFor(GameClient(), ClientId, g_Config.m_XcCapeSelf, g_Config.m_XcCapeDummy, g_Config.m_XcCapeOthers);
 		const bool Scarf = g_Config.m_XcScarf && ShowFor(GameClient(), ClientId, g_Config.m_XcScarfSelf, g_Config.m_XcScarfDummy, g_Config.m_XcScarfOthers);
 		const float Alpha = GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ? PlayerAlpha(GameClient(), ClientId) : 0.0f;

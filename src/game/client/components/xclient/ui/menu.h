@@ -357,6 +357,7 @@ private:
 	void ParticleTuning(int Group); // FxTune::EGroup
 	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
 	void RenderVisualsCosmetics();
+	void RenderSharedCosmeticsCard();
 	void RenderHatEditor(float Size);
 	void HandleHatFile(const char *pPath);
 	bool m_CapesScanned = false;

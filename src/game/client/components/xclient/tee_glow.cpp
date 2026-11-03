@@ -74,6 +74,8 @@ void CTeeGlow::ShaderSettings(int ClientId, float Ppu, vec2 OriginPixels, XcRend
 
 bool CTeeGlow::Begin(int ClientId)
 {
+	// a player with a shared set gets his own neon and shader
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
 	if(!GameClient()->m_FxRenderer.ModuleActive() || !in_range(ClientId, MAX_CLIENTS - 1))
 		return false;
 	const vec2 Smear = GameClient()->m_XcScreenBlur.TeeSmear(ClientId);
@@ -97,6 +99,8 @@ bool CTeeGlow::Begin(int ClientId)
 
 void CTeeGlow::End(int ClientId)
 {
+	// a player with a shared set gets his own neon and shader
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
 	const float Ppu = PixelsPerUnit();
 	const ColorRGBA Color = GlowColor(ClientId);
 	float Pulse = 1.0f;
@@ -122,6 +126,8 @@ void CTeeGlow::End(int ClientId)
 
 bool CTeeGlow::PartBegin(int ClientId, int Part)
 {
+	// a player with a shared set gets his own neon and shader
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
 	if(!GameClient()->m_FxRenderer.ModuleActive() || !in_range(ClientId, MAX_CLIENTS - 1) || !HasShader(ClientId))
 		return false;
 	if(!(g_Config.m_XcTeeShaderParts & Part) || (Part != PART_HOOK && ShaderWhole(ClientId)))
@@ -145,6 +151,8 @@ bool CTeeGlow::PartBegin(int ClientId, int Part)
 
 void CTeeGlow::PartEnd(int ClientId)
 {
+	// a player with a shared set gets his own neon and shader
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
 	// only the pattern: no glow and no outline (those are around the whole player)
 	XcRender::SGlowSettings Settings;
 	Settings.m_DoGlow = false;

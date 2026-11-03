@@ -74,7 +74,7 @@ bool CHttpRequestCurl::ConfigureHandle(CURL *pHandle)
 		curl_easy_setopt(pHandle, CURLOPT_DEBUGFUNCTION, CurlDebug);
 	}
 	long Protocols = CURLPROTO_HTTPS;
-	if(g_Config.m_HttpAllowInsecure)
+	if(g_Config.m_HttpAllowInsecure || m_AllowInsecure) // XClient: m_AllowInsecure
 	{
 		Protocols |= CURLPROTO_HTTP;
 	}
