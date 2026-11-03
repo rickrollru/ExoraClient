@@ -32,7 +32,7 @@ static const char *const s_aaBuiltinUpdates[][4] = {
 	{"Shared cosmetics", "Other Exora players see your cape, scarf, accessory, shader and neon, and you see theirs", "Общая косметика", "Другие игроки Exora видят твой плащ, шарф, аксессуар, шейдер и неон, а ты — их"},
 	{"New home page", "Your tee on a stage, music, friends, what is new and how many play Exora now", "Новая главная", "Твой ти на сцене, музыка, друзья, что нового и сколько сейчас в Exora"},
 	{"Tee shader by parts", "The pattern on the tee, the weapon or the hook, each on its own", "Шейдер на ти по частям", "Узор на ти, оружии или хуке — по отдельности"},
-}
+};
 
 // a square button with an icon (the style of the interface: a rounded square, never a circle)
 bool CXcMenu::IconSquare(const char *pId, const char *pIcon, float Size, const char *pTip, int Kind)
