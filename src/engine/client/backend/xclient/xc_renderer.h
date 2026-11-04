@@ -4,6 +4,8 @@
 #include "xc_commands.h"
 
 #include <cstdint>
+#include <utility>
+#include <vector>
 
 // XClient render module. Lives on the render thread next to the OpenGL 3.3 backend
 // and executes the CMD_XC_* commands with its own shaders, buffers and framebuffers.
@@ -18,6 +20,8 @@ public:
 	bool RunCommand(const CCommandBuffer::SCommand *pCommand);
 	// Called right before the frame is presented.
 	void OnPreSwap();
+	void PerfMark(int Scope);
+	void PerfCollect();
 	// Must be called on the render thread with the context still current.
 	void Shutdown();
 
@@ -46,6 +50,19 @@ private:
 	// low latency: the fence of the last frame, waited for before the next one is shown
 	void *m_pFrameFence = nullptr;
 	bool m_Failed = false;
+	// performance marks: the timer queries of the last frames, read back when the GPU has them
+	struct SPerfFrame
+	{
+		std::vector<std::pair<unsigned, int>> m_vMarks; // query, scope
+	};
+	enum
+	{
+		NUM_PERF_FRAMES = 4,
+		MAX_PERF_MARKS = 512,
+	};
+	SPerfFrame m_aPerfFrames[NUM_PERF_FRAMES];
+	int m_PerfFrame = 0;
+	std::vector<unsigned> m_vPerfQueries; // free ones
 
 	unsigned m_ShapeProgram = 0;
 	unsigned m_DownProgram = 0;

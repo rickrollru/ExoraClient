@@ -37,6 +37,7 @@
 #include "components/spectator.h"
 #include "components/statboard.h"
 #include "components/voting.h"
+#include "components/xclient/perf_detail.h" // XClient
 #include "lineinput.h"
 #include "prediction/entities/character.h"
 #include "prediction/entities/projectile.h"
@@ -887,8 +888,18 @@ void CGameClient::OnRender()
 	UpdateSpectatorCursor();
 
 	// render all systems
-	for(auto &pComponent : m_vpAll)
+	// XClient: the cost of each one (xc_perf_detail)
+	const bool XcPerf = XcPerfDetail::Active();
+	for(size_t XcIndex = 0; XcIndex < m_vpAll.size(); XcIndex++)
+	{
+		CComponent *pComponent = m_vpAll[XcIndex];
+		const int64_t XcStart = XcPerf ? XcPerfDetail::Begin(Graphics(), XcIndex) : 0;
 		pComponent->OnRender();
+		if(XcPerf)
+			XcPerfDetail::End(pComponent, XcIndex, XcStart);
+	}
+	if(XcPerf)
+		XcPerfDetail::FrameEnd(Graphics(), Console());
 
 	// clear all events/input for this frame
 	Input()->Clear();

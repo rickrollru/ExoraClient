@@ -18,6 +18,7 @@ namespace XcRender
 		CMD_XC_CAPTURE_END,
 		CMD_XC_DRAW_BLOCKS3D,
 		CMD_XC_MOTION_BLUR,
+		CMD_XC_PERF_MARK,
 		CMD_XC_LAST,
 	};
 
@@ -68,6 +69,15 @@ namespace XcRender
 			SCommand(CMD_XC_BLUR_SCREEN) {}
 
 		SBlurSettings m_Settings;
+	};
+
+	// a GPU timestamp: what follows until the next mark is counted for m_Scope (-1: nothing)
+	struct SCommand_PerfMark : public CCommandBuffer::SCommand
+	{
+		SCommand_PerfMark() :
+			SCommand(CMD_XC_PERF_MARK) {}
+
+		int m_Scope;
 	};
 
 	struct SCommand_MotionBlur : public CCommandBuffer::SCommand

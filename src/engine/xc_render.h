@@ -94,6 +94,15 @@ namespace XcRender
 	// Set by the render thread once the module has initialized successfully.
 	bool IsAvailable();
 
+	// GPU time between performance marks (IGraphics::XcPerfMark): the time from a mark to the next one belongs to
+	// the scope of the first. Measured by GL timer queries a few frames late, so it never stalls the GPU.
+	enum
+	{
+		MAX_PERF_SCOPES = 256,
+	};
+	// the milliseconds summed per scope since the last call are added to pMs; returns the frames measured
+	int PerfTake(double *pMs, int Max);
+
 } // namespace XcRender
 
 #endif

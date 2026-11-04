@@ -1066,6 +1066,8 @@ void CXcMenu::RenderSettingsGraphics()
 		if(GameClient()->m_FxRenderer.Reduced())
 			Description(Tr("Glow and bloom are off now: the game was below 50 FPS"));
 		ToggleRow(Tr("FPS log in the console"), "xc_perf_log", &g_Config.m_XcPerfLog);
+		if(g_Config.m_XcPerfLog)
+			ToggleRow(Tr("What each part costs (CPU and GPU)"), "xc_perf_detail", &g_Config.m_XcPerfDetail);
 		EndCard();
 	}
 	EndCardGrid();

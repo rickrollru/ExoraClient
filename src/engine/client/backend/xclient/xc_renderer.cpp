@@ -5,6 +5,7 @@
 #include <engine/shared/config.h>
 
 #include <atomic>
+#include <mutex>
 
 static std::atomic<bool> s_Available{false};
 
@@ -911,6 +912,15 @@ void CXcRenderer::Shutdown()
 	glDeleteVertexArrays(1, &m_ShapeVao);
 	glDeleteVertexArrays(1, &m_EmptyVao);
 	glDeleteSamplers(1, &m_Sampler);
+	for(SPerfFrame &Frame : m_aPerfFrames)
+	{
+		for(const auto &[Query, Scope] : Frame.m_vMarks)
+			m_vPerfQueries.push_back(Query);
+		Frame.m_vMarks.clear();
+	}
+	if(!m_vPerfQueries.empty())
+		glDeleteQueries((GLsizei)m_vPerfQueries.size(), m_vPerfQueries.data());
+	m_vPerfQueries.clear();
 	if(m_pFrameFence)
 	{
 		glDeleteSync((GLsync)m_pFrameFence);
@@ -929,6 +939,8 @@ void CXcRenderer::OnPreSwap()
 		m_CaptureDepth = 0;
 	}
 	m_CaptureCalls = 0;
+	if(m_Initialized)
+		PerfCollect();
 	if(m_Initialized)
 	{
 		// low latency: do not let the driver queue up frames. Before this frame is shown, wait until the
@@ -957,6 +969,71 @@ void CXcRenderer::OnPreSwap()
 	s_Available = m_Initialized;
 }
 
+// the sums the game takes with PerfTake
+static std::mutex s_PerfMutex;
+static double s_aPerfMs[XcRender::MAX_PERF_SCOPES];
+static int s_PerfFrames = 0;
+
+int XcRender::PerfTake(double *pMs, int Max)
+{
+	std::lock_guard<std::mutex> Lock(s_PerfMutex);
+	for(int i = 0; i < std::min(Max, (int)MAX_PERF_SCOPES); i++)
+	{
+		pMs[i] += s_aPerfMs[i];
+		s_aPerfMs[i] = 0.0;
+	}
+	const int Frames = s_PerfFrames;
+	s_PerfFrames = 0;
+	return Frames;
+}
+
+void CXcRenderer::PerfMark(int Scope)
+{
+	std::vector<std::pair<unsigned, int>> &vMarks = m_aPerfFrames[m_PerfFrame].m_vMarks;
+	if(vMarks.size() >= MAX_PERF_MARKS)
+		return;
+	unsigned Query;
+	if(m_vPerfQueries.empty())
+		glGenQueries(1, &Query);
+	else
+	{
+		Query = m_vPerfQueries.back();
+		m_vPerfQueries.pop_back();
+	}
+	glQueryCounter(Query, GL_TIMESTAMP);
+	vMarks.emplace_back(Query, Scope);
+}
+
+void CXcRenderer::PerfCollect()
+{
+	// the frame written now moves on; the oldest one is read if the GPU is done with it, else dropped
+	m_PerfFrame = (m_PerfFrame + 1) % NUM_PERF_FRAMES;
+	std::vector<std::pair<unsigned, int>> &vMarks = m_aPerfFrames[m_PerfFrame].m_vMarks;
+	if(vMarks.empty())
+		return;
+	GLint Ready = 0;
+	glGetQueryObjectiv(vMarks.back().first, GL_QUERY_RESULT_AVAILABLE, &Ready);
+	if(Ready && vMarks.size() >= 2)
+	{
+		std::lock_guard<std::mutex> Lock(s_PerfMutex);
+		GLuint64 Last = 0;
+		glGetQueryObjectui64v(vMarks[0].first, GL_QUERY_RESULT, &Last);
+		for(size_t i = 1; i < vMarks.size(); i++)
+		{
+			GLuint64 Time = 0;
+			glGetQueryObjectui64v(vMarks[i].first, GL_QUERY_RESULT, &Time);
+			const int Scope = vMarks[i - 1].second;
+			if(Scope >= 0 && Scope < XcRender::MAX_PERF_SCOPES && Time >= Last)
+				s_aPerfMs[Scope] += (Time - Last) / 1000000.0;
+			Last = Time;
+		}
+		s_PerfFrames++;
+	}
+	for(const auto &[Query, Scope] : vMarks)
+		m_vPerfQueries.push_back(Query);
+	vMarks.clear();
+}
+
 bool CXcRenderer::RunCommand(const CCommandBuffer::SCommand *pCommand)
 {
 	if(pCommand->m_Cmd == CCommandBuffer::CMD_SWAP)
@@ -977,6 +1054,7 @@ bool CXcRenderer::RunCommand(const CCommandBuffer::SCommand *pCommand)
 	case XcRender::CMD_XC_CAPTURE_BEGIN: CaptureBegin(static_cast<const XcRender::SCommand_CaptureBegin *>(pCommand)); break;
 	case XcRender::CMD_XC_CAPTURE_END: CaptureEnd(static_cast<const XcRender::SCommand_CaptureEnd *>(pCommand)); break;
 	case XcRender::CMD_XC_DRAW_BLOCKS3D: DrawBlocks3D(static_cast<const XcRender::SCommand_DrawBlocks3D *>(pCommand)); break;
+	case XcRender::CMD_XC_PERF_MARK: PerfMark(static_cast<const XcRender::SCommand_PerfMark *>(pCommand)->m_Scope); break;
 	}
 	return true;
 }

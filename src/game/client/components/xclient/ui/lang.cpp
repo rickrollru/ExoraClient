@@ -805,6 +805,7 @@ namespace XcUi
 			{"Looking for an update...", "Ищу обновление..."},
 			{"This is the newest version", "Это самая новая версия"},
 			{"Check now", "Проверить сейчас"},
+			{"What each part costs (CPU and GPU)", "Сколько стоит каждая часть (процессор и видеокарта)"},
 			{"30 s", "30 с"},
 			{"1 min", "1 мин"},
 			{"2 min", "2 мин"},

@@ -19,6 +19,7 @@ MACRO_CONFIG_INT(XcBloomThreshold, xc_bloom_threshold, 10, 0, 100, CFGFLAG_CLIEN
 MACRO_CONFIG_INT(XcFxQuality, xc_fx_quality, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Effect quality (0 = low, no bloom, 1 = medium, 2 = high)")
 MACRO_CONFIG_INT(XcAutoQuality, xc_auto_quality, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Turn glow and bloom off for the session when the game stays below 50 FPS")
 MACRO_CONFIG_INT(XcPerfLog, xc_perf_log, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Print FPS and the worst frame to the console every 5 seconds")
+MACRO_CONFIG_INT(XcPerfDetail, xc_perf_detail, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "With xc_perf_log: also the CPU and GPU time of every part of the game per frame, the heaviest first")
 MACRO_CONFIG_INT(XcFxStyle, xc_fx_style, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Look of the effects (0 = classic shapes, 1 = soft textured light)")
 MACRO_CONFIG_INT(XcFxOverTiles, xc_fx_over_tiles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the effects over the map blocks instead of under them")
 MACRO_CONFIG_INT(XcHatsOverTiles, xc_hats_over_tiles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Draw the hats over the map blocks instead of under them")

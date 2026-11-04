@@ -359,6 +359,8 @@ public:
 	virtual void XcBlurScreen(const XcRender::SBlurSettings &Settings) = 0;
 	// smears everything drawn so far along a line (the map while the camera moves)
 	virtual void XcMotionBlur(const XcRender::SMotionBlurSettings &Settings) = 0;
+	// XClient: a GPU timestamp for the performance details (xc_perf_detail), see XcRender::PerfTake
+	virtual void XcPerfMark(int Scope) = 0;
 	// Everything drawn between these two calls gets a neon glow and outline around its silhouette.
 	// WorldRect (x0, y0, x1, y1, current screen mapping) limits the work to that area.
 	virtual void XcCaptureBegin(const float *pWorldRect) = 0;

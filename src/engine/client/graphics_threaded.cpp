@@ -3210,6 +3210,16 @@ void CGraphics_Threaded::XcMotionBlur(const XcRender::SMotionBlurSettings &Setti
 	m_pCommandBuffer->AddRenderCalls(1);
 }
 
+void CGraphics_Threaded::XcPerfMark(int Scope)
+{
+	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcPerfMark while drawing");
+	if(!XcRender::IsAvailable())
+		return;
+	XcRender::SCommand_PerfMark Cmd;
+	Cmd.m_Scope = Scope;
+	AddCmd(Cmd);
+}
+
 void CGraphics_Threaded::XcCaptureBegin(const float *pWorldRect)
 {
 	dbg_assert(m_Drawing == EDrawing::NONE, "called Graphics()->XcCaptureBegin while drawing");
