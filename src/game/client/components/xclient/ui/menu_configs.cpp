@@ -34,6 +34,13 @@ void CXcMenu::ConfigPath(const char *pName, char *pBuf, int BufSize) const
 	str_format(pBuf, BufSize, "%s/%s.cfg", CONFIG_FOLDER, pName);
 }
 
+// settings that belong to this client and never go into a config or a code: the id and the secret of the shared
+// cosmetics (whoever has them could show their look as yours) and the address of the service
+static bool PrivateSetting(const char *pName)
+{
+	return str_startswith(pName, "xc_cosmetics_id") || str_startswith(pName, "xc_cosmetics_secret") || str_startswith(pName, "xc_cosmetics_url");
+}
+
 std::string CXcMenu::CurrentConfigText() const
 {
 	// every XClient setting, written as console commands
@@ -47,6 +54,7 @@ std::string CXcMenu::CurrentConfigText() const
 	str_format(aLine, sizeof(aLine), "%s %u\n", #ScriptName, (unsigned)g_Config.m_##Name); \
 	Text += aLine;
 #define MACRO_CONFIG_STR(Name, ScriptName, Len, Def, Save, Desc) \
+	if(!PrivateSetting(#ScriptName)) \
 	{ \
 		char *pDst = aEscaped; \
 		str_escape(&pDst, g_Config.m_##Name, aEscaped + sizeof(aEscaped)); \
@@ -77,7 +85,7 @@ std::string CXcMenu::FilterConfig(const std::string &Text)
 		if(Line.empty() || Line[0] == '#')
 			continue;
 		// one command per line, no command separators
-		if(Line.compare(0, 3, "xc_") != 0 || Line.find(';') != std::string::npos)
+		if(Line.compare(0, 3, "xc_") != 0 || Line.find(';') != std::string::npos || PrivateSetting(Line.c_str()))
 			continue;
 		Result += Line;
 		Result += '\n';
