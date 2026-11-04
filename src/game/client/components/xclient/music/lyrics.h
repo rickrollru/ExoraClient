@@ -51,6 +51,11 @@ public:
 	static std::vector<SLine> ParseLrc(const char *pLrc);
 	// "Artist - Title (Official Video) [4K]" from a browser tab: the artist and the bare title
 	static void CleanTitle(const std::string &Artist, const std::string &Title, std::string &OutArtist, std::string &OutTitle);
+	// the lyrics found for the track with this key (artist and title), nullptr while there are none; for demos
+	const std::vector<SLine> *FoundLines(const std::string &Key, bool &Approx) const;
+	// lyrics recorded in a demo: taken instead of a search
+	void AddRecorded(const std::string &Key, std::vector<SLine> vLines, bool Approx);
+	static std::string TrackKey(const std::string &Artist, const std::string &Title) { return Artist + "\x1f" + Title; }
 
 private:
 	enum

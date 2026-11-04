@@ -8,6 +8,12 @@
 
 #include <game/client/component.h>
 
+#include <string>
+#include <utility>
+#include <vector>
+
+class CUnpacker;
+
 // Music player: shows and controls what plays in the browser or a music app (see CXcMediaSession).
 // The HUD widget and the card on the home page read from here.
 class CXcMusic : public CComponent
@@ -18,6 +24,11 @@ public:
 	void OnInit() override;
 	void OnShutdown() override;
 	void OnRender() override;
+	void OnStateChange(int NewState, int OldState) override;
+	// demos: while one is recorded the player goes into it (the track, the cover, the lyrics); while one plays the
+	// player shows what was recorded instead of what plays now
+	void OnDemoMessage(CUnpacker *pUnpacker);
+	bool FromDemo() const { return m_DemoActive; }
 
 	bool Supported() const { return m_Supported; }
 	bool Enabled() const;
@@ -58,6 +69,31 @@ private:
 	double m_SeekStart = 0.0;
 	float m_VolumeTarget = -1.0f;
 	double m_VolumeStart = 0.0;
+
+	enum
+	{
+		DEMO_STATE = 0,
+		DEMO_COVER,
+		DEMO_LYRICS,
+	};
+	bool m_DemoActive = false;
+	double m_DemoPosition = -1.0;
+	double m_DemoPositionTime = 0.0; // the demo time when m_DemoPosition was true
+	std::vector<std::pair<double, std::string>> m_vDemoLyrics; // the parts of the recorded lyrics as they come
+	double DemoTime() const;
+	void LeaveDemo();
+
+	unsigned m_RecordMask = 0; // the recorders that run
+	float m_RecordStateTime = 0.0f;
+	float m_RecordFullTime = 0.0f;
+	uint64_t m_RecordTrack = 0;
+	uint64_t m_RecordArt = 0;
+	size_t m_RecordLyrics = 0;
+	int m_RecordPlaying = -1;
+	bool m_RecordHad = false;
+	std::vector<uint8_t> m_vCoverPng; // the cover made small, for demos
+	void RecordDemo();
+	void SendDemo(class CMsgPacker &Msg);
 
 	static void ConPlayPause(IConsole::IResult *pResult, void *pUserData);
 	static void ConNext(IConsole::IResult *pResult, void *pUserData);

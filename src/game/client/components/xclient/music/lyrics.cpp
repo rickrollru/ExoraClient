@@ -329,6 +329,35 @@ void CXcLyrics::TakeAnswer()
 		RunStep();
 }
 
+const std::vector<CXcLyrics::SLine> *CXcLyrics::FoundLines(const std::string &Key, bool &Approx) const
+{
+	if(Key != m_Key || m_State != STATE_FOUND || m_vLines.empty())
+		return nullptr;
+	Approx = m_Approx;
+	return &m_vLines;
+}
+
+void CXcLyrics::AddRecorded(const std::string &Key, std::vector<SLine> vLines, bool Approx)
+{
+	if(vLines.empty())
+		return;
+	auto Cached = m_Cache.find(Key);
+	if(Cached != m_Cache.end() && !Cached->second.m_vLines.empty())
+		return;
+	m_Cache[Key] = SCached{vLines, Approx, Client()->GlobalTime()};
+	// the track is already on: the recorded words instead of the search
+	if(Key == m_Key && m_State != STATE_FOUND)
+	{
+		if(m_pRequest)
+			m_pRequest->Abort();
+		m_pRequest = nullptr;
+		m_vLines = std::move(vLines);
+		m_Approx = Approx;
+		m_State = STATE_FOUND;
+		m_LastLine = -1;
+	}
+}
+
 void CXcLyrics::OnRender()
 {
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
@@ -344,7 +373,7 @@ void CXcLyrics::OnRender()
 	// a new track: the lyrics from the memory, or ask for them; only when the player tells the same track for a
 	// second (switching tracks or pausing tells empty or half names for a moment, each cut the search before)
 	const SXcMediaState &State = Music.State();
-	const std::string Key = State.m_Artist + "\x1f" + State.m_Title;
+	const std::string Key = TrackKey(State.m_Artist, State.m_Title);
 	const float Now = Client()->GlobalTime();
 	if(Key != m_SeenKey)
 	{

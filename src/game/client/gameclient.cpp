@@ -1208,6 +1208,13 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker, int Conn, bool Dumm
 			XcOnLiveTiles(pUnpacker);
 		return;
 	}
+	// XClient: the music player recorded into the demo by the client
+	if(MsgId == NETMSGTYPE_SV_XCDEMOMUSIC)
+	{
+		if(!Dummy && Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			m_XcMusic.OnDemoMessage(pUnpacker);
+		return;
+	}
 
 	void *pRawMsg = TranslateGameMsg(&MsgId, pUnpacker, Conn);
 
