@@ -701,11 +701,25 @@ void CXcHud::RenderBanner(ImDrawList *pDraw)
 	const ImVec2 Min(CenterX - Width * 0.5f, Top);
 	const ImVec2 Max(CenterX + Width * 0.5f, Top + Height);
 	const float Rounding = 18.0f * U;
-	// soft colored glow behind, the plate, a colored rim
-	for(int i = 4; i >= 1; i--)
+	// soft colored glow behind (the render module blurs it; without it a few wider plates), the plate, a colored rim
+	if(GameClient()->m_FxRenderer.ModuleActive())
 	{
-		const float Grow = i * 7.0f * U;
-		pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow), ImVec2(Max.x + Grow, Max.y + Grow), Col(Color, 0.05f * Alpha), Rounding + Grow);
+		// drawn now, before the HUD frame, so it lies under the plate
+		const CScreenRect Saved = Graphics()->GetScreen();
+		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, (float)Graphics()->ScreenWidth(), (float)Graphics()->ScreenHeight()));
+		const vec2 Center((Min.x + Max.x) * 0.5f, (Min.y + Max.y) * 0.5f);
+		const vec2 Half((Max.x - Min.x) * 0.5f, (Max.y - Min.y) * 0.5f);
+		const std::vector<SFxShape> vGlow = {FxShape::RoundRect(Center, Half, Rounding, ColorRGBA(Color.x, Color.y, Color.z, 0.55f * Alpha)).GlowOnly(30.0f * U, 0.8f).Additive()};
+		GameClient()->m_FxRenderer.Draw(vGlow, false);
+		Graphics()->MapScreen(Saved);
+	}
+	else
+	{
+		for(int i = 4; i >= 1; i--)
+		{
+			const float Grow = i * 7.0f * U;
+			pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow), ImVec2(Max.x + Grow, Max.y + Grow), Col(Color, 0.05f * Alpha), Rounding + Grow);
+		}
 	}
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.92f), Alpha), Rounding);
 	pDraw->AddRect(Min, Max, Col(Color, 0.8f * Alpha), Rounding, 0, 2.0f * U);

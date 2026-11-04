@@ -493,6 +493,20 @@ void CXcFloaters::OnRender()
 		Sprites.End();
 		Graphics()->TextureClear();
 	}
+	else if(g_Config.m_XcFloatersGlow && GameClient()->m_FxRenderer.ModuleActive())
+	{
+		// the render module: a real soft light around each (blurred, it also feeds the bloom)
+		CFxRenderer &Fx = GameClient()->m_FxRenderer;
+		for(const SFloater *pFloater : vOrder)
+		{
+			const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
+			const float Twinkle = 0.8f + 0.2f * std::sin(Time * 2.0f + pFloater->m_Hue * 40.0f);
+			const float a = Alpha * pFloater->m_Life * pFloater->m_Depth * Twinkle;
+			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * (pFloater->m_Kind == KIND_CUBE ? 2.6f : (pFloater->m_Kind == KIND_ORB ? 3.2f : 1.3f));
+			if(a > 0.01f)
+				Fx.AddWorld(FxShape::Circle(pFloater->m_Pos, Radius * 0.3f, Color.WithAlpha(std::min(0.6f * a, 1.0f))).GlowOnly(Radius * 0.8f, 0.7f).Additive());
+		}
+	}
 	else if(g_Config.m_XcFloatersGlow)
 	{
 		Graphics()->BlendAdditive();
@@ -550,6 +564,24 @@ void CXcFloaters::OnRender()
 					Sprites.Draw(pFloater->m_Pos, Radius * 1.5f, 0.0f, ColorRGBA(mix(Color.r, 1.0f, 0.7f), mix(Color.g, 1.0f, 0.7f), mix(Color.b, 1.0f, 0.7f), 0.9f * a));
 			}
 			Sprites.End();
+		}
+		return;
+	}
+	if(GameClient()->m_FxRenderer.ModuleActive())
+	{
+		// the render module: a white hot core with a colored glow around
+		CFxRenderer &Fx = GameClient()->m_FxRenderer;
+		for(const SFloater *pFloater : vOrder)
+		{
+			if(pFloater->m_Kind != KIND_ORB)
+				continue;
+			const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcFloatersColorMode, g_Config.m_XcFloatersColor, -1, pFloater->m_Hue);
+			const float a = Alpha * pFloater->m_Life * (0.45f + 0.55f * pFloater->m_Depth);
+			if(a <= 0.01f)
+				continue;
+			const float Radius = pFloater->m_Size * SizeScale * pFloater->m_Depth * 0.55f;
+			Fx.AddWorld(FxShape::Circle(pFloater->m_Pos, Radius * 0.5f, Color.WithAlpha(0.8f * a)).GlowOnly(Radius * 1.4f, 0.9f).Additive());
+			Fx.AddWorld(FxShape::Circle(pFloater->m_Pos, Radius * 0.42f, ColorRGBA(mix(Color.r, 1.0f, 0.75f), mix(Color.g, 1.0f, 0.75f), mix(Color.b, 1.0f, 0.75f), 0.9f * a)).Additive());
 		}
 		return;
 	}

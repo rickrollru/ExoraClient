@@ -659,11 +659,7 @@ void CXcLyrics::RenderHud(ImDrawList *pDraw, ImFont *pBold, ImFont *pSmall, floa
 	const ImVec2 Min((Display.x - PlateWidth) * 0.5f, y - PlateHeight * 0.5f);
 	const ImVec2 Max(Min.x + PlateWidth, Min.y + PlateHeight);
 	const float Rounding = 16.0f * k;
-	for(int i = 3; i >= 1; i--)
-	{
-		const float Grow = i * 2.5f * k;
-		pDraw->AddRectFilled(ImVec2(Min.x - Grow, Min.y - Grow + 3.0f * k), ImVec2(Max.x + Grow, Max.y + Grow + 3.0f * k), Col(ImVec4(0, 0, 0, 1), 0.07f * Fade), Rounding + Grow);
-	}
+	// no dark shadow under the plate (the in-game interface has none)
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.8f), Fade), Rounding);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Fade), Rounding, 0, 1.0f);
 	if(m_Approx)
@@ -765,9 +761,31 @@ void CXcLyrics::RenderWordsClassic()
 		const float TextSize = Size * Pop;
 		const float TextWidth = TextRender()->TextWidth(TextSize, Word.m_Text.c_str());
 		const ColorRGBA Color = WordColor(Word);
-		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f * Alpha));
+		// with the render module these get the same neon as the words in the HUD fonts
+		const bool Neon = NeonActive();
+		float Reach = 0.0f;
+		if(Neon)
+		{
+			const float PerUnit = Graphics()->ScreenHeight() / std::max(Screen.m_BottomRight.y - Screen.m_TopLeft.y, 1.0f);
+			Reach = TextSize * PerUnit * 0.45f * g_Config.m_XcLyricsGlowSize / 100.0f + 4.0f; // pixels
+			const float Room = Reach * 3.0f / PerUnit;
+			const float aRect[4] = {Pos.x - TextWidth * 0.5f - Room, Pos.y - TextSize * 0.5f - Room, Pos.x + TextWidth * 0.5f + Room, Pos.y + TextSize * 0.5f + Room};
+			Graphics()->XcCaptureBegin(aRect);
+		}
+		TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, Neon ? 0.0f : 0.5f * Alpha));
 		TextRender()->TextColor(ColorRGBA(mix(Color.r, 1.0f, 0.5f), mix(Color.g, 1.0f, 0.5f), mix(Color.b, 1.0f, 0.5f), Alpha));
 		TextRender()->Text(Pos.x - TextWidth * 0.5f, Pos.y - TextSize * 0.5f, TextSize, Word.m_Text.c_str());
+		if(Neon)
+		{
+			XcRender::SGlowSettings Settings;
+			Settings.m_Color = Color.WithAlpha(Alpha);
+			Settings.m_RimColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.0f);
+			Settings.m_Radius = Reach;
+			Settings.m_Strength = 2.6f * g_Config.m_XcLyricsGlow / 100.0f;
+			Settings.m_RimWidth = 0.0f;
+			Settings.m_DoGlow = true;
+			Graphics()->XcCaptureEnd(Settings);
+		}
 	}
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 	TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
