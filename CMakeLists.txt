@@ -3130,6 +3130,7 @@ if(CLIENT)
     components/xclient/ui/menu_demos.cpp
     components/xclient/ui/menu_home.cpp
     components/xclient/ui/menu_home_v2.cpp
+    components/xclient/ui/menu_update.cpp
     components/xclient/ui/menu_mapinfo.cpp
     components/xclient/ui/menu_music.cpp
     components/xclient/ui/menu_presets.cpp

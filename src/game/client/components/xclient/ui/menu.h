@@ -276,6 +276,35 @@ private:
 	std::string m_ClientUpdatesVersion;
 	bool m_UpdatesRequested = false;
 	std::shared_ptr<class IHttpRequest> m_pUpdatesRequest;
+	// menu_update.cpp: the client updates itself from the GitHub releases
+	enum
+	{
+		UPDATE_NONE = 0,
+		UPDATE_CHECKING,
+		UPDATE_LATEST,
+		UPDATE_AVAILABLE,
+		UPDATE_DOWNLOADING,
+		UPDATE_READY,
+		UPDATE_FAILED,
+	};
+	int m_UpdateState = UPDATE_NONE;
+	char m_aUpdateVersion[32] = "";
+	char m_aUpdateError[160] = "";
+	std::string m_UpdatePage;
+	std::string m_UpdateAsset; // the download address of the archive for this system, empty when there is none
+	std::string m_UpdateAssetName;
+	std::string m_UpdateAssetSha;
+	int64_t m_UpdateAssetSize = 0;
+	bool m_UpdateToastShown = false;
+	std::shared_ptr<class IHttpRequest> m_pUpdateDownload;
+	static int CompareVersions(const char *pA, const char *pB);
+	void TakeRelease(const struct _json_value *pRelease);
+	void CheckForUpdate();
+	void StartUpdateDownload();
+	void UpdateSelfUpdate();
+	bool InstallUpdate();
+	void RenderUpdateBanner(float Width);
+	void RenderUpdateCard();
 	// menu_status.cpp: the "disconnected" and "password" windows over the menu
 	void RenderConnectionPopup();
 	float m_StatusTime = 0.0f;

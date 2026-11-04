@@ -184,6 +184,8 @@ void CXcMenu::RenderSettingsInterface()
 {
 	BeginCardGrid("##interface", 2);
 
+	RenderUpdateCard();
+
 	if(BeginCard("##theme", Tr("Theme"), Tr("Look of the menu: dark or light, and the accent color")))
 	{
 		const char *apThemes[] = {Tr("Dark"), Tr("Light")};

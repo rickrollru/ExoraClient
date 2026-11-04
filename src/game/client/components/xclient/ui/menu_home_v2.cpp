@@ -107,7 +107,15 @@ void CXcMenu::RenderHome()
 		ImGui::EndChild();
 	}
 	else
-		RenderWhatsNew(RightWidth, RestHeight);
+	{
+		// a new version: a line over the news
+		const float Before = ImGui::GetCursorScreenPos().y;
+		RenderUpdateBanner(RightWidth);
+		const float Used = ImGui::GetCursorScreenPos().y - Before;
+		if(Used > 0.0f)
+			ImGui::Dummy(ImVec2(0.0f, InnerGap * 0.5f));
+		RenderWhatsNew(RightWidth, RestHeight - (Used > 0.0f ? Used + InnerGap * 0.5f : 0.0f));
+	}
 	y += RestHeight + InnerGap;
 	ImGui::SetCursorScreenPos(ImVec2(Side.x, y));
 	RenderHomeFooter(RightWidth, FooterHeight);
@@ -540,6 +548,8 @@ void CXcMenu::UpdateClientUpdates()
 	const json_value *pRelease = pJson->type == json_array && json_array_length(pJson) > 0 ? json_array_get(pJson, 0) : nullptr;
 	const json_value *pTag = pRelease ? json_object_get(pRelease, "tag_name") : nullptr;
 	const json_value *pBody = pRelease ? json_object_get(pRelease, "body") : nullptr;
+	if(pRelease)
+		TakeRelease(pRelease);
 	if(pTag && pTag->type == json_string && pBody && pBody->type == json_string)
 	{
 		// the release text: Russian first, then English after the "english" anchor; the points of "what's new"
