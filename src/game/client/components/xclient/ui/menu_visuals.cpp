@@ -574,6 +574,7 @@ void CXcMenu::CapePreview(const char *pId)
 void CXcMenu::RenderSharedCosmeticsCard()
 {
 	BeginCardGrid("##vis_shared", 1);
+	RenderCosmeticPresets();
 	if(BeginCard("##fx_shared", Tr("Shared cosmetics"), Tr("Other Exora players see your cape, scarf, accessory, shader and neon, and you see theirs")))
 	{
 		ToggleRow(Tr("Others see my cosmetics"), "xc_cosmetics_share", &g_Config.m_XcCosmeticsShare);

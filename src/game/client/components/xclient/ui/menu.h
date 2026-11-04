@@ -359,6 +359,21 @@ private:
 	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
 	void RenderVisualsCosmetics();
 	void RenderSharedCosmeticsCard();
+	// cosmetics sets (menu_cosmetic_presets.cpp)
+	struct SCosmeticPreset
+	{
+		std::string m_Name;
+		std::string m_Text;
+		std::string m_Summary;
+	};
+	std::vector<SCosmeticPreset> m_vCosmeticPresets;
+	bool m_CosmeticPresetsLoaded = false;
+	char m_aCosmeticPresetName[48] = "";
+	std::string m_CosmeticDeleteArmed;
+	float m_CosmeticDeleteArmedUntil = 0.0f;
+	std::string CurrentCosmeticsText() const;
+	void LoadCosmeticPresets();
+	void RenderCosmeticPresets();
 	void RenderHatEditor(float Size);
 	void HandleHatFile(const char *pPath);
 	bool m_CapesScanned = false;

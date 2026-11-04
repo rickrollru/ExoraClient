@@ -3123,6 +3123,7 @@ if(CLIENT)
     components/xclient/ui/menu_assets.cpp
     components/xclient/ui/menu_bg.cpp
     components/xclient/ui/menu_configs.cpp
+    components/xclient/ui/menu_cosmetic_presets.cpp
     components/xclient/ui/menu_cosmetics.cpp
     components/xclient/ui/menu_ddnet.cpp
     components/xclient/ui/menu_demoplayer.cpp
