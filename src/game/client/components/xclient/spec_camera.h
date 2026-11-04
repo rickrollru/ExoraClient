@@ -10,8 +10,11 @@ class CXcSpecCamera
 {
 public:
 	// Target: where the game puts the camera this frame. Returns where to show it.
-	// FreeView: the camera moved by the mouse (never jumps, only a fast player follow may jump)
-	vec2 Apply(vec2 Target, float Dt, bool Active, bool FreeView);
+	// Mouse: the part of Target the mouse makes (the free view: all of it; following a player: the mouse offset).
+	// It moves the view at once, as the mouse moves: smoothing it felt like a broken mouse sensitivity and a fast
+	// swing made the view lag and jump. Only the rest (the watched player moving) glides.
+	// FreeView: the camera moved by the mouse
+	vec2 Apply(vec2 Target, vec2 Mouse, float Dt, bool Active, bool FreeView);
 	void Reset() { m_Valid = false; }
 
 private:
@@ -19,6 +22,8 @@ private:
 	vec2 m_Pos = vec2(0.0f, 0.0f);
 	vec2 m_Vel = vec2(0.0f, 0.0f);
 	vec2 m_LastTarget = vec2(0.0f, 0.0f);
+	vec2 m_LastMouse = vec2(0.0f, 0.0f);
+	bool m_LastFreeView = false;
 };
 
 #endif

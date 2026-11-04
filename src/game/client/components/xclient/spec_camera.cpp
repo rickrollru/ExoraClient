@@ -5,29 +5,31 @@
 #include <algorithm>
 #include <cmath>
 
-vec2 CXcSpecCamera::Apply(vec2 Target, float Dt, bool Active, bool FreeView)
+vec2 CXcSpecCamera::Apply(vec2 Target, vec2 Mouse, float Dt, bool Active, bool FreeView)
 {
 	if(!Active || g_Config.m_XcSpecSmooth <= 0)
 	{
 		m_Valid = false;
 		return Target;
 	}
-	// a jump of the watched player (a teleport, a respawn) is followed at once, not flown through; the free view
-	// moved by the mouse never jumps, however fast the mouse goes
-	if(!m_Valid || (!FreeView && distance(Target, m_LastTarget) > 900.0f))
+	// a jump of the watched player (a teleport, a respawn) is followed at once, not flown through
+	const vec2 Base = Target - Mouse;
+	if(!m_Valid || (!FreeView && FreeView == m_LastFreeView && distance(Base, m_LastTarget - m_LastMouse) > 900.0f))
 	{
 		m_Valid = true;
 		m_Pos = Target;
 		m_Vel = vec2(0.0f, 0.0f);
 	}
+	// the mouse moves the view as it is: no lag, no glide, however fast it goes (switching between the free view
+	// and following a player changes what the mouse part means, that switch glides instead)
+	if(FreeView == m_LastFreeView)
+		m_Pos += Mouse - m_LastMouse;
+	m_LastFreeView = FreeView;
+	m_LastMouse = Mouse;
 	m_LastTarget = Target;
 	Dt = std::clamp(Dt, 0.0f, 0.1f);
 	// the time the camera needs to catch up: 0.05 s (barely) .. 0.6 s (very soft)
-	float SmoothTime = 0.05f + 0.55f * std::pow(g_Config.m_XcSpecSmooth / 100.0f, 1.5f);
-	// the free view is moved by the mouse itself: a long glide there feels like a broken mouse sensitivity (the
-	// view comes late), so it only takes the edge off; following a player keeps the full softness
-	if(FreeView)
-		SmoothTime = std::min(SmoothTime, 0.03f + 0.07f * g_Config.m_XcSpecSmooth / 100.0f);
+	const float SmoothTime = 0.05f + 0.55f * std::pow(g_Config.m_XcSpecSmooth / 100.0f, 1.5f);
 	// a critically damped spring, exact for any frame time (the same glide at 30 and at 500 fps)
 	const float Omega = 2.0f / SmoothTime;
 	const float x = Omega * Dt;
