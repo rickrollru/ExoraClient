@@ -1077,13 +1077,13 @@ void CXcRenderer::DrawFullscreen(unsigned Program, unsigned Texture)
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void CXcRenderer::ScissorScaled(const int *pRegion, int FullWidth, const STarget &Target)
+void CXcRenderer::ScissorScaled(const int *pRegion, int FullWidth, const STarget &Target, int Border)
 {
 	const float Scale = (float)Target.m_Width / FullWidth;
-	const int x = (int)std::floor(pRegion[0] * Scale) - 2;
-	const int y = (int)std::floor(pRegion[1] * Scale) - 2;
-	const int w = (int)std::ceil(pRegion[2] * Scale) + 4;
-	const int h = (int)std::ceil(pRegion[3] * Scale) + 4;
+	const int x = (int)std::floor(pRegion[0] * Scale) - Border;
+	const int y = (int)std::floor(pRegion[1] * Scale) - Border;
+	const int w = (int)std::ceil(pRegion[2] * Scale) + Border * 2;
+	const int h = (int)std::ceil(pRegion[3] * Scale) + Border * 2;
 	glScissor(x, y, w, h);
 }
 
@@ -1100,11 +1100,13 @@ void CXcRenderer::BlurChain(STarget *pTargets, int NumLevels, float Offset, int 
 		glViewport(0, 0, Dst.m_Width, Dst.m_Height);
 		if(pRegion)
 		{
-			// the region plus a small border, so the filter never reads data from older frames
+			// the region plus a small border is drawn; a wider border is cleared, because the next level and the
+			// way back up read a few texels around what was drawn: older frames there showed as a light box
 			glEnable(GL_SCISSOR_TEST);
-			ScissorScaled(pRegion, FullWidth, Dst);
+			ScissorScaled(pRegion, FullWidth, Dst, CLEAR_BORDER);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
+			ScissorScaled(pRegion, FullWidth, Dst);
 		}
 		glUniform2f(m_LocDownHalfPixel, 0.5f * Offset / Src.m_Width, 0.5f * Offset / Src.m_Height);
 		DrawFullscreen(m_DownProgram, Src.m_Texture);
@@ -1215,9 +1217,10 @@ void CXcRenderer::DrawShapes(const XcRender::SCommand_DrawShapes *pCommand)
 	glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
 	glViewport(0, 0, m_aBloom[0].m_Width, m_aBloom[0].m_Height);
 	glEnable(GL_SCISSOR_TEST);
-	ScissorScaled(aRegion, Width, m_aBloom[0]);
+	ScissorScaled(aRegion, Width, m_aBloom[0], CLEAR_BORDER);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+	ScissorScaled(aRegion, Width, m_aBloom[0]);
 	glUniform1i(m_LocBloomPass, 1);
 	glUniform1f(m_LocThreshold, Settings.m_BloomThreshold);
 	glUniform1f(m_LocPixel, Pixel * 2.0f);
@@ -1365,7 +1368,9 @@ void CXcRenderer::CaptureBegin(const XcRender::SCommand_CaptureBegin *pCommand)
 	// from now on DDNet draws into our texture
 	glBindFramebuffer(GL_FRAMEBUFFER, m_aCapture[Level].m_Fbo);
 	glEnable(GL_SCISSOR_TEST);
-	glScissor(pRegion[0], pRegion[1], pRegion[2], pRegion[3]);
+	// a border around the region is cleared too: the first step of the glow reads a few pixels around it, and the
+	// texture there still holds older captures
+	glScissor(pRegion[0] - CLEAR_BORDER * 2, pRegion[1] - CLEAR_BORDER * 2, pRegion[2] + CLEAR_BORDER * 4, pRegion[3] + CLEAR_BORDER * 4);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1413,9 +1418,10 @@ void CXcRenderer::CaptureEnd(const XcRender::SCommand_CaptureEnd *pCommand)
 			glBindFramebuffer(GL_FRAMEBUFFER, m_aBloom[0].m_Fbo);
 			glViewport(0, 0, m_aBloom[0].m_Width, m_aBloom[0].m_Height);
 			glEnable(GL_SCISSOR_TEST);
-			ScissorScaled(pRegion, Width, m_aBloom[0]);
+			ScissorScaled(pRegion, Width, m_aBloom[0], CLEAR_BORDER);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
+			ScissorScaled(pRegion, Width, m_aBloom[0]);
 			glDisable(GL_BLEND);
 			glUseProgram(m_DownProgram);
 			glUniform1i(m_LocDownTex, 0);

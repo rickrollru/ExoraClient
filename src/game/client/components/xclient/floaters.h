@@ -65,6 +65,8 @@ private:
 	void DrawCube(const SFloater &Floater, vec2 Pos, float Size, ColorRGBA Color, float Alpha) const;
 	// fireflies, notes, runes and hearts
 	void DrawShape(const SFloater &Floater, float Size, ColorRGBA Color, float Alpha, float Time) const;
+	int m_LastKinds = -1; // a new mix of kinds or runes: the floaters take it at once
+	int m_LastRunes = -1;
 	float m_NotesFade = 0.0f; // the notes fade out when the music stops
 };
 

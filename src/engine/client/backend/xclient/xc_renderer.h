@@ -39,6 +39,7 @@ private:
 	{
 		MAX_LEVELS = 7,
 		MAX_GLOW_LEVELS = 5,
+		CLEAR_BORDER = 8, // texels cleared around a region at each blur level, more than the filters read around it
 	};
 
 	bool m_Initialized = false;
@@ -152,7 +153,7 @@ private:
 	// Dual Kawase: down to NumLevels-1, then back up to level 0.
 	// pRegion (x, y, w, h in full resolution pixels) limits the work to that part of the screen.
 	void BlurChain(STarget *pTargets, int NumLevels, float Offset, int FullWidth, const int *pRegion = nullptr);
-	static void ScissorScaled(const int *pRegion, int FullWidth, const STarget &Target);
+	static void ScissorScaled(const int *pRegion, int FullWidth, const STarget &Target, int Border = 2);
 	void DrawFullscreen(unsigned Program, unsigned Texture);
 };
 

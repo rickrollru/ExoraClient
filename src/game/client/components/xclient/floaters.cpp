@@ -403,6 +403,23 @@ void CXcFloaters::OnRender()
 			Spawn(m_vFloaters[i], X0, Y0, X1, Y1, true);
 	}
 
+	// another mix picked in the menu: those that fly now change at once (before only new ones took it)
+	if(Kinds() != m_LastKinds || g_Config.m_XcFloatersRunes != m_LastRunes)
+	{
+		const bool First = m_LastKinds < 0;
+		m_LastKinds = Kinds();
+		m_LastRunes = g_Config.m_XcFloatersRunes;
+		if(!First)
+		{
+			for(SFloater &Floater : m_vFloaters)
+			{
+				const vec2 Pos = Floater.m_Pos;
+				Spawn(Floater, X0, Y0, X1, Y1, true);
+				Floater.m_Pos = Pos; // the same place, it only fades in as the new kind
+			}
+		}
+	}
+
 	// notes: only while the music plays (when asked), bobbing to a steady beat
 	const bool Music = GameClient()->m_XcMusic.HasTrack() && GameClient()->m_XcMusic.PausedFor() <= 0.0f;
 	const bool NotesShown = !g_Config.m_XcFloatersNotesMusic || Music;

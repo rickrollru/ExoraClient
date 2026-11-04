@@ -640,7 +640,7 @@ namespace XcUi
 			{"Cubes", "Кубики"},
 			{"Orbs", "Огоньки"},
 			{"Both", "Всё вместе"},
-			{"Floating lights", "Летающие огоньки"},
+			{"Drifting particles", "Парящие частицы"},
 			{"Glowing cubes and orbs drift around, your tee pushes them away", "Светящиеся кубики и огоньки летают вокруг, а твой ти их расталкивает"},
 			{"Your tee pushes them", "Ти расталкивает их"},
 			{"Confetti", "Конфетти"},

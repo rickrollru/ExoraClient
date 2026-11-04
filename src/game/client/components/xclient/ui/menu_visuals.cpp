@@ -289,7 +289,7 @@ void CXcMenu::RenderVisualsGeneral()
 			{Tr("Freeze"), "xc_fxglow_freeze", &g_Config.m_XcFxglowFreeze, "xc_fxglow_freeze_size", &g_Config.m_XcFxglowFreezeSize},
 			{Tr("Crosshair"), "xc_fxglow_crosshair", &g_Config.m_XcFxglowCrosshair, "xc_fxglow_crosshair_size", &g_Config.m_XcFxglowCrosshairSize},
 			{Tr("Weather"), "xc_fxglow_weather", &g_Config.m_XcFxglowWeather, "xc_fxglow_weather_size", &g_Config.m_XcFxglowWeatherSize},
-			{Tr("Floating lights"), "xc_fxglow_floaters", &g_Config.m_XcFxglowFloaters, "xc_fxglow_floaters_size", &g_Config.m_XcFxglowFloatersSize},
+			{Tr("Drifting particles"), "xc_fxglow_floaters", &g_Config.m_XcFxglowFloaters, "xc_fxglow_floaters_size", &g_Config.m_XcFxglowFloatersSize},
 			{Tr("Dummy arrow"), "xc_fxglow_arrow", &g_Config.m_XcFxglowArrow, "xc_fxglow_arrow_size", &g_Config.m_XcFxglowArrowSize},
 			{Tr("Cape and scarf"), "xc_fxglow_cape", &g_Config.m_XcFxglowCape, "xc_fxglow_cape_size", &g_Config.m_XcFxglowCapeSize},
 		};
@@ -950,10 +950,17 @@ void CXcMenu::RenderVisualsWorld()
 			EffectColorPicker("##ambience_fog_color", &g_Config.m_XcAmbienceFogColorMode, &g_Config.m_XcAmbienceFogColor);
 		EndCard();
 	}
-	const char *apFloaters[] = {Tr("Cubes"), Tr("Orbs"), Tr("Both")};
-	if(StyleCard("##fx_floaters", Tr("Floating lights"), Tr("Glowing cubes, orbs, fireflies, notes, runes and hearts drift around, your tee pushes them away"), "xc_floaters", &g_Config.m_XcFloaters, apFloaters, 3))
+	// on or off only: what flies is picked by the switches below (xc_floaters stays as the old style for old configs)
+	int FloatersOn = g_Config.m_XcFloaters > 0;
+	const int FloatersWasOn = FloatersOn;
+	if(BeginCard("##fx_floaters", Tr("Drifting particles"), Tr("Glowing cubes, orbs, fireflies, notes, runes and hearts drift around, your tee pushes them away"), &FloatersOn))
 	{
-		// what flies: any mix of the kinds (the style above is the mix while none is picked here)
+		if(FloatersOn != FloatersWasOn)
+		{
+			if(FloatersOn && !g_Config.m_XcFloatersKinds)
+				SetConfigInt("xc_floaters_kinds", CXcFloaters::Kinds());
+			SetConfigInt("xc_floaters", FloatersOn ? 3 : 0);
+		}
 		ParamLabel(Tr("What flies"));
 		const char *apKinds[] = {Tr("Cubes"), Tr("Orbs"), Tr("Fireflies"), Tr("Notes"), Tr("Runes"), Tr("Hearts")};
 		const int Mask = CXcFloaters::Kinds();
