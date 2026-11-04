@@ -678,5 +678,7 @@ MACRO_CONFIG_INT(Xc3dFreeze, xc_3d_freeze, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAV
 MACRO_CONFIG_COL(Xc3dFreezeColor, xc_3d_freeze_color, 9728921, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: color of the freeze")
 MACRO_CONFIG_INT(Xc3dFreezeAlpha, xc_3d_freeze_alpha, 45, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "3D view: how much the freeze covers what is behind it (%)")
 
+MACRO_CONFIG_INT(XcBrAutoRefresh, xc_br_auto_refresh, 60, 0, 600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Server list: refresh it on its own every so many seconds while it is open (0 = off)")
+
 // live map editing (our own server)
 MACRO_CONFIG_INT(SvXcLiveEdit, sv_xc_live_edit, 0, 0, 1, CFGFLAG_SERVER, "Exora Client players can change the map while it is played (map editor, playing together)")

@@ -130,6 +130,7 @@ private:
 
 	// servers page
 	std::string m_SelectedServer; // address
+	float m_BrowserAutoTime = 0.0f; // seconds since the server list was refreshed, for xc_br_auto_refresh
 	bool m_ScrollToSelected = false; // the list scrolls to the selected server once (the play button of the home page)
 	bool m_ServersRequested = false; // the home page asks for the list too
 	bool m_BrowserOpened = false;

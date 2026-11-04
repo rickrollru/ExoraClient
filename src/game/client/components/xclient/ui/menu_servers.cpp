@@ -24,6 +24,7 @@
 #include <game/client/gameclient.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <optional>
 
 using namespace XcUi;
@@ -879,6 +880,19 @@ void CXcMenu::RenderBrowserFilters()
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
+	Title(Tr("Refresh on its own"));
+	{
+		static const int s_aSeconds[] = {0, 30, 60, 120};
+		const char *apItems[] = {Tr("Off"), Tr("30 s"), Tr("1 min"), Tr("2 min")};
+		int Current = 0;
+		for(int i = 0; i < 4; i++)
+			if(std::abs(g_Config.m_XcBrAutoRefresh - s_aSeconds[i]) < std::abs(g_Config.m_XcBrAutoRefresh - s_aSeconds[Current]))
+				Current = i;
+		if(Segmented("##auto_refresh", &Current, apItems, 4))
+			g_Config.m_XcBrAutoRefresh = s_aSeconds[Current];
+	}
+
+	ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
 	Title(Tr("Text filters"));
 	ParamLabel(Tr("Hide servers with these words (separate with ;)"));
 	Changed |= InputText("##exclude", g_Config.m_BrExcludeString, sizeof(g_Config.m_BrExcludeString), "fng; vanilla");
@@ -1041,7 +1055,24 @@ void CXcMenu::RenderServers()
 		m_ServerPanel = m_ServerPanel == PANEL_FILTERS ? PANEL_SERVER : PANEL_FILTERS;
 	ImGui::SameLine(0.0f, S(6.0f));
 	if(IconButton(XC_ICON_ROTATE, Tr("Refresh")))
+	{
 		GameClient()->m_Menus.RefreshBrowserTab(true);
+		m_BrowserAutoTime = 0.0f;
+	}
+	// the players and the maps change: the list asks again on its own while it is open (in place, nothing jumps
+	// away; not on LAN, where a refresh empties the list first)
+	if(g_Config.m_XcBrAutoRefresh > 0 && ServerBrowser()->GetCurrentType() != IServerBrowser::TYPE_LAN)
+	{
+		if(ServerBrowser()->IsGettingServerlist() || ServerBrowser()->IsRefreshing())
+			m_BrowserAutoTime = 0.0f;
+		else
+			m_BrowserAutoTime += std::min(Client()->RenderFrameTime(), 0.5f);
+		if(m_BrowserAutoTime >= g_Config.m_XcBrAutoRefresh && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			ServerBrowser()->Refresh(ServerBrowser()->GetCurrentType());
+			m_BrowserAutoTime = 0.0f;
+		}
+	}
 	ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
 	RenderBrowserCommunities();
 	RenderBrowserTypes();
