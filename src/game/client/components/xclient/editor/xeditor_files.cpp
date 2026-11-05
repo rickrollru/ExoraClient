@@ -18,6 +18,8 @@
 #include <game/client/components/xclient/ui/theme.h>
 #include <game/client/components/xclient/ui/widgets.h>
 #include <game/editor/editor.h>
+#include <game/editor/mapitems/image.h>
+#include <game/editor/mapitems/sound.h>
 
 #include <engine/external/imgui/imgui.h>
 #include <engine/external/imgui/imgui_internal.h>
@@ -51,7 +53,18 @@ void CXcEditorUi::RenderFileDialog()
 		str_copy(m_aFileFilter, B.m_FilterInput.GetString());
 		str_copy(m_aFileName, B.m_FilenameInput.GetString());
 		m_FileFocus = true;
+		m_vFileMulti.clear();
+		m_FileMultiAnchor = -1;
 	}
+	// images and sounds can be added several at a time
+	const bool MultiAllowed = !B.m_SaveAction && (B.m_pfnOpenCallback == CEditor::AddImage || B.m_pfnOpenCallback == CEditor::AddSound);
+	if(!MultiAllowed || m_FileMultiPath != B.m_pCurrentPath)
+	{
+		m_vFileMulti.clear();
+		m_FileMultiAnchor = -1;
+		m_FileMultiPath = B.m_pCurrentPath;
+	}
+	const auto IsMulti = [&](const char *pFilename) { return std::find(m_vFileMulti.begin(), m_vFileMulti.end(), pFilename) != m_vFileMulti.end(); };
 
 	// a classic popup over the dialog (new folder, delete, overwrite) owns the keyboard
 	// our own small card over the dialog (new folder, delete) blocks the dialog the same way
@@ -234,6 +247,34 @@ void CXcEditorUi::RenderFileDialog()
 				const ImVec2 Max(Min.x + RowWidth, Min.y + RowHeight);
 				if(ImGui::InvisibleButton("##file", ImVec2(RowWidth, RowHeight)))
 				{
+					const ImGuiIO &Io = ImGui::GetIO();
+					if(MultiAllowed && !pItem->m_IsDir && (Io.KeyCtrl || Io.KeyShift))
+					{
+						// the one picked before joins the set
+						if(m_vFileMulti.empty() && B.m_SelectedFileIndex >= 0 && B.m_SelectedFileIndex < (int)B.m_vpFilteredFileList.size() && !B.m_vpFilteredFileList[B.m_SelectedFileIndex]->m_IsDir)
+						{
+							m_vFileMulti.emplace_back(B.m_vpFilteredFileList[B.m_SelectedFileIndex]->m_aFilename);
+							m_FileMultiAnchor = B.m_SelectedFileIndex;
+						}
+						if(Io.KeyShift && m_FileMultiAnchor >= 0)
+						{
+							// everything between the last click and this one
+							const int From = std::min(m_FileMultiAnchor, i), To = std::max(m_FileMultiAnchor, i);
+							for(int k = From; k <= To && k < (int)B.m_vpFilteredFileList.size(); k++)
+								if(!B.m_vpFilteredFileList[k]->m_IsDir && !IsMulti(B.m_vpFilteredFileList[k]->m_aFilename))
+									m_vFileMulti.emplace_back(B.m_vpFilteredFileList[k]->m_aFilename);
+						}
+						else if(IsMulti(pItem->m_aFilename))
+							m_vFileMulti.erase(std::find(m_vFileMulti.begin(), m_vFileMulti.end(), pItem->m_aFilename));
+						else
+							m_vFileMulti.emplace_back(pItem->m_aFilename);
+						m_FileMultiAnchor = i;
+					}
+					else
+					{
+						m_vFileMulti.clear();
+						m_FileMultiAnchor = i;
+					}
 					B.m_SelectedFileIndex = i;
 				}
 				const bool Hovered = ImGui::IsItemHovered();
@@ -242,7 +283,7 @@ void CXcEditorUi::RenderFileDialog()
 					B.m_SelectedFileIndex = i;
 					Activate = true;
 				}
-				const bool Selected = B.m_SelectedFileIndex == i;
+				const bool Selected = m_vFileMulti.empty() ? B.m_SelectedFileIndex == i : IsMulti(pItem->m_aFilename);
 				if(Selected)
 					pListDraw->AddRectFilled(Min, Max, Col(t.m_Accent, 0.22f), S(7.0f));
 				else if(Hovered)
@@ -299,6 +340,8 @@ void CXcEditorUi::RenderFileDialog()
 			Description(Tr("Nothing here"));
 	}
 	ImGui::EndChild();
+	if(MultiAllowed)
+		pDraw->AddText(pSmall, pSmall->FontSize * 0.9f, ImVec2(ListPos.x + S(4.0f), ListPos.y + ListHeight - pSmall->FontSize), Col(t.m_TextMuted), Tr("Ctrl + click: pick several, Shift + click: a range"));
 
 	if(Preview)
 	{
@@ -352,7 +395,11 @@ void CXcEditorUi::RenderFileDialog()
 	if(Button(Tr("Cancel"), false, ButtonWidth) || Escape)
 		Close = true;
 	ImGui::SameLine(0.0f, S(8.0f));
-	if(Button(IsDir ? Tr("Open") : Tr(B.m_aButtonText), true, ButtonWidth) || (!ClassicPopup && (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter))))
+	char aAddMany[64];
+	const bool Many = m_vFileMulti.size() > 1;
+	if(Many)
+		str_format(aAddMany, sizeof(aAddMany), "%s (%d)", Tr(B.m_aButtonText), (int)m_vFileMulti.size());
+	if(Button(Many ? aAddMany : (IsDir ? Tr("Open") : Tr(B.m_aButtonText)), true, ButtonWidth) || (!ClassicPopup && (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter))))
 		Activate = true;
 
 	ImGui::EndDisabled();
@@ -367,7 +414,54 @@ void CXcEditorUi::RenderFileDialog()
 		E.OnDialogClose();
 		return;
 	}
-	if(Activate && !ClassicPopup)
+	if(Activate && !ClassicPopup && m_vFileMulti.size() > 1)
+	{
+		// all the picked ones; those already in the map are left out quietly instead of one error each
+		const bool Images = B.m_pfnOpenCallback == CEditor::AddImage;
+		int Added = 0, Skipped = 0;
+		const std::vector<std::string> vFiles = m_vFileMulti;
+		const std::string Folder = B.m_pCurrentPath;
+		for(const std::string &File : vFiles)
+		{
+			int StorageType = B.m_StorageType;
+			for(const auto *pItem : B.m_vpFilteredFileList)
+				if(File == pItem->m_aFilename)
+					StorageType = pItem->m_StorageType;
+			char aName[IO_MAX_PATH_LENGTH];
+			fs_split_file_extension(File.c_str(), aName, sizeof(aName));
+			bool Exists = false;
+			if(Images)
+			{
+				for(const auto &pImage : E.Map()->m_vpImages)
+					Exists |= str_comp(pImage->m_aName, aName) == 0;
+			}
+			else
+			{
+				for(const auto &pSound : E.Map()->m_vpSounds)
+					Exists |= str_comp(pSound->m_aName, aName) == 0;
+			}
+			if(Exists)
+			{
+				Skipped++;
+				continue;
+			}
+			char aPath[IO_MAX_PATH_LENGTH];
+			str_format(aPath, sizeof(aPath), "%s/%s", Folder.c_str(), File.c_str());
+			if(B.m_pfnOpenCallback(aPath, StorageType, B.m_pOpenCallbackUser))
+				Added++;
+			else
+				break; // the limit of the map or a broken file: its message is shown
+		}
+		m_vFileMulti.clear();
+		char aBuf[128];
+		if(Skipped > 0)
+			str_format(aBuf, sizeof(aBuf), Images ? Tr("Added images: %d, already in the map: %d") : Tr("Added sounds: %d, already in the map: %d"), Added, Skipped);
+		else
+			str_format(aBuf, sizeof(aBuf), Images ? Tr("Added images: %d") : Tr("Added sounds: %d"), Added);
+		Toast(aBuf, Added > 0 ? TOAST_SUCCESS : TOAST_INFO);
+		E.OnDialogClose();
+	}
+	else if(Activate && !ClassicPopup)
 	{
 		B.XcOpenSelected();
 		// a new folder: the fields follow it

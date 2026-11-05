@@ -256,6 +256,10 @@ private:
 	bool m_FileFocus = false;
 	char m_aFileFilter[IO_MAX_PATH_LENGTH] = {};
 	char m_aFileName[IO_MAX_PATH_LENGTH] = {};
+	// several images or sounds picked with Ctrl (Shift: a range) and added at once
+	std::vector<std::string> m_vFileMulti;
+	std::string m_FileMultiPath; // the folder they are in: another folder starts over
+	int m_FileMultiAnchor = -1;
 	// the new folder and delete cards over the file dialog
 	enum
 	{
