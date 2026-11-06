@@ -46,6 +46,12 @@ void CXcMenu::OnInit()
 	m_Page = std::clamp(g_Config.m_XcMenuPage, 0, NUM_PAGES - 1);
 	m_SettingsSection = std::clamp(g_Config.m_XcMenuSettingsSection, 0, NUM_SETTINGS - 1);
 	m_VisualsSection = std::clamp(g_Config.m_XcMenuVisualsSection, 0, NUM_VISUALS - 1);
+	// the start clock: the client opens on it, a click goes to the home
+	if(g_Config.m_XcStartClock)
+	{
+		m_StartLocked = true;
+		m_Page = PAGE_HOME;
+	}
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
 	m_MapPreviews.Init(Graphics(), Storage(), GameClient()->Engine());
@@ -256,6 +262,7 @@ void CXcMenu::UpdateStyle()
 		Fonts.m_pHeader = BackendFonts.m_pHeader;
 		Fonts.m_pSmall = BackendFonts.m_pSmall;
 		Fonts.m_pIcons = BackendFonts.m_pIcons;
+		Fonts.m_pClock = BackendFonts.m_pClock;
 		SetFonts(Fonts);
 	}
 	// everything the theme is made of, so a change shows at once
@@ -311,7 +318,7 @@ void CXcMenu::RenderBackground()
 }
 
 // a filled circle whose color fades from the center to fully transparent at the edge
-static void SoftCircle(ImDrawList *pDraw, ImVec2 Center, float Radius, ImVec4 Color)
+void XcSoftCircle(ImDrawList *pDraw, ImVec2 Center, float Radius, ImVec4 Color)
 {
 	const int Segments = 64;
 	// center -> inner ring -> edge, the two steps make the falloff look round instead of conic
@@ -346,7 +353,7 @@ static void SoftCircle(ImDrawList *pDraw, ImVec2 Center, float Radius, ImVec4 Co
 	}
 }
 
-static ImVec4 ShiftHue(const ImVec4 &Color, float Shift)
+ImVec4 XcShiftHue(const ImVec4 &Color, float Shift)
 {
 	float h, s, v;
 	ImGui::ColorConvertRGBtoHSV(Color.x, Color.y, Color.z, h, s, v);
@@ -357,12 +364,28 @@ static ImVec4 ShiftHue(const ImVec4 &Color, float Shift)
 }
 
 // cheap stable pseudo random number in [0, 1) for particle i
-static float Hash(int i, int Salt)
+float XcHash(int i, int Salt)
 {
 	unsigned x = (unsigned)i * 747796405u + (unsigned)Salt * 2891336453u;
 	x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u;
 	x = (x >> 22u) ^ x;
 	return (x & 0xffffff) / (float)0x1000000;
+}
+
+void CXcMenu::RenderMenuBackground(ImDrawList *pDraw, float Alpha)
+{
+	if(g_Config.m_XcMenuAnimStyle == 0 || g_Config.m_XcMenuAnimStyle == 1)
+	{
+		// time stands still when animations are off
+		if(AnimationSpeed() > 0.0f)
+			m_BackgroundTime += std::min(Client()->RenderFrameTime(), 0.1f);
+		if(g_Config.m_XcMenuAnimStyle == 0)
+			RenderTeesBackground(pDraw, Alpha);
+		else
+			RenderWavesBackground(pDraw, Alpha);
+		return;
+	}
+	RenderAnimatedBackground(pDraw, Alpha);
 }
 
 void CXcMenu::RenderAnimatedBackground(ImDrawList *pDraw, float Alpha)
@@ -403,9 +426,9 @@ void CXcMenu::RenderAnimatedBackground(ImDrawList *pDraw, float Alpha)
 		const ImVec2 Center(Size.x * (Glow.m_X + Glow.m_MoveX * std::sin(Time * Glow.m_SpeedX * 2.0f * IM_PI)),
 			Size.y * (Glow.m_Y + Glow.m_MoveY * std::cos(Time * Glow.m_SpeedY * 2.0f * IM_PI)));
 		const float Breath = 1.0f + 0.06f * std::sin(Time * 0.35f + Glow.m_X * 10.0f);
-		ImVec4 Color = ShiftHue(t.m_Accent, Glow.m_Hue);
+		ImVec4 Color = XcShiftHue(t.m_Accent, Glow.m_Hue);
 		Color.w = BaseAlpha * Glow.m_Strength;
-		SoftCircle(pDraw, Center, Size.y * Glow.m_Radius * Breath, Color);
+		XcSoftCircle(pDraw, Center, Size.y * Glow.m_Radius * Breath, Color);
 	}
 
 	// faint dot grid, a bit brighter where the light falls
@@ -420,17 +443,17 @@ void CXcMenu::RenderAnimatedBackground(ImDrawList *pDraw, float Alpha)
 	const int NumSparks = 48;
 	for(int i = 0; i < NumSparks; i++)
 	{
-		const float Speed = 0.012f + Hash(i, 1) * 0.02f; // screen heights per second
-		const float Phase = std::fmod(Hash(i, 2) + Time * Speed, 1.0f);
-		const float x = Size.x * (Hash(i, 3) + 0.015f * std::sin(Time * (0.3f + Hash(i, 4)) + i));
+		const float Speed = 0.012f + XcHash(i, 1) * 0.02f; // screen heights per second
+		const float Phase = std::fmod(XcHash(i, 2) + Time * Speed, 1.0f);
+		const float x = Size.x * (XcHash(i, 3) + 0.015f * std::sin(Time * (0.3f + XcHash(i, 4)) + i));
 		const float y = Size.y * (1.05f - Phase * 1.1f);
 		// fade in at the bottom, out at the top, and twinkle
 		const float Fade = std::min(Phase * 6.0f, 1.0f) * std::min((1.0f - Phase) * 4.0f, 1.0f);
-		const float Twinkle = 0.55f + 0.45f * std::sin(Time * (1.5f + Hash(i, 5) * 2.0f) + i * 1.7f);
-		const float Radius = S(1.0f + Hash(i, 6) * 1.8f);
-		const ImVec4 Color = Hash(i, 7) < 0.6f ? t.m_Accent : ShiftHue(t.m_Accent, 0.08f);
+		const float Twinkle = 0.55f + 0.45f * std::sin(Time * (1.5f + XcHash(i, 5) * 2.0f) + i * 1.7f);
+		const float Radius = S(1.0f + XcHash(i, 6) * 1.8f);
+		const ImVec4 Color = XcHash(i, 7) < 0.6f ? t.m_Accent : XcShiftHue(t.m_Accent, 0.08f);
 		const float SparkAlpha = Fade * Twinkle * Alpha * (Light ? 0.5f : 0.7f);
-		SoftCircle(pDraw, ImVec2(x, y), Radius * 5.0f, ImVec4(Color.x, Color.y, Color.z, SparkAlpha * 0.25f));
+		XcSoftCircle(pDraw, ImVec2(x, y), Radius * 5.0f, ImVec4(Color.x, Color.y, Color.z, SparkAlpha * 0.25f));
 		pDraw->AddCircleFilled(ImVec2(x, y), Radius, Col(Color, SparkAlpha), 12);
 	}
 
@@ -550,17 +573,50 @@ void CXcMenu::RenderFrame()
 	ImDrawList *pBackground = ImGui::GetBackgroundDrawList();
 	const int Background = EffectiveBackground();
 	if(Background == BG_ANIMATED)
-		RenderAnimatedBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
+		RenderMenuBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
 	else if(Background == BG_CUSTOM)
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(ImVec4(0, 0, 0, 1), g_Config.m_XcMenuBgDim / 100.0f * (IsOnline() ? Open : 1.0f)));
 	else // darken the game or the map a little behind the menu
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, (IsOnline() ? 0.35f : 0.15f) * Open));
 
+	// the start clock and the minimal home take the whole screen, without the bar and the panel
+	const float FrameDt = std::min(Client()->RenderFrameTime(), 0.1f);
+	if(IsOnline())
+		m_StartLocked = false;
+	if(m_Page == PAGE_HOME && m_LastShownPage != PAGE_HOME && !m_StartLocked)
+		m_HomeTime = 0.0001f; // back on the home: its parts come in again
+	m_LastShownPage = m_Page;
+	if(m_StartLocked || (m_Page == PAGE_HOME && MinimalHome()))
+	{
+		ImGui::GetStyle().Alpha = Open * Settled();
+		ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+		ImGui::SetNextWindowSize(Io.DisplaySize);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(28.0f), S(24.0f)));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::Begin("##xc_start", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
+		ImGui::PopStyleVar(2);
+		ImGui::PushFont(Fonts().m_pBody);
+		RenderMinimalHome(FrameDt);
+		ImGui::PopFont();
+		ImGui::End();
+		if(m_StartLocked)
+			RenderStartScreen(FrameDt);
+		else if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+			OpenSearch();
+		RenderSearch();
+		RenderConnectionPopup();
+		RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Open);
+		return;
+	}
+	// a page opened from the minimal home fades in and rises a little
+	m_PageAppear = std::min(m_PageAppear + FrameDt / 0.5f, 1.0f);
+	const float PageIn = 1.0f - std::pow(1.0f - m_PageAppear, 3.0f);
+
 	// the background is drawn, the content waits for the window and the fonts to settle
-	const float Shown = Open * Settled();
+	const float Shown = Open * Settled() * PageIn;
 	ImGui::GetStyle().Alpha = Shown;
 	const float Margin = S(24.0f);
-	const float Slide = (1.0f - Shown) * S(14.0f);
+	const float Slide = (1.0f - Shown) * S(14.0f) + (1.0f - PageIn) * S(10.0f);
 	ImGui::SetNextWindowPos(ImVec2(0.0f, Slide));
 	ImGui::SetNextWindowSize(Io.DisplaySize);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(Margin, S(20.0f)));
@@ -746,20 +802,23 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 	const ImVec2 Mouse = ImGui::GetIO().MousePos;
 	vec2 Dir = vec2(Mouse.x, Mouse.y) - Center;
 	Dir = length(Dir) > 1.0f && !Still ? normalize(Dir) : vec2(1.0f, 0.0f);
-	const float Bob = Still ? 0.0f : std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
+	if(Data.m_Look != vec2(0.0f, 0.0f))
+		Dir = normalize(Data.m_Look);
+	const float Bob = Still || Data.m_Alpha >= 0.0f ? 0.0f : std::sin(Client()->GlobalTime() * 2.0f) * Info.m_Size * 0.03f;
+	const float Alpha = Data.m_Alpha >= 0.0f ? Data.m_Alpha : ImGui::GetStyle().Alpha;
 	// the tiny avatar in the top bar stays without the hat, it would stick out of the bar
 	const bool Extras = !Dummy && !Data.m_aSkin[0];
 	const bool Hat = Extras && g_Config.m_XcHat && g_Config.m_XcHatSelf && Max.y - Min.y > 64.0f;
 	const bool Cloth = Extras && (g_Config.m_XcCapeSelf || g_Config.m_XcScarfSelf) && Max.y - Min.y > 64.0f;
 	// the big preview of your own tee shows its neon outline and shader too (the render module captures the tee)
 	XcRender::SGlowSettings GlowSettings;
-	const bool Neon = Extras && Max.y - Min.y > 96.0f && GameClient()->m_TeeGlow.PreviewSettings(Info.m_Size / 64.0f, ImGui::GetStyle().Alpha, GlowSettings);
+	const bool Neon = Extras && Max.y - Min.y > 96.0f && GameClient()->m_TeeGlow.PreviewSettings(Info.m_Size / 64.0f, Alpha, GlowSettings);
 	// the cape and the hat behind come first and stay as they are: the shader and the outline are only for the
 	// tee itself (over the cape they made it a grey see-through sheet)
 	if(Cloth)
-		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, ImGui::GetStyle().Alpha, Client()->GlobalTime());
+		GameClient()->m_XcCape.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, Alpha, Client()->GlobalTime());
 	if(Hat && g_Config.m_XcHatBehind)
-		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
+		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, Alpha);
 	if(Neon)
 	{
 		// on the stage only the crisp outline, no wide glow behind the tee
@@ -771,16 +830,16 @@ void CXcMenu::DrawTeePreview(const STeeDraw &Data)
 		const float aRect[4] = {Center.x - Reach, Center.y - Reach, Center.x + Reach, Center.y + Reach};
 		Graphics()->XcCaptureBegin(aRect);
 	}
-	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), ImGui::GetStyle().Alpha);
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, Dir, Center + vec2(0.0f, Bob), Alpha);
 	if(Neon)
 		Graphics()->XcCaptureEnd(GlowSettings);
 	if(Cloth && g_Config.m_XcScarfSelf)
-		GameClient()->m_XcCape.RenderPreviewFront(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha);
+		GameClient()->m_XcCape.RenderPreviewFront(Center + vec2(0.0f, Bob), Info.m_Size, Alpha);
 	if(Hat && !g_Config.m_XcHatBehind)
-		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, ImGui::GetStyle().Alpha);
+		GameClient()->m_XcHats.RenderOnTee(Center + vec2(0.0f, Bob), Info.m_Size, Dir.x < 0.0f, 0.0f, 0.0f, Alpha);
 	// the accessory (cone, halo, horns...) of the big preview, over the outline like in the game
 	if(Extras && Max.y - Min.y > 96.0f && g_Config.m_XcAccessorySelf)
-		GameClient()->m_Accessory.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, ImGui::GetStyle().Alpha, Client()->GlobalTime());
+		GameClient()->m_Accessory.RenderPreview(Center + vec2(0.0f, Bob), Info.m_Size, Alpha, Client()->GlobalTime());
 	Graphics()->WrapClamp();
 }
 

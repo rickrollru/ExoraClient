@@ -26,6 +26,7 @@ public:
 		ImFont *m_pHeader = nullptr; // bold, page headers
 		ImFont *m_pSmall = nullptr; // regular, descriptions and hints
 		ImFont *m_pIcons = nullptr; // big icons for the top bar
+		ImFont *m_pClock = nullptr; // thin big digits of the start screen clock (digits and colon only)
 	};
 
 	bool Init(IGraphics *pGraphics, IInput *pInput, IStorage *pStorage);

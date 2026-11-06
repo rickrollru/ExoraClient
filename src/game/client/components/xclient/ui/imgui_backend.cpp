@@ -223,6 +223,21 @@ void CImGuiBackend::LoadFonts(int Family, float Scale)
 	m_Fonts.m_pHeader = AddFont(pBold, BoldSize, 24.0f);
 	m_Fonts.m_pSmall = AddFont(pRegular, RegularSize, 13.0f);
 	m_Fonts.m_pIcons = AddFont(pSemiBold, SemiBoldSize, 18.0f);
+	// the start screen clock: big digits, always the light wide face, only the characters a time needs
+	{
+		int ClockSize;
+		const unsigned char *pClock = ReadFont("xclient/fonts/Unbounded-Regular.ttf", &ClockSize);
+		static const ImWchar s_aClockRanges[] = {0x0020, 0x0020, 0x0030, 0x003a, 0x0041, 0x0041, 0x004d, 0x004d, 0x0050, 0x0050, 0};
+		if(pClock)
+		{
+			ImFontConfig Config;
+			Config.FontDataOwnedByAtlas = false;
+			Config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LightHinting;
+			m_Fonts.m_pClock = pAtlas->AddFontFromMemoryTTF((void *)pClock, ClockSize, 132.0f * Scale, &Config, s_aClockRanges);
+		}
+		else
+			m_Fonts.m_pClock = m_Fonts.m_pHeader;
+	}
 	pAtlas->Build();
 	// the icons inside text: each one is moved so its drawing sits on the middle of the capitals and in the middle
 	// of its own place, so icons next to words and icons in a column line up

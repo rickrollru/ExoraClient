@@ -3131,6 +3131,7 @@ if(CLIENT)
     components/xclient/ui/menu_demos.cpp
     components/xclient/ui/menu_home.cpp
     components/xclient/ui/menu_home_v2.cpp
+    components/xclient/ui/menu_start.cpp
     components/xclient/ui/menu_update.cpp
     components/xclient/perf_detail.cpp
     components/xclient/perf_detail.h

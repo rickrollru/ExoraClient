@@ -57,7 +57,7 @@ int CXcMenu::RenderStatusScreen(const char *pTitle, const char *pText, const cha
 	else if(Background == BG_MAP)
 		pDraw->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, 0.35f)); // the menu map stays behind
 	else
-		RenderAnimatedBackground(pDraw, 1.0f); // no game to blur while connecting
+		RenderMenuBackground(pDraw, 1.0f); // no game to blur while connecting
 
 	ImFont *pHeader = Fonts().m_pHeader;
 	ImFont *pBody = Fonts().m_pBody;

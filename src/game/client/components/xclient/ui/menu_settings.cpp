@@ -187,6 +187,19 @@ void CXcMenu::RenderSettingsInterface()
 
 	RenderUpdateCard();
 
+	if(BeginCard("##start_screen", Tr("Start screen"), Tr("A clock when the client starts, a click opens the home"), &g_Config.m_XcStartClock))
+	{
+		ToggleRow(Tr("24 hours"), "xc_start_clock_24h", &g_Config.m_XcStartClock24h);
+		ToggleRow(Tr("Date"), "xc_start_clock_date", &g_Config.m_XcStartClockDate);
+		EndCard();
+	}
+	if(BeginCard("##home_style", Tr("Home page"), g_Config.m_XcHomeStyle == 0 ? Tr("Only the tee, Play and a row of icons") : Tr("Music, friends, news and the stage")))
+	{
+		const char *apStyles[] = {Tr("Minimal"), Tr("Detailed")};
+		ConfigSegmented("##home_style_seg", "xc_home_style", &g_Config.m_XcHomeStyle, apStyles, 2);
+		EndCard();
+	}
+
 	if(BeginCard("##theme", Tr("Theme"), Tr("Look of the menu: dark or light, and the accent color")))
 	{
 		const char *apThemes[] = {Tr("Dark"), Tr("Light")};

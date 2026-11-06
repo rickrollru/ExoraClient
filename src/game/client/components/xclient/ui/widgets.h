@@ -16,6 +16,7 @@ namespace XcUi
 		ImFont *m_pHeader = nullptr;
 		ImFont *m_pSmall = nullptr;
 		ImFont *m_pIcons = nullptr;
+		ImFont *m_pClock = nullptr;
 	};
 	void SetFonts(const SFonts &Fonts);
 	const SFonts &Fonts();

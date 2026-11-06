@@ -248,6 +248,7 @@ private:
 	void RenderBackground();
 	bool AnimatedBackground() const;
 	void RenderAnimatedBackground(struct ImDrawList *pDraw, float Alpha);
+	void RenderMenuBackground(struct ImDrawList *pDraw, float Alpha); // the chosen animated background (xc_menu_anim_style)
 	float m_BackgroundTime = 0.0f;
 	void RenderFrame();
 	void RenderTopBar(float Width);
@@ -321,9 +322,26 @@ private:
 		int m_ColorMode = -1; // -1: the colors of m_Who, 0: the skin's own colors, 1: m_Body and m_Feet
 		int m_Body = 0;
 		int m_Feet = 0;
+		float m_Alpha = -1.0f; // -1: the alpha of the menu
+		vec2 m_Look = vec2(0.0f, 0.0f); // 0, 0: the eyes follow the cursor
 	};
 	static void TeePreviewCallback(const struct ImDrawList *pList, const struct ImDrawCmd *pCmd);
 	void DrawTeePreview(const STeeDraw &Data);
+	// menu_start.cpp: the clock when the client starts, the minimal home, the animated backgrounds
+	bool m_StartLocked = false; // the clock screen is up
+	float m_StartTime = 0.0f; // how long the clock is shown
+	float m_StartLeave = -1.0f; // seconds since the clock was clicked away, -1 while it stays
+	float m_HomeTime = 0.0f; // how long the minimal home is shown: its parts come in one after another
+	int m_HomeLeaveTo = -1; // the page the minimal home is leaving for
+	float m_HomeLeave = 0.0f;
+	float m_PageAppear = 1.0f; // a page opened from the minimal home fades in
+	int m_LastShownPage = -1;
+	bool MinimalHome() const;
+	void RenderStartScreen(float Dt);
+	void RenderMinimalHome(float Dt);
+	void LeaveHome(int Page);
+	void RenderTeesBackground(struct ImDrawList *pDraw, float Alpha);
+	void RenderWavesBackground(struct ImDrawList *pDraw, float Alpha);
 	void AddTeePreview(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, bool Still = false, int Who = 0, const char *pSkin = nullptr);
 	void AddTeeSkin(struct ImDrawList *pDraw, const ImVec2 &Min, const ImVec2 &Max, const char *pSkin, bool CustomColors, int Body, int Feet); // someone else's tee
 	int m_PlayerTarget = 0; // Settings > Player edits 0 = you, 1 = the dummy

@@ -248,9 +248,17 @@ void CXcMenu::RenderSettingsBackground()
 		switch(g_Config.m_XcMenuBackground)
 		{
 		case 0: pHint = Tr("In game the game is blurred, in the main menu the animated background is shown"); break;
-		case 1: pHint = Tr("Soft glows in the accent color and floating sparks"); break;
+		case 1:
+			pHint = g_Config.m_XcMenuAnimStyle == 0 ? Tr("Tees float at different depths and look at the cursor") : (g_Config.m_XcMenuAnimStyle == 1 ? Tr("Soft lines flow like silk") : Tr("Soft glows in the accent color and floating sparks"));
+			break;
 		case 2: pHint = Tr("An animated DDNet map, pick one below"); break;
 		default: pHint = Tr("Your picture or gif, pick one below"); break;
+		}
+		if(g_Config.m_XcMenuBackground == 1)
+		{
+			ParamLabel(Tr("Animation"));
+			const char *apStyles[] = {Tr("Floating tees"), Tr("Waves"), Tr("Glows")};
+			ConfigSegmented("##bg_anim", "xc_menu_anim_style", &g_Config.m_XcMenuAnimStyle, apStyles, 3);
 		}
 		Description(pHint);
 		if(g_Config.m_XcMenuBackground == 3)
