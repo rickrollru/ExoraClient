@@ -221,6 +221,7 @@ void CHookFx::OnRender()
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
+		const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId); // another Exora player: his own look
 		SState &State = m_aStates[ClientId];
 		const bool AnyHit = g_Config.m_XcHookHitFx != HIT_OFF || g_Config.m_XcHookHitPlayerFx != HIT_OFF || g_Config.m_XcHookNohookFx != HIT_OFF;
 		if(!AnyHit || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||

@@ -575,10 +575,11 @@ void CXcMenu::RenderSharedCosmeticsCard()
 {
 	BeginCardGrid("##vis_shared", 1);
 	RenderCosmeticPresets();
-	if(BeginCard("##fx_shared", Tr("Shared cosmetics"), Tr("Other Exora players see your cape, scarf, accessory, shader and neon, and you see theirs")))
+	if(BeginCard("##fx_shared", Tr("Shared cosmetics"), Tr("Other Exora players see your cape, scarf, accessory, shader, neon, trail, hook, jumps, death and finish effects, gradient name and jelly tee, and you see theirs")))
 	{
 		ToggleRow(Tr("Others see my cosmetics"), "xc_cosmetics_share", &g_Config.m_XcCosmeticsShare);
 		ToggleRow(Tr("See the cosmetics of others"), "xc_cosmetics_others", &g_Config.m_XcCosmeticsOthers);
+		ToggleRow(Tr("Exora icon next to the players who play it"), "xc_exora_icon", &g_Config.m_XcExoraIcon);
 		const CXcCosmeticsSync &Sync = GameClient()->m_XcCosmetics;
 		char aStatus[128];
 		const char *pStatus = Sync.Status();

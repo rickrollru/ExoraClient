@@ -498,6 +498,7 @@ void CPlayers::RenderHook(
 {
 	if(pPlayerChar->m_HookState <= 0)
 		return;
+	const CXcCosmeticsSync::CScope XcShared(GameClient()->m_XcCosmetics, ClientId); // XClient: shared cosmetics of another Exora player
 
 	CNetObj_Character Prev;
 	CNetObj_Character Player;

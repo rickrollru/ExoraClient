@@ -45,11 +45,12 @@ void CJumpFx::OnRender()
 
 void CJumpFx::UpdatePlayers(float Dt)
 {
-	// the jump, the landing ring and the dust are turned on and off each on its own
-	const bool JumpEnabled = g_Config.m_XcJumpFx != JUMP_FX_OFF;
-	const bool AnyEnabled = JumpEnabled || g_Config.m_XcLandFx || g_Config.m_XcRunDust;
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
+		const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId); // another Exora player: his own look
+		// the jump, the landing ring and the dust are turned on and off each on its own
+		const bool JumpEnabled = g_Config.m_XcJumpFx != JUMP_FX_OFF;
+		const bool AnyEnabled = JumpEnabled || g_Config.m_XcLandFx || g_Config.m_XcRunDust;
 		SPlayerState &State = m_aPlayers[ClientId];
 		if(!AnyEnabled || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active || !ShowFor(GameClient(), ClientId, g_Config.m_XcJumpFxSelf, g_Config.m_XcJumpFxDummy, g_Config.m_XcJumpFxOthers) || PlayerAlpha(GameClient(), ClientId) <= 0.0f)
 		{

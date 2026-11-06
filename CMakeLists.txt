@@ -2188,6 +2188,7 @@ set(EXPECTED_DATA
   themes/winter_night.map
   touch_controls.json
   wordlist.txt
+  xclient/exora_icon.png
   xclient/fonts/Manrope-Bold.ttf
   xclient/fonts/Manrope-Regular.ttf
   xclient/fonts/Manrope-SemiBold.ttf

@@ -320,6 +320,12 @@ void CXcHud::RenderScoreboard(ImDrawList *pDraw, float Dt)
 			const ImVec2 NameDim = pLabel->CalcTextSizeA(NameSize, FLT_MAX, 0.0f, pShownName);
 			DrawFit(pDraw, pLabel, NameSize, ImVec2(NameX, MidY - NameDim.y * 0.5f), NameEnd, Col(NameColor, RowAlpha), pShownName);
 			NameX += std::min(NameDim.x, NameEnd - NameX) + 8.0f * U * S;
+			if(GameClient()->m_XcCosmetics.IsExora(Id))
+			{
+				// plays Exora Client
+				DrawLogo(pDraw, ImVec2(NameX + NameSize * 0.5f, MidY), NameSize * 1.05f, t.m_Accent, RowAlpha, false);
+				NameX += NameSize + 6.0f * U * S;
+			}
 			if(ClientData.m_Friend)
 			{
 				DrawIcon(pDraw, pSmall, NameSize * 0.85f, ImVec2(NameX + NameSize * 0.45f, MidY), Col(ImVec4(1.0f, 0.80f, 0.25f, 1.0f), RowAlpha), XC_ICON_STAR);

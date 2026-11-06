@@ -263,14 +263,18 @@ void CTrailFx::OnRender()
 		return;
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	m_Time += Dt;
-	const int Style = g_Config.m_XcTrail;
-	const float Length = g_Config.m_XcTrailLength / 1000.0f;
-	const float Scale = g_Config.m_XcTrailWidth / 100.0f;
-	const float Glow = g_Config.m_XcTrailGlow / 100.0f;
+	// the dashes and ghosts of everyone fade over your own length
+	const float OwnLength = g_Config.m_XcTrailLength / 1000.0f;
 
 	std::vector<SFxShape> vShapes;
 	for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
 	{
+		// another Exora player: his own trail (shared cosmetics)
+		const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId);
+		const int Style = g_Config.m_XcTrail;
+		const float Length = g_Config.m_XcTrailLength / 1000.0f;
+		const float Scale = g_Config.m_XcTrailWidth / 100.0f;
+		const float Glow = g_Config.m_XcTrailGlow / 100.0f;
 		STrail &Trail = m_aTrails[ClientId];
 		if(Style == TRAIL_OFF || !GameClient()->m_Snap.m_aCharacters[ClientId].m_Active ||
 			!ShowFor(GameClient(), ClientId, g_Config.m_XcTrailSelf, g_Config.m_XcTrailDummy, g_Config.m_XcTrailOthers))
@@ -432,10 +436,10 @@ void CTrailFx::OnRender()
 	}
 	GameClient()->m_FxRenderer.Draw(vShapes, true);
 	if(GameClient()->m_XcSprites.Enabled())
-		RenderDashes(Length);
+		RenderDashes(OwnLength);
 	else
 		m_vDashes.clear();
-	RenderGhosts(Length);
+	RenderGhosts(OwnLength);
 
 	m_Particles.Update(Dt);
 	m_Particles.Render(GameClient()->m_FxRenderer);

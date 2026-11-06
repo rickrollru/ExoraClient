@@ -44,8 +44,15 @@ private:
 		float m_Tilt = 0.0f;
 		float m_Spring = 0.0f; // vertical offset of the accessory relative to the head
 		float m_SpringVel = 0.0f;
+		float m_Lift = 0.0f; // how high it reaches above the head, the name plate goes over it
 	};
 	SState m_aStates[MAX_CLIENTS];
+
+public:
+	// how much higher the name plate of the player goes so it does not cover what he wears (0 for nothing)
+	float NamePlateLift(int ClientId) const { return ClientId >= 0 && ClientId < MAX_CLIENTS && m_aStates[ClientId].m_Valid ? m_aStates[ClientId].m_Lift : 0.0f; }
+
+private:
 	float m_Time = 0.0f;
 
 	void UpdateState(int ClientId, vec2 Pos, float Dt);

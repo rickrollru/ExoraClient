@@ -94,9 +94,12 @@ void CXcEventFx::OnMessage(int MsgType, void *pRawMsg)
 	const int ClientId = pMsg->m_ClientId;
 	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return;
-	if(ShowFor(GameClient(), ClientId, g_Config.m_XcFinishSelf, g_Config.m_XcFinishDummy, g_Config.m_XcFinishOthers) &&
-		GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
-		Finish(GameClient()->m_aClients[ClientId].m_RenderPos, ClientId);
+	{
+		const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId); // another Exora player: his own look
+		if(ShowFor(GameClient(), ClientId, g_Config.m_XcFinishSelf, g_Config.m_XcFinishDummy, g_Config.m_XcFinishOthers) &&
+			GameClient()->m_Snap.m_aCharacters[ClientId].m_Active)
+			Finish(GameClient()->m_aClients[ClientId].m_RenderPos, ClientId);
+	}
 
 	// the banner and the sound only for the own tees
 	if(!IsOwn(ClientId))
@@ -234,6 +237,7 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 		m_DeathMarkerPos = Pos;
 		m_DeathMarkerAge = 0.0f;
 	}
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId); // another Exora player: his own look
 	const int Style = g_Config.m_XcDeathFx;
 	if(Style == DEATH_OFF || ClientId < 0 || ClientId >= MAX_CLIENTS)
 		return;
@@ -373,8 +377,6 @@ void CXcEventFx::PlayerDeath(vec2 Pos, int ClientId)
 void CXcEventFx::PlayerSpawn(vec2 Pos)
 {
 	const FxTune::CScope TuneScope(FxTune::DEATH);
-	if(!g_Config.m_XcSpawnFx)
-		return;
 	// the spawn event has only a place: the tee standing there is the one who appeared
 	int ClientId = -1;
 	float Best = 64.0f;
@@ -389,6 +391,9 @@ void CXcEventFx::PlayerSpawn(vec2 Pos)
 			ClientId = i;
 		}
 	}
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId); // another Exora player: his own look
+	if(!g_Config.m_XcSpawnFx)
+		return;
 	if(ClientId >= 0 && (!ShowFor(GameClient(), ClientId, g_Config.m_XcSpawnSelf, g_Config.m_XcSpawnDummy, g_Config.m_XcSpawnOthers) || PlayerAlpha(GameClient(), ClientId) <= 0.0f))
 		return;
 	const ColorRGBA Color = EffectColor(GameClient(), g_Config.m_XcSpawnColorMode, g_Config.m_XcSpawnColor, ClientId);

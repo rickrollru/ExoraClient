@@ -119,6 +119,9 @@ void CAccessory::OnRender()
 
 		const float TeeScale = Data.m_RenderInfo.m_Size / 64.0f;
 		const float Scale = TeeScale * g_Config.m_XcAccessorySize / 100.0f;
+		// a sign or a cross floats higher than a halo or a crown
+		const bool High = g_Config.m_XcAccessory == ACCESSORY_SIGN || g_Config.m_XcAccessory == ACCESSORY_CROSS || g_Config.m_XcAccessory == ACCESSORY_STARS;
+		State.m_Lift = (High ? 30.0f : 20.0f) * Scale * g_Config.m_XcAccessoryHeight / 100.0f;
 		const float Spring = State.m_Spring * Scale;
 		// pushed down = squashed, pulled up = stretched
 		const float Squash = std::clamp(1.0f - State.m_Spring / SPRING_MAX * 0.2f, 0.8f, 1.2f);

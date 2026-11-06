@@ -70,6 +70,7 @@ void CXcJelly::OnMapLoad()
 
 bool CXcJelly::Begin(int ClientId)
 {
+	const CXcCosmeticsSync::CScope Shared(GameClient()->m_XcCosmetics, ClientId); // another Exora player: his own look
 	if(!g_Config.m_XcJelly || ClientId < 0 || ClientId >= MAX_CLIENTS ||
 		!ShowFor(GameClient(), ClientId, g_Config.m_XcJellySelf, g_Config.m_XcJellyDummy, g_Config.m_XcJellyOthers))
 		return false;

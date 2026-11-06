@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 
 namespace
 {
@@ -27,9 +28,12 @@ struct SField
 	void *m_pValue;
 	bool m_Color;
 	bool m_Shared;
+	int m_Min = std::numeric_limits<int>::min(); // what a set may say: kept in the range of the setting
+	int m_Max = std::numeric_limits<int>::max();
 };
 
 #define XC_INT(Name, Var) {Name, &g_Config.Var, false, true}
+#define XC_INT_R(Name, Var, Min, Max) {Name, &g_Config.Var, false, true, Min, Max}
 #define XC_COL(Name, Var) {Name, &g_Config.Var, true, true}
 #define XC_LOCAL(Name, Var) {Name, &g_Config.Var, false, false}
 
@@ -55,12 +59,36 @@ const SField s_aFields[] = {
 	XC_INT("xc_tee_shader", m_XcTeeShader), XC_INT("xc_tee_shader_color_mode", m_XcTeeShaderColorMode), XC_COL("xc_tee_shader_color", m_XcTeeShaderColor),
 	XC_COL("xc_tee_shader_color2", m_XcTeeShaderColor2), XC_INT("xc_tee_shader_alpha", m_XcTeeShaderAlpha), XC_INT("xc_tee_shader_scale", m_XcTeeShaderScale),
 	XC_INT("xc_tee_shader_speed", m_XcTeeShaderSpeed), XC_INT("xc_tee_shader_shade", m_XcTeeShaderShade), XC_INT("xc_tee_shader_parts", m_XcTeeShaderParts),
+	// trail
+	XC_INT_R("xc_trail", m_XcTrail, 0, 6), XC_INT_R("xc_trail_dash", m_XcTrailDash, 0, 4), XC_INT_R("xc_trail_density", m_XcTrailDensity, 25, 300),
+	XC_INT_R("xc_trail_length", m_XcTrailLength, 100, 2000), XC_INT_R("xc_trail_width", m_XcTrailWidth, 25, 300), XC_INT_R("xc_trail_glow", m_XcTrailGlow, 0, 200),
+	XC_INT_R("xc_trail_color_mode", m_XcTrailColorMode, 0, 3), XC_COL("xc_trail_color", m_XcTrailColor), XC_INT_R("xc_trail_segments", m_XcTrailSegments, 0, 1),
+	// hook
+	XC_INT_R("xc_hook_style", m_XcHookStyle, 0, 3), XC_COL("xc_hook_color", m_XcHookColor), XC_INT_R("xc_hook_color_mode", m_XcHookColorMode, 0, 3),
+	XC_INT_R("xc_hook_width", m_XcHookWidth, 25, 300), XC_INT_R("xc_hook_hit_fx", m_XcHookHitFx, 0, 3), XC_INT_R("xc_hook_hit_player_fx", m_XcHookHitPlayerFx, 0, 3),
+	XC_INT_R("xc_hook_nohook_fx", m_XcHookNohookFx, 0, 3),
+	// jump rings
+	XC_INT_R("xc_jump_fx", m_XcJumpFx, 0, 3), XC_INT_R("xc_jump_fx_air", m_XcJumpFxAir, 0, 1), XC_INT_R("xc_jump_fx_size", m_XcJumpFxSize, 25, 300),
+	XC_INT_R("xc_jump_fx_duration", m_XcJumpFxDuration, 200, 3000), XC_COL("xc_jump_fx_color", m_XcJumpFxColor), XC_INT_R("xc_jump_fx_color_mode", m_XcJumpFxColorMode, 0, 3),
+	// death, spawn, finish
+	XC_INT_R("xc_death_fx", m_XcDeathFx, 0, 7), XC_INT_R("xc_death_color_mode", m_XcDeathColorMode, 0, 3), XC_COL("xc_death_color", m_XcDeathColor),
+	XC_INT_R("xc_spawn_fx", m_XcSpawnFx, 0, 1), XC_INT_R("xc_spawn_color_mode", m_XcSpawnColorMode, 0, 3), XC_COL("xc_spawn_color", m_XcSpawnColor),
+	XC_INT_R("xc_finish_fx", m_XcFinishFx, 0, 2), XC_INT_R("xc_finish_amount", m_XcFinishAmount, 25, 300), XC_INT_R("xc_finish_color_mode", m_XcFinishColorMode, 0, 3),
+	XC_COL("xc_finish_color", m_XcFinishColor),
+	// gradient name, jelly tee
+	XC_INT_R("xc_name_gradient", m_XcNameGradient, 0, 4), XC_COL("xc_name_gradient_color1", m_XcNameGradientColor1), XC_COL("xc_name_gradient_color2", m_XcNameGradientColor2),
+	XC_INT_R("xc_name_gradient_flow", m_XcNameGradientFlow, 0, 1),
+	XC_INT_R("xc_jelly", m_XcJelly, 0, 1), XC_INT_R("xc_jelly_strength", m_XcJellyStrength, 10, 300),
 	// who sees what: changed while a player with a set is drawn, never sent
 	XC_LOCAL("xc_cape_others", m_XcCapeOthers), XC_LOCAL("xc_scarf_others", m_XcScarfOthers), XC_LOCAL("xc_accessory_others", m_XcAccessoryOthers),
 	XC_LOCAL("xc_accessory_friends", m_XcAccessoryFriends), XC_LOCAL("xc_glow_others", m_XcGlowOthers), XC_LOCAL("xc_tee_shader_others", m_XcTeeShaderOthers),
+	XC_LOCAL("xc_trail_others", m_XcTrailOthers), XC_LOCAL("xc_hook_others", m_XcHookOthers), XC_LOCAL("xc_jump_fx_others", m_XcJumpFxOthers),
+	XC_LOCAL("xc_death_others", m_XcDeathOthers), XC_LOCAL("xc_spawn_others", m_XcSpawnOthers), XC_LOCAL("xc_finish_others", m_XcFinishOthers),
+	XC_LOCAL("xc_name_gradient_others", m_XcNameGradientOthers), XC_LOCAL("xc_jelly_others", m_XcJellyOthers),
 };
 
 #undef XC_INT
+#undef XC_INT_R
 #undef XC_COL
 #undef XC_LOCAL
 
@@ -77,6 +105,14 @@ const SPart s_aParts[] = {
 	{&g_Config.m_XcAccessory, &g_Config.m_XcAccessorySelf, &g_Config.m_XcAccessoryOthers},
 	{&g_Config.m_XcGlow, &g_Config.m_XcGlowSelf, &g_Config.m_XcGlowOthers},
 	{&g_Config.m_XcTeeShader, &g_Config.m_XcTeeShaderSelf, &g_Config.m_XcTeeShaderOthers},
+	{&g_Config.m_XcTrail, &g_Config.m_XcTrailSelf, &g_Config.m_XcTrailOthers},
+	{&g_Config.m_XcHookStyle, &g_Config.m_XcHookSelf, &g_Config.m_XcHookOthers},
+	{&g_Config.m_XcJumpFx, &g_Config.m_XcJumpFxSelf, &g_Config.m_XcJumpFxOthers},
+	{&g_Config.m_XcDeathFx, &g_Config.m_XcDeathSelf, &g_Config.m_XcDeathOthers},
+	{&g_Config.m_XcSpawnFx, &g_Config.m_XcSpawnSelf, &g_Config.m_XcSpawnOthers},
+	{&g_Config.m_XcFinishFx, &g_Config.m_XcFinishSelf, &g_Config.m_XcFinishOthers},
+	{&g_Config.m_XcNameGradient, &g_Config.m_XcNameGradientSelf, &g_Config.m_XcNameGradientOthers},
+	{&g_Config.m_XcJelly, &g_Config.m_XcJellySelf, &g_Config.m_XcJellyOthers},
 };
 
 // the menu accent is the viewer's own color: a set carries the color itself
@@ -86,6 +122,12 @@ const std::pair<int *, unsigned *> s_aColorModes[] = {
 	{&g_Config.m_XcAccessoryColorMode, &g_Config.m_XcAccessoryColor},
 	{&g_Config.m_XcGlowColorMode, &g_Config.m_XcGlowColor},
 	{&g_Config.m_XcTeeShaderColorMode, &g_Config.m_XcTeeShaderColor},
+	{&g_Config.m_XcTrailColorMode, &g_Config.m_XcTrailColor},
+	{&g_Config.m_XcHookColorMode, &g_Config.m_XcHookColor},
+	{&g_Config.m_XcJumpFxColorMode, &g_Config.m_XcJumpFxColor},
+	{&g_Config.m_XcDeathColorMode, &g_Config.m_XcDeathColor},
+	{&g_Config.m_XcSpawnColorMode, &g_Config.m_XcSpawnColor},
+	{&g_Config.m_XcFinishColorMode, &g_Config.m_XcFinishColor},
 };
 
 long long ReadField(const SField &Field)
@@ -202,6 +244,15 @@ std::string CXcCosmeticsSync::OwnBundle(std::string &Hash) const
 			vValues[Index(pMode)] = XcHelpers::COLOR_CUSTOM;
 			vValues[Index(pColor)] = AccentPacked;
 		}
+	// a name in the accent colors: the two colors themselves
+	if(g_Config.m_XcNameGradient == 1)
+	{
+		vValues[Index(&g_Config.m_XcNameGradient)] = 4;
+		vValues[Index(&g_Config.m_XcNameGradientColor1)] = AccentPacked;
+		ColorHSLA Shifted = color_cast<ColorHSLA>(ColorRGBA(Accent.x, Accent.y, Accent.z, 1.0f));
+		Shifted.h = std::fmod(Shifted.h + 0.12f, 1.0f);
+		vValues[Index(&g_Config.m_XcNameGradientColor2)] = Shifted.Pack(false);
+	}
 	// an own picture of the cape is not shared (yet): the plain cloth instead
 	if(g_Config.m_XcCapePattern == 3)
 		vValues[Index(&g_Config.m_XcCapePattern)] = 0;
@@ -324,13 +375,14 @@ void CXcCosmeticsSync::Finish()
 				const json_value *pCid = json_object_get(pPlayer, "cid");
 				const json_value *pName = json_object_get(pPlayer, "name");
 				const json_value *pHash = json_object_get(pPlayer, "hash");
-				if(!pCid || pCid->type != json_integer || !pName || pName->type != json_string || !pHash || pHash->type != json_string)
+				if(!pCid || pCid->type != json_integer || !pName || pName->type != json_string)
 					continue;
 				const int Cid = (int)json_int_get(pCid);
 				if(Cid < 0 || Cid >= MAX_CLIENTS || Cid == LocalId || Cid == GameClient()->m_aLocalIds[1])
 					continue;
 				m_aRemote[Cid].m_Name = json_string_get(pName);
-				m_aRemote[Cid].m_Hash = json_string_get(pHash);
+				// no set: still an Exora player (the icon), nothing to draw
+				m_aRemote[Cid].m_Hash = pHash && pHash->type == json_string ? json_string_get(pHash) : "";
 			}
 		}
 		if(pJson)
@@ -409,7 +461,7 @@ void CXcCosmeticsSync::OnRender()
 		return;
 	UpdateOnline();
 	const bool Online = Client()->State() == IClient::STATE_ONLINE;
-	if(!Online || (!g_Config.m_XcCosmeticsShare && !g_Config.m_XcCosmeticsOthers))
+	if(!Online || (!g_Config.m_XcCosmeticsShare && !g_Config.m_XcCosmeticsOthers && !g_Config.m_XcExoraIcon))
 	{
 		if(m_NumRemote || !m_Address.empty())
 		{
@@ -459,12 +511,13 @@ void CXcCosmeticsSync::OnRender()
 	std::string Hash;
 	OwnBundle(Hash);
 	const bool Changed = g_Config.m_XcCosmeticsShare && Hash != m_SentHash;
-	if(!m_pBeat && GameClient()->m_Snap.m_LocalClientId >= 0 && (Now >= m_NextBeat || Changed))
+	if((g_Config.m_XcCosmeticsShare || g_Config.m_XcCosmeticsOthers) && !m_pBeat && GameClient()->m_Snap.m_LocalClientId >= 0 && (Now >= m_NextBeat || Changed))
 	{
 		SendBeat(m_NeedBundle || Changed);
 		m_NextBeat = Now + 10.0f;
 	}
-	if(g_Config.m_XcCosmeticsOthers && !m_pServer && Now >= m_NextAsk)
+	// who wears what, and who plays Exora at all (the icon)
+	if((g_Config.m_XcCosmeticsOthers || g_Config.m_XcExoraIcon) && !m_pServer && Now >= m_NextAsk)
 	{
 		AskServer();
 		m_NextAsk = Now + 10.0f;
@@ -479,6 +532,20 @@ bool CXcCosmeticsSync::HasRemote(int ClientId) const
 	if(Remote.m_Hash.empty() || !m_Bundles.count(Remote.m_Hash))
 		return false;
 	// the number on the server may belong to someone else by now: the name must still match
+	const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
+	return Data.m_Active && str_comp(Data.m_aName, Remote.m_Name.c_str()) == 0;
+}
+
+bool CXcCosmeticsSync::IsExora(int ClientId) const
+{
+	if(!g_Config.m_XcExoraIcon || ClientId < 0 || ClientId >= MAX_CLIENTS)
+		return false;
+	// yourself and your dummy
+	if(ClientId == GameClient()->m_aLocalIds[0] || ClientId == GameClient()->m_aLocalIds[1])
+		return Client()->State() == IClient::STATE_ONLINE;
+	const SRemote &Remote = m_aRemote[ClientId];
+	if(Remote.m_Name.empty())
+		return false;
 	const CGameClient::CClientData &Data = GameClient()->m_aClients[ClientId];
 	return Data.m_Active && str_comp(Data.m_aName, Remote.m_Name.c_str()) == 0;
 }
@@ -508,7 +575,10 @@ bool CXcCosmeticsSync::ApplyTo(int ClientId, std::vector<long long> &vSaved)
 			continue;
 		auto It = Bundle.find(Field.m_pName);
 		// a part the set does not name is off
-		WriteField(Field, It != Bundle.end() ? It->second : 0);
+		long long Value = It != Bundle.end() ? It->second : 0;
+		if(!Field.m_Color)
+			Value = std::clamp<long long>(Value, Field.m_Min, Field.m_Max);
+		WriteField(Field, Value);
 	}
 	for(const SPart &Part : s_aParts)
 		*Part.m_pOthers = *Part.m_pOn != 0;

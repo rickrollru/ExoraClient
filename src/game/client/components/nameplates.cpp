@@ -312,6 +312,26 @@ public:
 	}
 };
 
+// XClient: the Exora icon in front of the name of a player who plays Exora Client (xc_exora_icon)
+class CNamePlatePartXcExora : public CNamePlatePartIcon
+{
+public:
+	CNamePlatePartXcExora(CGameClient &This) :
+		CNamePlatePartIcon(This) {}
+	void Update(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_Visible = Data.m_InGame && Data.m_ShowName && This.m_XcCosmetics.IsExora(Data.m_ClientId);
+		if(!m_Visible)
+			return;
+		static IGraphics::CTextureHandle s_Texture;
+		if(!s_Texture.IsValid())
+			s_Texture = This.Graphics()->LoadTexture("xclient/exora_icon.png", IStorage::TYPE_ALL);
+		m_Texture = s_Texture;
+		m_Size = vec2(Data.m_FontSize, Data.m_FontSize) * 0.95f;
+		m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
+	}
+};
+
 class CNamePlatePartFriendMark : public CNamePlatePartText
 {
 private:
@@ -389,6 +409,7 @@ private:
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
+		const CXcCosmeticsSync::CScope XcShared(This.m_XcCosmetics, Data.m_ClientId); // XClient: his own gradient
 		m_Visible = Data.m_ShowName;
 		if(!m_Visible)
 			return false;
@@ -414,6 +435,7 @@ protected:
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
 	{
+		const CXcCosmeticsSync::CScope XcShared(This.m_XcCosmetics, Data.m_ClientId); // XClient: his own gradient
 		m_FontSize = Data.m_FontSize;
 		str_copy(m_aText, Data.m_aName);
 		CTextCursor Cursor;
@@ -818,6 +840,7 @@ private:
 		AddPart<CNamePlatePartPing>(This); // TClient
 		AddPart<CNamePlatePartIgnoreMark>(This); // TClient
 		AddPart<CNamePlatePartFriendMark>(This);
+		AddPart<CNamePlatePartXcExora>(This); // XClient
 		AddPart<CNamePlatePartClientId>(This, false);
 		AddPart<CNamePlatePartName>(This);
 		AddPart<CNamePlatePartNewLine>(This);
@@ -1082,6 +1105,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	CNamePlate &NamePlate = m_pData->m_aNamePlates[pPlayerInfo->m_ClientId];
 	NamePlate.Update(*GameClient(), Data);
 	Position = GameClient()->m_XcJelly.FlyingNamePlate(pPlayerInfo->m_ClientId, Position); // XClient
+	Position.y -= GameClient()->m_Accessory.NamePlateLift(pPlayerInfo->m_ClientId); // XClient: above the halo, crown...
 	NamePlate.Render(*GameClient(), Position - vec2(0.0f, (float)g_Config.m_ClNamePlatesOffset));
 }
 

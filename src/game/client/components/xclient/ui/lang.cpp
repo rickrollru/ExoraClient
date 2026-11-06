@@ -805,6 +805,8 @@ namespace XcUi
 			{"Looking for an update...", "Ищу обновление..."},
 			{"This is the newest version", "Это самая новая версия"},
 			{"Check now", "Проверить сейчас"},
+			{"Other Exora players see your cape, scarf, accessory, shader, neon, trail, hook, jumps, death and finish effects, gradient name and jelly tee, and you see theirs", "Другие игроки Exora видят твой плащ, шарф, аксессуар, шейдер, неон, шлейф, хук, прыжки, эффекты смерти и финиша, градиентный ник и желейного ти, а ты — их"},
+			{"Exora icon next to the players who play it", "Значок Exora у игроков, которые играют на нём"},
 			{"Added images: %d, already in the map: %d", "Добавлено картинок: %d, уже были в карте: %d"},
 			{"Added sounds: %d, already in the map: %d", "Добавлено звуков: %d, уже были в карте: %d"},
 			{"Added images: %d", "Добавлено картинок: %d"},

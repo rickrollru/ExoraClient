@@ -27,6 +27,8 @@ public:
 	// someone on this server shows a set (the effects then run even when your own are off)
 	bool AnyRemote() const { return m_NumRemote > 0; }
 	bool HasRemote(int ClientId) const;
+	// the player plays Exora Client (the service saw him on this server), for the icon next to his name
+	bool IsExora(int ClientId) const;
 	// what the service says, for the menu
 	const char *Status() const;
 	int NumSeen() const { return m_NumRemote; }
