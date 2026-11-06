@@ -2172,6 +2172,19 @@ void CServer::OnNetMsgEnterGame(int ClientId)
 		ClientAddrString(ClientId, true),
 		IsSixup(ClientId));
 	m_aClients[ClientId].m_State = CClient::STATE_INGAME;
+	// XClient: the server of a shared editor room gives everyone who joins the admin rcon (sv_xc_rcon_all)
+	if(Config()->m_SvXcRconAll && !IsRconAuthed(ClientId))
+	{
+		static char s_aRoomPassword[32] = "";
+		static const char *const s_pRoomKey = "exora_room";
+		if(m_AuthManager.FindKey(s_pRoomKey) < 0)
+		{
+			secure_random_password(s_aRoomPassword, sizeof(s_aRoomPassword), 16);
+			m_AuthManager.AddKey(s_pRoomKey, s_aRoomPassword, RoleName::ADMIN);
+		}
+		if(s_aRoomPassword[0])
+			OnNetMsgRconAuth(ClientId, s_pRoomKey, s_aRoomPassword, true);
+	}
 	if(!IsSixup(ClientId))
 	{
 		SendServerInfo(ClientAddr(ClientId), -1, SERVERINFO_EXTENDED, false);

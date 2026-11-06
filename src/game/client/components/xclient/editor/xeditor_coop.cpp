@@ -1408,6 +1408,7 @@ void CXcCoop::RunPlayServer()
 	{
 		// everyone on it reloads the new map by himself
 		E.Client()->Rcon("sv_xc_live_edit 1");
+		E.Client()->Rcon("sv_xc_rcon_all 1"); // everyone in the room gets the rcon: the map reload brings them in again
 		E.Client()->Rcon(aMapChange);
 	}
 	else if(pGameClient->m_LocalServer.IsServerRunning() && m_PlayRunAt < -1.5f)
@@ -1421,7 +1422,7 @@ void CXcCoop::RunPlayServer()
 	{
 		char aPort[32];
 		str_format(aPort, sizeof(aPort), "sv_port %d", PLAY_PORT);
-		if(!pGameClient->m_LocalServer.RunServer({"sv_register 0", "sv_xc_live_edit 1", aPort, aMapChange}))
+		if(!pGameClient->m_LocalServer.RunServer({"sv_register 0", "sv_xc_live_edit 1", "sv_xc_rcon_all 1", aPort, aMapChange}))
 		{
 			m_Notice = "The local server could not be started";
 			return;

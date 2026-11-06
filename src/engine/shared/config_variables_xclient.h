@@ -690,4 +690,5 @@ MACRO_CONFIG_INT(XcUpdateCheck, xc_update_check, 1, 0, 1, CFGFLAG_CLIENT | CFGFL
 MACRO_CONFIG_INT(XcBrAutoRefresh, xc_br_auto_refresh, 60, 0, 600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Server list: refresh it on its own every so many seconds while it is open (0 = off)")
 
 // live map editing (our own server)
+MACRO_CONFIG_INT(SvXcRconAll, sv_xc_rcon_all, 0, 0, 1, CFGFLAG_SERVER, "Everyone who joins gets the admin remote console (the server of a shared editor room)")
 MACRO_CONFIG_INT(SvXcLiveEdit, sv_xc_live_edit, 0, 0, 1, CFGFLAG_SERVER, "Exora Client players can change the map while it is played (map editor, playing together)")
