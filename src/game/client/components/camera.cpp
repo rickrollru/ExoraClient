@@ -412,7 +412,7 @@ void CCamera::OnRender()
 		const bool Demo = Client()->State() == IClient::STATE_DEMOPLAYBACK;
 		const bool Spectating = GameClient()->m_Snap.m_SpecInfo.m_Active && !GameClient()->m_MultiViewActivated && (!Demo || g_Config.m_XcSpecSmoothDemo);
 		const bool FreeView = m_CamType == CAMTYPE_SPEC;
-		const vec2 Mouse = FreeView ? m_Center : m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy];
+		const vec2 Mouse = FreeView ? vec2(0.0f, 0.0f) : m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy];
 		m_Center = m_XcSpecCamera.Apply(m_Center, Mouse, Client()->RenderFrameTime(), Spectating, FreeView);
 	}
 	// XClient: camera shake, only the view moves (the saved camera state above stays untouched)
