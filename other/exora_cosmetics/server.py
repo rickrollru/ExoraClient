@@ -116,6 +116,16 @@ class Handler(BaseHTTPRequestHandler):
 				players = presence.get(addr, {})
 				out = [{"cid": p[0], "name": p[1], "hash": p[2]} for p in players.values() if now - p[3] < PRESENCE_TTL]
 			return self.reply(200, {"players": out})
+		if url.path == "/v1/servers":
+			# where Exora players are now: {server key: [names]} (the browser filter "Exora")
+			now = time.time()
+			with lock:
+				out = {}
+				for addr, players in presence.items():
+					names = [p[1] for p in players.values() if now - p[3] < PRESENCE_TTL]
+					if names:
+						out[addr] = names[:64]
+			return self.reply(200, {"servers": out})
 		if url.path == "/v1/bundle":
 			h = (query.get("hash") or [""])[0]
 			if not HASH_RE.match(h):

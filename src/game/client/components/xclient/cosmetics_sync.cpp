@@ -202,7 +202,7 @@ void CXcCosmeticsSync::OnReset()
 
 void CXcCosmeticsSync::OnShutdown()
 {
-	for(auto *ppRequest : {&m_pBeat, &m_pServer, &m_pStats})
+	for(auto *ppRequest : {&m_pBeat, &m_pServer, &m_pStats, &m_pServers})
 		if(*ppRequest)
 			(*ppRequest)->Abort();
 	for(auto &Pending : m_vpBundles)
@@ -455,11 +455,78 @@ void CXcCosmeticsSync::UpdateOnline()
 	}
 }
 
+void CXcCosmeticsSync::ServerKey(const char *pServerName, char *pBuf, int BufSize)
+{
+	char aSeed[256];
+	str_format(aSeed, sizeof(aSeed), "exora-server|%s", pServerName);
+	const SHA256_DIGEST Digest = sha256(aSeed, str_length(aSeed));
+	char aHex[SHA256_MAXSTRSIZE];
+	sha256_str(Digest, aHex, sizeof(aHex));
+	str_format(pBuf, BufSize, "ff%.24s", aHex);
+}
+
+const std::vector<std::string> *CXcCosmeticsSync::ExoraOn(const char *pServerName) const
+{
+	if(m_ExoraServers.empty() || !pServerName[0])
+		return nullptr;
+	char aKey[32];
+	ServerKey(pServerName, aKey, sizeof(aKey));
+	auto It = m_ExoraServers.find(aKey);
+	return It == m_ExoraServers.end() ? nullptr : &It->second;
+}
+
+// the servers with Exora players, every 15 seconds while the browser is open
+void CXcCosmeticsSync::UpdateServers()
+{
+	const float Now = Client()->GlobalTime();
+	if(m_pServers && m_pServers->Done())
+	{
+		json_value *pJson = m_pServers->State() == EHttpState::DONE ? m_pServers->ResultJson() : nullptr;
+		const json_value *pServers = pJson && pJson->type == json_object ? json_object_get(pJson, "servers") : nullptr;
+		if(pServers && pServers->type == json_object)
+		{
+			m_ExoraServers.clear();
+			m_ExoraTotal = 0;
+			for(unsigned i = 0; i < pServers->u.object.length; i++)
+			{
+				const json_value *pNames = pServers->u.object.values[i].value;
+				if(!pNames || pNames->type != json_array)
+					continue;
+				std::vector<std::string> &vNames = m_ExoraServers[pServers->u.object.values[i].name];
+				for(int j = 0; j < json_array_length(pNames); j++)
+				{
+					const json_value *pName = json_array_get(pNames, j);
+					if(pName->type == json_string)
+						vNames.emplace_back(json_string_get(pName));
+				}
+				m_ExoraTotal += (int)vNames.size();
+			}
+			m_ServersKnown = true;
+		}
+		if(pJson)
+			json_value_free(pJson);
+		m_pServers = nullptr;
+	}
+	if(m_WantServers && !m_pServers && Now >= m_NextServers)
+	{
+		char aUrl[256];
+		str_format(aUrl, sizeof(aUrl), "%s/v1/servers", g_Config.m_XcCosmeticsUrl);
+		m_pServers = HttpGet(aUrl);
+		m_pServers->Timeout(CTimeout{4000, 8000, 100, 5});
+		m_pServers->LogProgress(HTTPLOG::NONE);
+		m_pServers->AllowInsecure(true);
+		Http()->Run(m_pServers);
+		m_NextServers = Now + 15.0f;
+	}
+	m_WantServers = false;
+}
+
 void CXcCosmeticsSync::OnRender()
 {
 	if(!g_Config.m_XcCosmeticsUrl[0])
 		return;
 	UpdateOnline();
+	UpdateServers();
 	const bool Online = Client()->State() == IClient::STATE_ONLINE;
 	if(!Online || (!g_Config.m_XcCosmeticsShare && !g_Config.m_XcCosmeticsOthers && !g_Config.m_XcExoraIcon))
 	{
@@ -501,15 +568,8 @@ void CXcCosmeticsSync::OnRender()
 	const char *pServerName = Client()->ServerInfo().m_aName;
 	if(!pServerName[0])
 		return;
-	char aKey[2 + 24 + 1];
-	{
-		char aSeed[256];
-		str_format(aSeed, sizeof(aSeed), "exora-server|%s", pServerName);
-		const SHA256_DIGEST Digest = sha256(aSeed, str_length(aSeed));
-		char aHex[SHA256_MAXSTRSIZE];
-		sha256_str(Digest, aHex, sizeof(aHex));
-		str_format(aKey, sizeof(aKey), "ff%.24s", aHex);
-	}
+	char aKey[32];
+	ServerKey(pServerName, aKey, sizeof(aKey));
 	const char *aAddress = aKey;
 	if(m_Address != aAddress)
 	{

@@ -141,6 +141,11 @@ private:
 	int m_BrowserDrawerTab = 0;
 	float m_BrowserDrawer = 0.0f;
 	bool m_SearchFocusNext = false;
+	bool m_BrowserExoraOnly = false; // the "Exora" pill: only servers with players of this client
+	enum
+	{
+		PILL_EXORA = -100,
+	};
 	bool m_ServersFullScreen = false; // the browser fills the screen (main menu, minimal home), with a back button
 	float RenderServerRow(const class CServerInfo *pInfo, float Width, bool Draw);
 	char m_aFriendName[16] = {};

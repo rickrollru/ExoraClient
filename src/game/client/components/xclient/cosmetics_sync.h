@@ -34,6 +34,14 @@ public:
 	int NumSeen() const { return m_NumRemote; }
 	// how many Exora clients are running now (in the game or the menu), -1 while unknown
 	int Online() const { return m_Online; }
+	// the server browser: who plays Exora on which server (asked while the browser is open)
+	void WantServers() { m_WantServers = true; }
+	// the Exora players on a server (by its name), nullptr if none
+	const std::vector<std::string> *ExoraOn(const char *pServerName) const;
+	int ExoraPlayersTotal() const { return m_ExoraTotal; }
+	bool ServersKnown() const { return m_ServersKnown; }
+	// the key of a server for the service: by its name, not by its address
+	static void ServerKey(const char *pServerName, char *pBuf, int BufSize);
 
 	// while it lives, the settings of the effects are the ones of that player (when he has a set)
 	class CScope
@@ -70,6 +78,13 @@ private:
 	std::shared_ptr<IHttpRequest> m_pServer;
 	std::shared_ptr<IHttpRequest> m_pStats;
 	float m_NextStats = 0.0f;
+	std::shared_ptr<IHttpRequest> m_pServers;
+	float m_NextServers = 0.0f;
+	bool m_WantServers = false;
+	bool m_ServersKnown = false;
+	int m_ExoraTotal = 0;
+	std::map<std::string, std::vector<std::string>> m_ExoraServers;
+	void UpdateServers();
 	int m_Online = -1;
 	void UpdateOnline();
 	std::vector<std::pair<std::string, std::shared_ptr<IHttpRequest>>> m_vpBundles;

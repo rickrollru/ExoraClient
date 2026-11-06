@@ -13,6 +13,7 @@ API (port 8770 by default):
 |---|---|
 | `POST /v1/beat` `{id, secret, server, cid, name, hash, bundle?}` | "I play here wearing this set"; answers `need_bundle` when the set is unknown |
 | `GET /v1/server?addr=ip:port` | who wears what on a DDNet server: `[{cid, name, hash}]` |
+| `GET /v1/servers` | every server with Exora players now: `{key: [names]}` (the browser filter) |
 | `GET /v1/bundle?hash=...` | a set by its hash |
 | `GET /v1/ping` | health check |
 

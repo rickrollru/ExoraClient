@@ -1108,6 +1108,24 @@ float CXcMenu::RenderServerRow(const CServerInfo *pInfo, float Width, bool Draw)
 		str_format(aFriends, sizeof(aFriends), "%s %d", XC_ICON_HEART, pInfo->m_FriendNum);
 		Mark(aFriends, ImVec4(1.0f, 0.36f, 0.54f, 1.0f));
 	}
+	// players of this client here: the logo and how many, their names under the mouse
+	if(const std::vector<std::string> *pExora = GameClient()->m_XcCosmetics.ExoraOn(pInfo->m_aName); pExora && MarkX < NameMaxX)
+	{
+		const float LogoSize = pSmall->FontSize * 1.05f;
+		const ImVec2 MarkMin(MarkX, NameY);
+		DrawLogo(pDraw, ImVec2(MarkX + LogoSize * 0.5f, NameY + S(1.0f) + pSmall->FontSize * 0.5f), LogoSize, t.m_Accent, 1.0f, true);
+		char aCount[16];
+		str_format(aCount, sizeof(aCount), "%d", (int)pExora->size());
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(MarkX + LogoSize + S(4.0f), NameY + S(1.0f)), Col(t.m_Accent), aCount);
+		MarkX += LogoSize + S(4.0f) + pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aCount).x + S(8.0f);
+		if(ImGui::IsMouseHoveringRect(MarkMin, ImVec2(MarkX, NameY + pLabel->FontSize + S(4.0f))))
+		{
+			std::string Names;
+			for(const std::string &Name : *pExora)
+				Names += (Names.empty() ? "" : ", ") + Name;
+			ImGui::SetTooltip("%s: %s", Tr("Exora"), Names.c_str());
+		}
+	}
 	char aSub[160];
 	str_format(aSub, sizeof(aSub), "%s  ·  %s", pInfo->m_aMap, pInfo->m_aGameType);
 	pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(x, Min.y + RowH * 0.5f + S(3.0f)), Col(t.m_TextMuted), aSub, nullptr, 0.0f, &NameClip);
@@ -1290,7 +1308,14 @@ void CXcMenu::RenderServers()
 			int m_Page;
 			const char *m_pLabel;
 		};
-		std::vector<SPill> vPills = {{CMenus::PAGE_INTERNET, Tr("All")}, {CMenus::PAGE_FAVORITES, Tr("Favorites")}, {CMenus::PAGE_LAN, "LAN"}};
+		// "Exora": the internet list, only the servers where players of this client are now
+		GameClient()->m_XcCosmetics.WantServers();
+		char aExora[48];
+		if(GameClient()->m_XcCosmetics.ExoraPlayersTotal() > 0)
+			str_format(aExora, sizeof(aExora), "Exora  %d", GameClient()->m_XcCosmetics.ExoraPlayersTotal());
+		else
+			str_copy(aExora, "Exora");
+		std::vector<SPill> vPills = {{CMenus::PAGE_INTERNET, Tr("All")}, {PILL_EXORA, aExora}, {CMenus::PAGE_FAVORITES, Tr("Favorites")}, {CMenus::PAGE_LAN, "LAN"}};
 		const std::vector<const CCommunity *> vpFavoriteCommunities = ServerBrowser()->FavoriteCommunities();
 		for(size_t i = 0; i < vpFavoriteCommunities.size() && i < 5; i++)
 			vPills.push_back({CMenus::PAGE_FAVORITE_COMMUNITY_1 + (int)i, vpFavoriteCommunities[i]->Name()});
@@ -1306,7 +1331,7 @@ void CXcMenu::RenderServers()
 			ImGui::PushID((int)i);
 			const bool Pressed = ImGui::InvisibleButton("##pill", ImVec2(W, PillH));
 			const float Hover = Animate(ImGui::GetID("##pill_h"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 14.0f);
-			const bool On = g_Config.m_UiPage == Pill.m_Page;
+			const bool On = Pill.m_Page == PILL_EXORA ? m_BrowserExoraOnly : (!m_BrowserExoraOnly && g_Config.m_UiPage == Pill.m_Page);
 			const float Sel = Animate(ImGui::GetID("##pill_s"), On ? 1.0f : 0.0f, 14.0f);
 			ImGui::PopID();
 			pDraw->AddRectFilled(ImVec2(px, y), ImVec2(px + W, y + PillH), Col(Mix(ImVec4(1, 1, 1, 0.05f * Hover), t.m_Text, Sel)), PillH * 0.5f);
@@ -1314,8 +1339,13 @@ void CXcMenu::RenderServers()
 			pDraw->AddText(pFont, pFont->FontSize, ImVec2(px + S(14.0f), y + (PillH - pFont->FontSize) * 0.5f), Col(TextCol), Pill.m_pLabel);
 			if(Pressed && !On)
 			{
-				g_Config.m_UiPage = Pill.m_Page;
-				GameClient()->m_Menus.RefreshBrowserTab(false);
+				m_BrowserExoraOnly = Pill.m_Page == PILL_EXORA;
+				const int Page = m_BrowserExoraOnly ? (int)CMenus::PAGE_INTERNET : Pill.m_Page;
+				if(g_Config.m_UiPage != Page)
+				{
+					g_Config.m_UiPage = Page;
+					GameClient()->m_Menus.RefreshBrowserTab(false);
+				}
 				PlayUiSound(SOUND_TAB);
 			}
 			px += W + S(6.0f);
@@ -1329,7 +1359,22 @@ void CXcMenu::RenderServers()
 	ImGui::SetCursorScreenPos(ImVec2(Left - S(6.0f), y));
 	BeginInnerScroll("##server_rows", ImVec2(Width + S(12.0f), ListH));
 	const int NumServers = ServerBrowser()->NumSortedServers();
-	if(NumServers == 0)
+	if(m_BrowserExoraOnly && g_Config.m_UiPage != CMenus::PAGE_INTERNET)
+		m_BrowserExoraOnly = false;
+	int NumShown = NumServers;
+	if(m_BrowserExoraOnly)
+	{
+		NumShown = 0;
+		for(int i = 0; i < NumServers; i++)
+			NumShown += GameClient()->m_XcCosmetics.ExoraOn(ServerBrowser()->SortedGet(i)->m_aName) != nullptr;
+	}
+	if(m_BrowserExoraOnly && NumShown == 0 && NumServers > 0)
+	{
+		ImGui::Dummy(ImVec2(0.0f, S(30.0f)));
+		Title(GameClient()->m_XcCosmetics.ServersKnown() ? Tr("Nobody plays Exora on a server now") : Tr("Asking who plays Exora..."));
+		Description(Tr("Here are the servers where players of Exora Client are. Only those who share their cosmetics are seen (Settings, Online)."));
+	}
+	else if(NumServers == 0)
 	{
 		const bool Loading = ServerBrowser()->IsGettingServerlist() || ServerBrowser()->IsRefreshing();
 		ImGui::Dummy(ImVec2(0.0f, S(30.0f)));
@@ -1349,6 +1394,8 @@ void CXcMenu::RenderServers()
 		for(int i = 0; i < NumServers; i++)
 		{
 			const CServerInfo *pInfo = ServerBrowser()->SortedGet(i);
+			if(m_BrowserExoraOnly && !GameClient()->m_XcCosmetics.ExoraOn(pInfo->m_aName))
+				continue;
 			// the play button of the home page: the last server is picked, opened and scrolled into sight
 			if(m_ScrollToSelected && !m_SelectedServer.empty() && str_find(pInfo->m_aAddress, m_SelectedServer.c_str()))
 			{
