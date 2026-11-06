@@ -612,6 +612,30 @@ void CXcMenu::RenderFrame()
 	m_PageAppear = std::min(m_PageAppear + FrameDt / 0.5f, 1.0f);
 	const float PageIn = 1.0f - std::pow(1.0f - m_PageAppear, 3.0f);
 
+	// the server list of the main menu with the minimal home: the whole screen too, over the background
+	m_ServersFullScreen = m_Page == PAGE_SERVERS && MinimalHome();
+	if(m_ServersFullScreen)
+	{
+		ImGui::GetStyle().Alpha = Open * Settled() * PageIn;
+		const float Rise = (1.0f - PageIn) * S(14.0f);
+		ImGui::SetNextWindowPos(ImVec2(0.0f, Rise));
+		ImGui::SetNextWindowSize(Io.DisplaySize);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(32.0f), S(28.0f)));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::Begin("##xc_servers_full", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNav);
+		ImGui::PopStyleVar(2);
+		ImGui::PushFont(Fonts().m_pBody);
+		RenderServers();
+		ImGui::PopFont();
+		ImGui::End();
+		if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+			OpenSearch();
+		RenderSearch();
+		RenderConnectionPopup();
+		RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Open);
+		return;
+	}
+
 	// the background is drawn, the content waits for the window and the fonts to settle
 	const float Shown = Open * Settled() * PageIn;
 	ImGui::GetStyle().Alpha = Shown;

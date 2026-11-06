@@ -136,6 +136,13 @@ private:
 	bool m_ServersRequested = false; // the home page asks for the list too
 	bool m_BrowserOpened = false;
 	int m_ServerPanel = 0; // the right panel: server, friends, filters
+	bool m_ServerExpanded = false; // the selected row is opened in place
+	bool m_BrowserDrawerOpen = false; // the drawer of filters / friends
+	int m_BrowserDrawerTab = 0;
+	float m_BrowserDrawer = 0.0f;
+	bool m_SearchFocusNext = false;
+	bool m_ServersFullScreen = false; // the browser fills the screen (main menu, minimal home), with a back button
+	float RenderServerRow(const class CServerInfo *pInfo, float Width, bool Draw);
 	char m_aFriendName[16] = {};
 	char m_aFriendClan[12] = {};
 	CXcMapPreviews m_MapPreviews;

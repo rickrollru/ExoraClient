@@ -1035,30 +1035,176 @@ void CXcMenu::RenderBrowserStatus()
 		Client()->Connect(g_Config.m_UiServerAddress);
 }
 
+// one server as a quiet row: the name and the map under it, how full it is, the ping, a join button; a click opens
+// the row in place (the map, who plays), a double click joins
+float CXcMenu::RenderServerRow(const CServerInfo *pInfo, float Width, bool Draw)
+{
+	const STheme &t = Theme();
+	const float RowH = S(60.0f);
+	const bool Selected = m_SelectedServer == pInfo->m_aAddress;
+	ImGui::PushID(pInfo->m_aAddress);
+	const ImGuiID OpenId = ImGui::GetID("##open");
+	const float Opened = Animate(OpenId, Selected && m_ServerExpanded ? 1.0f : 0.0f, 12.0f);
+	const float ExtraH = S(196.0f) * Opened;
+	const float TotalH = RowH + ExtraH;
+	if(!Draw)
+	{
+		ImGui::PopID();
+		ImGui::Dummy(ImVec2(Width, TotalH + S(4.0f)));
+		return TotalH;
+	}
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	const ImVec2 Min = ImGui::GetCursorScreenPos();
+	const ImVec2 Max(Min.x + Width, Min.y + TotalH);
+	ImFont *pLabel = Fonts().m_pLabel;
+	ImFont *pSmall = Fonts().m_pSmall;
+	const float Pad = S(16.0f);
+
+	// the join button on the right of the row: quiet, lights up under the mouse
+	const float JoinW = S(84.0f), JoinH = S(32.0f);
+	const ImVec2 JoinMin(Min.x + Width - Pad - JoinW, Min.y + (RowH - JoinH) * 0.5f);
+	ImGui::SetCursorScreenPos(JoinMin);
+	const bool Join = ImGui::InvisibleButton("##join", ImVec2(JoinW, JoinH));
+	const bool JoinHovered = ImGui::IsItemHovered();
+	ImGui::SetCursorScreenPos(Min);
+	ImGui::SetNextItemAllowOverlap();
+	const bool Clicked = ImGui::InvisibleButton("##row", ImVec2(Width - Pad - JoinW - S(8.0f), RowH));
+	const bool Hovered = ImGui::IsItemHovered() || JoinHovered;
+	const bool DoubleClicked = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+	const float Hover = Animate(ImGui::GetID("##hover"), Hovered ? 1.0f : 0.0f, 14.0f);
+	const float JoinHover = Animate(ImGui::GetID("##join_hover"), JoinHovered ? 1.0f : 0.0f, 16.0f);
+
+	// the row itself: nothing until the mouse or the selection, then a soft plate
+	const float Plate = std::max(Hover * 0.6f, Selected ? 1.0f : 0.0f);
+	if(Plate > 0.01f)
+		pDraw->AddRectFilled(Min, Max, Col(ImVec4(1, 1, 1, 0.035f + 0.025f * Selected), Plate), S(14.0f));
+
+	// name, marks, then the map and the mode under it
+	const int NumPlayers = ServerBrowser()->Players(*pInfo);
+	const int MaxPlayers = std::max(ServerBrowser()->Max(*pInfo), 1);
+	const float RightW = S(150.0f) + S(56.0f) + JoinW + Pad + S(24.0f);
+	const float NameMaxX = Max.x - RightW;
+	float x = Min.x + Pad;
+	const float NameY = Min.y + RowH * 0.5f - pLabel->FontSize - S(1.0f);
+	const ImVec4 NameClip(x, Min.y, NameMaxX, Min.y + RowH);
+	pDraw->AddText(pLabel, pLabel->FontSize * 1.05f, ImVec2(x, NameY), Col(t.m_Text, NumPlayers > 0 ? 1.0f : 0.7f), pInfo->m_aName, nullptr, 0.0f, &NameClip);
+	const float NameW = std::min(pLabel->CalcTextSizeA(pLabel->FontSize * 1.05f, FLT_MAX, 0.0f, pInfo->m_aName).x, NameMaxX - x);
+	float MarkX = x + NameW + S(8.0f);
+	const auto Mark = [&](const char *pText, const ImVec4 &Color) {
+		if(MarkX > NameMaxX)
+			return;
+		pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(MarkX, NameY + S(1.0f)), Col(Color), pText);
+		MarkX += pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pText).x + S(8.0f);
+	};
+	if(pInfo->m_Favorite != TRISTATE::NONE)
+		Mark(XC_ICON_STAR, t.m_Accent);
+	if(pInfo->m_Flags & SERVER_FLAG_PASSWORD)
+		Mark(XC_ICON_LOCK, t.m_TextMuted);
+	if(g_Config.m_BrIndicateFinished && pInfo->m_HasRank == CServerInfo::RANK_RANKED)
+		Mark(XC_ICON_FLAG_CHECK, ImVec4(0.24f, 0.84f, 0.64f, 1.0f));
+	if(pInfo->m_FriendState != IFriends::FRIEND_NO)
+	{
+		char aFriends[32];
+		str_format(aFriends, sizeof(aFriends), "%s %d", XC_ICON_HEART, pInfo->m_FriendNum);
+		Mark(aFriends, ImVec4(1.0f, 0.36f, 0.54f, 1.0f));
+	}
+	char aSub[160];
+	str_format(aSub, sizeof(aSub), "%s  ·  %s", pInfo->m_aMap, pInfo->m_aGameType);
+	pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(x, Min.y + RowH * 0.5f + S(3.0f)), Col(t.m_TextMuted), aSub, nullptr, 0.0f, &NameClip);
+
+	// how full: the count over a thin line
+	const float FillW = S(150.0f);
+	const float FillX = Max.x - Pad - JoinW - S(24.0f) - S(56.0f) - FillW;
+	char aPlayers[32];
+	str_format(aPlayers, sizeof(aPlayers), "%d / %d", NumPlayers, ServerBrowser()->Max(*pInfo));
+	const float PlayersW = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aPlayers).x;
+	pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(FillX + FillW - PlayersW, Min.y + RowH * 0.5f - pSmall->FontSize - S(2.0f)), Col(NumPlayers > 0 ? t.m_TextSecondary : t.m_TextMuted), aPlayers);
+	const float LineY = Min.y + RowH * 0.5f + S(5.0f);
+	const float Fill = std::clamp((float)NumPlayers / MaxPlayers, 0.0f, 1.0f);
+	pDraw->AddRectFilled(ImVec2(FillX, LineY), ImVec2(FillX + FillW, LineY + S(3.0f)), Col(ImVec4(1, 1, 1, 0.08f)), S(2.0f));
+	if(Fill > 0.0f)
+		pDraw->AddRectFilled(ImVec2(FillX, LineY), ImVec2(FillX + FillW * Fill, LineY + S(3.0f)), Col(Mix(t.m_TextSecondary, t.m_Accent, Fill * Fill)), S(2.0f));
+
+	// the ping: a colored dot and the number
+	char aPing[16];
+	str_format(aPing, sizeof(aPing), "%s%d", pInfo->m_LatencyIsEstimated ? "~" : "", pInfo->m_Latency);
+	const float PingW = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, aPing).x;
+	const float PingRight = Max.x - Pad - JoinW - S(24.0f);
+	pDraw->AddText(pSmall, pSmall->FontSize, ImVec2(PingRight - PingW, Min.y + (RowH - pSmall->FontSize) * 0.5f), Col(t.m_TextMuted), aPing);
+	pDraw->AddCircleFilled(ImVec2(PingRight - PingW - S(9.0f), Min.y + RowH * 0.5f), S(3.5f), Col(PingColor(pInfo->m_Latency)), 12);
+
+	// the join button
+	{
+		const float Lift = JoinHover * S(1.5f);
+		const ImVec2 BMin(JoinMin.x, JoinMin.y - Lift), BMax(JoinMin.x + JoinW, JoinMin.y + JoinH - Lift);
+		const float Strong = std::max(JoinHover, Selected ? 1.0f : 0.0f);
+		pDraw->AddRectFilled(BMin, BMax, Col(Mix(ImVec4(1, 1, 1, 0.06f + 0.04f * Hover), t.m_Text, Strong)), S(10.0f));
+		const char *pJoin = Tr("Join");
+		const ImVec2 Dim = pLabel->CalcTextSizeA(pLabel->FontSize, FLT_MAX, 0.0f, pJoin);
+		pDraw->AddText(pLabel, pLabel->FontSize, ImVec2((BMin.x + BMax.x - Dim.x) * 0.5f, (BMin.y + BMax.y - Dim.y) * 0.5f), Col(Mix(t.m_TextSecondary, ImVec4(0.06f, 0.07f, 0.1f, 1.0f), Strong)), pJoin);
+	}
+
+	// opened in place: the scheme of the map, the players, a big join
+	if(Opened > 0.01f)
+	{
+		const float InnerY = Min.y + RowH;
+		const float H = ExtraH - S(14.0f);
+		pDraw->PushClipRect(ImVec2(Min.x, InnerY), ImVec2(Max.x, Max.y), true);
+		const ImVec2 MapMin(Min.x + Pad, InnerY), MapMax(Min.x + Pad + S(220.0f), InnerY + std::max(H, 1.0f));
+		if(!DrawMapPreview(pDraw, pInfo, MapMin, MapMax, S(12.0f), ImDrawFlags_RoundCornersAll, Opened))
+		{
+			pDraw->AddRectFilled(MapMin, MapMax, Col(ImVec4(1, 1, 1, 0.04f), Opened), S(12.0f));
+			const ImVec2 Dim = pSmall->CalcTextSizeA(pSmall->FontSize, FLT_MAX, 0.0f, pInfo->m_aMap);
+			pDraw->AddText(pSmall, pSmall->FontSize, ImVec2((MapMin.x + MapMax.x - Dim.x) * 0.5f, (MapMin.y + MapMax.y - Dim.y) * 0.5f), Col(t.m_TextMuted, Opened), pInfo->m_aMap);
+		}
+		pDraw->PopClipRect();
+		if(H > S(20.0f))
+		{
+			ImGui::SetCursorScreenPos(ImVec2(MapMax.x + S(16.0f), InnerY));
+			ImGui::BeginChild("##players", ImVec2(Width - S(220.0f) - Pad * 3.0f, H), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+			ImGui::GetStyle().Alpha *= Opened;
+			if(pInfo->m_vClients.empty())
+				Description(Tr("Nobody plays here now"));
+			else
+				RenderServerPlayers(pInfo);
+			ImGui::GetStyle().Alpha /= std::max(Opened, 0.01f);
+			ImGui::EndChild();
+		}
+	}
+
+	if(Clicked)
+	{
+		if(Selected)
+			m_ServerExpanded = !m_ServerExpanded;
+		else
+		{
+			m_SelectedServer = pInfo->m_aAddress;
+			m_ServerExpanded = true;
+		}
+		PlayUiSound(SOUND_CLICK);
+	}
+	if(DoubleClicked || Join)
+	{
+		PlayUiSound(SOUND_CLICK);
+		Client()->Connect(pInfo->m_aAddress);
+	}
+	ImGui::PopID();
+	ImGui::SetCursorScreenPos(ImVec2(Min.x, Max.y + S(4.0f)));
+	ImGui::Dummy(ImVec2(Width, 0.0f));
+	return TotalH;
+}
+
 void CXcMenu::RenderServers()
 {
 	UpdateBrowser();
+	const STheme &t = Theme();
+	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+	const ImVec2 Area = ImGui::GetContentRegionAvail();
+	const ImVec2 Origin = ImGui::GetCursorScreenPos();
+	// the content keeps a readable width in the middle
+	const float Width = std::min(Area.x, S(1060.0f));
+	const float Left = Origin.x + (Area.x - Width) * 0.5f;
 
-	// top row: search, tabs (internet, favorites, LAN, the community tabs), filters, refresh
-	const float Avail = ImGui::GetContentRegionAvail().x;
-	const float SearchWidth = S(300.0f);
-	const float ButtonSize = S(34.0f);
-	const float Gap = S(12.0f);
-	ImGui::BeginChild("##search", ImVec2(SearchWidth, S(36.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
-	if(InputText("##server_search", g_Config.m_BrFilterString, sizeof(g_Config.m_BrFilterString), Tr("Search by name, map or player"), SearchWidth))
-		Client()->ServerBrowserUpdate();
-	ImGui::EndChild();
-	ImGui::SameLine(0.0f, Gap);
-	RenderBrowserTabs(Avail - SearchWidth - ButtonSize * 2.0f - Gap * 3.0f - S(6.0f));
-	ImGui::SameLine(0.0f, Gap);
-	if(IconButton(XC_ICON_FILTER, Tr("Filters and sorting"), m_ServerPanel == PANEL_FILTERS))
-		m_ServerPanel = m_ServerPanel == PANEL_FILTERS ? PANEL_SERVER : PANEL_FILTERS;
-	ImGui::SameLine(0.0f, S(6.0f));
-	if(IconButton(XC_ICON_ROTATE, Tr("Refresh")))
-	{
-		GameClient()->m_Menus.RefreshBrowserTab(true);
-		m_BrowserAutoTime = 0.0f;
-	}
 	// the players and the maps change: the list asks again on its own while it is open (in place, nothing jumps
 	// away; not on LAN, where a refresh empties the list first)
 	if(g_Config.m_XcBrAutoRefresh > 0 && ServerBrowser()->GetCurrentType() != IServerBrowser::TYPE_LAN)
@@ -1073,28 +1219,120 @@ void CXcMenu::RenderServers()
 			m_BrowserAutoTime = 0.0f;
 		}
 	}
-	ImGui::Dummy(ImVec2(0.0f, S(2.0f)));
-	RenderBrowserCommunities();
-	RenderBrowserTypes();
-	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
 
-	const CServerInfo *pSelected = nullptr;
+	// the top: back (on the full screen page), one big search, friends, filters, refresh
+	const float BarH = S(48.0f);
+	const float Gap = S(10.0f);
+	float x = Left;
+	const auto Square = [&](const char *pId, const char *pIcon, const char *pTip, bool On) {
+		ImGui::SetCursorScreenPos(ImVec2(x, Origin.y));
+		const bool Pressed = ImGui::InvisibleButton(pId, ImVec2(BarH, BarH));
+		const float Hover = Animate(ImGui::GetID(pId), ImGui::IsItemHovered() ? 1.0f : 0.0f, 14.0f);
+		if(ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s", pTip);
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		const float Lift = Hover * S(2.0f);
+		pDraw->AddRectFilled(ImVec2(x, Origin.y - Lift), ImVec2(x + BarH, Origin.y + BarH - Lift), Col(ImVec4(1, 1, 1, 0.045f + 0.045f * Hover)), S(14.0f));
+		pDraw->AddRect(ImVec2(x, Origin.y - Lift), ImVec2(x + BarH, Origin.y + BarH - Lift), Col(On ? ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.55f) : ImVec4(1, 1, 1, 0.07f)), S(14.0f), 0, 1.0f);
+		DrawIcon(pDraw, Fonts().m_pIcons, Fonts().m_pIcons->FontSize, ImVec2(x + BarH * 0.5f, Origin.y + BarH * 0.5f - Lift), Col(On ? t.m_Accent : Mix(t.m_TextSecondary, t.m_Text, Hover)), pIcon);
+		x += BarH + Gap;
+		if(Pressed)
+			PlayUiSound(SOUND_CLICK);
+		return Pressed;
+	};
+	if(m_ServersFullScreen && Square("##sv_back", XC_ICON_ARROW_LEFT, Tr("Back"), false))
+		m_Page = PAGE_HOME;
+	const float SearchW = Left + Width - x - (BarH + Gap) * 3.0f;
+	ImGui::SetCursorScreenPos(ImVec2(x, Origin.y));
+	{
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		pDraw->AddRectFilled(ImVec2(x, Origin.y), ImVec2(x + SearchW, Origin.y + BarH), Col(ImVec4(1, 1, 1, 0.045f)), S(16.0f));
+		pDraw->AddRect(ImVec2(x, Origin.y), ImVec2(x + SearchW, Origin.y + BarH), Col(ImVec4(1, 1, 1, 0.07f)), S(16.0f), 0, 1.0f);
+		DrawIcon(pDraw, Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(x + S(22.0f), Origin.y + BarH * 0.5f), Col(t.m_TextMuted), XC_ICON_SEARCH);
+		ImGui::SetCursorScreenPos(ImVec2(x + S(40.0f), Origin.y + (BarH - S(34.0f)) * 0.5f));
+		ImGui::BeginChild("##sv_search", ImVec2(SearchW - S(52.0f), S(34.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
+		// typing anywhere on the page goes to the search
+		if(m_SearchFocusNext)
+		{
+			ImGui::SetKeyboardFocusHere();
+			m_SearchFocusNext = false;
+		}
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0, 0, 0, 0));
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0, 0, 0, 0));
+		if(InputText("##server_search", g_Config.m_BrFilterString, sizeof(g_Config.m_BrFilterString), Tr("Server, map or player"), SearchW - S(52.0f)))
+			Client()->ServerBrowserUpdate();
+		ImGui::PopStyleColor(3);
+		ImGui::EndChild();
+		x += SearchW + Gap;
+	}
+	if(Square("##sv_friends", XC_ICON_USERS, Tr("Friends"), m_BrowserDrawerOpen && m_BrowserDrawerTab == 1))
+	{
+		m_BrowserDrawerOpen = !(m_BrowserDrawerOpen && m_BrowserDrawerTab == 1);
+		m_BrowserDrawerTab = 1;
+	}
+	if(Square("##sv_filters", XC_ICON_FILTER, Tr("Filters and sorting"), m_BrowserDrawerOpen && m_BrowserDrawerTab == 0))
+	{
+		m_BrowserDrawerOpen = !(m_BrowserDrawerOpen && m_BrowserDrawerTab == 0);
+		m_BrowserDrawerTab = 0;
+	}
+	if(Square("##sv_refresh", XC_ICON_ROTATE, Tr("Refresh"), false))
+	{
+		GameClient()->m_Menus.RefreshBrowserTab(true);
+		m_BrowserAutoTime = 0.0f;
+	}
+
+	// the lists as quiet pills: internet, favorites, LAN and the community tabs
+	float y = Origin.y + BarH + S(14.0f);
+	{
+		struct SPill
+		{
+			int m_Page;
+			const char *m_pLabel;
+		};
+		std::vector<SPill> vPills = {{CMenus::PAGE_INTERNET, Tr("All")}, {CMenus::PAGE_FAVORITES, Tr("Favorites")}, {CMenus::PAGE_LAN, "LAN"}};
+		const std::vector<const CCommunity *> vpFavoriteCommunities = ServerBrowser()->FavoriteCommunities();
+		for(size_t i = 0; i < vpFavoriteCommunities.size() && i < 5; i++)
+			vPills.push_back({CMenus::PAGE_FAVORITE_COMMUNITY_1 + (int)i, vpFavoriteCommunities[i]->Name()});
+		ImFont *pFont = Fonts().m_pLabel;
+		float px = Left;
+		const float PillH = S(32.0f);
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		for(size_t i = 0; i < vPills.size(); i++)
+		{
+			const SPill &Pill = vPills[i];
+			const float W = pFont->CalcTextSizeA(pFont->FontSize, FLT_MAX, 0.0f, Pill.m_pLabel).x + S(28.0f);
+			ImGui::SetCursorScreenPos(ImVec2(px, y));
+			ImGui::PushID((int)i);
+			const bool Pressed = ImGui::InvisibleButton("##pill", ImVec2(W, PillH));
+			const float Hover = Animate(ImGui::GetID("##pill_h"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 14.0f);
+			const bool On = g_Config.m_UiPage == Pill.m_Page;
+			const float Sel = Animate(ImGui::GetID("##pill_s"), On ? 1.0f : 0.0f, 14.0f);
+			ImGui::PopID();
+			pDraw->AddRectFilled(ImVec2(px, y), ImVec2(px + W, y + PillH), Col(Mix(ImVec4(1, 1, 1, 0.05f * Hover), t.m_Text, Sel)), PillH * 0.5f);
+			const ImVec4 TextCol = Mix(Mix(t.m_TextMuted, t.m_Text, Hover), ImVec4(0.06f, 0.07f, 0.1f, 1.0f), Sel);
+			pDraw->AddText(pFont, pFont->FontSize, ImVec2(px + S(14.0f), y + (PillH - pFont->FontSize) * 0.5f), Col(TextCol), Pill.m_pLabel);
+			if(Pressed && !On)
+			{
+				g_Config.m_UiPage = Pill.m_Page;
+				GameClient()->m_Menus.RefreshBrowserTab(false);
+				PlayUiSound(SOUND_TAB);
+			}
+			px += W + S(6.0f);
+		}
+		y += PillH + S(10.0f);
+	}
+
+	// the list: rows, drawn only where they are seen; a row may open in place
+	const float FootH = S(40.0f);
+	const float ListH = Origin.y + Area.y - FootH - y;
+	ImGui::SetCursorScreenPos(ImVec2(Left - S(6.0f), y));
+	BeginInnerScroll("##server_rows", ImVec2(Width + S(12.0f), ListH));
 	const int NumServers = ServerBrowser()->NumSortedServers();
-	for(int i = 0; i < NumServers && !pSelected; i++)
-		if(m_SelectedServer == ServerBrowser()->SortedGet(i)->m_aAddress)
-			pSelected = ServerBrowser()->SortedGet(i);
-
-	// cards on the left, the status line under them, the panel on the right
-	const float DetailsWidth = S(360.0f);
-	const ImVec2 Area = ImGui::GetContentRegionAvail();
-	const float ListWidth = Area.x - DetailsWidth - S(16.0f);
-	const float StatusHeight = S(44.0f);
-	const ImVec2 ListPos = ImGui::GetCursorScreenPos();
-	ImGui::BeginChild("##server_list", ImVec2(ListWidth, Area.y - StatusHeight), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
 	if(NumServers == 0)
 	{
 		const bool Loading = ServerBrowser()->IsGettingServerlist() || ServerBrowser()->IsRefreshing();
-		ImGui::Dummy(ImVec2(0.0f, S(40.0f)));
+		ImGui::Dummy(ImVec2(0.0f, S(30.0f)));
 		Title(Loading ? Tr("Loading servers...") : Tr("No servers found"));
 		Description(Loading ? Tr("Asking the master servers for the list") : (ServerBrowser()->IsServerlistError() ? Tr("Could not get the server list, try to refresh") : Tr("Try another filter or refresh the list")));
 		if(!Loading && Button(Tr("Reset filters")))
@@ -1105,59 +1343,77 @@ void CXcMenu::RenderServers()
 	}
 	else
 	{
-		const float CardGap = S(12.0f);
-		const int Columns = std::max(1, (int)((ListWidth + CardGap) / (S(300.0f) + CardGap)));
-		const float CardWidth = (ImGui::GetContentRegionAvail().x - CardGap * (Columns - 1)) / Columns;
-		const float CardHeight = S(104.0f);
-		const int Rows = (NumServers + Columns - 1) / Columns;
-		// only the visible rows are drawn, the list can hold thousands of servers
-		ImGuiListClipper Clipper;
-		Clipper.Begin(Rows, CardHeight + CardGap);
-		while(Clipper.Step())
+		const float ViewTop = ImGui::GetScrollY();
+		const float ViewBottom = ViewTop + ImGui::GetWindowHeight();
+		const float RowW = ImGui::GetContentRegionAvail().x - S(6.0f);
+		for(int i = 0; i < NumServers; i++)
 		{
-			for(int Row = Clipper.DisplayStart; Row < Clipper.DisplayEnd; Row++)
+			const CServerInfo *pInfo = ServerBrowser()->SortedGet(i);
+			// the play button of the home page: the last server is picked, opened and scrolled into sight
+			if(m_ScrollToSelected && !m_SelectedServer.empty() && str_find(pInfo->m_aAddress, m_SelectedServer.c_str()))
 			{
-				const ImVec2 RowPos = ImGui::GetCursorScreenPos();
-				for(int Column = 0; Column < Columns; Column++)
-				{
-					const int Index = Row * Columns + Column;
-					if(Index >= NumServers)
-						break;
-					ImGui::SetCursorScreenPos(ImVec2(RowPos.x + Column * (CardWidth + CardGap), RowPos.y));
-					RenderServerCard(ServerBrowser()->SortedGet(Index), CardWidth, CardHeight);
-				}
-				ImGui::SetCursorScreenPos(ImVec2(RowPos.x, RowPos.y + CardHeight + CardGap));
-				ImGui::Dummy(ImVec2(0.0f, 0.0f));
+				m_SelectedServer = pInfo->m_aAddress;
+				m_ServerExpanded = true;
+				ImGui::SetScrollHereY(0.25f);
+				m_ScrollToSelected = false;
 			}
+			const float RowTop = ImGui::GetCursorPosY();
+			const bool Visible = RowTop + S(260.0f) >= ViewTop && RowTop <= ViewBottom;
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + S(6.0f));
+			RenderServerRow(pInfo, RowW, Visible);
 		}
 	}
-	ImGui::EndChild();
-	ImGui::SetCursorScreenPos(ImVec2(ListPos.x, ListPos.y + Area.y - StatusHeight + S(8.0f)));
-	ImGui::BeginChild("##browser_status", ImVec2(ListWidth, StatusHeight - S(8.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
+	EndInnerScroll();
+
+	// the foot: how many, the address field
+	ImGui::SetCursorScreenPos(ImVec2(Left, Origin.y + Area.y - FootH + S(6.0f)));
+	ImGui::BeginChild("##browser_status", ImVec2(Width, FootH - S(6.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
 	RenderBrowserStatus();
 	ImGui::EndChild();
 
-	// the panel: server, friends, filters
-	const STheme &t = Theme();
-	ImGui::SetCursorScreenPos(ImVec2(ListPos.x + ListWidth + S(16.0f), ListPos.y));
-	ImGui::BeginChild("##details_area", ImVec2(DetailsWidth, Area.y), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
-	ImDrawList *pDraw = ImGui::GetWindowDrawList();
-	const ImVec2 Min = ImGui::GetCursorScreenPos();
-	PanelRect(pDraw, Min, ImVec2(Min.x + DetailsWidth, Min.y + Area.y), S(14.0f), t.m_Card);
-	const float Pad = S(16.0f);
-	ImGui::SetCursorScreenPos(ImVec2(Min.x + Pad, Min.y + Pad));
-	ImGui::BeginChild("##panel_tabs", ImVec2(DetailsWidth - Pad * 2.0f, S(34.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
-	const char *apPanels[NUM_PANELS] = {Tr("Server"), Tr("Friends"), Tr("Filters")};
-	Segmented("##panel", &m_ServerPanel, apPanels, NUM_PANELS);
-	ImGui::EndChild();
-	ImGui::SetCursorScreenPos(ImVec2(Min.x + Pad, Min.y + Pad + S(46.0f)));
-	ImGui::BeginChild("##server_details", ImVec2(DetailsWidth - Pad * 2.0f, Area.y - Pad * 2.0f - S(46.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
-	if(m_ServerPanel == PANEL_FRIENDS)
-		RenderBrowserFriends();
-	else if(m_ServerPanel == PANEL_FILTERS)
-		RenderBrowserFilters();
-	else
-		RenderServerDetails(pSelected);
-	ImGui::EndChild();
-	ImGui::EndChild();
+	// the drawer on the right: filters (with the communities and the map types) or friends
+	m_BrowserDrawer = std::clamp(m_BrowserDrawer + (m_BrowserDrawerOpen ? Dt : -Dt) / 0.35f, 0.0f, 1.0f);
+	if(m_BrowserDrawer > 0.0f)
+	{
+		const float k = 1.0f - std::pow(1.0f - m_BrowserDrawer, 3.0f);
+		const float DrawerW = std::min(S(380.0f), Area.x * 0.9f);
+		const ImVec2 DMin(Origin.x + Area.x - DrawerW + (1.0f - k) * S(30.0f), Origin.y + BarH + S(14.0f));
+		const ImVec2 DMax(DMin.x + DrawerW, Origin.y + Area.y);
+		const float OldAlpha = ImGui::GetStyle().Alpha;
+		ImGui::GetStyle().Alpha *= k;
+		ImGui::SetCursorScreenPos(DMin);
+		ImGui::BeginChild("##browser_drawer", ImVec2(DrawerW, DMax.y - DMin.y), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
+		ImDrawList *pDraw = ImGui::GetWindowDrawList();
+		pDraw->AddRectFilled(DMin, DMax, Col(t.m_Panel), S(18.0f));
+		pDraw->AddRect(DMin, DMax, Col(t.m_Border), S(18.0f), 0, 1.0f);
+		const float Pad = S(18.0f);
+		ImGui::SetCursorScreenPos(ImVec2(DMin.x + Pad, DMin.y + Pad));
+		ImGui::BeginChild("##drawer_tabs", ImVec2(DrawerW - Pad * 2.0f, S(34.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar);
+		const char *apTabs[] = {Tr("Filters"), Tr("Friends")};
+		Segmented("##drawer_tab", &m_BrowserDrawerTab, apTabs, 2);
+		ImGui::EndChild();
+		ImGui::SetCursorScreenPos(ImVec2(DMin.x + Pad, DMin.y + Pad + S(46.0f)));
+		BeginInnerScroll("##drawer_body", ImVec2(DrawerW - Pad * 2.0f, DMax.y - DMin.y - Pad * 2.0f - S(46.0f)));
+		if(m_BrowserDrawerTab == 1)
+			RenderBrowserFriends();
+		else
+		{
+			RenderBrowserCommunities();
+			RenderBrowserTypes();
+			ImGui::Dummy(ImVec2(0.0f, S(6.0f)));
+			RenderBrowserFilters();
+		}
+		EndInnerScroll();
+		ImGui::EndChild();
+		ImGui::GetStyle().Alpha = OldAlpha;
+		// a click outside closes it
+		if(m_BrowserDrawerOpen && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsMouseHoveringRect(DMin, DMax, false) && ImGui::GetIO().MousePos.y > Origin.y + BarH)
+			m_BrowserDrawerOpen = false;
+	}
+
+	// typing on the page goes to the search; Esc on the full screen page goes home
+	if(!ImGui::GetIO().WantTextInput && ImGui::GetIO().InputQueueCharacters.Size > 0)
+		m_SearchFocusNext = true;
+	if(m_ServersFullScreen && ImGui::IsKeyPressed(ImGuiKey_Escape, false) && !ImGui::GetIO().WantTextInput)
+		m_Page = PAGE_HOME;
 }

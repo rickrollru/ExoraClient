@@ -805,6 +805,8 @@ namespace XcUi
 			{"Looking for an update...", "Ищу обновление..."},
 			{"This is the newest version", "Это самая новая версия"},
 			{"Check now", "Проверить сейчас"},
+			{"Server, map or player", "Сервер, карта или игрок"},
+			{"Nobody plays here now", "Сейчас здесь никто не играет"},
 			{"Click anywhere or press any key", "Нажми в любом месте или любую клавишу"},
 			{"Sunday", "воскресенье"},
 			{"Monday", "понедельник"},
