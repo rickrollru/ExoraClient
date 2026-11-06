@@ -495,8 +495,22 @@ void CXcCosmeticsSync::OnRender()
 		}
 		return;
 	}
-	char aAddress[NETADDR_MAXSTRSIZE];
-	net_addr_str(&Client()->ServerAddress(), aAddress, sizeof(aAddress), true);
+	// the server is named by its name, not by its address: the host of a local server sees localhost, his friends
+	// the Radmin or LAN address, and on a DDNet server one may come in over IPv4 and another over IPv6. The key
+	// looks like an address to the service (hex digits); a player number still has to match the name on it
+	const char *pServerName = Client()->ServerInfo().m_aName;
+	if(!pServerName[0])
+		return;
+	char aKey[2 + 24 + 1];
+	{
+		char aSeed[256];
+		str_format(aSeed, sizeof(aSeed), "exora-server|%s", pServerName);
+		const SHA256_DIGEST Digest = sha256(aSeed, str_length(aSeed));
+		char aHex[SHA256_MAXSTRSIZE];
+		sha256_str(Digest, aHex, sizeof(aHex));
+		str_format(aKey, sizeof(aKey), "ff%.24s", aHex);
+	}
+	const char *aAddress = aKey;
 	if(m_Address != aAddress)
 	{
 		OnReset();
