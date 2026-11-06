@@ -644,6 +644,7 @@ MACRO_CONFIG_INT(XcTeeShaderShade, xc_tee_shader_shade, 70, 0, 100, CFGFLAG_CLIE
 // Shared cosmetics: other Exora players see your cape, scarf, accessory, tee shader and neon, you see theirs
 MACRO_CONFIG_INT(XcCosmeticsShare, xc_cosmetics_share, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Other Exora players see your cosmetics (your set goes to the cosmetics service)")
 MACRO_CONFIG_INT(XcCosmeticsOthers, xc_cosmetics_others, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "See the cosmetics of other Exora players")
+MACRO_CONFIG_INT(XcCosmeticsParts, xc_cosmetics_parts, 8191, 0, 8191, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Which parts of the cosmetics of other Exora players to see, a sum of 1 cape, 2 scarf, 4 accessory, 8 neon, 16 tee shader, 32 trail, 64 hook, 128 jumps, 256 death, 512 spawn, 1024 finish, 2048 gradient name, 4096 jelly tee")
 MACRO_CONFIG_INT(XcExoraIcon, xc_exora_icon, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show the Exora icon next to the players who play Exora Client (nameplates and the scoreboard)")
 MACRO_CONFIG_STR(XcCosmeticsUrl, xc_cosmetics_url, 128, "http://217.19.4.130:8770", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Address of the cosmetics service")
 MACRO_CONFIG_STR(XcCosmeticsId, xc_cosmetics_id, 17, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Random id of this client for the cosmetics service (made by itself)")

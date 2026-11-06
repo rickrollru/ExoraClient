@@ -128,6 +128,8 @@ namespace
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_TEXTURES, "##tex_sets", "Textures", "Weapons, emotes, particles, HUD icons and entities. Click a set to use it", "текстуры ассеты оружие эмоции частицы худ энтитис entities assets textures game emoticons particles hud extras gameskin"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_WARLIST, "##war_list", "War list", "Players and clans in colored groups", "вар лист варлист война враги команда клан группы цвет ники war list warlist enemy team clan groups colors"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_DDNET, nullptr, "DDNet", "All DDNet settings", "ddnet дднет все настройки предсказание prediction антипинг antiping ники nameplates линия хука hook призрак ghost демо demo скриншот screenshot камера camera зум zoom лазер laser entities"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_ONLINE, "##online_others", "Cosmetics of others", "What of the other Exora players you see on them", "онлайн косметика других чужая видеть плащ нимб шлейф части online cosmetics others parts see"},
+		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_ONLINE, "##online_status", "Exora online", "Who plays Exora now, the Exora icon", "онлайн значок иконка exora экзора сервис online icon service"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_TCLIENT, nullptr, "TClient", "All TClient settings", "tclient тклиент тиклиент обводка outline индикатор indicator радуга rainbow вар war питомец pet антипинг antiping призраки ghosts перевод translate"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_HUD, "##hud_scoreboard", "Own scoreboard", "Tab shows players by teams with medals, times and pings in the style of the menu", "таблица игроков таб скорборд топ мини-топ scoreboard tab top minitop"},
 		{CXcMenu::PAGE_SETTINGS, CXcMenu::SETTINGS_CHAT, "##chat_style", "Chat in the HUD style", "Plates in the theme colors, marks for mentions, team chat and whispers, a framed input", "чат стиль плашки упоминание шёпот команда chat style mention whisper"},
@@ -262,7 +264,7 @@ void CXcMenu::RenderSearch()
 	static const char *const s_apPageNames[] = {"Home", "Servers", "Visuals", "Configs", "Demos", "Votes", "Settings"};
 	static_assert(std::size(s_apPageIcons) == NUM_PAGES && std::size(s_apPageNames) == NUM_PAGES);
 	// one name per section: a missing one would be a null string and crash the search
-	static const char *const s_apSectionNames[] = {"Interface", "Background", "Player", "Controls", "Sound", "Chat", "Graphics", "HUD", "Textures", "War list", "TClient", "DDNet"};
+	static const char *const s_apSectionNames[] = {"Interface", "Background", "Player", "Online", "Controls", "Sound", "Chat", "Graphics", "HUD", "Textures", "War list", "TClient", "DDNet"};
 	static_assert(std::size(s_apSectionNames) == NUM_SETTINGS, "every settings section needs a name");
 	float y = Min.y + InputHeight + S(8.0f);
 	if(NumShown == 0)

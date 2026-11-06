@@ -51,6 +51,7 @@ public:
 		SETTINGS_INTERFACE = 0,
 		SETTINGS_BACKGROUND,
 		SETTINGS_PLAYER,
+		SETTINGS_ONLINE,
 		SETTINGS_CONTROLS,
 		SETTINGS_SOUND,
 		SETTINGS_CHAT,
@@ -389,6 +390,7 @@ private:
 	// cosmetics editor (menu_cosmetics.cpp): own hats from pictures and gifs
 	void RenderVisualsCosmetics();
 	void RenderSharedCosmeticsCard();
+	void RenderSettingsOnline();
 	// cosmetics sets (menu_cosmetic_presets.cpp)
 	struct SCosmeticPreset
 	{

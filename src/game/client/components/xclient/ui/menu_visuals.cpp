@@ -593,10 +593,77 @@ void CXcMenu::RenderSharedCosmeticsCard()
 			str_copy(aStatus, Tr("Off"));
 		Description(aStatus);
 		Description(Tr("Only the look is shared, by a random id of this client: no nick is stored"));
+		if(Button(Tr("Which parts to see: Settings, Online")))
+		{
+			m_Page = PAGE_SETTINGS;
+			m_SettingsSection = SETTINGS_ONLINE;
+		}
 		EndCard();
 	}
 	EndCardGrid();
 	ImGui::Dummy(ImVec2(0.0f, S(8.0f)));
+}
+
+// Settings -> Online: what goes through the Exora service, and what of the others you see
+void CXcMenu::RenderSettingsOnline()
+{
+	const CXcCosmeticsSync &Sync = GameClient()->m_XcCosmetics;
+	BeginCardGrid("##online", 2);
+	if(BeginCard("##online_status", Tr("Exora online"), Tr("The Exora service: who plays Exora now and on which server, for the shared cosmetics and the icon")))
+	{
+		char aBuf[128];
+		if(Sync.Online() >= 0)
+			str_format(aBuf, sizeof(aBuf), Tr("%d in Exora now"), Sync.Online());
+		else
+			str_copy(aBuf, Tr("The service does not answer yet"));
+		ParamLabel(aBuf);
+		const char *pStatus = Sync.Status();
+		if(str_comp(pStatus, "ok") == 0)
+			str_format(aBuf, sizeof(aBuf), Tr("Connected. Players with a set on this server: %d"), Sync.NumSeen());
+		else if(str_comp(pStatus, "failed") == 0)
+			str_copy(aBuf, Tr("The cosmetics service does not answer, trying again"));
+		else if(str_comp(pStatus, "waiting") == 0)
+			str_copy(aBuf, Tr("Join a server: the sets are shared while you play"));
+		else
+			str_copy(aBuf, Tr("Off"));
+		Description(aBuf);
+		ToggleRow(Tr("Exora icon next to the players who play it"), "xc_exora_icon", &g_Config.m_XcExoraIcon);
+		Description(Tr("Only the look is shared, by a random id of this client: no nick is stored"));
+		EndCard();
+	}
+	if(BeginCard("##online_mine", Tr("My cosmetics"), Tr("Other Exora players see what you wear: the parts that are on for yourself")))
+	{
+		ToggleRow(Tr("Others see my cosmetics"), "xc_cosmetics_share", &g_Config.m_XcCosmeticsShare);
+		Description(Tr("Turned off: nobody sees your set and you get no Exora icon"));
+		EndCard();
+	}
+	if(BeginCard("##online_others", Tr("Cosmetics of others"), Tr("What of the other Exora players you see on them")))
+	{
+		ToggleRow(Tr("See the cosmetics of others"), "xc_cosmetics_others", &g_Config.m_XcCosmeticsOthers);
+		ImGui::BeginDisabled(!g_Config.m_XcCosmeticsOthers);
+		ParamLabel(Tr("Which parts"));
+		// in the order of the parts of the shared set (CXcCosmeticsSync)
+		const char *apParts[] = {Tr("Cape"), Tr("Scarf"), Tr("Accessory"), Tr("Neon outline"), Tr("Tee shader"), Tr("Trail"), Tr("Hook"), Tr("Jumps"), Tr("Death"), Tr("Spawn"), Tr("Finish"), Tr("Gradient name"), Tr("Jelly tee")};
+		const int Mask = g_Config.m_XcCosmeticsParts;
+		for(int i = 0; i < (int)std::size(apParts); i++)
+		{
+			char aId[32];
+			str_format(aId, sizeof(aId), "##cosmetic_part%d", i);
+			RowLabel(apParts[i], S(36.0f));
+			int On = (Mask >> i) & 1;
+			if(ToggleInt(aId, &On))
+				SetConfigInt("xc_cosmetics_parts", On ? Mask | (1 << i) : Mask & ~(1 << i));
+		}
+		const float Half = (AvailWidth() - S(8.0f)) * 0.5f;
+		if(Button(Tr("All"), false, Half))
+			SetConfigInt("xc_cosmetics_parts", 8191);
+		ImGui::SameLine(0.0f, S(8.0f));
+		if(Button(Tr("Only the look"), false, Half))
+			SetConfigInt("xc_cosmetics_parts", 1 | 2 | 4 | 8 | 16 | 2048); // cape, scarf, accessory, neon, shader, name: no effects
+		ImGui::EndDisabled();
+		EndCard();
+	}
+	EndCardGrid();
 }
 
 void CXcMenu::RenderVisualsCosmeticsExtra()

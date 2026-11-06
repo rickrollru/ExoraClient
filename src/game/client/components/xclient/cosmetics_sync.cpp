@@ -580,6 +580,10 @@ bool CXcCosmeticsSync::ApplyTo(int ClientId, std::vector<long long> &vSaved)
 			Value = std::clamp<long long>(Value, Field.m_Min, Field.m_Max);
 		WriteField(Field, Value);
 	}
+	// the parts the viewer does not want to see on others (xc_cosmetics_parts, in the order of s_aParts)
+	for(size_t i = 0; i < std::size(s_aParts); i++)
+		if(!(g_Config.m_XcCosmeticsParts & (1 << i)))
+			*s_aParts[i].m_pOn = 0;
 	for(const SPart &Part : s_aParts)
 		*Part.m_pOthers = *Part.m_pOn != 0;
 	g_Config.m_XcAccessoryFriends = 0;
