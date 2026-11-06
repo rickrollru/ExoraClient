@@ -346,6 +346,18 @@ private:
 	bool MinimalHome() const;
 	void RenderStartScreen(float Dt);
 	void RenderMinimalHome(float Dt);
+	// the minimal home in game (Esc on a server)
+	enum
+	{
+		GAME_POPUP_NONE = 0,
+		GAME_POPUP_VOTE,
+		GAME_POPUP_DISCONNECT,
+	};
+	bool m_GameMapCard = false; // the map card slid in
+	int m_GamePopup = GAME_POPUP_NONE;
+	bool GameHome() const;
+	bool GameHomeEscape(); // Esc closes the card or the popup first
+	void RenderGameHome(float Dt);
 	void LeaveHome(int Page);
 	void RenderTeesBackground(struct ImDrawList *pDraw, float Alpha);
 	void RenderWavesBackground(struct ImDrawList *pDraw, float Alpha);

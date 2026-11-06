@@ -27,6 +27,7 @@ public:
 		ImFont *m_pSmall = nullptr; // regular, descriptions and hints
 		ImFont *m_pIcons = nullptr; // big icons for the top bar
 		ImFont *m_pClock = nullptr; // thin big digits of the start screen clock (digits and colon only)
+		ImFont *m_pDisplay = nullptr; // the wide face, big: the map name of the in-game menu
 	};
 
 	bool Init(IGraphics *pGraphics, IInput *pInput, IStorage *pStorage);

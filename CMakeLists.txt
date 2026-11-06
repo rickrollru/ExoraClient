@@ -3129,6 +3129,7 @@ if(CLIENT)
     components/xclient/ui/menu_ddnet.cpp
     components/xclient/ui/menu_demoplayer.cpp
     components/xclient/ui/menu_demos.cpp
+    components/xclient/ui/menu_game_home.cpp
     components/xclient/ui/menu_home.cpp
     components/xclient/ui/menu_home_v2.cpp
     components/xclient/ui/menu_start.cpp

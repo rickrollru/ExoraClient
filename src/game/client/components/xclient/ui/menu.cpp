@@ -197,7 +197,16 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 		// Esc opens the new menu, unless the classic one is open in game (it closes itself then)
 		if(EscapePressed && (!IsOnline() || !GameClient()->m_Menus.IsActive()))
 		{
-			// the menu opens where it was left last time (the map card stays on Home)
+			// the menu opens where it was left last time (the map card stays on Home); the minimal home in game
+			// is always the first thing Esc shows, its parts come in again
+			if(GameHome())
+			{
+				m_Page = PAGE_HOME;
+				m_HomeTime = 0.0001f;
+				m_HomeLeaveTo = -1;
+				m_GameMapCard = false;
+				m_GamePopup = GAME_POPUP_NONE;
+			}
 			SetActive(true);
 			return true;
 		}
@@ -221,6 +230,8 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 			m_Backend.OnInput(Event);
 			return true;
 		}
+		if(m_Page == PAGE_HOME && GameHome() && GameHomeEscape())
+			return true;
 		if(IsOnline())
 			SetActive(false);
 		return true;
@@ -263,6 +274,7 @@ void CXcMenu::UpdateStyle()
 		Fonts.m_pSmall = BackendFonts.m_pSmall;
 		Fonts.m_pIcons = BackendFonts.m_pIcons;
 		Fonts.m_pClock = BackendFonts.m_pClock;
+		Fonts.m_pDisplay = BackendFonts.m_pDisplay;
 		SetFonts(Fonts);
 	}
 	// everything the theme is made of, so a change shows at once
@@ -586,7 +598,7 @@ void CXcMenu::RenderFrame()
 	if(m_Page == PAGE_HOME && m_LastShownPage != PAGE_HOME && !m_StartLocked)
 		m_HomeTime = 0.0001f; // back on the home: its parts come in again
 	m_LastShownPage = m_Page;
-	if(m_StartLocked || (m_Page == PAGE_HOME && MinimalHome()))
+	if(m_StartLocked || (m_Page == PAGE_HOME && (MinimalHome() || GameHome())))
 	{
 		ImGui::GetStyle().Alpha = Open * Settled();
 		ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
@@ -596,7 +608,10 @@ void CXcMenu::RenderFrame()
 		ImGui::Begin("##xc_start", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav);
 		ImGui::PopStyleVar(2);
 		ImGui::PushFont(Fonts().m_pBody);
-		RenderMinimalHome(FrameDt);
+		if(GameHome() && !m_StartLocked)
+			RenderGameHome(FrameDt);
+		else
+			RenderMinimalHome(FrameDt);
 		ImGui::PopFont();
 		ImGui::End();
 		if(m_StartLocked)
