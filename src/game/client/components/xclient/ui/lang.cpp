@@ -2517,6 +2517,7 @@ namespace XcUi
 			{"Disconnect from the server?", "Отключиться от сервера?"},
 			{"The run is not finished: %s will be lost.", "Забег не закончен: время %s не сохранится."},
 			{"Stay", "Остаться"},
+			{"Island", "Остров"},
 			{"Nobody plays Exora on a server now", "Сейчас никто из Exora не играет на серверах"},
 			{"Asking who plays Exora...", "Узнаю, кто играет на Exora..."},
 			{"Here are the servers where players of Exora Client are. Only those who share their cosmetics are seen (Settings, Online).", "Здесь серверы, где играют с Exora Client. Видно тех, у кого включено «Другие видят мою косметику» (Настройки, Онлайн)."},

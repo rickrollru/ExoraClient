@@ -58,6 +58,7 @@ namespace XcRender
 		};
 		int m_NumRects = 0;
 		float m_aaRects[MAX_RECTS][4] = {};
+		float m_aRadius[MAX_RECTS] = {}; // corner radius of each rect, in screen heights (0 = square)
 	};
 
 	// Motion blur of everything drawn so far (the map): each pixel averages the frame along a line.

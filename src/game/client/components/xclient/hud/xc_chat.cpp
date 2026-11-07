@@ -138,7 +138,7 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 	const bool ShowAll = Chat.m_PrevShowChat;
 	const float Speed = AnimationSpeed() > 0.0f ? 10.0f * AnimationSpeed() : 1000.0f;
 	m_ChatOpen = Typing ? std::min(m_ChatOpen + Dt * Speed, 1.0f) : std::max(m_ChatOpen - Dt * Speed, 0.0f);
-	m_vChatBlurRects.clear();
+	// (the blur rects are cleared once a frame in OnRender)
 
 	const float H = (float)Graphics()->ScreenHeight();
 	const float U0 = H / 1080.0f;
@@ -339,7 +339,7 @@ void CXcHud::RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha)
 		{
 			// glass: the game blurred behind it (render module), a light film and a bright top edge
 			if(a > 0.25f)
-				m_vChatBlurRects.push_back({BoxMin.x, BoxMin.y, BoxMax.x, BoxMax.y});
+				m_vChatBlurRects.push_back({BoxMin.x, BoxMin.y, BoxMax.x, BoxMax.y, 0.0f});
 			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, g_Config.m_XcChatOpacity / 100.0f * 0.55f), a), Rounding);
 			pDraw->AddRectFilled(BoxMin, BoxMax, Col(ImVec4(1, 1, 1, 1), 0.04f * a), Rounding);
 			pDraw->AddRectFilledMultiColor(ImVec2(BoxMin.x + Rounding * 0.5f, BoxMin.y + 1.0f), ImVec2(BoxMax.x - Rounding * 0.5f, BoxMin.y + (BoxMax.y - BoxMin.y) * 0.45f),
@@ -476,7 +476,7 @@ void CXcHud::RenderChatInput(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float U,
 	if(Look == XC_CHAT_GLASS)
 	{
 		if(Alpha > 0.25f)
-			m_vChatBlurRects.push_back({Min.x, Min.y, Max.x, Max.y});
+			m_vChatBlurRects.push_back({Min.x, Min.y, Max.x, Max.y, 0.0f});
 		pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.55f), Alpha), Rounding);
 		pDraw->AddRectFilled(Min, Max, Col(ImVec4(1, 1, 1, 1), 0.06f * Alpha), Rounding);
 	}
@@ -561,6 +561,7 @@ void CXcHud::BlurChat()
 		pRect[1] = Rect[1] / H;
 		pRect[2] = Rect[2] / W;
 		pRect[3] = Rect[3] / H;
+		Settings.m_aRadius[Settings.m_NumRects - 1] = Rect[4] / H;
 	}
 	Graphics()->XcBlurScreen(Settings);
 }

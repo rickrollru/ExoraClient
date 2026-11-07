@@ -487,9 +487,19 @@ in vec2 v_Uv;
 uniform sampler2D u_Tex;
 uniform float u_Strength;
 uniform vec4 u_Tint;
+uniform vec4 u_Round; // a rounded rect in window pixels (x0, y0, x1, y1), only inside it; u_Radius 0 = no cut
+uniform float u_Radius;
 out vec4 FragColor;
 void main()
 {
+	if(u_Radius > 0.0)
+	{
+		vec2 Center = (u_Round.xy + u_Round.zw) * 0.5;
+		vec2 Half = (u_Round.zw - u_Round.xy) * 0.5;
+		vec2 q = abs(gl_FragCoord.xy - Center) - Half + vec2(u_Radius);
+		if(length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - u_Radius > 0.0)
+			discard;
+	}
 	vec4 c = texture(u_Tex, v_Uv);
 	c.rgb = mix(c.rgb, u_Tint.rgb, u_Tint.a);
 	FragColor = vec4(c.rgb * u_Strength, 1.0);
@@ -845,6 +855,8 @@ bool CXcRenderer::Init()
 	m_LocCompTex = glGetUniformLocation(m_CompositeProgram, "u_Tex");
 	m_LocCompStrength = glGetUniformLocation(m_CompositeProgram, "u_Strength");
 	m_LocCompTint = glGetUniformLocation(m_CompositeProgram, "u_Tint");
+	m_LocCompRound = glGetUniformLocation(m_CompositeProgram, "u_Round");
+	m_LocCompRadius = glGetUniformLocation(m_CompositeProgram, "u_Radius");
 
 	GLint OldVao, OldBuffer;
 	glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &OldVao);
@@ -1366,8 +1378,13 @@ void CXcRenderer::BlurScreen(const XcRender::SCommand_BlurScreen *pCommand)
 		if(x1 <= x0 || y1 <= y0)
 			continue;
 		glScissor(pViewport[0] + x0, pViewport[1] + y0, x1 - x0, y1 - y0);
+		// a rounded panel: the corners outside it stay sharp
+		const float Radius = Settings.m_aRadius[i] * Height;
+		glUniform1f(m_LocCompRadius, Radius);
+		glUniform4f(m_LocCompRound, pViewport[0] + pRect[0] * Width, pViewport[1] + (1.0f - pRect[3]) * Height, pViewport[0] + pRect[2] * Width, pViewport[1] + (1.0f - pRect[1]) * Height);
 		DrawFullscreen(m_CompositeProgram, m_aBlur[0].m_Texture);
 	}
+	glUniform1f(m_LocCompRadius, 0.0f);
 }
 
 void CXcRenderer::MotionBlur(const XcRender::SCommand_MotionBlur *pCommand)

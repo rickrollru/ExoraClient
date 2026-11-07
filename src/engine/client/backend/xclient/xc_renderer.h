@@ -98,6 +98,8 @@ private:
 	int m_LocCompTex = -1;
 	int m_LocCompStrength = -1;
 	int m_LocCompTint = -1;
+	int m_LocCompRound = -1;
+	int m_LocCompRadius = -1;
 	int m_LocGlowCapture = -1;
 	int m_LocGlowBlur = -1;
 	int m_LocGlowColor = -1;

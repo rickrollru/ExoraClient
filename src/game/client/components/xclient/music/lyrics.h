@@ -55,6 +55,15 @@ public:
 	const std::vector<SLine> *FoundLines(const std::string &Key, bool &Approx) const;
 	// lyrics recorded in a demo: taken instead of a search
 	void AddRecorded(const std::string &Key, std::vector<SLine> vLines, bool Approx);
+	// the lines of the track that plays now, nullptr while there are none; Approx: spread over the track, not timed
+	const std::vector<SLine> *CurrentLines(bool *pApprox = nullptr) const
+	{
+		if(m_State != STATE_FOUND || m_vLines.empty())
+			return nullptr;
+		if(pApprox)
+			*pApprox = m_Approx;
+		return &m_vLines;
+	}
 	static std::string TrackKey(const std::string &Artist, const std::string &Title) { return Artist + "\x1f" + Title; }
 
 private:

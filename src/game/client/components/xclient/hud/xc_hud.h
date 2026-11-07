@@ -8,6 +8,7 @@
 #include <game/client/components/xclient/ui/imgui_backend.h>
 
 #include <array>
+#include <string>
 #include <vector>
 
 // The XClient HUD: watermark, race timer, speed, weapon and in-game notifications, drawn with
@@ -31,6 +32,7 @@ public:
 		ELEMENT_MINITOP,
 		ELEMENT_EFFECTS,
 		ELEMENT_LATENCY,
+		ELEMENT_ISLAND,
 		NUM_ELEMENTS,
 	};
 
@@ -85,8 +87,12 @@ public:
 	// the own scoreboard replaces the classic one (xc_scoreboard)
 	bool DrawsScoreboard() const;
 
-	// big banner at the top: finish time, new records (Kind 0 = finish, 1 = personal record, 2 = server record)
+	// big banner at the top: finish time, new records (Kind 0 = finish, 1 = personal record, 2 = server record);
+	// with the island taking notifications it shows there instead
 	void ShowBanner(const char *pTitle, const char *pSubtitle, int Kind);
+	// a short notification on the island (Kind like the banner)
+	void IslandNotify(const char *pTitle, const char *pSubtitle, int Kind);
+	bool IslandTakesNotes() const;
 
 private:
 	struct SElementConfig
@@ -111,6 +117,7 @@ private:
 	static void ConEditHud(IConsole::IResult *pResult, void *pUserData);
 	static void ConFocus(IConsole::IResult *pResult, void *pUserData);
 	static void ConFriendAim(IConsole::IResult *pResult, void *pUserData);
+	static void ConIslandPlayer(IConsole::IResult *pResult, void *pUserData);
 
 	SElementConfig Element(int Index) const;
 	bool Visible() const;
@@ -156,10 +163,26 @@ private:
 	float m_BannerStart = -100.0f;
 	float m_MusicAlpha = 0.0f;
 	void RenderEditor(ImDrawList *pDraw);
+	// xc_island.cpp: the island at the top
+	void RenderIsland(ImDrawList *pDraw, float Alpha, float Dt);
+	bool IslandHas(char Part) const;
+	float m_IslandW = 0.0f, m_IslandH = 0.0f, m_IslandVelW = 0.0f, m_IslandVelH = 0.0f;
+	float m_aIslandLayer[3] = {}; // the small island, a notification, the player
+	char m_aIslandPill[256] = {};
+	char m_aIslandPillOld[256] = {};
+	float m_IslandPillSwap = 1.0f;
+	std::string m_IslandTrack;
+	float m_IslandPlayerUntil = -1.0f;
+	bool m_IslandPlayerPinned = false;
+	char m_aIslandNoteTitle[128] = {};
+	char m_aIslandNoteSub[128] = {};
+	int m_IslandNoteKind = 0;
+	float m_IslandNoteStart = -100.0f;
+	float m_IslandLyricRoll = 0.0f;
 	// xc_chat.cpp: the new chat
 	float m_ChatOpen = 0.0f;
 	float m_ChatInputScroll = 0.0f;
-	std::vector<std::array<float, 4>> m_vChatBlurRects; // glass look: where the game gets blurred
+	std::vector<std::array<float, 5>> m_vChatBlurRects; // glass look: where the game gets blurred (x0, y0, x1, y1, corner radius in pixels)
 	void RenderChat(ImDrawList *pDraw, float Dt, float HudAlpha);
 	void RenderChatInput(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float U, float Alpha);
 	void BlurChat();

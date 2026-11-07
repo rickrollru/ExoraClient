@@ -3071,6 +3071,7 @@ if(CLIENT)
     components/xclient/hud/xc_chat.cpp
     components/xclient/hud/xc_effects.cpp
     components/xclient/hud/xc_hud.cpp
+    components/xclient/hud/xc_island.cpp
     components/xclient/hud/xc_hud.h
     components/xclient/hud/xc_scoreboard.cpp
     components/xclient/impact_fx.cpp

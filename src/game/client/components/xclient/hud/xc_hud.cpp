@@ -35,6 +35,7 @@ void CXcHud::OnConsoleInit()
 {
 	Console()->Register("xc_hud_edit", "", CFGFLAG_CLIENT, ConEditHud, this, "Open or close the HUD editor");
 	Console()->Register("xc_focus", "", CFGFLAG_CLIENT, ConFocus, this, "Turn the focus mode on or off");
+	Console()->Register("xc_island_player", "", CFGFLAG_CLIENT, ConIslandPlayer, this, "Open or close the player on the HUD island");
 	Console()->Register("xc_friend_aim", "", CFGFLAG_CLIENT, ConFriendAim, this, "Add the player under the crosshair to friends, or remove them");
 }
 
@@ -97,6 +98,11 @@ void CXcHud::OnInit()
 		g_Config.m_XcHudEffectsX = 80;
 		g_Config.m_XcHudEffectsY = 420;
 	}
+	// the island took the top middle, where the timer and the input delay were: they move down once
+	if(g_Config.m_XcHudTimerX == 500 && g_Config.m_XcHudTimerY == 38)
+		g_Config.m_XcHudTimerY = 98;
+	if(g_Config.m_XcHudLatencyX == 500 && g_Config.m_XcHudLatencyY == 95)
+		g_Config.m_XcHudLatencyY = 150;
 	m_Backend.Init(Graphics(), Input(), Storage());
 }
 
@@ -134,13 +140,14 @@ CXcHud::SElementConfig CXcHud::Element(int Index) const
 	switch(Index)
 	{
 	case ELEMENT_WATERMARK: return {"Watermark", &g_Config.m_XcHudWatermark, &g_Config.m_XcHudWatermarkX, &g_Config.m_XcHudWatermarkY, &g_Config.m_XcHudWatermarkScale, 110, 32};
-	case ELEMENT_TIMER: return {"Timer", &g_Config.m_XcHudTimer, &g_Config.m_XcHudTimerX, &g_Config.m_XcHudTimerY, &g_Config.m_XcHudTimerScale, 500, 38};
+	case ELEMENT_TIMER: return {"Timer", &g_Config.m_XcHudTimer, &g_Config.m_XcHudTimerX, &g_Config.m_XcHudTimerY, &g_Config.m_XcHudTimerScale, 500, 98};
 	case ELEMENT_SPEED: return {"Speed", &g_Config.m_XcHudSpeed, &g_Config.m_XcHudSpeedX, &g_Config.m_XcHudSpeedY, &g_Config.m_XcHudSpeedScale, 455, 905};
 	case ELEMENT_WEAPON: return {"Weapon", &g_Config.m_XcHudWeapon, &g_Config.m_XcHudWeaponX, &g_Config.m_XcHudWeaponY, &g_Config.m_XcHudWeaponScale, 565, 905};
 	case ELEMENT_MUSIC: return {"Music", &g_Config.m_XcHudMusic, &g_Config.m_XcHudMusicX, &g_Config.m_XcHudMusicY, &g_Config.m_XcHudMusicScale, 880, 60};
 	case ELEMENT_KEYS: return {"Keystrokes", &g_Config.m_XcHudKeys, &g_Config.m_XcHudKeysX, &g_Config.m_XcHudKeysY, &g_Config.m_XcHudKeysScale, 120, 640};
-	case ELEMENT_LATENCY: return {"Input delay", &g_Config.m_XcHudLatency, &g_Config.m_XcHudLatencyX, &g_Config.m_XcHudLatencyY, &g_Config.m_XcHudLatencyScale, 500, 95};
+	case ELEMENT_LATENCY: return {"Input delay", &g_Config.m_XcHudLatency, &g_Config.m_XcHudLatencyX, &g_Config.m_XcHudLatencyY, &g_Config.m_XcHudLatencyScale, 500, 150};
 	case ELEMENT_EFFECTS: return {"Effects", &g_Config.m_XcHudEffects, &g_Config.m_XcHudEffectsX, &g_Config.m_XcHudEffectsY, &g_Config.m_XcHudEffectsScale, 80, 420};
+	case ELEMENT_ISLAND: return {"Island", &g_Config.m_XcHudIsland, &g_Config.m_XcHudIslandX, &g_Config.m_XcHudIslandY, &g_Config.m_XcHudIslandScale, 500, 38};
 	default: return {"Top of the server", &g_Config.m_XcHudMinitop, &g_Config.m_XcHudMinitopX, &g_Config.m_XcHudMinitopY, &g_Config.m_XcHudMinitopScale, 920, 830};
 	}
 }
@@ -666,6 +673,12 @@ void CXcHud::RenderLatency(ImDrawList *pDraw, float Alpha)
 
 void CXcHud::ShowBanner(const char *pTitle, const char *pSubtitle, int Kind)
 {
+	if(IslandTakesNotes())
+	{
+		IslandNotify(pTitle, pSubtitle, Kind);
+		PlayUiSound(SOUND_NOTIFY);
+		return;
+	}
 	str_copy(m_aBannerTitle, pTitle);
 	str_copy(m_aBannerSubtitle, pSubtitle);
 	m_BannerKind = Kind;
@@ -1122,6 +1135,7 @@ void CXcHud::OnRender()
 
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	m_Backend.NewFrame(Dt, Ui()->UpdatedMousePos());
+	m_vChatBlurRects.clear(); // the glass panels of this frame add their rects
 	ImDrawList *pDraw = ImGui::GetBackgroundDrawList();
 	// the HUD steps back while the menu is open
 	const float FadeSpeed = AnimationSpeed() > 0.0f ? 8.0f * AnimationSpeed() : 1000.0f;
@@ -1142,6 +1156,7 @@ void CXcHud::OnRender()
 		g_Config.m_XcHudMinitop && !Focus && (m_Editing || m_ScoreboardOpen < 1.0f),
 		g_Config.m_XcHudEffects && !Focus,
 		(bool)g_Config.m_XcHudLatency,
+		(bool)g_Config.m_XcHudIsland,
 	};
 	for(int i = 0; i < NUM_ELEMENTS; i++)
 		Approach(m_aShown[i], aWanted[i] ? 1.0f : 0.0f);
@@ -1172,6 +1187,8 @@ void CXcHud::OnRender()
 			RenderLatency(pDraw, a * Shown(ELEMENT_LATENCY));
 		if(Shown(ELEMENT_EFFECTS) > 0.0f)
 			RenderEffects(pDraw, a * Shown(ELEMENT_EFFECTS), Dt);
+		if(Shown(ELEMENT_ISLAND) > 0.0f)
+			RenderIsland(pDraw, a * Shown(ELEMENT_ISLAND), Dt);
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
@@ -1181,8 +1198,6 @@ void CXcHud::OnRender()
 	}
 	if(ChatVisible)
 		RenderChat(ImGui::GetBackgroundDrawList(), Dt, Alpha);
-	else
-		m_vChatBlurRects.clear();
 	if(Online)
 		RenderScoreboard(ImGui::GetForegroundDrawList(), Dt);
 	BlurChat();
