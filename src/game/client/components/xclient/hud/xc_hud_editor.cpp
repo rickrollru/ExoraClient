@@ -222,15 +222,26 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 		m_MenuKind = MENU_NONE;
 
 	// drag: the saved center follows the mouse (the drawn one on its spring), snapping to the middle of the screen
-	if(Hovered >= 0 && !MenuOpen && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	if(Hovered >= 0 && !MenuOpen && !m_IslandOverControl && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 	{
 		m_Dragging = Hovered;
+		m_aDragStart[0] = Io.MousePos.x;
+		m_aDragStart[1] = Io.MousePos.y;
 		const SElementConfig Config = Element(Hovered);
 		m_aDragOffset[0] = *Config.m_pX / 1000.0f * Screen.x - Io.MousePos.x;
 		m_aDragOffset[1] = *Config.m_pY / 1000.0f * Screen.y - Io.MousePos.y;
 	}
 	if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+	{
+		// a click on the island without moving it opens or closes its player
+		if(m_Dragging == ELEMENT_ISLAND && std::abs(Io.MousePos.x - m_aDragStart[0]) + std::abs(Io.MousePos.y - m_aDragStart[1]) < 5.0f * U)
+		{
+			m_IslandPlayerPinned = !m_IslandPlayerPinned;
+			m_IslandPlayerUntil = -1.0f;
+			PlayUiSound(SOUND_CLICK);
+		}
 		m_Dragging = -1;
+	}
 	m_aSnapped[0] = m_aSnapped[1] = false;
 	if(m_Dragging >= 0)
 	{

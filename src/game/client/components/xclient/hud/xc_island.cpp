@@ -13,6 +13,7 @@
 #include <game/client/components/xclient/fx_renderer.h>
 #include <game/client/components/xclient/music/lyrics.h>
 #include <game/client/components/xclient/music/music.h>
+#include <game/client/components/xclient/ui/feedback.h>
 #include <game/client/components/xclient/ui/icons.h>
 #include <game/client/components/xclient/ui/lang.h>
 #include <game/client/components/xclient/ui/theme.h>
@@ -96,7 +97,9 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		m_IslandTrack = TrackKey;
 	}
 	const bool Note = IslandHas('n') && !m_Editing && Now - m_IslandNoteStart < 2.8f && m_IslandNoteStart > 0.0f;
-	const bool Player = !Note && IslandHas('m') && Music.HasTrack() && (m_IslandPlayerPinned || Now < m_IslandPlayerUntil);
+	// the player: a few seconds for a new track, or kept open (the bind, a click on the island in the HUD editor)
+	const bool Player = !Note && IslandHas('m') && (Music.HasTrack() || m_Editing) && (m_IslandPlayerPinned || Now < m_IslandPlayerUntil);
+	m_IslandOverControl = false;
 	const int Mode = Note ? 1 : (Player ? 2 : 0);
 
 	// the line sung now (timed lyrics only)
@@ -151,6 +154,9 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	int NumParts = 0;
 	const float TimeW = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, "00:00").x;
 	aParts[NumParts++] = {'t', TimeW};
+	// an own text: a pill of its own next to the time
+	if(g_Config.m_XcHudIslandText[0])
+		aParts[NumParts++] = {'x', 10.0f * U + 14.0f * U + 6.0f * U + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, g_Config.m_XcHudIslandText).x + 12.0f * U};
 	const float PillH = 28.0f * U, CoverS = 20.0f * U, EqW = 16.0f * U;
 	for(const char *p = g_Config.m_XcHudIslandParts; *p && NumParts < 6; p++)
 	{
@@ -159,8 +165,6 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		else if(*p == 'w')
 			aParts[NumParts++] = {'w', 22.0f * U};
 	}
-	if(g_Config.m_XcHudIslandText[0])
-		aParts[NumParts++] = {'x', pSmall->CalcTextSizeA(12.5f * U, FLT_MAX, 0.0f, g_Config.m_XcHudIslandText).x};
 	float CompactW = Pad * 2.0f;
 	for(int i = 0; i < NumParts; i++)
 		CompactW += aParts[i].m_Width + (i ? Gap : 0.0f);
@@ -177,7 +181,8 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	// the player
 	const float PlayerW = 380.0f * U;
 	const bool ShowLyrics = pLines && !Approx;
-	const float PlayerH = 16.0f * U + 56.0f * U + 14.0f * U + 12.0f * U + (ShowLyrics ? 14.0f * U + 5.0f * 22.0f * U : 0.0f) + 16.0f * U;
+	const float ControlsH = 44.0f * U;
+	const float PlayerH = 16.0f * U + 56.0f * U + 14.0f * U + 12.0f * U + (ShowLyrics ? 14.0f * U + 5.0f * 22.0f * U : 0.0f) + 10.0f * U + ControlsH + 10.0f * U;
 
 	const float TargetW = Mode == 1 ? NoteW : (Mode == 2 ? PlayerW : CompactW);
 	const float TargetH = Mode == 2 ? PlayerH : CompactH;
@@ -213,7 +218,10 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	// glass: the game blurred under it (render module), a dark tint, a fine rim
 	if(Alpha > 0.5f && GameClient()->m_FxRenderer.ModuleActive())
 		m_vChatBlurRects.push_back({Min.x, Min.y, Max.x, Max.y, Rounding});
-	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, GameClient()->m_FxRenderer.ModuleActive() ? 0.72f : 0.9f), Alpha), Rounding);
+	// the bigger it grows, the less shows through (the player lies over other elements)
+	const float Solid = std::clamp((H - CompactH) / (60.0f * U), 0.0f, 1.0f);
+	const float Base = GameClient()->m_FxRenderer.ModuleActive() ? 0.72f : 0.9f;
+	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, Base + (0.97f - Base) * Solid), Alpha), Rounding);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), Rounding, 0, 1.0f);
 	pDraw->PushClipRect(Min, Max, true);
 	const float Time = Now;
@@ -270,7 +278,12 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 			else if(Part.m_Kind == 'w')
 				DrawLogo(pDraw, ImVec2(x + 11.0f * U, MidY), 20.0f * U, t.m_Accent, a, false);
 			else if(Part.m_Kind == 'x')
-				pDraw->AddText(pSmall, 12.5f * U, ImVec2(x, MidY - 12.5f * U * 0.55f), Col(t.m_TextMuted, a), g_Config.m_XcHudIslandText);
+			{
+				const ImVec2 PMin(x, MidY - PillH * 0.5f), PMax(x + Part.m_Width, MidY + PillH * 0.5f);
+				pDraw->AddRectFilled(PMin, PMax, Col(ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.16f), a), PillH * 0.5f);
+				DrawLogo(pDraw, ImVec2(PMin.x + 10.0f * U + 7.0f * U, MidY), 14.0f * U, t.m_Accent, a, false);
+				pDraw->AddText(pLabel, TextSize, ImVec2(PMin.x + 10.0f * U + 14.0f * U + 6.0f * U, MidY - TextSize * 0.55f), Col(t.m_Text, a), g_Config.m_XcHudIslandText);
+			}
 			x += Part.m_Width;
 		}
 	}
@@ -300,9 +313,9 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		const float ArtS = 56.0f * U;
 		Cover(ImVec2(L, y), ArtS, 13.0f * U, a);
 		char aLine[256];
-		XcFitText(pTitle, 15.5f * U, State.m_Title.c_str(), PlayerW - ArtS - 90.0f * U, aLine, sizeof(aLine));
+		XcFitText(pTitle, 15.5f * U, Music.HasTrack() ? State.m_Title.c_str() : Tr("Nothing playing"), PlayerW - ArtS - 90.0f * U, aLine, sizeof(aLine));
 		pDraw->AddText(pTitle, 15.5f * U, ImVec2(L + ArtS + 12.0f * U, y + 10.0f * U), Col(t.m_Text, a), aLine);
-		XcFitText(pSmall, 13.0f * U, State.m_Artist.empty() ? Music.AppName() : State.m_Artist.c_str(), PlayerW - ArtS - 90.0f * U, aLine, sizeof(aLine));
+		XcFitText(pSmall, 13.0f * U, !Music.HasTrack() ? Tr("Play music in the browser") : (State.m_Artist.empty() ? Music.AppName() : State.m_Artist.c_str()), PlayerW - ArtS - 90.0f * U, aLine, sizeof(aLine));
 		pDraw->AddText(pSmall, 13.0f * U, ImVec2(L + ArtS + 12.0f * U, y + 31.0f * U), Col(t.m_TextMuted, a), aLine);
 		Bars(L + PlayerW - 32.0f * U - 18.0f * U, y + 22.0f * U, a);
 		y += ArtS + 14.0f * U;
@@ -321,6 +334,13 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		pDraw->AddRectFilled(ImVec2(BarL, BarY - 2.0f * U), ImVec2(BarR, BarY + 2.0f * U), Col(ImVec4(1, 1, 1, 0.1f), a), 2.0f * U);
 		if(Duration > 0.0f && Position >= 0.0)
 			pDraw->AddRectFilled(ImVec2(BarL, BarY - 2.0f * U), ImVec2(BarL + (BarR - BarL) * std::clamp((float)Position / Duration, 0.0f, 1.0f), BarY + 2.0f * U), Col(t.m_Text, a), 2.0f * U);
+		// with a free mouse (the HUD editor) a click on the line jumps there
+		if(m_Editing && a > 0.5f && State.m_CanSeek && Duration > 0.0f && ImGui::IsMouseHoveringRect(ImVec2(BarL, BarY - 8.0f * U), ImVec2(BarR, BarY + 8.0f * U)))
+		{
+			m_IslandOverControl = true;
+			if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				GameClient()->m_XcMusic.Seek(std::clamp((ImGui::GetIO().MousePos.x - BarL) / (BarR - BarL), 0.0f, 1.0f) * Duration);
+		}
 		y += 12.0f * U;
 		// the lyrics: five lines, the one sung now bright in the middle, the list rolls softly
 		if(ShowLyrics)
@@ -345,6 +365,55 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				pDraw->AddText(pFont, Size, ImVec2(L, Ly + (LineH - Size) * 0.5f), Col(IsNow ? t.m_Text : t.m_TextMuted, a * (IsNow ? 1.0f : 0.55f * Fade)), aLine);
 			}
 			pDraw->PopClipRect();
+			y += 5.0f * 22.0f * U;
+		}
+		// the buttons: the line of the song in the small island, back, play / pause, forward, close
+		{
+			y += 10.0f * U;
+			const float MidY = y + ControlsH * 0.5f;
+			const float Right = L + PlayerW - 32.0f * U;
+			struct SButton
+			{
+				const char *m_pIcon;
+				float m_X;
+				float m_Size;
+				int m_Action;
+			};
+			const float Mid = (L + Right) * 0.5f;
+			const SButton aButtons[] = {
+				{XC_ICON_COMMENTS, L + 18.0f * U, 13.0f * U, 0},
+				{XC_ICON_SKIP_BACK, Mid - 62.0f * U, 17.0f * U, 1},
+				{Playing ? XC_ICON_PAUSE : XC_ICON_PLAY, Mid, 24.0f * U, 2},
+				{XC_ICON_SKIP_FORWARD, Mid + 62.0f * U, 17.0f * U, 3},
+				{XC_ICON_XMARK, Right - 18.0f * U, 13.0f * U, 4},
+			};
+			for(const SButton &Button : aButtons)
+			{
+				const float R = 20.0f * U;
+				const bool Hover = m_Editing && a > 0.5f && ImGui::IsMouseHoveringRect(ImVec2(Button.m_X - R, MidY - R), ImVec2(Button.m_X + R, MidY + R));
+				if(Hover)
+				{
+					m_IslandOverControl = true;
+					pDraw->AddCircleFilled(ImVec2(Button.m_X, MidY), R, Col(ImVec4(1, 1, 1, 0.08f), a), 24);
+				}
+				const bool On = Button.m_Action != 0 || g_Config.m_XcHudIslandLyrics;
+				DrawIcon(pDraw, pTitle, Button.m_Size, ImVec2(Button.m_X, MidY), Col(Button.m_Action == 0 || Button.m_Action == 4 ? (On ? t.m_TextSecondary : t.m_TextMuted) : t.m_Text, a), Button.m_pIcon);
+				if(!Hover || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					continue;
+				PlayUiSound(SOUND_CLICK);
+				CXcMusic &MusicCtl = GameClient()->m_XcMusic;
+				switch(Button.m_Action)
+				{
+				case 0: g_Config.m_XcHudIslandLyrics ^= 1; break;
+				case 1: MusicCtl.Previous(); break;
+				case 2: MusicCtl.PlayPause(); break;
+				case 3: MusicCtl.Next(); break;
+				default:
+					m_IslandPlayerPinned = false;
+					m_IslandPlayerUntil = -1.0f;
+					break;
+				}
+			}
 		}
 	}
 	pDraw->PopClipRect();
