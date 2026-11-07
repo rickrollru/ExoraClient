@@ -360,9 +360,11 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				for(int b2 = 0; b2 < 4; b2++)
 				{
 					const float BH = (4.0f + b2 * 3.0f) * U;
-					const ImVec2 BMin(BX + b2 * 4.0f * U, MidY + 6.0f * U - BH), BMax(BX + b2 * 4.0f * U + 2.6f * U, MidY + 6.0f * U);
-					pDraw->AddRectFilled(ImVec2(BMin.x + 1.0f * U, BMin.y + 1.0f * U), ImVec2(BMax.x + 1.0f * U, BMax.y + 1.0f * U), Col(ImVec4(0, 0, 0, 1), 0.4f * a), 1.0f * U);
-					pDraw->AddRectFilled(BMin, BMax, Col(ImVec4(1, 1, 1, b2 < Bars4 ? 1.0f : 0.3f), a), 1.0f * U);
+					// round ends: the corners are half the width of a bar
+					const float BarW = 3.0f * U, Round = BarW * 0.5f;
+					const ImVec2 BMin(BX + b2 * 4.4f * U, MidY + 6.0f * U - BH), BMax(BX + b2 * 4.4f * U + BarW, MidY + 6.0f * U);
+					pDraw->AddRectFilled(ImVec2(BMin.x + 1.0f * U, BMin.y + 1.0f * U), ImVec2(BMax.x + 1.0f * U, BMax.y + 1.0f * U), Col(ImVec4(0, 0, 0, 1), 0.4f * a), Round);
+					pDraw->AddRectFilled(BMin, BMax, Col(ImVec4(1, 1, 1, b2 < Bars4 ? 1.0f : 0.3f), a), Round);
 				}
 				if(m_Editing && ImGui::IsMouseHoveringRect(PMin, PMax))
 					ImGui::SetTooltip("%s %s", aPing, Tr("ms"));
