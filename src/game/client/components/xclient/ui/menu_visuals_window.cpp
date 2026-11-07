@@ -271,7 +271,11 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		if(Close)
 		{
 			PlayUiSound(SOUND_CLICK);
-			m_Page = PAGE_HOME;
+			// in game back to the game, in the main menu to the home
+			if(IsOnline())
+				SetActive(false);
+			else
+				m_Page = PAGE_HOME;
 		}
 	}
 

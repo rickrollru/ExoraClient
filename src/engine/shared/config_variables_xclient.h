@@ -336,6 +336,7 @@ MACRO_CONFIG_INT(XcCrosshairTrail, xc_crosshair_trail, 0, 0, 1, CFGFLAG_CLIENT |
 MACRO_CONFIG_INT(XcCrosshairTrailLength, xc_crosshair_trail_length, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Length of the crosshair trail in percent")
 MACRO_CONFIG_INT(XcCrosshairKick, xc_crosshair_kick, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The crosshair pops bigger and springs back on every shot")
 MACRO_CONFIG_INT(XcCrosshairKickStrength, xc_crosshair_kick_strength, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the crosshair kick in percent")
+MACRO_CONFIG_INT(XcVisualsBindSet, xc_visuals_bind_set, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Insert was given to the visuals window once (if it was free)")
 MACRO_CONFIG_INT(XcVisualsWindow, xc_visuals_window, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The visuals open as a compact window over the game, not as a page of the menu")
 MACRO_CONFIG_INT(XcHudIsland, xc_hud_island, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: the island at the top: race time, music, notifications, the logo")
 MACRO_CONFIG_INT(XcHudIslandX, xc_hud_island_x, 500, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: island position x")

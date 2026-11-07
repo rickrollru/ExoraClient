@@ -51,6 +51,8 @@ static const SBindEntry s_aBinds[] = {
 	{"Music: previous track", "xc_music_prev"},
 	{"Focus mode", "xc_focus"},
 	{"Friend under the crosshair", "xc_friend_aim"},
+	{"Visuals window", "xc_visuals"},
+	{"Island player", "xc_island_player"},
 };
 
 // --------------------------------------------------------------------------------------------

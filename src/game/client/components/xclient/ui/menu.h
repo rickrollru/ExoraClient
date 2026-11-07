@@ -420,6 +420,7 @@ private:
 	// the visuals as a compact window over the game (xc_visuals_window): an icon rail, the cards of the section,
 	// search, dragged by its top on a spring
 	void RenderVisualsWindow(float Dt);
+	static void ConToggleVisuals(IConsole::IResult *pResult, void *pUserData);
 	float m_aVisWinPos[2] = {-1.0f, -1.0f};
 	float m_aVisWinTarget[2] = {-1.0f, -1.0f};
 	float m_aVisWinVel[2] = {};

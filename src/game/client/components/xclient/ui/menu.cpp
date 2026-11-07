@@ -32,6 +32,23 @@ static const char *const XC_CLIENT_NAME = "Exora Client";
 void CXcMenu::OnConsoleInit()
 {
 	Console()->Register("xc_menu", "", CFGFLAG_CLIENT, ConToggleMenu, this, "Open or close the new menu");
+	Console()->Register("xc_visuals", "", CFGFLAG_CLIENT, ConToggleVisuals, this, "Open or close the visuals window (like the click menu of Minecraft clients)");
+}
+
+void CXcMenu::ConToggleVisuals(IConsole::IResult *pResult, void *pUserData)
+{
+	CXcMenu *pSelf = static_cast<CXcMenu *>(pUserData);
+	// the same key closes it again
+	if(pSelf->m_Active && pSelf->m_Page == PAGE_VISUALS)
+	{
+		if(pSelf->IsOnline())
+			pSelf->SetActive(false);
+		else
+			pSelf->m_Page = PAGE_HOME;
+		return;
+	}
+	pSelf->m_VisWinOpen = 0.0f;
+	pSelf->OpenAt(PAGE_VISUALS, pSelf->m_VisualsSection);
 }
 
 void CXcMenu::ConToggleMenu(IConsole::IResult *pResult, void *pUserData)
@@ -215,6 +232,12 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 
 	if(m_BindWaiting >= 0 && OnBindInput(Event))
 		return true;
+	// the key of the visuals window closes it again (the menu takes the keys otherwise), not while typing
+	if((Event.m_Flags & IInput::FLAG_PRESS) && !ImGui::GetIO().WantTextInput && Event.m_Key > KEY_FIRST && Event.m_Key < KEY_LAST && str_comp(GameClient()->m_Binds.Get(Event.m_Key, KeyModifier::NONE), "xc_visuals") == 0)
+	{
+		Console()->ExecuteLine("xc_visuals", IConsole::CLIENT_ID_UNSPECIFIED);
+		return true;
+	}
 
 	if(EscapePressed)
 	{
@@ -482,6 +505,14 @@ void CXcMenu::RenderAnimatedBackground(ImDrawList *pDraw, float Alpha)
 
 void CXcMenu::OnRender()
 {
+	// once: a key for the visuals window, like the click menu of Minecraft clients. Right Shift is the spectator
+	// mode in DDNet, so Insert (the other usual key of those menus) when it is free; it can be changed in the controls
+	if(!g_Config.m_XcVisualsBindSet)
+	{
+		g_Config.m_XcVisualsBindSet = 1;
+		if(!GameClient()->m_Binds.Get(KEY_INSERT, KeyModifier::NONE)[0])
+			GameClient()->m_Binds.Bind(KEY_INSERT, "xc_visuals");
+	}
 	UpdateDemoRender();
 	UpdateSelfUpdate();
 	if(!m_Backend.IsReady() || !g_Config.m_XcNewMenu)
@@ -584,7 +615,10 @@ void CXcMenu::RenderFrame()
 
 	ImDrawList *pBackground = ImGui::GetBackgroundDrawList();
 	const int Background = EffectiveBackground();
-	if(Background == BG_ANIMATED)
+	// the visuals window in game lies over the game itself, like the click menu of Minecraft clients
+	if(IsOnline() && m_Page == PAGE_VISUALS && g_Config.m_XcVisualsWindow)
+		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, 0.25f * Open));
+	else if(Background == BG_ANIMATED)
 		RenderMenuBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
 	else if(Background == BG_CUSTOM)
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(ImVec4(0, 0, 0, 1), g_Config.m_XcMenuBgDim / 100.0f * (IsOnline() ? Open : 1.0f)));
