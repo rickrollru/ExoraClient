@@ -124,7 +124,14 @@ private:
 	float Unit(int Element) const;
 	ImVec2 Center(int Element) const;
 
-	void RenderPlate(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float Unit, float Alpha) const;
+	// the glass plate of every element: the game blurred under it (render module), a dark tint, a fine rim;
+	// Rounding < 0: 16 units, or half the height for a thin plate
+	void RenderPlate(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float Unit, float Alpha, float Rounding = -1.0f);
+	// the speed of the last seconds for the little graph, sampled 30 times a second
+	float m_aSpeedHistory[96] = {};
+	int m_SpeedHistoryPos = 0;
+	float m_aWeaponLit[6] = {};
+	float m_SpeedHistoryTime = 0.0f;
 	void RenderWatermark(ImDrawList *pDraw, float Alpha);
 	void RenderTimer(ImDrawList *pDraw, float Alpha);
 	void RenderSpeed(ImDrawList *pDraw, float Alpha);

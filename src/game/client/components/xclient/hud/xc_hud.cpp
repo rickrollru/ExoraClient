@@ -259,12 +259,16 @@ float CXcHud::SpeedBps() const
 	return length(Vel) / 256.0f * Client()->GameTickSpeed() / 32.0f;
 }
 
-void CXcHud::RenderPlate(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float Unit, float Alpha) const
+void CXcHud::RenderPlate(ImDrawList *pDraw, ImVec2 Min, ImVec2 Max, float Unit, float Alpha, float Rounding)
 {
 	const STheme &t = Theme();
-	const float Rounding = 12.0f * Unit;
-	// no shadow: over the game a dark rim around the plate looks cheap
-	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.86f), Alpha), Rounding);
+	if(Rounding < 0.0f)
+		Rounding = std::min(16.0f * Unit, (Max.y - Min.y) * 0.5f);
+	// glass like the island: the game blurred under it when the render module runs, so the tint can be lighter
+	const bool Glass = GameClient()->m_FxRenderer.ModuleActive() && Alpha > 0.5f && !m_Editing;
+	if(Glass)
+		m_vChatBlurRects.push_back({Min.x, Min.y, Max.x, Max.y, Rounding});
+	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, Glass ? 0.74f : 0.86f), Alpha), Rounding);
 	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), Rounding, 0, 1.0f);
 }
 
@@ -274,7 +278,6 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const float U = Unit(ELEMENT_WATERMARK);
 	ImFont *pBold = m_Backend.Fonts().m_pTitle;
 	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
-	const float TitleSize = 17.0f * U;
 	const float TextSize = 14.5f * U;
 
 	// the parts after the logo, each with an icon
@@ -300,7 +303,6 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	const time_t Now = std::time(nullptr);
 	const struct tm *pTm = localtime(&Now);
 	str_format(aTime, sizeof(aTime), "%02d:%02d", pTm ? pTm->tm_hour : 0, pTm ? pTm->tm_min : 0);
-	const char *apIcons[] = {XC_ICON_USER, XC_ICON_BOLT, XC_ICON_SIGNAL, XC_ICON_CLOCK};
 	const char *apTexts[] = {XcStreamer::OwnName(Client()->PlayerName()), aFps, aPing, aTime};
 	// numbers get a fixed place (as wide as zeros, at least a few digits), so the plate does not wobble
 	const auto Slot = [&](const char *pText, int MinDigits) {
@@ -319,40 +321,37 @@ void CXcHud::RenderWatermark(ImDrawList *pDraw, float Alpha)
 	};
 	const float aTextWidths[] = {pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apTexts[0]).x, Slot(aFps, 3), Slot(aPing, 3), Slot(aTime, 4)};
 
-	const float Pad = 14.0f * U;
-	const float Gap = 10.0f * U;
-	const float IconGap = 7.0f * U;
-	const float Height = 42.0f * U;
-	const float LogoSize = 24.0f * U;
-	const char *pName = "Exora Client";
-	float Width = Pad + LogoSize + 8.0f * U + pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
-	for(int i = 0; i < 4; i++)
-		Width += Gap * 2.0f + 1.0f + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x + IconGap + aTextWidths[i];
-	Width += Pad;
-
+	// a small pill: the logo, the name, the frame rate, the ping with a colored dot (the time is on the island)
+	const float Height = 36.0f * U;
+	const float LogoSize = 22.0f * U;
+	const float Gap = 12.0f * U;
+	const char *pName = apTexts[0];
+	const float NameW = pBold->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pName).x;
+	const float DotGap = 12.0f * U;
+	const float Width = 7.0f * U + LogoSize + 10.0f * U + NameW + (Gap * 2.0f + 1.0f + aTextWidths[1]) + (Gap * 2.0f + 1.0f + DotGap + aTextWidths[2]) + 14.0f * U;
 	const ImVec2 Min = PlaceRect(ELEMENT_WATERMARK, ImVec2(Width, Height));
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
-	RenderPlate(pDraw, Min, Max, U, Alpha);
-
-	// logo, then the name
-	float x = Min.x + Pad;
+	RenderPlate(pDraw, Min, Max, U, Alpha, Height * 0.5f);
 	const float MidY = Min.y + Height * 0.5f;
+	float x = Min.x + 7.0f * U;
 	DrawLogo(pDraw, ImVec2(x + LogoSize * 0.5f, MidY), LogoSize, t.m_Accent, Alpha);
-	x += LogoSize + 8.0f * U;
-	pDraw->AddText(pBold, TitleSize, ImVec2(x, MidY - TitleSize * 0.55f), Col(t.m_Text, Alpha), pName);
-	x += pBold->CalcTextSizeA(TitleSize, FLT_MAX, 0.0f, pName).x;
-
-	for(int i = 0; i < 4; i++)
-	{
+	x += LogoSize + 10.0f * U;
+	pDraw->AddText(pBold, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_Text, Alpha), pName);
+	x += NameW;
+	const auto Sep = [&]() {
 		x += Gap;
-		pDraw->AddLine(ImVec2(x, MidY - 8.0f * U), ImVec2(x, MidY + 8.0f * U), Col(t.m_Border, 2.0f * Alpha), 1.0f);
+		pDraw->AddLine(ImVec2(x, MidY - 7.0f * U), ImVec2(x, MidY + 7.0f * U), Col(t.m_Border, 2.0f * Alpha), 1.0f);
 		x += 1.0f + Gap;
-		const float IconWidth = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, apIcons[i]).x;
-		DrawIconBesideText(pDraw, pLabel, TextSize, x, IconWidth, MidY - TextSize * 0.55f, Col(t.m_Accent, Alpha), apIcons[i]);
-		x += IconWidth + IconGap;
-		pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(i == 0 ? t.m_Text : t.m_TextSecondary, Alpha), apTexts[i]);
-		x += aTextWidths[i];
-	}
+	};
+	Sep();
+	pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_TextSecondary, Alpha), apTexts[1]);
+	x += aTextWidths[1];
+	Sep();
+	const int Ping = pInfo ? pInfo->m_Latency : 0;
+	const ImVec4 PingColor = Ping < 80 ? ImVec4(0.24f, 0.84f, 0.64f, 1.0f) : (Ping < 160 ? ImVec4(1.0f, 0.7f, 0.25f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+	pDraw->AddCircleFilled(ImVec2(x + 3.0f * U, MidY), 3.0f * U, Col(PingColor, Alpha), 12);
+	x += DotGap;
+	pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_TextSecondary, Alpha), apTexts[2]);
 }
 
 void CXcHud::RenderTimer(ImDrawList *pDraw, float Alpha)
@@ -369,6 +368,8 @@ void CXcHud::RenderTimer(ImDrawList *pDraw, float Alpha)
 	else
 		str_format(aTime, sizeof(aTime), "%02d:%02d.%02d", Centis / 6000, (Centis / 100) % 60, Centis % 100);
 
+	// the wide face for the digits, the best time of this map quietly under them
+	ImFont *pDisplay = m_Backend.Fonts().m_pDisplay ? m_Backend.Fonts().m_pDisplay : pBold;
 	const float TimeSize = 24.0f * U;
 	// the width is taken from zeros, so the plate does not wobble while the digits change
 	char aWidth[32];
@@ -376,18 +377,28 @@ void CXcHud::RenderTimer(ImDrawList *pDraw, float Alpha)
 	for(char *p = aWidth; *p; p++)
 		if(*p >= '0' && *p <= '9')
 			*p = '0';
-	const float TextWidth = pBold->CalcTextSizeA(TimeSize, FLT_MAX, 0.0f, aWidth).x;
-	const float IconSize = 14.0f * U;
-	const float Width = 18.0f * U + IconSize + 10.0f * U + TextWidth + 20.0f * U;
-	const float Height = 44.0f * U;
+	const float TextWidth = pDisplay->CalcTextSizeA(TimeSize, FLT_MAX, 0.0f, aWidth).x;
+	char aBest[64] = "";
+	const int Local = LocalClientId();
+	if(Local >= 0 && GameClient()->m_ReceivedDDNetPlayerFinishTimes)
+	{
+		const auto &Me = GameClient()->m_aClients[Local];
+		if(Me.m_FinishTimeSeconds != FinishTime::UNSET && Me.m_FinishTimeSeconds != FinishTime::NOT_FINISHED_MILLIS && Me.m_FinishTimeSeconds >= 0)
+			str_format(aBest, sizeof(aBest), "%s %02d:%02d.%02d", Tr("best"), Me.m_FinishTimeSeconds / 60, Me.m_FinishTimeSeconds % 60, std::clamp(Me.m_FinishTimeMillis / 10, 0, 99));
+	}
+	const float SubSize = 11.5f * U;
+	const float SubW = aBest[0] ? pSmall->CalcTextSizeA(SubSize, FLT_MAX, 0.0f, aBest).x : 0.0f;
+	const float Width = std::max(TextWidth, SubW) + 32.0f * U;
+	const float Height = aBest[0] ? 58.0f * U : 46.0f * U;
 	const ImVec2 Min = PlaceRect(ELEMENT_TIMER, ImVec2(Width, Height));
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	RenderPlate(pDraw, Min, Max, U, Alpha);
-
-	const float MidY = Min.y + Height * 0.5f;
-	const ImVec4 IconColor = Racing ? t.m_Accent : t.m_TextMuted;
-	DrawIcon(pDraw, pSmall, IconSize, ImVec2(Min.x + 18.0f * U + IconSize * 0.5f, MidY - TimeSize * 0.56f + TextMiddle(pBold, TimeSize)), Col(IconColor, Alpha), XC_ICON_CLOCK);
-	pDraw->AddText(pBold, TimeSize, ImVec2(Min.x + 18.0f * U + IconSize + 10.0f * U, MidY - TimeSize * 0.56f), Col(t.m_Text, Alpha), aTime);
+	const float Cx = (Min.x + Max.x) * 0.5f;
+	const float TimeW = pDisplay->CalcTextSizeA(TimeSize, FLT_MAX, 0.0f, aTime).x;
+	const float TimeY = Min.y + (aBest[0] ? 8.0f : 11.0f) * U;
+	pDraw->AddText(pDisplay, TimeSize, ImVec2(Cx - TimeW * 0.5f, TimeY), Col(Racing ? t.m_Text : t.m_TextSecondary, Alpha), aTime);
+	if(aBest[0])
+		pDraw->AddText(pSmall, SubSize, ImVec2(Cx - SubW * 0.5f, Max.y - SubSize - 8.0f * U), Col(t.m_TextMuted, Alpha), aBest);
 }
 
 void CXcHud::RenderSpeed(ImDrawList *pDraw, float Alpha)
@@ -400,32 +411,56 @@ void CXcHud::RenderSpeed(ImDrawList *pDraw, float Alpha)
 	char aSpeed[32];
 	str_format(aSpeed, sizeof(aSpeed), "%.1f", Speed);
 
+	// the speed of the last three seconds, 30 samples a second (the same at any frame rate)
+	m_SpeedHistoryTime += std::min(Client()->RenderFrameTime(), 0.1f);
+	while(m_SpeedHistoryTime >= 1.0f / 30.0f)
+	{
+		m_SpeedHistoryTime -= 1.0f / 30.0f;
+		m_aSpeedHistory[m_SpeedHistoryPos] = Speed;
+		m_SpeedHistoryPos = (m_SpeedHistoryPos + 1) % (int)std::size(m_aSpeedHistory);
+	}
+	ImFont *pDisplay = m_Backend.Fonts().m_pDisplay ? m_Backend.Fonts().m_pDisplay : pBold;
 	const float Width = 168.0f * U;
-	const float Height = 54.0f * U;
+	const float Height = 72.0f * U;
 	const ImVec2 Min = PlaceRect(ELEMENT_SPEED, ImVec2(Width, Height));
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	RenderPlate(pDraw, Min, Max, U, Alpha);
 
 	const float Pad = 14.0f * U;
-	const float ValueSize = 20.0f * U;
+	const float ValueSize = 21.0f * U;
 	const float SmallSize = 12.0f * U;
-	DrawIcon(pDraw, pSmall, SmallSize, ImVec2(Min.x + Pad + 7.0f * U, Min.y + 6.0f * U + TextMiddle(pBold, ValueSize)), Col(t.m_Accent, Alpha), XC_ICON_GAUGE);
-	pDraw->AddText(pBold, ValueSize, ImVec2(Min.x + Pad + 20.0f * U, Min.y + 6.0f * U), Col(t.m_Text, Alpha), aSpeed);
-	const float ValueWidth = pBold->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, aSpeed).x;
-	pDraw->AddText(pSmall, SmallSize, ImVec2(Min.x + Pad + 24.0f * U + ValueWidth, Min.y + 13.0f * U), Col(t.m_TextMuted, Alpha), Tr("blocks/s"));
+	pDraw->AddText(pDisplay, ValueSize, ImVec2(Min.x + Pad, Min.y + 8.0f * U), Col(t.m_Text, Alpha), aSpeed);
+	const float ValueWidth = pDisplay->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, aSpeed).x;
+	pDraw->AddText(pSmall, SmallSize, ImVec2(Min.x + Pad + ValueWidth + 5.0f * U, Min.y + 8.0f * U + ValueSize - SmallSize - 2.0f * U), Col(t.m_TextMuted, Alpha), Tr("blocks/s"));
 
-	// bar: full at 40 blocks per second (fast hook and jump speed)
-	const float BarY = Max.y - 14.0f * U;
-	const float BarHeight = 5.0f * U;
-	const ImVec2 BarMin(Min.x + Pad, BarY - BarHeight);
-	const ImVec2 BarMax(Max.x - Pad, BarY);
-	pDraw->AddRectFilled(BarMin, BarMax, Col(t.m_Track, Alpha), BarHeight);
-	const float Fill = std::clamp(Speed / 40.0f, 0.0f, 1.0f);
-	if(Fill > 0.0f)
+	// the graph: a line in the accent with a soft fill under it; full height at 40 blocks per second
+	const int Num = (int)std::size(m_aSpeedHistory);
+	const float GL = Min.x + Pad, GR = Max.x - Pad, GB = Max.y - 10.0f * U, GT = GB - 24.0f * U;
+	const auto Point = [&](int i) {
+		const float v = m_aSpeedHistory[(m_SpeedHistoryPos + i) % Num];
+		return ImVec2(GL + (GR - GL) * i / (Num - 1), GB - (GB - GT) * std::clamp(v / 40.0f, 0.0f, 1.0f));
+	};
+	const ImU32 Top = Col(t.m_Accent, 0.35f * Alpha), Bottom = Col(t.m_Accent, 0.0f);
+	for(int i = 0; i + 1 < Num; i++)
 	{
-		const ImVec2 FillMax(BarMin.x + std::max((BarMax.x - BarMin.x) * Fill, BarHeight), BarMax.y);
-		pDraw->AddRectFilled(BarMin, FillMax, Col(t.m_Accent, Alpha), BarHeight);
+		const ImVec2 P0 = Point(i), P1 = Point(i + 1);
+		pDraw->PrimReserve(6, 4);
+		const ImVec2 Uv = ImGui::GetFontTexUvWhitePixel();
+		const ImDrawIdx Idx = (ImDrawIdx)pDraw->_VtxCurrentIdx;
+		pDraw->PrimWriteVtx(P0, Uv, Top);
+		pDraw->PrimWriteVtx(P1, Uv, Top);
+		pDraw->PrimWriteVtx(ImVec2(P1.x, GB), Uv, Bottom);
+		pDraw->PrimWriteVtx(ImVec2(P0.x, GB), Uv, Bottom);
+		pDraw->PrimWriteIdx(Idx);
+		pDraw->PrimWriteIdx(Idx + 1);
+		pDraw->PrimWriteIdx(Idx + 2);
+		pDraw->PrimWriteIdx(Idx);
+		pDraw->PrimWriteIdx(Idx + 2);
+		pDraw->PrimWriteIdx(Idx + 3);
 	}
+	for(int i = 0; i < Num; i++)
+		pDraw->PathLineTo(Point(i));
+	pDraw->PathStroke(Col(t.m_Accent, Alpha), ImDrawFlags_None, 2.0f * U);
 }
 
 void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
@@ -503,65 +538,71 @@ void CXcHud::RenderWeapon(ImDrawList *pDraw, float Alpha)
 		else if(Snap.m_HasExtendedData)
 			TotalJumps = FreeJumps = std::clamp(absolute(Snap.m_ExtendedData.m_Jumps), 0, 10);
 	}
-	const float SmallIcon = 24.0f * U;
-	const float ListHeight = List && NumGot > 1 ? SmallIcon + 8.0f * U : 0.0f;
-	const float JumpsHeight = List && TotalJumps > 0 ? 12.0f * U : 0.0f;
-	const float ListWidth = NumGot * (SmallIcon * 2.0f + 8.0f * U);
-	const float JumpsWidth = TotalJumps * 11.0f * U + 40.0f * U;
-
-	const float Width = std::max(14.0f * U + IconWidth + 12.0f * U + std::max(NameWidth, DotsWidth) + 16.0f * U, std::max(ListHeight > 0.0f ? ListWidth : 0.0f, JumpsHeight > 0.0f ? JumpsWidth : 0.0f) + 28.0f * U);
-	const float TopHeight = 48.0f * U;
-	const float Height = TopHeight + ListHeight + JumpsHeight + (ListHeight + JumpsHeight > 0.0f ? 6.0f * U : 0.0f);
+	// one row: the weapons the tee has as tiles, the one in the hand lit (its ammo as dots under it), then the jumps
+	// as dots after a thin line; without the list only the weapon in the hand
+	if(!List || NumGot == 0)
+	{
+		for(bool &Got : aGot)
+			Got = false;
+		aGot[Weapon] = true;
+		NumGot = 1;
+	}
+	const float TileW = 42.0f * U, TileH = 36.0f * U, TileGap = 4.0f * U, Pad = 8.0f * U;
+	const float JumpsW = TotalJumps > 0 ? 12.0f * U + 1.0f + TotalJumps * 12.0f * U + 2.0f * U : 0.0f;
+	const float Width = Pad * 2.0f + NumGot * TileW + (NumGot - 1) * TileGap + JumpsW;
+	const float Height = TileH + Pad * 2.0f;
 	const ImVec2 Min = PlaceRect(ELEMENT_WEAPON, ImVec2(Width, Height));
 	const ImVec2 Max(Min.x + Width, Min.y + Height);
 	RenderPlate(pDraw, Min, Max, U, Alpha);
-	float RowY = Min.y + TopHeight;
-	if(ListHeight > 0.0f)
+	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+	float x = Min.x + Pad;
+	const float y = Min.y + Pad;
+	for(int i = 0; i < NUM_WEAPONS; i++)
 	{
-		// the weapon in the hand bright, the others dimmed
-		float x = Min.x + 14.0f * U;
-		for(int i = 0; i < NUM_WEAPONS; i++)
+		if(!aGot[i])
+			continue;
+		// the light moves softly to the weapon taken
+		m_aWeaponLit[i] = i == Weapon ? std::min(m_aWeaponLit[i] + Dt * 10.0f, 1.0f) : std::max(m_aWeaponLit[i] - Dt * 10.0f, 0.0f);
+		const float Lit = m_aWeaponLit[i];
+		if(Lit > 0.0f)
+			pDraw->AddRectFilled(ImVec2(x, y), ImVec2(x + TileW, y + TileH), Col(ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.2f * Lit), Alpha), 10.0f * U);
+		const CDataSprite *pSprite2 = g_pData->m_Weapons.m_aId[i].m_pSpriteBody;
+		const float SpriteAspect = pSprite2 && pSprite2->m_H > 0 ? (float)pSprite2->m_W / pSprite2->m_H : 2.0f;
+		const float IconW = std::min(TileW - 8.0f * U, (TileH - 14.0f * U) * SpriteAspect);
+		const float IconH = IconW / SpriteAspect;
+		const IGraphics::CTextureHandle Tex = GameClient()->m_GameSkin.m_aSpriteWeapons[i];
+		const float IconY = y + (TileH - IconH) * 0.5f - (i == Weapon && Dots ? 3.0f * U : 0.0f);
+		if(Tex.IsValid())
+			pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Tex), ImVec2(x + (TileW - IconW) * 0.5f, IconY), ImVec2(x + (TileW + IconW) * 0.5f, IconY + IconH), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), (0.45f + 0.55f * Lit) * Alpha));
+		if(i == Weapon && Dots)
 		{
-			if(!aGot[i])
-				continue;
-			const CDataSprite *pSmall = g_pData->m_Weapons.m_aId[i].m_pSpriteBody;
-			const float SmallAspect = pSmall && pSmall->m_H > 0 ? (float)pSmall->m_W / pSmall->m_H : 2.0f;
-			const float W = std::min(SmallIcon * SmallAspect, SmallIcon * 2.0f);
-			const IGraphics::CTextureHandle SmallTexture = GameClient()->m_GameSkin.m_aSpriteWeapons[i];
-			const bool Current = i == Weapon;
-			if(Current)
-				pDraw->AddRectFilled(ImVec2(x - 3.0f * U, RowY - 2.0f * U), ImVec2(x + W + 3.0f * U, RowY + SmallIcon + 2.0f * U), Col(t.m_Accent, 0.22f * Alpha), 6.0f * U);
-			if(SmallTexture.IsValid())
-				pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(SmallTexture), ImVec2(x, RowY + (SmallIcon - W / SmallAspect) * 0.5f), ImVec2(x + W, RowY + (SmallIcon + W / SmallAspect) * 0.5f), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), (Current ? 1.0f : 0.45f) * Alpha));
-			x += W + 8.0f * U;
+			const float DotStep = std::min(4.0f * U, (TileW - 8.0f * U) / Dots);
+			const float DX = x + TileW * 0.5f - (Dots - 1) * DotStep * 0.5f;
+			for(int d = 0; d < Dots; d++)
+				pDraw->AddCircleFilled(ImVec2(DX + d * DotStep, y + TileH - 5.0f * U), 1.4f * U, Col(t.m_Accent, Alpha), 8);
 		}
-		RowY += ListHeight;
+		x += TileW + TileGap;
 	}
-	if(JumpsHeight > 0.0f)
+	if(TotalJumps > 0)
 	{
-		ImFont *pSmallFont = m_Backend.Fonts().m_pSmall;
-		const char *pJumps = Tr("Jumps");
-		pDraw->AddText(pSmallFont, 11.0f * U, ImVec2(Min.x + 14.0f * U, RowY - 1.0f * U), Col(t.m_TextMuted, Alpha), pJumps);
-		const float DotsX = Min.x + 14.0f * U + pSmallFont->CalcTextSizeA(11.0f * U, FLT_MAX, 0.0f, pJumps).x + 8.0f * U;
+		x += 12.0f * U - TileGap;
+		pDraw->AddLine(ImVec2(x, y + 8.0f * U), ImVec2(x, y + TileH - 8.0f * U), Col(t.m_Border, 2.0f * Alpha), 1.0f);
+		x += 1.0f + 6.0f * U;
 		for(int i = 0; i < TotalJumps; i++)
 		{
-			const ImVec2 C(DotsX + i * 11.0f * U + 4.0f * U, RowY + 5.5f * U);
+			const ImVec2 C(x + i * 12.0f * U + 4.0f * U, y + TileH * 0.5f);
 			if(i < FreeJumps)
-				pDraw->AddCircleFilled(C, 3.6f * U, Col(t.m_Accent, Alpha), 14);
+				pDraw->AddCircleFilled(C, 4.0f * U, Col(t.m_Accent, Alpha), 16);
 			else
-				pDraw->AddCircle(C, 3.4f * U, Col(t.m_TextMuted, 0.8f * Alpha), 14, 1.2f * U);
+				pDraw->AddCircleFilled(C, 3.2f * U, Col(ImVec4(1, 1, 1, 0.16f), Alpha), 16);
 		}
 	}
-
-	const IGraphics::CTextureHandle Texture = GameClient()->m_GameSkin.m_aSpriteWeapons[Weapon];
-	const float IconX = Min.x + 14.0f * U;
-	const float IconY = Min.y + (TopHeight - IconWidth / Aspect) * 0.5f;
-	if(Texture.IsValid())
-		pDraw->AddImage((ImTextureID)(uintptr_t)m_Backend.TextureId(Texture), ImVec2(IconX, IconY), ImVec2(IconX + IconWidth, IconY + IconWidth / Aspect), ImVec2(0, 0), ImVec2(1, 1), Col(ImVec4(1, 1, 1, 1), Alpha));
-	const float TextX = IconX + IconWidth + 12.0f * U;
-	pDraw->AddText(pLabel, TextSize, ImVec2(TextX, Min.y + (Dots ? 9.0f : 17.0f) * U), Col(t.m_Text, Alpha), pName);
-	for(int i = 0; i < Dots; i++)
-		pDraw->AddCircleFilled(ImVec2(TextX + 3.0f * U + i * 8.0f * U, Min.y + TopHeight - 14.0f * U), 2.6f * U, Col(t.m_Accent, Alpha), 12);
+	(void)pName;
+	(void)NameWidth;
+	(void)DotsWidth;
+	(void)IconWidth;
+	(void)pLabel;
+	(void)TextSize;
 }
 
 void CXcHud::RenderKeys(ImDrawList *pDraw, float Alpha)
@@ -647,7 +688,11 @@ void CXcHud::RenderLatency(ImDrawList *pDraw, float Alpha)
 	SCell aCells[5] = {{Tr("Keys"), "", m_KeyDelay, 0}, {Tr("Mouse"), "", m_MouseDelay, 0}, {Tr("Frame time"), "", m_FrameMs, 0},
 		{Tr("Prediction"), "", Online ? (float)Client()->GetPredictionTime() : -1.0f, 1}, {Tr("Fixes/s"), "", Online ? Prediction.CorrectionsPerSecond() : -1.0f, 2}};
 	const int NumCells = g_Config.m_XcHudLatencyPred ? 5 : 3;
-	float Width = 14.0f * U;
+	// one quiet line: the caption, then the value bright; a value that lags turns orange or red
+	const float CaptionGap = 5.0f * U, CellGap = 14.0f * U;
+	float aCellW[5] = {};
+	float Width = 14.0f * U * 2.0f - CellGap;
+	char aaText[5][32];
 	for(int i = 0; i < NumCells; i++)
 	{
 		SCell &Cell = aCells[i];
@@ -657,31 +702,37 @@ void CXcHud::RenderLatency(ImDrawList *pDraw, float Alpha)
 			str_format(Cell.m_aValue, sizeof(Cell.m_aValue), "%.1f", Cell.m_Ms);
 		else
 			str_format(Cell.m_aValue, sizeof(Cell.m_aValue), Cell.m_Ms < 10.0f ? "%.1f" : "%.0f", Cell.m_Ms);
-		Width += std::max(pLabel->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, "00.0 ms").x, pSmall->CalcTextSizeA(CaptionSize, FLT_MAX, 0.0f, Cell.m_pCaption).x) + 16.0f * U;
+		if(Cell.m_Kind == 2 || Cell.m_Ms < 0.0f)
+			str_copy(aaText[i], Cell.m_aValue);
+		else
+			str_format(aaText[i], sizeof(aaText[i]), "%s %s", Cell.m_aValue, Tr("ms"));
+		// the value gets the room of its widest form, so the line does not wobble
+		const float ValueW = std::max(pLabel->CalcTextSizeA(CaptionSize * 1.15f, FLT_MAX, 0.0f, Cell.m_Kind == 2 ? "00.0" : "00.0 ms").x, pLabel->CalcTextSizeA(CaptionSize * 1.15f, FLT_MAX, 0.0f, aaText[i]).x);
+		aCellW[i] = pSmall->CalcTextSizeA(CaptionSize * 1.1f, FLT_MAX, 0.0f, Cell.m_pCaption).x + CaptionGap + ValueW;
+		Width += aCellW[i] + CellGap;
 	}
-	const float Height = 44.0f * U;
+	const float Height = 28.0f * U;
 	const ImVec2 Min = PlaceRect(ELEMENT_LATENCY, ImVec2(Width, Height));
-	RenderPlate(pDraw, Min, ImVec2(Min.x + Width, Min.y + Height), U, Alpha);
+	RenderPlate(pDraw, Min, ImVec2(Min.x + Width, Min.y + Height), U, Alpha, Height * 0.5f);
+	const float MidY = Min.y + Height * 0.5f;
 	float x = Min.x + 14.0f * U;
+	(void)ValueSize;
 	for(int i = 0; i < NumCells; i++)
 	{
 		const SCell &Cell = aCells[i];
-		// green when it is quick, orange and red when it lags; the prediction ahead is only told (it is the ping),
-		// the corrections are green when there are none
-		const ImVec4 Green(0.24f, 0.84f, 0.64f, 1.0f), Orange(1.0f, 0.62f, 0.3f, 1.0f), Red(1.0f, 0.36f, 0.36f, 1.0f);
-		ImVec4 Color = Cell.m_Ms < 0.0f ? t.m_TextMuted : Cell.m_Ms < 12.0f ? Green : Cell.m_Ms < 25.0f ? Orange : Red;
-		if(Cell.m_Ms >= 0.0f && Cell.m_Kind == 1)
-			Color = t.m_Text;
-		else if(Cell.m_Ms >= 0.0f && Cell.m_Kind == 2)
-			Color = Cell.m_Ms < 0.3f ? Green : Cell.m_Ms < 2.0f ? Orange : Red;
-		char aText[32];
-		if(Cell.m_Kind == 2)
-			str_copy(aText, Cell.m_aValue);
-		else
-			str_format(aText, sizeof(aText), "%s %s", Cell.m_aValue, Tr("ms"));
-		pDraw->AddText(pLabel, ValueSize, ImVec2(x, Min.y + 6.0f * U), Col(Color, Alpha), aText);
-		pDraw->AddText(pSmall, CaptionSize, ImVec2(x, Min.y + 25.0f * U), Col(t.m_TextMuted, Alpha), Cell.m_pCaption);
-		x += std::max(pLabel->CalcTextSizeA(ValueSize, FLT_MAX, 0.0f, "00.0 ms").x, pSmall->CalcTextSizeA(CaptionSize, FLT_MAX, 0.0f, Cell.m_pCaption).x) + 16.0f * U;
+		const ImVec4 Orange(1.0f, 0.62f, 0.3f, 1.0f), Red(1.0f, 0.36f, 0.36f, 1.0f);
+		ImVec4 Color = t.m_Text;
+		if(Cell.m_Ms < 0.0f)
+			Color = t.m_TextMuted;
+		else if(Cell.m_Kind == 0 && Cell.m_Ms >= 12.0f)
+			Color = Cell.m_Ms < 25.0f ? Orange : Red;
+		else if(Cell.m_Kind == 2 && Cell.m_Ms >= 0.3f)
+			Color = Cell.m_Ms < 2.0f ? Orange : Red;
+		const float CapSize = CaptionSize * 1.1f, ValSize = CaptionSize * 1.15f;
+		pDraw->AddText(pSmall, CapSize, ImVec2(x, MidY - CapSize * 0.55f), Col(t.m_TextMuted, Alpha), Cell.m_pCaption);
+		const float CapW = pSmall->CalcTextSizeA(CapSize, FLT_MAX, 0.0f, Cell.m_pCaption).x;
+		pDraw->AddText(pLabel, ValSize, ImVec2(x + CapW + CaptionGap, MidY - ValSize * 0.55f), Col(Color, Alpha), aaText[i]);
+		x += aCellW[i] + CellGap;
 	}
 }
 
