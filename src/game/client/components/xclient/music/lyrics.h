@@ -58,7 +58,8 @@ public:
 	// the lines of the track that plays now, nullptr while there are none; Approx: spread over the track, not timed
 	const std::vector<SLine> *CurrentLines(bool *pApprox = nullptr) const
 	{
-		if(m_State != STATE_FOUND || m_vLines.empty())
+		// the lines of the track before stay until the new one is searched: they are not its lines
+		if(m_State != STATE_FOUND || m_vLines.empty() || m_Key != m_SeenKey)
 			return nullptr;
 		if(pApprox)
 			*pApprox = m_Approx;

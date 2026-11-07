@@ -135,8 +135,9 @@ bool CXcMenu::PanelWindow() const
 {
 	if(m_Page == PAGE_VISUALS)
 		return g_Config.m_XcVisualsWindow;
-	// the settings as the window with the minimal home; the full menu (the detailed home) keeps its page
-	return m_Page == PAGE_SETTINGS && g_Config.m_XcSettingsWindow && g_Config.m_XcHomeStyle == 0;
+	// the settings, the demos and the votes as windows with the minimal home; the full menu (the detailed home)
+	// keeps its pages
+	return (m_Page == PAGE_SETTINGS || m_Page == PAGE_DEMOS || m_Page == PAGE_VOTES) && g_Config.m_XcSettingsWindow && g_Config.m_XcHomeStyle == 0;
 }
 
 bool CXcMenu::IsOnline() const
@@ -682,6 +683,10 @@ void CXcMenu::RenderFrame()
 		ImGui::GetStyle().Alpha = Open * Settled();
 		if(m_Page == PAGE_SETTINGS)
 			RenderSettingsWindow(FrameDt);
+		else if(m_Page == PAGE_DEMOS)
+			RenderPageWindow(FrameDt, XC_ICON_FILM, Tr("Demos"), &CXcMenu::RenderDemos);
+		else if(m_Page == PAGE_VOTES)
+			RenderPageWindow(FrameDt, XC_ICON_CHECK, Tr("Votes"), &CXcMenu::RenderVotes);
 		else
 			RenderVisualsWindow(FrameDt);
 		if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
@@ -781,9 +786,9 @@ void CXcMenu::RenderFrame()
 	RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Shown);
 }
 
-void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size)
+void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size, int ExtraFlags)
 {
-	ImGui::BeginChild(pId, Size, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse);
+	ImGui::BeginChild(pId, Size, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse | ExtraFlags);
 	// the wheel sets a target, the view glides there
 	const float MaxScroll = ImGui::GetScrollMaxY();
 	const bool InnerWheel = m_InnerWheel;
@@ -791,7 +796,7 @@ void CXcMenu::BeginSmoothScroll(const char *pId, ImVec2 Size)
 	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::GetIO().MouseWheel != 0.0f && !m_WheelCaptured && !InnerWheel)
 		m_ScrollTarget -= ImGui::GetIO().MouseWheel * S(90.0f);
 	m_ScrollTarget = std::clamp(m_ScrollTarget, 0.0f, MaxScroll);
-	const float Scroll = Animate(ImGui::GetID("##scroll"), m_ScrollTarget, 14.0f);
+	const float Scroll = Animate(ImGui::GetID("##scroll"), m_ScrollTarget, 11.0f);
 	ImGui::SetScrollY(std::clamp(Scroll, 0.0f, MaxScroll));
 }
 

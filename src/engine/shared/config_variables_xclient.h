@@ -339,6 +339,8 @@ MACRO_CONFIG_INT(XcCrosshairKick, xc_crosshair_kick, 1, 0, 1, CFGFLAG_CLIENT | C
 MACRO_CONFIG_INT(XcCrosshairKickStrength, xc_crosshair_kick_strength, 50, 10, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Strength of the crosshair kick in percent")
 MACRO_CONFIG_INT(XcVisualsBindSet, xc_visuals_bind_set, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Insert was given to the visuals window once (if it was free)")
 MACRO_CONFIG_INT(XcSettingsWindow, xc_settings_window, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The settings open as the same compact window as the visuals (with the minimal home)")
+MACRO_CONFIG_INT(XcUiWindowW, xc_ui_window_w, 1120, 760, 2400, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Width of the settings, visuals, demos and votes window (at 100% size)")
+MACRO_CONFIG_INT(XcUiWindowH, xc_ui_window_h, 700, 480, 1600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Height of that window")
 MACRO_CONFIG_INT(XcVisualsWindow, xc_visuals_window, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The visuals open as a compact window over the game, not as a page of the menu")
 MACRO_CONFIG_INT(XcHudIsland, xc_hud_island, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: the island at the top: race time, music, notifications, the logo")
 MACRO_CONFIG_INT(XcHudIslandX, xc_hud_island_x, 500, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: island position x")

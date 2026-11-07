@@ -879,7 +879,13 @@ namespace XcUi
 			return false;
 		if(s_vDrawnCards.size() < 256)
 			s_vDrawnCards.push_back({pId, pTitle});
-		if(!s_CardOnly.empty() && s_CardOnly != pId)
+		// "\x02": the first card met is drawn (a new page that does not know its cards yet)
+		if(s_CardOnly == "\x02")
+		{
+			if(s_vDrawnCards.size() > 1)
+				return false;
+		}
+		else if(!s_CardOnly.empty() && s_CardOnly != pId)
 			return false;
 		SCardGrid &Grid = s_vGrids.back();
 		const STheme &t = Theme();

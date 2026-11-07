@@ -423,10 +423,15 @@ private:
 	void RenderVisualsWindow(float Dt);
 	void RenderSettingsWindow(float Dt);
 	void RenderPanelWindow(float Dt, bool SettingsKind);
+	void RenderPageWindow(float Dt, const char *pIcon, const char *pTitle, void (CXcMenu::*pfnPage)());
+	int m_LastPageWindow = -1;
 	void RenderSettingsSection(int Section);
 	bool PanelWindow() const; // the visuals or the settings show as the compact window now
 	std::string m_aVisPickedCard[2];
 	int m_VisLastKind = -1;
+	float m_RailFly = 0.0f; // the names of the rail slid out
+	void ResizeGrip(ImDrawList *pDraw, ImVec2 Max);
+	float m_aGripSize[2] = {};
 	static void ConToggleVisuals(IConsole::IResult *pResult, void *pUserData);
 	float m_aVisWinPos[2] = {-1.0f, -1.0f};
 	float m_aVisWinTarget[2] = {-1.0f, -1.0f};
@@ -574,7 +579,7 @@ private:
 	static bool DecodeConfig(const char *pCode, std::string &Text);
 	static std::string FilterConfig(const std::string &Text);
 	void RenderPlaceholder(const char *pIcon, const char *pTitle, const char *pText, bool ClassicButton);
-	void BeginSmoothScroll(const char *pId, ImVec2 Size);
+	void BeginSmoothScroll(const char *pId, ImVec2 Size, int ExtraFlags = 0);
 	void EndSmoothScroll();
 	// a list inside a scrolled page: it glides too, and while the mouse is over it the page does not move
 	void BeginInnerScroll(const char *pId, ImVec2 Size, int ExtraFlags = 0);

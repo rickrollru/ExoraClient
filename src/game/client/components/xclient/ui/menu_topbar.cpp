@@ -490,6 +490,9 @@ void CXcMenu::RenderSideRail(ImVec2 Min, float Height)
 // Settings > Interface: the look of the bar, which tabs and buttons it has and their order
 void CXcMenu::RenderTopbarCard()
 {
+	// with the windows (the minimal home) there is no top bar to set
+	if(g_Config.m_XcHomeStyle == 0 && g_Config.m_XcSettingsWindow)
+		return;
 	if(!BeginCard("##topbar", Tr("Top bar"), Tr("Turn tabs and buttons on or off and move them. The ones you turn off are in the ... menu of the bar")))
 		return;
 	ParamLabel(Tr("Look"));

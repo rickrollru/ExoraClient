@@ -285,7 +285,6 @@ void CXcMenu::RenderMinimalHome(float Dt)
 			{XC_ICON_SERVER, Tr("Servers"), ACT_SERVERS},
 			{XC_ICON_MAP, Tr("Map editor"), ACT_EDITOR},
 			{XC_ICON_FILM, Tr("Demos"), ACT_DEMOS},
-			{XC_ICON_WAND, Tr("Visuals"), ACT_VISUALS},
 			{XC_ICON_GEAR, Tr("Settings"), ACT_SETTINGS},
 			{XC_ICON_POWER, Tr("Quit"), ACT_QUIT},
 		};

@@ -44,8 +44,8 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 	const int Kind = SettingsKind ? 1 : 0;
 	ImGuiIO &Io = ImGui::GetIO();
 	const ImVec2 Display = Io.DisplaySize;
-	const float W = std::min(S(1120.0f), Display.x - S(32.0f));
-	const float H = std::min(S(700.0f), Display.y - S(40.0f));
+	const float W = std::min(S((float)g_Config.m_XcUiWindowW), Display.x - S(32.0f));
+	const float H = std::min(S((float)g_Config.m_XcUiWindowH), Display.y - S(40.0f));
 	const float RailW = S(64.0f), ColW = S(220.0f), TopH = S(60.0f);
 	const char *apVisIcons[NUM_VISUALS] = {XC_ICON_SLIDERS, XC_ICON_USER, XC_ICON_BOLT, XC_ICON_HAT, XC_ICON_HAMMER, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_USERS};
 	const char *apVisLabels[NUM_VISUALS] = {Tr("General"), Tr("Tee"), Tr("Movement"), Tr("Cosmetics"), Tr("Weapons"), Tr("Crosshair"), Tr("World"), Tr("Events"), Tr("Names")};
@@ -114,14 +114,6 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 	ImGui::PushFont(Fonts().m_pBody);
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	const float Round = S(18.0f);
-	// a soft shadow: drawn behind the window, not in it (the window clips at its square edges, the shadow showed as
-	// dark corners outside the round ones), in many thin steps so it has no rings
-	ImDrawList *pShadow = ImGui::GetBackgroundDrawList();
-	for(int i = 1; i <= 10; i++)
-	{
-		const float g = i * S(2.4f);
-		pShadow->AddRectFilled(ImVec2(Min.x - g, Min.y - g + S(10.0f)), ImVec2(Max.x + g, Max.y + g + S(10.0f)), Col(ImVec4(0, 0, 0, 1), 0.028f * Open), Round + g);
-	}
 	// the panel, the lines between the parts
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.95f)), Round);
 	pDraw->AddRect(Min, Max, Col(t.m_Border), Round, 0, 1.0f);
@@ -193,7 +185,7 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 		const float Top = Min.y + S(60.0f);
 		const float RowH = S(34.0f);
 		ImGui::SetCursorScreenPos(ImVec2(X + S(10.0f), Top));
-		ImGui::BeginChild("##vis_cards_list", ImVec2(ColW - S(20.0f), Max.y - Top - S(12.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
+		BeginInnerScroll("##vis_cards_list", ImVec2(ColW - S(20.0f), Max.y - Top - S(12.0f)), ImGuiWindowFlags_NoScrollbar);
 		ImDrawList *pList = ImGui::GetWindowDrawList();
 		const ImVec2 ListMin = ImGui::GetCursorScreenPos();
 		int PickedRow = -1;
@@ -217,7 +209,7 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 			ImGui::PopID();
 			char aTitle[128];
 			XcFitText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, m_vVisCards[i].second.c_str(), ColW - S(44.0f), aTitle, sizeof(aTitle));
-			pList->AddText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(P.x + S(10.0f) - (1.0f - In) * S(8.0f), P.y + (RowH - Fonts().m_pLabel->FontSize) * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, Hover), In), aTitle);
+			pList->AddText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(P.x + S(10.0f) - (1.0f - In) * S(8.0f), std::floor(P.y + RowH * 0.5f - TextMiddle(Fonts().m_pLabel, Fonts().m_pLabel->FontSize) + 0.5f)), Col(Mix(t.m_TextMuted, t.m_Text, Hover), In), aTitle);
 			if(Clicked)
 			{
 				PlayUiSound(SOUND_CLICK);
@@ -248,7 +240,7 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 			ImGui::PopTextWrapPos();
 			ImGui::PopFont();
 		}
-		ImGui::EndChild();
+		EndInnerScroll();
 	}
 
 	// ---- the top: search, the profile, close; the free part drags the window
@@ -348,7 +340,7 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 		}
 		ImGui::SetCursorScreenPos(ImVec2(X + S(18.0f), Min.y + TopH + S(16.0f)));
 		ClearDrawnCards();
-		BeginSmoothScroll("##vis_window_scroll", ImVec2(Max.x - X - S(30.0f), Max.y - Min.y - TopH - S(28.0f)));
+		BeginSmoothScroll("##vis_window_scroll", ImVec2(Max.x - X - S(30.0f), Max.y - Min.y - TopH - S(28.0f)), ImGuiWindowFlags_NoScrollbar);
 		if(Searching)
 		{
 			SetCardFilter(m_aVisSearch);
@@ -377,15 +369,17 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 		else
 		{
 			// one card at a time, the whole width: the column on the left picks it, like the modules of a click menu
-			if(Picked.empty() || std::none_of(m_vVisCards.begin(), m_vVisCards.end(), [&](const auto &Card) { return Card.first == Picked; }))
-				Picked = m_vVisCards.empty() ? std::string() : m_vVisCards.front().first;
-			SetCardOnly(Picked.empty() ? "\x01" : Picked.c_str());
+			// a page whose cards are not known yet shows its first card at once (no empty frame before it)
+			const bool Known = !Picked.empty() && std::any_of(m_vVisCards.begin(), m_vVisCards.end(), [&](const auto &Card) { return Card.first == Picked; });
+			SetCardOnly(Known ? Picked.c_str() : "\x02");
 			BeginCardGrid("##vis_one", 1);
 			MergeCardGrids(true);
 			RenderSection(Section);
 			MergeCardGrids(false);
 			EndCardGrid();
 			SetCardOnly("");
+			if(!Known && !DrawnCards().empty())
+				Picked = DrawnCards().front().m_Id;
 			for(const SDrawnCard &Card : DrawnCards())
 				m_aVisCardSection[Card.m_Id] = Section;
 		}
@@ -411,6 +405,207 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 			m_vVisCards = std::move(vCards);
 		}
 	}
+	const bool OverRail = ImGui::IsMouseHoveringRect(Min, ImVec2(Min.x + RailW, Max.y));
+	ResizeGrip(pDraw, Max);
 	ImGui::PopFont();
 	ImGui::End();
+
+	// the names of the sections slide out of the rail under the mouse: to the left of the window (to its right
+	// side over the column when there is no room on the left)
+	{
+		const float FlyW = S(190.0f);
+		const bool Left = Min.x - FlyW >= S(4.0f);
+		const float Top = Min.y + S(70.0f);
+		const float Step = std::min(S(48.0f), (H - S(140.0f)) / NumSections);
+		const float B = S(42.0f);
+		const ImVec2 FMin(Left ? Min.x - FlyW + S(6.0f) : Min.x + RailW, Min.y + S(56.0f));
+		const ImVec2 FMax(FMin.x + FlyW - S(6.0f), Top + NumSections * Step + S(8.0f));
+		const bool OverFly = m_RailFly > 0.5f && ImGui::IsMouseHoveringRect(FMin, FMax);
+		m_RailFly = std::clamp(m_RailFly + Dt / (OverRail || OverFly ? 0.18f : -0.22f), 0.0f, 1.0f);
+		if(m_RailFly > 0.0f)
+		{
+			const float k = EaseOut(m_RailFly);
+			const float Shift = (1.0f - k) * S(16.0f) * (Left ? 1.0f : -1.0f);
+			ImGui::SetNextWindowPos(ImVec2(FMin.x + Shift, FMin.y));
+			ImGui::SetNextWindowSize(ImVec2(FMax.x - FMin.x, FMax.y - FMin.y));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * k);
+			ImGui::Begin("##rail_fly", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing);
+			ImDrawList *pFly = ImGui::GetWindowDrawList();
+			const ImVec2 PMin(FMin.x + Shift, FMin.y), PMax(FMax.x + Shift, FMax.y);
+			pFly->AddRectFilled(PMin, PMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.97f)), S(14.0f));
+			pFly->AddRect(PMin, PMax, Col(t.m_Border), S(14.0f), 0, 1.0f);
+			ImFont *pLabel = Fonts().m_pLabel;
+			for(int i = 0; i < NumSections; i++)
+			{
+				const float RowY = Top + i * Step;
+				ImGui::SetCursorScreenPos(ImVec2(PMin.x + S(6.0f), RowY));
+				ImGui::PushID(i);
+				const bool Clicked = ImGui::InvisibleButton("##fly_row", ImVec2(PMax.x - PMin.x - S(12.0f), B));
+				const float Hover = Animate(ImGui::GetID("##fly_h"), (ImGui::IsItemHovered() || (i == Section && !Searching)) ? 1.0f : 0.0f, 16.0f);
+				ImGui::PopID();
+				if(Hover > 0.01f)
+					pFly->AddRectFilled(ImVec2(PMin.x + S(6.0f), RowY), ImVec2(PMax.x - S(6.0f), RowY + B), Col(ImVec4(1, 1, 1, 0.07f * Hover)), S(10.0f));
+				// one after another, the names come in from the rail side
+				const float Each = EaseOut(m_RailFly * 1.6f - i * 0.04f);
+				const float TextX = PMin.x + S(18.0f) + (1.0f - Each) * S(10.0f) * (Left ? 1.0f : -1.0f);
+				pFly->AddText(pLabel, pLabel->FontSize, ImVec2(TextX, std::floor(RowY + B * 0.5f - TextMiddle(pLabel, pLabel->FontSize) + 0.5f)), Col(Mix(t.m_TextSecondary, t.m_Text, Hover), Each), apLabels[i]);
+				if(Clicked && (i != Section || Searching))
+				{
+					Section = i;
+					m_aVisSearch[0] = '\0';
+					m_ScrollTarget = 0.0f;
+					Picked.clear();
+					PlayUiSound(SOUND_TAB);
+				}
+			}
+			ImGui::End();
+			ImGui::PopStyleVar(3);
+		}
+	}
+}
+
+// a page that is not made of cards (the demos, the votes) in the same window: a title, a close button, the page
+void CXcMenu::RenderPageWindow(float Dt, const char *pIcon, const char *pTitle, void (CXcMenu::*pfnPage)())
+{
+	const STheme &t = Theme();
+	ImGuiIO &Io = ImGui::GetIO();
+	const ImVec2 Display = Io.DisplaySize;
+	const float W = std::min(S((float)g_Config.m_XcUiWindowW), Display.x - S(32.0f));
+	const float H = std::min(S((float)g_Config.m_XcUiWindowH), Display.y - S(40.0f));
+	const float TopH = S(60.0f);
+	if(m_aVisWinTarget[0] < 0.0f || m_VisWinOpen <= 0.0f)
+	{
+		m_aVisWinTarget[0] = (Display.x - W) * 0.5f;
+		m_aVisWinTarget[1] = (Display.y - H) * 0.5f;
+	}
+	const float Edge = S(8.0f);
+	m_aVisWinTarget[0] = std::clamp(m_aVisWinTarget[0], Edge, std::max(Edge, Display.x - W - Edge));
+	m_aVisWinTarget[1] = std::clamp(m_aVisWinTarget[1], Edge, std::max(Edge, Display.y - H - Edge));
+	if(m_VisWinOpen <= 0.0f)
+	{
+		m_aVisWinPos[0] = m_aVisWinTarget[0];
+		m_aVisWinPos[1] = m_aVisWinTarget[1];
+		m_aVisWinVel[0] = m_aVisWinVel[1] = 0.0f;
+	}
+	const float Stiff = AnimationSpeed() > 0.0f ? 260.0f : 0.0f;
+	for(int a = 0; a < 2; a++)
+	{
+		if(Stiff <= 0.0f)
+		{
+			m_aVisWinPos[a] = m_aVisWinTarget[a];
+			continue;
+		}
+		const float Damp = 2.0f * std::sqrt(Stiff) * 0.85f;
+		const int Steps = std::max(1, (int)std::ceil(Dt / 0.008f));
+		for(int s = 0; s < Steps; s++)
+		{
+			const float h = Dt / Steps;
+			m_aVisWinVel[a] += ((m_aVisWinTarget[a] - m_aVisWinPos[a]) * Stiff - m_aVisWinVel[a] * Damp) * h;
+			m_aVisWinPos[a] += m_aVisWinVel[a] * h;
+		}
+	}
+	m_VisWinOpen = std::min(m_VisWinOpen + Dt / 0.4f, 1.0f);
+	const float Open = EaseOut(m_VisWinOpen);
+	const ImVec2 Min(m_aVisWinPos[0], m_aVisWinPos[1] + (1.0f - Open) * S(14.0f));
+	const ImVec2 Max(Min.x + W, Min.y + H);
+
+	ImGui::GetStyle().Alpha *= Open;
+	ImGui::SetNextWindowPos(Min);
+	ImGui::SetNextWindowSize(ImVec2(W, H));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::Begin("##xc_page_window", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoNav);
+	ImGui::PopStyleVar(2);
+	ImGui::PushFont(Fonts().m_pBody);
+	ImDrawList *pDraw = ImGui::GetWindowDrawList();
+	const float Round = S(18.0f);
+	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.95f)), Round);
+	pDraw->AddRect(Min, Max, Col(t.m_Border), Round, 0, 1.0f);
+	pDraw->AddLine(ImVec2(Min.x, Min.y + TopH), ImVec2(Max.x, Min.y + TopH), Col(t.m_Border), 1.0f);
+
+	// the top: the logo, the icon and the name of the page, the profile, close; the free part drags
+	{
+		DrawLogo(pDraw, ImVec2(Min.x + S(32.0f), Min.y + TopH * 0.5f), S(28.0f), t.m_Accent, 1.0f, false);
+		ImFont *pHead = Fonts().m_pTitle;
+		const float HeadSize = pHead->FontSize * 1.15f;
+		DrawIcon(pDraw, Fonts().m_pIcons, Fonts().m_pIcons->FontSize, ImVec2(Min.x + S(78.0f), Min.y + TopH * 0.5f), Col(t.m_Accent), pIcon);
+		pDraw->AddText(pHead, HeadSize, ImVec2(Min.x + S(96.0f), Min.y + (TopH - HeadSize) * 0.5f), Col(t.m_Text), pTitle);
+		const float B = S(32.0f);
+		const ImVec2 CMin(Max.x - S(16.0f) - B, Min.y + (TopH - B) * 0.5f);
+		ImGui::SetCursorScreenPos(CMin);
+		const bool Close = ImGui::InvisibleButton("##page_close", ImVec2(B, B));
+		const float CloseHover = Animate(ImGui::GetID("##page_close_h"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
+		pDraw->AddRectFilled(CMin, ImVec2(CMin.x + B, CMin.y + B), Col(ImVec4(1, 1, 1, 0.05f * CloseHover)), S(9.0f));
+		pDraw->AddRect(CMin, ImVec2(CMin.x + B, CMin.y + B), Col(t.m_Border), S(9.0f), 0, 1.0f);
+		DrawIcon(pDraw, Fonts().m_pSmall, Fonts().m_pSmall->FontSize, ImVec2(CMin.x + B * 0.5f, CMin.y + B * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, CloseHover)), XC_ICON_XMARK);
+		const float DragL = Min.x + S(110.0f) + pHead->CalcTextSizeA(HeadSize, FLT_MAX, 0.0f, pTitle).x;
+		const float DragR = CMin.x - S(12.0f);
+		if(DragR > DragL)
+		{
+			ImGui::SetCursorScreenPos(ImVec2(DragL, Min.y));
+			ImGui::InvisibleButton("##page_drag", ImVec2(DragR - DragL, TopH));
+			if(ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f))
+			{
+				m_aVisWinTarget[0] += Io.MouseDelta.x;
+				m_aVisWinTarget[1] += Io.MouseDelta.y;
+			}
+			if(ImGui::IsItemHovered() || ImGui::IsItemActive())
+				ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+		}
+		if(Close)
+		{
+			PlayUiSound(SOUND_CLICK);
+			m_Page = PAGE_HOME;
+		}
+	}
+
+	// the page itself, with room around it; it comes in like a new page
+	if(m_LastPageWindow != m_Page)
+	{
+		m_LastPageWindow = m_Page;
+		PageEntered();
+	}
+	const float Pad = S(18.0f);
+	ImGui::SetCursorScreenPos(ImVec2(Min.x + Pad, Min.y + TopH + Pad));
+	ImGui::BeginChild("##page_window_body", ImVec2(W - Pad * 2.0f, H - TopH - Pad * 2.0f), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+	(this->*pfnPage)();
+	ImGui::EndChild();
+	ResizeGrip(pDraw, Max);
+	ImGui::PopFont();
+	ImGui::End();
+}
+
+// the bottom right corner of the windows: dragged, it changes their size; three short lines along the round corner
+// show it, a little brighter under the mouse
+void CXcMenu::ResizeGrip(ImDrawList *pDraw, ImVec2 Max)
+{
+	const STheme &t = Theme();
+	const float G = S(22.0f);
+	ImGui::SetCursorScreenPos(ImVec2(Max.x - G, Max.y - G));
+	ImGui::InvisibleButton("##window_grip", ImVec2(G, G));
+	const bool Active = ImGui::IsItemActive();
+	const float Hover = Animate(ImGui::GetID("##window_grip_h"), (ImGui::IsItemHovered() || Active) ? 1.0f : 0.0f, 14.0f);
+	if(Active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f))
+	{
+		const float Scale = std::max(S(1.0f), 0.01f);
+		m_aGripSize[0] += ImGui::GetIO().MouseDelta.x / Scale;
+		m_aGripSize[1] += ImGui::GetIO().MouseDelta.y / Scale;
+		g_Config.m_XcUiWindowW = std::clamp((int)std::round(m_aGripSize[0]), 760, 2400);
+		g_Config.m_XcUiWindowH = std::clamp((int)std::round(m_aGripSize[1]), 480, 1600);
+	}
+	else
+	{
+		m_aGripSize[0] = (float)g_Config.m_XcUiWindowW;
+		m_aGripSize[1] = (float)g_Config.m_XcUiWindowH;
+	}
+	if(ImGui::IsItemHovered() || Active)
+		ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNWSE);
+	const ImU32 Color = Col(Mix(t.m_TextMuted, t.m_Text, Hover), 0.35f + 0.5f * Hover);
+	for(int i = 0; i < 3; i++)
+	{
+		const float d = S(6.0f) + i * S(4.0f);
+		pDraw->AddLine(ImVec2(Max.x - S(5.0f) - d, Max.y - S(5.0f)), ImVec2(Max.x - S(5.0f), Max.y - S(5.0f) - d), Color, S(1.4f));
+	}
 }
