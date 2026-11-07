@@ -121,7 +121,6 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	}
 
 	// ---- what the small island shows, measured first
-	const float Pad = 14.0f * U, Gap = 10.0f * U;
 	const float CompactH = 40.0f * U;
 	const float TextSize = 14.0f * U;
 	bool Racing = false;
@@ -180,7 +179,6 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		str_copy(aPing, "demo");
 	else
 		str_format(aPing, sizeof(aPing), "%d", Ping);
-	const float PingW = pLabel->CalcTextSizeA(12.5f * U, FLT_MAX, 0.0f, aPing).x;
 	bool BigTaken = false;
 	for(const char *p = g_Config.m_XcHudIslandParts; *p && NumParts < 6; p++)
 	{
@@ -197,7 +195,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 			aParts[NumParts++] = {'m', Big ? 4.0f * U + CoverS + 8.0f * U + PillTextW + 8.0f * U + EqW + 10.0f * U : PillH, Big};
 		}
 		else if(*p == 'c')
-			aParts[NumParts++] = {'c', 8.0f * U + 16.0f * U + 6.0f * U + PingW + 10.0f * U, false};
+			aParts[NumParts++] = {'c', 16.0f * U, false};
 	}
 	const float PartGap = 8.0f * U, Edge = 8.0f * U;
 	float ContentW = 0.0f;
@@ -356,18 +354,18 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 			}
 			else if(Part.m_Kind == 'c')
 			{
-				// four bars filled by the ping, green to red; a bad moment (the server did not answer) blinks
+				// four white bars filled by the ping, no plate, like the signal of a phone; a soft shadow keeps them seen
 				const int Bars4 = Ping < 60 ? 4 : (Ping < 120 ? 3 : (Ping < 200 ? 2 : 1));
-				const ImVec4 Good(0.24f, 0.84f, 0.64f, 1.0f), Mid(1.0f, 0.70f, 0.25f, 1.0f), Bad(1.0f, 0.30f, 0.30f, 1.0f);
-				const ImVec4 BarCol = Bars4 >= 3 ? Good : (Bars4 == 2 ? Mid : Bad);
-				Plate(PMin, PMax, ImVec4(1, 1, 1, 0.05f));
-				const float BX = PMin.x + 8.0f * U;
+				const float BX = x + 1.0f * U;
 				for(int b2 = 0; b2 < 4; b2++)
 				{
 					const float BH = (4.0f + b2 * 3.0f) * U;
-					pDraw->AddRectFilled(ImVec2(BX + b2 * 4.0f * U, MidY + 6.0f * U - BH), ImVec2(BX + b2 * 4.0f * U + 2.6f * U, MidY + 6.0f * U), Col(b2 < Bars4 ? BarCol : ImVec4(1, 1, 1, 0.18f), a), 1.0f * U);
+					const ImVec2 BMin(BX + b2 * 4.0f * U, MidY + 6.0f * U - BH), BMax(BX + b2 * 4.0f * U + 2.6f * U, MidY + 6.0f * U);
+					pDraw->AddRectFilled(ImVec2(BMin.x + 1.0f * U, BMin.y + 1.0f * U), ImVec2(BMax.x + 1.0f * U, BMax.y + 1.0f * U), Col(ImVec4(0, 0, 0, 1), 0.4f * a), 1.0f * U);
+					pDraw->AddRectFilled(BMin, BMax, Col(ImVec4(1, 1, 1, b2 < Bars4 ? 1.0f : 0.3f), a), 1.0f * U);
 				}
-				pDraw->AddText(pLabel, 12.5f * U, ImVec2(BX + 16.0f * U + 6.0f * U, MidY - 12.5f * U * 0.55f), Col(t.m_TextSecondary, a), aPing);
+				if(m_Editing && ImGui::IsMouseHoveringRect(PMin, PMax))
+					ImGui::SetTooltip("%s %s", aPing, Tr("ms"));
 			}
 			x += Part.m_Width;
 		}
