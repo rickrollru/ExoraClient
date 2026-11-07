@@ -94,12 +94,15 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 	ImGui::PushFont(Fonts().m_pBody);
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	const float Round = S(18.0f);
-	// a soft shadow, the panel, the lines between the parts
-	for(int i = 1; i <= 4; i++)
+	// a soft shadow: drawn behind the window, not in it (the window clips at its square edges, the shadow showed as
+	// dark corners outside the round ones), in many thin steps so it has no rings
+	ImDrawList *pShadow = ImGui::GetBackgroundDrawList();
+	for(int i = 1; i <= 10; i++)
 	{
-		const float g = i * S(6.0f);
-		pDraw->AddRectFilled(ImVec2(Min.x - g, Min.y - g + S(10.0f)), ImVec2(Max.x + g, Max.y + g + S(10.0f)), Col(ImVec4(0, 0, 0, 1), 0.06f * Open), Round + g);
+		const float g = i * S(2.4f);
+		pShadow->AddRectFilled(ImVec2(Min.x - g, Min.y - g + S(10.0f)), ImVec2(Max.x + g, Max.y + g + S(10.0f)), Col(ImVec4(0, 0, 0, 1), 0.028f * Open), Round + g);
 	}
+	// the panel, the lines between the parts
 	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.95f)), Round);
 	pDraw->AddRect(Min, Max, Col(t.m_Border), Round, 0, 1.0f);
 	pDraw->AddLine(ImVec2(Min.x + RailW, Min.y), ImVec2(Min.x + RailW, Max.y), Col(t.m_Border), 1.0f);
