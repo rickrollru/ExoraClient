@@ -286,6 +286,10 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 		const SElementConfig Config = Element(i);
 		if(!*Config.m_pEnabled || m_aaRects[i][2] <= m_aaRects[i][0])
 			continue;
+		// the open player of the island lies over the elements under it: their frames stay hidden too
+		const float *pIsland = m_aaRects[ELEMENT_ISLAND];
+		if(i != ELEMENT_ISLAND && m_aIslandLayer[2] > 0.5f && m_aaRects[i][0] < pIsland[2] && m_aaRects[i][2] > pIsland[0] && m_aaRects[i][1] < pIsland[3] && m_aaRects[i][3] > pIsland[1])
+			continue;
 		const bool Active = i == m_Dragging || i == Hovered;
 		m_aFrame[i] = Ease(m_aFrame[i], Active ? 1.0f : 0.0f, 14.0f, Dt);
 		const float Lift = m_aLift[i] * 3.0f * U;

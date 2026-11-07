@@ -344,6 +344,7 @@ MACRO_CONFIG_INT(XcHudIslandY, xc_hud_island_y, 38, 0, 1000, CFGFLAG_CLIENT | CF
 MACRO_CONFIG_INT(XcHudIslandScale, xc_hud_island_scale, 100, 50, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: island size")
 MACRO_CONFIG_STR(XcHudIslandParts, xc_hud_island_parts, 32, "mnw", CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: island parts in their order: m music, n notifications, w the logo (a missing letter is off)")
 MACRO_CONFIG_STR(XcHudIslandText, xc_hud_island_text, 64, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: own text on the island")
+MACRO_CONFIG_INT(XcHudIslandPlayerLyrics, xc_hud_island_player_lyrics, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: the player of the island shows the lyrics")
 MACRO_CONFIG_INT(XcHudIslandLyrics, xc_hud_island_lyrics, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD: the island shows the line of the song that is sung now")
 MACRO_CONFIG_INT(XcHudLatencyPred, xc_hud_latency_pred, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The latency plate also shows the prediction ahead and its corrections per second")
 MACRO_CONFIG_INT(XcPredPreset, xc_pred_preset, 3, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Prediction preset (0 = responsive, 1 = balanced, 2 = stable, 3 = own)")

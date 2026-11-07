@@ -208,6 +208,8 @@ private:
 	int m_IslandNoteKind = 0;
 	float m_IslandNoteStart = -100.0f;
 	float m_IslandLyricRoll = 0.0f;
+	bool m_IslandPillLyric = false;
+	float m_aIslandPillRect[4] = {};
 	bool m_IslandOverControl = false; // the mouse is over a button of the player (the editor does not drag then)
 	float m_aDragStart[2] = {};
 	// xc_chat.cpp: the new chat

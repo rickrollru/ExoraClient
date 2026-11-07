@@ -111,6 +111,14 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		for(int i = 0; i < (int)pLines->size(); i++)
 			if((*pLines)[i].m_Time <= Position)
 				LineNow = i;
+	// how much of the line is sung: from its start to the next line (or the end of the track)
+	float LineFrac = 0.0f;
+	if(LineNow >= 0)
+	{
+		const double Start = (*pLines)[LineNow].m_Time;
+		const double End = LineNow + 1 < (int)pLines->size() ? (*pLines)[LineNow + 1].m_Time : std::max(State.m_Duration, Start + 4.0);
+		LineFrac = std::clamp((float)((Position - Start) / std::max(std::min(End - Start, 8.0), 0.5)), 0.0f, 1.0f);
+	}
 
 	// ---- what the small island shows, measured first
 	const float Pad = 14.0f * U, Gap = 10.0f * U;
@@ -132,8 +140,14 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	if(HasTrack)
 	{
 		const char *pText = !Music.HasTrack() ? Tr("Nothing playing") : State.m_Title.c_str();
-		if(g_Config.m_XcHudIslandLyrics && pLines && !Approx && LineNow >= 0 && !(*pLines)[LineNow].m_Text.empty() && CXcLyrics::OwnFontCovers((*pLines)[LineNow].m_Text.c_str()))
+		// the line sung now: always (the setting) or while the mouse is over the pill (the HUD editor)
+		const bool Hover = m_Editing && ImGui::IsMouseHoveringRect(ImVec2(m_aIslandPillRect[0], m_aIslandPillRect[1]), ImVec2(m_aIslandPillRect[2], m_aIslandPillRect[3]));
+		m_IslandPillLyric = false;
+		if((g_Config.m_XcHudIslandLyrics || Hover) && pLines && !Approx && LineNow >= 0 && !(*pLines)[LineNow].m_Text.empty() && CXcLyrics::OwnFontCovers((*pLines)[LineNow].m_Text.c_str()))
+		{
 			pText = (*pLines)[LineNow].m_Text.c_str();
+			m_IslandPillLyric = true;
+		}
 		XcFitText(pLabel, TextSize, pText, 300.0f * U, aPill, sizeof(aPill));
 	}
 	if(str_comp(aPill, m_aIslandPill) != 0)
@@ -145,31 +159,43 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	m_IslandPillSwap = std::min(m_IslandPillSwap + Dt / 0.45f, 1.0f);
 	const float PillTextW = std::max(pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPill).x, m_IslandPillSwap < 1.0f ? pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPillOld).x * (1.0f - Smooth(m_IslandPillSwap)) : 0.0f);
 
+	// the parts: the time as plain text, then the statuses in their order; like a phone island only the first of the
+	// watermark and the music is a whole pill, the others shrink to a circle; notifications are a small plane
 	struct SPart
 	{
-		char m_Kind; // 't' time, 'm' music, 'w' logo, 'x' own text
+		char m_Kind; // 't' time, 'w' watermark (logo and own text), 'm' music, 'n' notifications
 		float m_Width;
+		bool m_Big;
 	};
 	SPart aParts[8];
 	int NumParts = 0;
 	const float TimeW = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, "00:00").x;
-	aParts[NumParts++] = {'t', TimeW};
-	// an own text: a pill of its own next to the time
-	if(g_Config.m_XcHudIslandText[0])
-		aParts[NumParts++] = {'x', 10.0f * U + 14.0f * U + 6.0f * U + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, g_Config.m_XcHudIslandText).x + 12.0f * U};
+	aParts[NumParts++] = {'t', TimeW, false};
 	const float PillH = 28.0f * U, CoverS = 20.0f * U, EqW = 16.0f * U;
+	const char *pMark = g_Config.m_XcHudIslandText[0] ? g_Config.m_XcHudIslandText : "Exora";
+	bool BigTaken = false;
 	for(const char *p = g_Config.m_XcHudIslandParts; *p && NumParts < 6; p++)
 	{
-		if(*p == 'm' && HasTrack)
-			aParts[NumParts++] = {'m', 4.0f * U + CoverS + 8.0f * U + PillTextW + 8.0f * U + EqW + 10.0f * U};
-		else if(*p == 'w')
-			aParts[NumParts++] = {'w', 22.0f * U};
+		if(*p == 'w')
+		{
+			const bool Big = !BigTaken;
+			BigTaken = true;
+			aParts[NumParts++] = {'w', Big ? 10.0f * U + 14.0f * U + 6.0f * U + pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, pMark).x + 12.0f * U : PillH, Big};
+		}
+		else if(*p == 'm' && HasTrack)
+		{
+			const bool Big = !BigTaken;
+			BigTaken = true;
+			aParts[NumParts++] = {'m', Big ? 4.0f * U + CoverS + 8.0f * U + PillTextW + 8.0f * U + EqW + 10.0f * U : PillH, Big};
+		}
+		else if(*p == 'n')
+			aParts[NumParts++] = {'n', 18.0f * U, false};
 	}
-	float CompactW = Pad * 2.0f;
+	const float PartGap = 8.0f * U, Edge = 8.0f * U;
+	float ContentW = 0.0f;
 	for(int i = 0; i < NumParts; i++)
-		CompactW += aParts[i].m_Width + (i ? Gap : 0.0f);
-	if(NumParts > 1 && aParts[NumParts - 1].m_Kind == 'm')
-		CompactW -= Pad - 6.0f * U; // the pill sits close to the right end
+		ContentW += aParts[i].m_Width + (i ? PartGap : 0.0f);
+	const float CompactW = ContentW + Edge * 2.0f;
 
 	// a notification
 	const ImVec4 Mint(0.24f, 0.84f, 0.64f, 1.0f), Gold(1.0f, 0.78f, 0.25f, 1.0f);
@@ -180,7 +206,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 
 	// the player
 	const float PlayerW = 380.0f * U;
-	const bool ShowLyrics = pLines && !Approx;
+	const bool ShowLyrics = pLines && !Approx && g_Config.m_XcHudIslandPlayerLyrics;
 	const float ControlsH = 44.0f * U;
 	const float PlayerH = 16.0f * U + 56.0f * U + 14.0f * U + 12.0f * U + (ShowLyrics ? 14.0f * U + 5.0f * 22.0f * U : 0.0f) + 10.0f * U + ControlsH + 10.0f * U;
 
@@ -215,14 +241,17 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	m_aaRects[ELEMENT_ISLAND][3] = Max.y;
 	const float Rounding = std::min(H * 0.5f, 26.0f * U);
 
-	// glass: the game blurred under it (render module), a dark tint, a fine rim
-	if(Alpha > 0.5f && GameClient()->m_FxRenderer.ModuleActive())
-		m_vChatBlurRects.push_back({Min.x, Min.y, Max.x, Max.y, Rounding});
-	// the bigger it grows, the less shows through (the player lies over other elements)
-	const float Solid = std::clamp((H - CompactH) / (60.0f * U), 0.0f, 1.0f);
-	const float Base = GameClient()->m_FxRenderer.ModuleActive() ? 0.72f : 0.9f;
-	pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, Base + (0.97f - Base) * Solid), Alpha), Rounding);
-	pDraw->AddRect(Min, Max, Col(t.m_Border, Alpha), Rounding, 0, 1.0f);
+	// glass: only around a notification and the player (the small island is loose parts); it grows out of the parts
+	const float Shell = Smooth(std::max(m_aIslandLayer[1], m_aIslandLayer[2]));
+	if(Shell > 0.01f)
+	{
+		if(Alpha * Shell > 0.5f && GameClient()->m_FxRenderer.ModuleActive())
+			m_vChatBlurRects.push_back({Min.x, Min.y, Max.x, Max.y, Rounding});
+		// the bigger it grows, the less shows through (the player lies over other elements)
+		const float Solid = std::clamp((H - CompactH) / (60.0f * U), 0.0f, 1.0f);
+		const float Base = GameClient()->m_FxRenderer.ModuleActive() ? 0.74f : 0.9f;
+		pDraw->AddRectFilled(Min, Max, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, Base + (0.97f - Base) * Solid), Alpha * Shell), Rounding);
+	}
 	pDraw->PushClipRect(Min, Max, true);
 	const float Time = Now;
 	const bool Playing = Music.HasTrack() && State.m_Playing;
@@ -245,25 +274,36 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		}
 	};
 
-	// ---- layer 0: the small island
+	// ---- layer 0: the small island, loose parts over the game
 	if(m_aIslandLayer[0] > 0.01f)
 	{
 		const float a = Alpha * Smooth(m_aIslandLayer[0]);
 		const float Lift = (1.0f - Smooth(m_aIslandLayer[0])) * -6.0f * U;
 		const float MidY = Min.y + CompactH * 0.5f + Lift;
-		// centered in the island while it changes size
-		float x = (Min.x + Max.x) * 0.5f - CompactW * 0.5f + Pad;
+		const bool Glass = GameClient()->m_FxRenderer.ModuleActive() && a > 0.5f;
+		const auto Plate = [&](ImVec2 PMin, ImVec2 PMax, const ImVec4 &Tint) {
+			if(Glass)
+				m_vChatBlurRects.push_back({PMin.x, PMin.y, PMax.x, PMax.y, (PMax.y - PMin.y) * 0.5f});
+			pDraw->AddRectFilled(PMin, PMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, Glass ? 0.62f : 0.82f), a), (PMax.y - PMin.y) * 0.5f);
+			pDraw->AddRectFilled(PMin, PMax, Col(Tint, a), (PMax.y - PMin.y) * 0.5f);
+		};
+		// centered where the island is
+		float x = (Min.x + Max.x) * 0.5f - ContentW * 0.5f;
 		for(int i = 0; i < NumParts; i++)
 		{
 			const SPart &Part = aParts[i];
 			if(i)
-				x += Gap;
+				x += PartGap;
+			const ImVec2 PMin(x, MidY - PillH * 0.5f), PMax(x + Part.m_Width, MidY + PillH * 0.5f);
 			if(Part.m_Kind == 't')
-				pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_TextSecondary, a), aTime);
-			else if(Part.m_Kind == 'm')
 			{
-				const ImVec2 PMin(x, MidY - PillH * 0.5f), PMax(x + Part.m_Width, MidY + PillH * 0.5f);
-				pDraw->AddRectFilled(PMin, PMax, Col(ImVec4(1, 1, 1, 0.06f), a), PillH * 0.5f);
+				// plain text: a soft shadow keeps it readable on any map
+				pDraw->AddText(pLabel, TextSize, ImVec2(x + 1.0f * U, MidY - TextSize * 0.55f + 1.0f * U), Col(ImVec4(0, 0, 0, 1), 0.55f * a), aTime);
+				pDraw->AddText(pLabel, TextSize, ImVec2(x, MidY - TextSize * 0.55f), Col(t.m_Text, a), aTime);
+			}
+			else if(Part.m_Kind == 'm' && Part.m_Big)
+			{
+				Plate(PMin, PMax, ImVec4(1, 1, 1, 0.05f));
 				Cover(ImVec2(PMin.x + 4.0f * U, MidY - CoverS * 0.5f), CoverS, 6.0f * U, a);
 				const float TX = PMin.x + 4.0f * U + CoverS + 8.0f * U;
 				const float TextY = MidY - TextSize * 0.55f;
@@ -271,18 +311,52 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				const float Swap = Smooth(m_IslandPillSwap);
 				if(Swap < 1.0f && m_aIslandPillOld[0])
 					pDraw->AddText(pLabel, TextSize, ImVec2(TX, TextY - Swap * 8.0f * U), Col(t.m_Text, a * (1.0f - Swap)), m_aIslandPillOld);
-				pDraw->AddText(pLabel, TextSize, ImVec2(TX, TextY + (1.0f - Swap) * 8.0f * U), Col(t.m_Text, a * Swap), m_aIslandPill);
+				const ImVec2 TP(TX, TextY + (1.0f - Swap) * 8.0f * U);
+				if(m_IslandPillLyric)
+				{
+					// karaoke: the part already sung bright, the rest dim
+					pDraw->AddText(pLabel, TextSize, TP, Col(t.m_Text, 0.38f * a * Swap), m_aIslandPill);
+					const float SungW = pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPill).x * LineFrac;
+					pDraw->PushClipRect(ImVec2(TX, PMin.y), ImVec2(TX + SungW, PMax.y), true);
+					pDraw->AddText(pLabel, TextSize, TP, Col(t.m_Text, a * Swap), m_aIslandPill);
+					pDraw->PopClipRect();
+				}
+				else
+					pDraw->AddText(pLabel, TextSize, TP, Col(t.m_Text, a * Swap), m_aIslandPill);
 				pDraw->PopClipRect();
 				Bars(PMax.x - EqW - 8.0f * U, MidY + 6.0f * U, a);
+				m_aIslandPillRect[0] = PMin.x;
+				m_aIslandPillRect[1] = PMin.y;
+				m_aIslandPillRect[2] = PMax.x;
+				m_aIslandPillRect[3] = PMax.y;
+			}
+			else if(Part.m_Kind == 'm')
+			{
+				Plate(PMin, PMax, ImVec4(1, 1, 1, 0.05f));
+				Bars(PMin.x + PillH * 0.5f - 7.0f * U, MidY + 6.0f * U, a);
+			}
+			else if(Part.m_Kind == 'w' && Part.m_Big)
+			{
+				Plate(PMin, PMax, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f));
+				DrawLogo(pDraw, ImVec2(PMin.x + 10.0f * U + 7.0f * U, MidY), 15.0f * U, t.m_Accent, a, false);
+				pDraw->AddText(pLabel, TextSize, ImVec2(PMin.x + 10.0f * U + 14.0f * U + 6.0f * U, MidY - TextSize * 0.55f), Col(t.m_Text, a), pMark);
 			}
 			else if(Part.m_Kind == 'w')
-				DrawLogo(pDraw, ImVec2(x + 11.0f * U, MidY), 20.0f * U, t.m_Accent, a, false);
-			else if(Part.m_Kind == 'x')
 			{
-				const ImVec2 PMin(x, MidY - PillH * 0.5f), PMax(x + Part.m_Width, MidY + PillH * 0.5f);
-				pDraw->AddRectFilled(PMin, PMax, Col(ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.16f), a), PillH * 0.5f);
-				DrawLogo(pDraw, ImVec2(PMin.x + 10.0f * U + 7.0f * U, MidY), 14.0f * U, t.m_Accent, a, false);
-				pDraw->AddText(pLabel, TextSize, ImVec2(PMin.x + 10.0f * U + 14.0f * U + 6.0f * U, MidY - TextSize * 0.55f), Col(t.m_Text, a), g_Config.m_XcHudIslandText);
+				Plate(PMin, PMax, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f));
+				DrawLogo(pDraw, ImVec2(PMin.x + PillH * 0.5f, MidY), 16.0f * U, t.m_Accent, a, false);
+			}
+			else if(Part.m_Kind == 'n')
+			{
+				// a paper plane; it lights up for a moment when a notification came
+				const float Glow = std::clamp(1.0f - (Now - m_IslandNoteStart - 2.8f) / 1.5f, 0.0f, 1.0f);
+				const ImVec4 PlaneCol = Mix(t.m_Text, t.m_Accent, Glow);
+				const ImVec2 C(x + Part.m_Width * 0.5f, MidY);
+				const float Sz = 6.5f * U;
+				const ImVec2 Tip(C.x + Sz, C.y - Sz * 0.15f), Top(C.x - Sz, C.y - Sz * 0.9f), Notch(C.x - Sz * 0.35f, C.y + Sz * 0.05f), Bottom(C.x - Sz * 0.75f, C.y + Sz * 0.9f);
+				pDraw->AddTriangleFilled(ImVec2(Tip.x + 1.0f * U, Tip.y + 1.0f * U), ImVec2(Top.x + 1.0f * U, Top.y + 1.0f * U), ImVec2(Bottom.x + 1.0f * U, Bottom.y + 1.0f * U), Col(ImVec4(0, 0, 0, 1), 0.4f * a));
+				pDraw->AddTriangleFilled(Tip, Top, Notch, Col(PlaneCol, a));
+				pDraw->AddTriangleFilled(Tip, Notch, Bottom, Col(Mix(PlaneCol, ImVec4(0, 0, 0, 1), 0.25f), a));
 			}
 			x += Part.m_Width;
 		}
@@ -362,7 +436,18 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				ImFont *pFont = IsNow ? pTitle : pLabel;
 				const float Size = IsNow ? 15.0f * U : 13.0f * U;
 				XcFitText(pFont, Size, (*pLines)[i].m_Text.c_str(), LMax.x - LMin.x, aLine, sizeof(aLine));
-				pDraw->AddText(pFont, Size, ImVec2(L, Ly + (LineH - Size) * 0.5f), Col(IsNow ? t.m_Text : t.m_TextMuted, a * (IsNow ? 1.0f : 0.55f * Fade)), aLine);
+				const ImVec2 TP(L, Ly + (LineH - Size) * 0.5f);
+				if(IsNow)
+				{
+					// karaoke: the part already sung bright
+					pDraw->AddText(pFont, Size, TP, Col(t.m_Text, 0.4f * a), aLine);
+					const float SungW = pFont->CalcTextSizeA(Size, FLT_MAX, 0.0f, aLine).x * LineFrac;
+					pDraw->PushClipRect(ImVec2(L, Ly), ImVec2(L + SungW, Ly + LineH), true);
+					pDraw->AddText(pFont, Size, TP, Col(t.m_Text, a), aLine);
+					pDraw->PopClipRect();
+				}
+				else
+					pDraw->AddText(pFont, Size, TP, Col(t.m_TextMuted, a * 0.55f * Fade), aLine);
 			}
 			pDraw->PopClipRect();
 			y += 5.0f * 22.0f * U;
@@ -385,7 +470,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				{XC_ICON_SKIP_BACK, Mid - 62.0f * U, 17.0f * U, 1},
 				{Playing ? XC_ICON_PAUSE : XC_ICON_PLAY, Mid, 24.0f * U, 2},
 				{XC_ICON_SKIP_FORWARD, Mid + 62.0f * U, 17.0f * U, 3},
-				{XC_ICON_XMARK, Right - 18.0f * U, 13.0f * U, 4},
+				{"", Right - 18.0f * U, 13.0f * U, 4},
 			};
 			for(const SButton &Button : aButtons)
 			{
@@ -396,15 +481,32 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 					m_IslandOverControl = true;
 					pDraw->AddCircleFilled(ImVec2(Button.m_X, MidY), R, Col(ImVec4(1, 1, 1, 0.08f), a), 24);
 				}
-				const bool On = Button.m_Action != 0 || g_Config.m_XcHudIslandLyrics;
-				DrawIcon(pDraw, pTitle, Button.m_Size, ImVec2(Button.m_X, MidY), Col(Button.m_Action == 0 || Button.m_Action == 4 ? (On ? t.m_TextSecondary : t.m_TextMuted) : t.m_Text, a), Button.m_pIcon);
+				const bool On = Button.m_Action != 0 || g_Config.m_XcHudIslandPlayerLyrics;
+				if(Button.m_Action == 4)
+				{
+					// the app the music comes from: a round badge with its first letter
+					const char *pApp = Music.AppName();
+					char aLetter[8] = "?";
+					if(pApp && pApp[0])
+					{
+						const int Len = str_utf8_forward(pApp, 0);
+						str_copy(aLetter, pApp, std::min((int)sizeof(aLetter), Len + 1));
+					}
+					pDraw->AddCircleFilled(ImVec2(Button.m_X, MidY), 11.0f * U, Col(t.m_Accent, a), 24);
+					const ImVec2 LD = pTitle->CalcTextSizeA(12.0f * U, FLT_MAX, 0.0f, aLetter);
+					pDraw->AddText(pTitle, 12.0f * U, ImVec2(Button.m_X - LD.x * 0.5f, MidY - LD.y * 0.5f), Col(t.m_OnAccent, a), aLetter);
+					if(Hover && pApp && pApp[0])
+						ImGui::SetTooltip("%s", pApp);
+					continue;
+				}
+				DrawIcon(pDraw, pTitle, Button.m_Size, ImVec2(Button.m_X, MidY), Col(Button.m_Action == 0 ? (On ? t.m_TextSecondary : t.m_TextMuted) : t.m_Text, a), Button.m_pIcon);
 				if(!Hover || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 					continue;
 				PlayUiSound(SOUND_CLICK);
 				CXcMusic &MusicCtl = GameClient()->m_XcMusic;
 				switch(Button.m_Action)
 				{
-				case 0: g_Config.m_XcHudIslandLyrics ^= 1; break;
+				case 0: g_Config.m_XcHudIslandPlayerLyrics ^= 1; break;
 				case 1: MusicCtl.Previous(); break;
 				case 2: MusicCtl.PlayPause(); break;
 				case 3: MusicCtl.Next(); break;
