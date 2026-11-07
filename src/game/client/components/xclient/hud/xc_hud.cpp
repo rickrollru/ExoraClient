@@ -29,7 +29,6 @@ using namespace XcUi;
 // design sizes are for 1080p at 100 %; the fonts are rasterized at the size they are mostly drawn at:
 // the atlas has no mipmaps, so text drawn much smaller than rasterized breaks up on small screens
 static constexpr float FONT_OVERSAMPLE = 1.0f;
-static constexpr float SNAP_DISTANCE = 10.0f;
 
 void CXcHud::OnConsoleInit()
 {
@@ -128,6 +127,11 @@ void CXcHud::SetEditing(bool Editing)
 	}
 	m_Editing = Editing;
 	m_Dragging = -1;
+	m_EditorOpen = 0.0f;
+	m_MenuKind = MENU_NONE;
+	m_MotionValid = false;
+	for(float &Pop : m_aPop)
+		Pop = 1.0f;
 	if(Editing)
 	{
 		GameClient()->m_XcMenu.SetActive(false);
@@ -187,6 +191,9 @@ float CXcHud::Unit(int Index) const
 
 ImVec2 CXcHud::Center(int Index) const
 {
+	// in the editor the element is drawn where its spring is
+	if(m_Editing && m_MotionValid)
+		return ImVec2(m_aaDrawPos[Index][0], m_aaDrawPos[Index][1]);
 	const SElementConfig Config = Element(Index);
 	return ImVec2(*Config.m_pX / 1000.0f * Graphics()->ScreenWidth(), *Config.m_pY / 1000.0f * Graphics()->ScreenHeight());
 }
@@ -957,159 +964,6 @@ ColorRGBA CXcHud::WheelSelectColor() const
 	return ColorRGBA(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.35f);
 }
 
-void CXcHud::RenderEditor(ImDrawList *pDraw)
-{
-	const STheme &t = Theme();
-	ImGuiIO &Io = ImGui::GetIO();
-	const ImVec2 Screen = Io.DisplaySize;
-	ImFont *pLabel = m_Backend.Fonts().m_pLabel;
-	ImFont *pSmall = m_Backend.Fonts().m_pSmall;
-	const float U = Graphics()->ScreenHeight() / 1080.0f;
-
-	// the panel on the right is drawn first in the list, so clicks on it do not move elements
-	const ImVec2 PanelSize(300.0f * U, 0.0f);
-	// the panel can go to the other side, so no element stays hidden behind it
-	ImGui::SetNextWindowPos(ImVec2(m_EditorPanelLeft ? 24.0f * U : Screen.x - PanelSize.x - 24.0f * U, 90.0f * U), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(PanelSize.x, 0.0f));
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.95f));
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 16.0f * U);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f * U, 16.0f * U));
-	ImGui::Begin("##hud_editor_panel", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
-	const bool OverPanel = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
-	ImGui::PushFont(m_Backend.Fonts().m_pTitle);
-	ImGui::TextColored(t.m_Text, "%s", Tr("HUD editor"));
-	ImGui::PopFont();
-	ImGui::PushFont(pSmall);
-	ImGui::PushTextWrapPos(0.0f);
-	ImGui::TextColored(t.m_TextMuted, "%s", Tr("Drag the elements with the mouse, the wheel changes the size. Esc closes the editor."));
-	ImGui::PopTextWrapPos();
-	ImGui::PopFont();
-	ImGui::Dummy(ImVec2(0.0f, 4.0f * U));
-	ImGui::PushFont(pLabel);
-	for(int i = 0; i < NUM_ELEMENTS; i++)
-	{
-		const SElementConfig Config = Element(i);
-		bool Enabled = *Config.m_pEnabled != 0;
-		if(ImGui::Checkbox(Tr(Config.m_pName), &Enabled))
-		{
-			*Config.m_pEnabled = Enabled ? 1 : 0;
-			PlayUiSound(Enabled ? SOUND_TOGGLE_ON : SOUND_TOGGLE_OFF);
-		}
-		ImGui::SameLine(PanelSize.x - 90.0f * U);
-		ImGui::TextColored(t.m_TextMuted, "%d%%", *Config.m_pScale);
-	}
-	bool Toasts = g_Config.m_XcHudToasts != 0;
-	if(ImGui::Checkbox(Tr("Notifications"), &Toasts))
-		g_Config.m_XcHudToasts = Toasts ? 1 : 0;
-	ImGui::Dummy(ImVec2(0.0f, 6.0f * U));
-	if(ImGui::Button(m_EditorPanelLeft ? Tr("Move the panel to the right") : Tr("Move the panel to the left"), ImVec2(-1.0f, 30.0f * U)))
-	{
-		m_EditorPanelLeft = !m_EditorPanelLeft;
-		PlayUiSound(SOUND_CLICK);
-	}
-	ImGui::Dummy(ImVec2(0.0f, 4.0f * U));
-	const float ButtonWidth = (ImGui::GetContentRegionAvail().x - 8.0f * U) * 0.5f;
-	if(ImGui::Button(Tr("Reset"), ImVec2(ButtonWidth, 34.0f * U)))
-	{
-		for(int i = 0; i < NUM_ELEMENTS; i++)
-		{
-			const SElementConfig Config = Element(i);
-			*Config.m_pX = Config.m_DefaultX;
-			*Config.m_pY = Config.m_DefaultY;
-			*Config.m_pScale = 100;
-		}
-		PlayUiSound(SOUND_CLICK);
-	}
-	ImGui::SameLine(0.0f, 8.0f * U);
-	ImGui::PushStyleColor(ImGuiCol_Button, t.m_Accent);
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Mix(t.m_Accent, ImVec4(1, 1, 1, 1), 0.12f));
-	ImGui::PushStyleColor(ImGuiCol_Text, t.m_OnAccent);
-	if(ImGui::Button(Tr("Done"), ImVec2(ButtonWidth, 34.0f * U)))
-	{
-		PlayUiSound(SOUND_CLICK);
-		SetEditing(false);
-	}
-	ImGui::PopStyleColor(3);
-	ImGui::PopFont();
-	ImGui::End();
-	ImGui::PopStyleVar(2);
-	ImGui::PopStyleColor();
-
-	// which element is under the mouse (the last drawn wins)
-	int Hovered = -1;
-	if(!OverPanel)
-	{
-		for(int i = 0; i < NUM_ELEMENTS; i++)
-		{
-			if(!*Element(i).m_pEnabled)
-				continue;
-			if(Io.MousePos.x >= m_aaRects[i][0] && Io.MousePos.x <= m_aaRects[i][2] && Io.MousePos.y >= m_aaRects[i][1] && Io.MousePos.y <= m_aaRects[i][3])
-				Hovered = i;
-		}
-	}
-
-	// drag: the center follows the mouse, snapping to the middle of the screen
-	if(Hovered >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-	{
-		m_Dragging = Hovered;
-		const ImVec2 C((m_aaRects[Hovered][0] + m_aaRects[Hovered][2]) * 0.5f, (m_aaRects[Hovered][1] + m_aaRects[Hovered][3]) * 0.5f);
-		m_aDragOffset[0] = C.x - Io.MousePos.x;
-		m_aDragOffset[1] = C.y - Io.MousePos.y;
-	}
-	if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))
-		m_Dragging = -1;
-	m_aSnapped[0] = m_aSnapped[1] = false;
-	if(m_Dragging >= 0)
-	{
-		const SElementConfig Config = Element(m_Dragging);
-		ImVec2 C(Io.MousePos.x + m_aDragOffset[0], Io.MousePos.y + m_aDragOffset[1]);
-		if(std::abs(C.x - Screen.x * 0.5f) < SNAP_DISTANCE * U)
-		{
-			C.x = Screen.x * 0.5f;
-			m_aSnapped[0] = true;
-		}
-		if(std::abs(C.y - Screen.y * 0.5f) < SNAP_DISTANCE * U)
-		{
-			C.y = Screen.y * 0.5f;
-			m_aSnapped[1] = true;
-		}
-		*Config.m_pX = std::clamp((int)std::round(C.x / Screen.x * 1000.0f), 0, 1000);
-		*Config.m_pY = std::clamp((int)std::round(C.y / Screen.y * 1000.0f), 0, 1000);
-	}
-	// wheel: size in steps of 10 %
-	const int Target = m_Dragging >= 0 ? m_Dragging : Hovered;
-	if(Target >= 0 && Io.MouseWheel != 0.0f)
-	{
-		int *pScale = Element(Target).m_pScale;
-		*pScale = std::clamp(*pScale + (Io.MouseWheel > 0.0f ? 10 : -10), 50, 200);
-	}
-
-	// guides and frames
-	if(m_aSnapped[0])
-		pDraw->AddLine(ImVec2(Screen.x * 0.5f, 0.0f), ImVec2(Screen.x * 0.5f, Screen.y), Col(t.m_Accent, 0.7f), 1.0f);
-	if(m_aSnapped[1])
-		pDraw->AddLine(ImVec2(0.0f, Screen.y * 0.5f), ImVec2(Screen.x, Screen.y * 0.5f), Col(t.m_Accent, 0.7f), 1.0f);
-	for(int i = 0; i < NUM_ELEMENTS; i++)
-	{
-		const SElementConfig Config = Element(i);
-		if(!*Config.m_pEnabled)
-			continue;
-		const float Active = (i == m_Dragging || i == Hovered) ? 1.0f : 0.45f;
-		const ImVec2 Min(m_aaRects[i][0] - 5.0f * U, m_aaRects[i][1] - 5.0f * U);
-		const ImVec2 Max(m_aaRects[i][2] + 5.0f * U, m_aaRects[i][3] + 5.0f * U);
-		pDraw->AddRect(Min, Max, Col(t.m_Accent, Active), 15.0f * U, 0, i == m_Dragging ? 2.0f : 1.5f);
-		const char *pName = Tr(Config.m_pName);
-		const float NameSize = 12.0f * U;
-		// the name plate goes above the frame, or below it at the top of the screen
-		const float PlateHeight = NameSize + 7.0f * U;
-		const bool Below = Min.y - PlateHeight - 3.0f * U < 0.0f;
-		const ImVec2 NameMin(Min.x, Below ? Max.y + 3.0f * U : Min.y - PlateHeight - 3.0f * U);
-		const float NameWidth = pSmall->CalcTextSizeA(NameSize, FLT_MAX, 0.0f, pName).x;
-		pDraw->AddRectFilled(NameMin, ImVec2(NameMin.x + NameWidth + 12.0f * U, NameMin.y + PlateHeight), Col(t.m_Accent, Active), 6.0f * U);
-		pDraw->AddText(pSmall, NameSize, ImVec2(NameMin.x + 6.0f * U, NameMin.y + 3.0f * U), Col(t.m_OnAccent, Active), pName);
-	}
-}
-
 void CXcHud::OnRender()
 {
 	if(!m_Backend.IsReady())
@@ -1168,27 +1022,26 @@ void CXcHud::OnRender()
 		if(m_Editing)
 			pDraw->AddRectFilled(ImVec2(0, 0), ImGui::GetIO().DisplaySize, Col(ImVec4(0, 0, 0, 1), 0.25f));
 		const auto Shown = [&](int Element) { return m_Editing ? (aWanted[Element] ? 1.0f : 0.0f) : m_aShown[Element]; };
-		if(Shown(ELEMENT_WATERMARK) > 0.0f)
-			RenderWatermark(pDraw, a * Shown(ELEMENT_WATERMARK));
-		if(Shown(ELEMENT_TIMER) > 0.0f)
-			RenderTimer(pDraw, a * Shown(ELEMENT_TIMER));
-		if(Shown(ELEMENT_SPEED) > 0.0f)
-			RenderSpeed(pDraw, a * Shown(ELEMENT_SPEED));
-		if(Shown(ELEMENT_WEAPON) > 0.0f)
-			RenderWeapon(pDraw, a * Shown(ELEMENT_WEAPON));
-		if(Shown(ELEMENT_MUSIC) > 0.0f)
-			RenderMusic(pDraw, a * Shown(ELEMENT_MUSIC));
-		if(Shown(ELEMENT_KEYS) > 0.0f)
-			RenderKeys(pDraw, a * Shown(ELEMENT_KEYS));
+		UpdateEditorMotion(Dt);
+		// each element is drawn, then turned and scaled a little while it is held in the editor
+		const auto Draw = [&](int Element, auto &&Fn) {
+			if(Shown(Element) <= 0.0f)
+				return;
+			const int VtxStart = pDraw->VtxBuffer.Size;
+			Fn(a * Shown(Element));
+			TransformElement(pDraw, VtxStart, Element);
+		};
+		Draw(ELEMENT_WATERMARK, [&](float A) { RenderWatermark(pDraw, A); });
+		Draw(ELEMENT_TIMER, [&](float A) { RenderTimer(pDraw, A); });
+		Draw(ELEMENT_SPEED, [&](float A) { RenderSpeed(pDraw, A); });
+		Draw(ELEMENT_WEAPON, [&](float A) { RenderWeapon(pDraw, A); });
+		Draw(ELEMENT_MUSIC, [&](float A) { RenderMusic(pDraw, A); });
+		Draw(ELEMENT_KEYS, [&](float A) { RenderKeys(pDraw, A); });
 		// the top list steps aside while the full scoreboard is open
-		if(Shown(ELEMENT_MINITOP) > 0.0f)
-			RenderMiniTop(pDraw, a * Shown(ELEMENT_MINITOP) * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen));
-		if(Shown(ELEMENT_LATENCY) > 0.0f)
-			RenderLatency(pDraw, a * Shown(ELEMENT_LATENCY));
-		if(Shown(ELEMENT_EFFECTS) > 0.0f)
-			RenderEffects(pDraw, a * Shown(ELEMENT_EFFECTS), Dt);
-		if(Shown(ELEMENT_ISLAND) > 0.0f)
-			RenderIsland(pDraw, a * Shown(ELEMENT_ISLAND), Dt);
+		Draw(ELEMENT_MINITOP, [&](float A) { RenderMiniTop(pDraw, A * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen)); });
+		Draw(ELEMENT_LATENCY, [&](float A) { RenderLatency(pDraw, A); });
+		Draw(ELEMENT_EFFECTS, [&](float A) { RenderEffects(pDraw, A, Dt); });
+		Draw(ELEMENT_ISLAND, [&](float A) { RenderIsland(pDraw, A, Dt); });
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)

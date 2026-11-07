@@ -163,6 +163,35 @@ private:
 	float m_BannerStart = -100.0f;
 	float m_MusicAlpha = 0.0f;
 	void RenderEditor(ImDrawList *pDraw);
+	// xc_hud_editor.cpp: the editor with springs, name plates and right click menus
+	enum
+	{
+		MENU_NONE = 0,
+		MENU_ELEMENT,
+		MENU_ADD,
+	};
+	static const char *ElementIcon(int Index);
+	void UpdateEditorMotion(float Dt);
+	void TransformElement(ImDrawList *pDraw, int VtxStart, int Index);
+	bool RenderEditorMenu(float U);
+	void RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float U, float a);
+	float m_aaDrawPos[NUM_ELEMENTS][2] = {};
+	float m_aaDrawVel[NUM_ELEMENTS][2] = {};
+	float m_aLean[NUM_ELEMENTS] = {};
+	float m_aLift[NUM_ELEMENTS] = {};
+	float m_aPop[NUM_ELEMENTS] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+	float m_aFrame[NUM_ELEMENTS] = {};
+	float m_aGuide[2] = {};
+	bool m_MotionValid = false;
+	float m_EditorOpen = 0.0f;
+	int m_MenuKind = MENU_NONE;
+	int m_MenuElement = -1;
+	float m_aMenuPos[2] = {};
+	float m_MenuOpenTime = 0.0f;
+	float m_MenuHeight = 200.0f;
+	float m_aIslandRowY[3] = {};
+	int m_IslandRowDrag = -1;
+	float m_IslandRowGrab = 0.0f;
 	// xc_island.cpp: the island at the top
 	void RenderIsland(ImDrawList *pDraw, float Alpha, float Dt);
 	bool IslandHas(char Part) const;
