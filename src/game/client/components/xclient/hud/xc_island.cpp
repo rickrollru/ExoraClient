@@ -162,14 +162,17 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		str_copy(m_aIslandPill, aPill);
 		m_IslandPillSwap = 0.0f;
 	}
-	m_IslandPillSwap = std::min(m_IslandPillSwap + Dt / 0.45f, 1.0f);
+	m_IslandPillSwap = std::min(m_IslandPillSwap + Dt / 0.5f, 1.0f);
 	// the room for the text: while the song is sung it stays one width (the lines differ, the parts next to it must
 	// not jump); otherwise the title, and every change of the width eases
+	// the pill fits its text: it grows quickly when a longer line comes and shrinks slowly, so the parts next to it
+	// glide instead of jumping with every line, and no empty room stays for long
 	const float LyricRoom = 260.0f * U;
-	const float TargetTextW = m_IslandPillLyric ? LyricRoom : std::min(pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPill).x, LyricRoom);
+	const float TargetTextW = std::min(pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPill).x, LyricRoom);
 	if(m_IslandPillTextW <= 0.0f)
 		m_IslandPillTextW = TargetTextW;
-	m_IslandPillTextW += (TargetTextW - m_IslandPillTextW) * (1.0f - std::exp(-Dt * 10.0f));
+	const float Rate = TargetTextW > m_IslandPillTextW ? 12.0f : 2.5f;
+	m_IslandPillTextW += (TargetTextW - m_IslandPillTextW) * (1.0f - std::exp(-Dt * Rate));
 	const float PillTextW = m_IslandPillTextW;
 
 	// the parts: the time as plain text, then the statuses in their order; like a phone island only the first of the
@@ -328,10 +331,12 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				const float TX = PMin.x + 4.0f * U + CoverS + 8.0f * U;
 				const float TextY = MidY - TextSize * 0.55f;
 				pDraw->PushClipRect(ImVec2(TX, PMin.y), ImVec2(PMax.x - EqW - 14.0f * U, PMax.y), true);
-				const float Swap = Smooth(m_IslandPillSwap);
-				if(Swap < 1.0f && m_aIslandPillOld[0])
-					pDraw->AddText(pLabel, TextSize, ImVec2(TX, TextY - Swap * 8.0f * U), Col(t.m_Text, a * (1.0f - Swap)), m_aIslandPillOld);
-				const ImVec2 TP(TX, TextY + (1.0f - Swap) * 8.0f * U);
+				// the old text leaves upward first, then the new one comes in from below: never both at once
+				const float Out = Smooth(std::min(m_IslandPillSwap * 2.0f, 1.0f));
+				const float Swap = Smooth(std::max(m_IslandPillSwap * 2.0f - 1.0f, 0.0f));
+				if(Out < 1.0f && m_aIslandPillOld[0])
+					pDraw->AddText(pLabel, TextSize, ImVec2(TX, TextY - Out * 12.0f * U), Col(t.m_Text, a * (1.0f - Out)), m_aIslandPillOld);
+				const ImVec2 TP(TX, TextY + (1.0f - Swap) * 12.0f * U);
 				if(m_IslandPillLyric)
 				{
 					// karaoke: the part already sung bright, the rest dim

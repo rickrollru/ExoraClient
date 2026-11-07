@@ -1,5 +1,8 @@
 #include "media_session.h"
 
+#include <functional>
+#include <string_view>
+
 #include <engine/external/stb/stb_image.h>
 #include <engine/gfx/image_manipulation.h>
 
@@ -127,6 +130,7 @@ void CXcMediaSession::Run()
 	uint64_t ArtId = 0;
 	int ArtTries = 0;
 	bool HaveArt = false;
+	size_t LastArtHash = 0;
 	while(true)
 	{
 		// commands first, then a fresh look so the button press shows right away
@@ -142,8 +146,9 @@ void CXcMediaSession::Run()
 
 		SXcMediaState State;
 		std::vector<unsigned char> vArtBytes;
-		// browsers often send the cover a moment after the title, so ask a few times
-		const bool WantArt = !HaveArt && ArtTries < 6;
+		// browsers often send the cover a moment after the title, and some players (Spotify) first give their own logo
+		// and the cover a bit later: ask a few times, also after a picture came, and take a picture that changed
+		const bool WantArt = (!HaveArt && ArtTries < 6) || (HaveArt && ArtTries < 12);
 		const bool Ok = XcMediaPlatform::Poll(&State, WantArt, &vArtBytes);
 		if(!Ok)
 			State = SXcMediaState();
@@ -154,6 +159,7 @@ void CXcMediaSession::Run()
 			TrackId++;
 			HaveArt = false;
 			ArtTries = 0;
+			LastArtHash = 0;
 		}
 		State.m_TrackId = TrackId;
 
@@ -163,10 +169,12 @@ void CXcMediaSession::Run()
 		if(WantArt && State.m_Available)
 		{
 			ArtTries++;
-			if(!vArtBytes.empty() && DecodeArt(vArtBytes, &vRgba, &ArtWidth, &ArtHeight))
+			const size_t Hash = vArtBytes.empty() ? 0 : std::hash<std::string_view>()(std::string_view((const char *)vArtBytes.data(), vArtBytes.size()));
+			if(!vArtBytes.empty() && (!HaveArt || Hash != LastArtHash) && DecodeArt(vArtBytes, &vRgba, &ArtWidth, &ArtHeight))
 			{
 				HaveArt = true;
 				NewArt = true;
+				LastArtHash = Hash;
 				ArtId++;
 			}
 		}
