@@ -296,12 +296,14 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		const std::string Query = m_aVisSearch;
 		if(m_VisualsSection != m_VisLastSection || Query != m_VisLastQuery || m_VisPickedCard != m_VisLastPicked)
 		{
+			// the list on the left comes in again only for a new section or search; picking a card in it only
+			// changes the card on the right, the list stays as it is
+			if(m_VisualsSection != m_VisLastSection || Query != m_VisLastQuery)
+				m_VisListTime = ImGui::GetTime();
 			m_VisLastPicked = m_VisPickedCard;
-			// a new page: its cards come in one after another, the list too
 			m_VisLastSection = m_VisualsSection;
 			m_VisLastQuery = Query;
 			PageEntered();
-			m_VisListTime = ImGui::GetTime();
 			m_ScrollTarget = 0.0f;
 			g_Config.m_XcMenuVisualsSection = m_VisualsSection;
 		}
@@ -363,8 +365,6 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 			vCards.emplace_back(Card.m_Id, Card.m_Title);
 		if(vCards != m_vVisCards)
 		{
-			if(vCards.size() != m_vVisCards.size())
-				m_VisListTime = ImGui::GetTime();
 			m_vVisCards = std::move(vCards);
 		}
 	}

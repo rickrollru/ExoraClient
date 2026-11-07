@@ -588,7 +588,8 @@ void CXcMenu::OnRender()
 	SetCursorSlowsDown(false);
 	m_Backend.Render();
 	// the HUD island stays on the screen over the menu in game
-	if(Client()->State() == IClient::STATE_ONLINE)
+	// (only where nothing of the menu is at the top: the home in game and the visuals window; the full menu has its bar)
+	if(Client()->State() == IClient::STATE_ONLINE && ((m_Page == PAGE_HOME && GameHome()) || (m_Page == PAGE_VISUALS && g_Config.m_XcVisualsWindow)))
 	{
 		GameClient()->m_XcHud.RenderIslandOverMenu(m_OpenAnimation);
 		m_Backend.MakeCurrent();
