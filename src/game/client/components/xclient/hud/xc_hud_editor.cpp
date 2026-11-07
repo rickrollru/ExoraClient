@@ -478,11 +478,13 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 		char m_Key;
 		const char *m_pName;
 	};
-	const SPart aAll[] = {{'m', Tr("Music")}, {'n', Tr("Notifications")}, {'w', Tr("Watermark")}};
+	const SPart aAll[] = {{'m', Tr("Music")}, {'n', Tr("Notifications")}, {'w', Tr("Watermark")}, {'c', Tr("Connection")}};
+	constexpr int NUM = 4;
+	const auto KeyIndex = [](char Key) { return Key == 'm' ? 0 : (Key == 'n' ? 1 : (Key == 'w' ? 2 : 3)); };
 	// the order: the parts that are on as saved, then those that are off
-	char aOrder[4] = "";
+	char aOrder[NUM + 1] = "";
 	for(const char *p = g_Config.m_XcHudIslandParts; *p; p++)
-		if(IndexOf("mnw", *p) >= 0 && IndexOf(aOrder, *p) < 0 && str_length(aOrder) < 3)
+		if(IndexOf("mnwc", *p) >= 0 && IndexOf(aOrder, *p) < 0 && str_length(aOrder) < NUM)
 		{
 			const char aOne[2] = {*p, '\0'};
 			str_append(aOrder, aOne);
@@ -495,7 +497,7 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 			str_append(aOrder, aOne);
 	}
 	char aCount[32];
-	str_format(aCount, sizeof(aCount), "%d %s %d", NumOn, Tr("of"), 3);
+	str_format(aCount, sizeof(aCount), "%d %s %d", NumOn, Tr("of"), NUM);
 	{
 		const ImVec2 P = ImGui::GetCursorScreenPos();
 		pDraw->AddText(pLabel, pLabel->FontSize * 1.05f, ImVec2(P.x + 8.0f * U, P.y + 6.0f * U), Col(t.m_TextMuted, a), Tr("Parts"));
@@ -507,7 +509,7 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 	const float Left = ImGui::GetCursorScreenPos().x;
 	const float Slot = RowH + 2.0f * U;
 	bool Changed = false;
-	for(int r = 0; r < 3; r++)
+	for(int r = 0; r < NUM; r++)
 	{
 		const char Key = aOrder[r];
 		const SPart *pPart = nullptr;
@@ -516,14 +518,14 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 				pPart = &Part;
 		if(!pPart)
 			continue;
-		const int k = Key == 'm' ? 0 : (Key == 'n' ? 1 : 2);
+		const int k = KeyIndex(Key);
 		const bool On = r < NumOn;
 		// the drawn place eases to the slot; the row held follows the mouse
 		const float SlotY = ListTop + r * Slot;
 		if(m_aIslandRowY[k] <= 0.0f || std::abs(m_aIslandRowY[k] - SlotY) > Slot * 4.0f)
 			m_aIslandRowY[k] = SlotY;
 		if(m_IslandRowDrag == k)
-			m_aIslandRowY[k] = std::clamp(ImGui::GetIO().MousePos.y - m_IslandRowGrab, ListTop, ListTop + 2.0f * Slot);
+			m_aIslandRowY[k] = std::clamp(ImGui::GetIO().MousePos.y - m_IslandRowGrab, ListTop, ListTop + (NUM - 1) * Slot);
 		else
 			m_aIslandRowY[k] += (SlotY - m_aIslandRowY[k]) * (1.0f - std::exp(-Dt * 16.0f));
 		const float Y = m_aIslandRowY[k];
@@ -575,12 +577,12 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 	// the row held: its slot by the mouse, the others make room
 	if(m_IslandRowDrag >= 0 && !Changed)
 	{
-		const char Key = m_IslandRowDrag == 0 ? 'm' : (m_IslandRowDrag == 1 ? 'n' : 'w');
+		const char Key = "mnwc"[m_IslandRowDrag];
 		const int From = IndexOf(aOrder, Key);
-		const int To = std::clamp((int)std::round((m_aIslandRowY[m_IslandRowDrag] - ListTop) / Slot), 0, 2);
+		const int To = std::clamp((int)std::round((m_aIslandRowY[m_IslandRowDrag] - ListTop) / Slot), 0, NUM - 1);
 		if(To != From && From < NumOn && To < NumOn)
 		{
-			char aNew[4];
+			char aNew[NUM + 1];
 			str_copy(aNew, aOrder);
 			const char Moved = aNew[From];
 			if(From < To)
@@ -596,7 +598,7 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 		if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))
 			m_IslandRowDrag = -1;
 	}
-	ImGui::SetCursorScreenPos(ImVec2(Left, ListTop + 3.0f * Slot));
+	ImGui::SetCursorScreenPos(ImVec2(Left, ListTop + NUM * Slot));
 	ImGui::Dummy(ImVec2(Inner, 0.0f));
 	const auto Row = [&](const char *pId, const char *pText, bool Checked) {
 		const ImVec2 P = ImGui::GetCursorScreenPos();

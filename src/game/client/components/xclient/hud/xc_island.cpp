@@ -163,7 +163,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	// watermark and the music is a whole pill, the others shrink to a circle; notifications are a small plane
 	struct SPart
 	{
-		char m_Kind; // 't' time, 'w' watermark (logo and own text), 'm' music, 'n' notifications
+		char m_Kind; // 't' time, 'w' watermark (logo and own text), 'm' music, 'c' connection
 		float m_Width;
 		bool m_Big;
 	};
@@ -173,6 +173,14 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	aParts[NumParts++] = {'t', TimeW, false};
 	const float PillH = 28.0f * U, CoverS = 20.0f * U, EqW = 16.0f * U;
 	const char *pMark = g_Config.m_XcHudIslandText[0] ? g_Config.m_XcHudIslandText : "Exora";
+	// the connection: the ping and how good it is (the notifications have no part of their own: they take the island)
+	const int Ping = GameClient()->m_Snap.m_pLocalInfo ? GameClient()->m_Snap.m_pLocalInfo->m_Latency : 0;
+	char aPing[16];
+	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+		str_copy(aPing, "demo");
+	else
+		str_format(aPing, sizeof(aPing), "%d", Ping);
+	const float PingW = pLabel->CalcTextSizeA(12.5f * U, FLT_MAX, 0.0f, aPing).x;
 	bool BigTaken = false;
 	for(const char *p = g_Config.m_XcHudIslandParts; *p && NumParts < 6; p++)
 	{
@@ -188,8 +196,8 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 			BigTaken = true;
 			aParts[NumParts++] = {'m', Big ? 4.0f * U + CoverS + 8.0f * U + PillTextW + 8.0f * U + EqW + 10.0f * U : PillH, Big};
 		}
-		else if(*p == 'n')
-			aParts[NumParts++] = {'n', 18.0f * U, false};
+		else if(*p == 'c')
+			aParts[NumParts++] = {'c', 8.0f * U + 16.0f * U + 6.0f * U + PingW + 10.0f * U, false};
 	}
 	const float PartGap = 8.0f * U, Edge = 8.0f * U;
 	float ContentW = 0.0f;
@@ -346,17 +354,20 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 				Plate(PMin, PMax, ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.18f));
 				DrawLogo(pDraw, ImVec2(PMin.x + PillH * 0.5f, MidY), 16.0f * U, t.m_Accent, a, false);
 			}
-			else if(Part.m_Kind == 'n')
+			else if(Part.m_Kind == 'c')
 			{
-				// a paper plane; it lights up for a moment when a notification came
-				const float Glow = std::clamp(1.0f - (Now - m_IslandNoteStart - 2.8f) / 1.5f, 0.0f, 1.0f);
-				const ImVec4 PlaneCol = Mix(t.m_Text, t.m_Accent, Glow);
-				const ImVec2 C(x + Part.m_Width * 0.5f, MidY);
-				const float Sz = 6.5f * U;
-				const ImVec2 Tip(C.x + Sz, C.y - Sz * 0.15f), Top(C.x - Sz, C.y - Sz * 0.9f), Notch(C.x - Sz * 0.35f, C.y + Sz * 0.05f), Bottom(C.x - Sz * 0.75f, C.y + Sz * 0.9f);
-				pDraw->AddTriangleFilled(ImVec2(Tip.x + 1.0f * U, Tip.y + 1.0f * U), ImVec2(Top.x + 1.0f * U, Top.y + 1.0f * U), ImVec2(Bottom.x + 1.0f * U, Bottom.y + 1.0f * U), Col(ImVec4(0, 0, 0, 1), 0.4f * a));
-				pDraw->AddTriangleFilled(Tip, Top, Notch, Col(PlaneCol, a));
-				pDraw->AddTriangleFilled(Tip, Notch, Bottom, Col(Mix(PlaneCol, ImVec4(0, 0, 0, 1), 0.25f), a));
+				// four bars filled by the ping, green to red; a bad moment (the server did not answer) blinks
+				const int Bars4 = Ping < 60 ? 4 : (Ping < 120 ? 3 : (Ping < 200 ? 2 : 1));
+				const ImVec4 Good(0.24f, 0.84f, 0.64f, 1.0f), Mid(1.0f, 0.70f, 0.25f, 1.0f), Bad(1.0f, 0.30f, 0.30f, 1.0f);
+				const ImVec4 BarCol = Bars4 >= 3 ? Good : (Bars4 == 2 ? Mid : Bad);
+				Plate(PMin, PMax, ImVec4(1, 1, 1, 0.05f));
+				const float BX = PMin.x + 8.0f * U;
+				for(int b2 = 0; b2 < 4; b2++)
+				{
+					const float BH = (4.0f + b2 * 3.0f) * U;
+					pDraw->AddRectFilled(ImVec2(BX + b2 * 4.0f * U, MidY + 6.0f * U - BH), ImVec2(BX + b2 * 4.0f * U + 2.6f * U, MidY + 6.0f * U), Col(b2 < Bars4 ? BarCol : ImVec4(1, 1, 1, 0.18f), a), 1.0f * U);
+				}
+				pDraw->AddText(pLabel, 12.5f * U, ImVec2(BX + 16.0f * U + 6.0f * U, MidY - 12.5f * U * 0.55f), Col(t.m_TextSecondary, a), aPing);
 			}
 			x += Part.m_Width;
 		}

@@ -102,6 +102,13 @@ void CXcHud::OnInit()
 		g_Config.m_XcHudTimerY = 98;
 	if(g_Config.m_XcHudLatencyX == 500 && g_Config.m_XcHudLatencyY == 95)
 		g_Config.m_XcHudLatencyY = 150;
+	// the island got the connection part: added once to the saved parts
+	if(!g_Config.m_XcHudIslandConnAdded)
+	{
+		g_Config.m_XcHudIslandConnAdded = 1;
+		if(!str_find(g_Config.m_XcHudIslandParts, "c"))
+			str_append(g_Config.m_XcHudIslandParts, "c");
+	}
 	m_Backend.Init(Graphics(), Input(), Storage());
 }
 

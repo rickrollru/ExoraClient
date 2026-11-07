@@ -2518,6 +2518,7 @@ namespace XcUi
 			{"The run is not finished: %s will be lost.", "Забег не закончен: время %s не сохранится."},
 			{"Stay", "Остаться"},
 			{"Island", "Остров"},
+			{"Connection", "Соединение"},
 			{"Visuals window", "Окно визуалов"},
 			{"Island player", "Плеер острова"},
 			{"Search the visuals", "Поиск по визуалам"},

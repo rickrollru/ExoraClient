@@ -189,7 +189,7 @@ private:
 	float m_aMenuPos[2] = {};
 	float m_MenuOpenTime = 0.0f;
 	float m_MenuHeight = 200.0f;
-	float m_aIslandRowY[3] = {};
+	float m_aIslandRowY[4] = {};
 	int m_IslandRowDrag = -1;
 	float m_IslandRowGrab = 0.0f;
 	// xc_island.cpp: the island at the top
