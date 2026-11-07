@@ -421,6 +421,12 @@ private:
 	// the visuals as a compact window over the game (xc_visuals_window): an icon rail, the cards of the section,
 	// search, dragged by its top on a spring
 	void RenderVisualsWindow(float Dt);
+	void RenderSettingsWindow(float Dt);
+	void RenderPanelWindow(float Dt, bool SettingsKind);
+	void RenderSettingsSection(int Section);
+	bool PanelWindow() const; // the visuals or the settings show as the compact window now
+	std::string m_aVisPickedCard[2];
+	int m_VisLastKind = -1;
 	static void ConToggleVisuals(IConsole::IResult *pResult, void *pUserData);
 	float m_aVisWinPos[2] = {-1.0f, -1.0f};
 	float m_aVisWinTarget[2] = {-1.0f, -1.0f};
@@ -431,7 +437,6 @@ private:
 	int m_VisLastSection = -1;
 	std::string m_VisLastQuery;
 	std::vector<std::pair<std::string, std::string>> m_vVisCards; // the cards of the page drawn last frame
-	std::string m_VisPickedCard;
 	std::string m_VisLastPicked;
 	std::map<std::string, int> m_aVisCardSection; // which section a card is in (the search opens its page)
 	double m_VisListTime = 0.0;

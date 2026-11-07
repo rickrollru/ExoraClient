@@ -2518,6 +2518,7 @@ namespace XcUi
 			{"The run is not finished: %s will be lost.", "Забег не закончен: время %s не сохранится."},
 			{"Stay", "Остаться"},
 			{"Island", "Остров"},
+			{"Search the settings", "Поиск по настройкам"},
 			{"Player on a new track", "Плеер при новом треке"},
 			{"In game (Esc)", "В игре (Esc)"},
 			{"Same", "Как в меню"},

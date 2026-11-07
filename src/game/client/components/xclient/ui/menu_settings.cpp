@@ -132,6 +132,26 @@ void CXcMenu::ToggleRow(const char *pLabel, const char *pName, int *pValue)
 // --------------------------------------------------------------------------------------------
 // layout
 
+void CXcMenu::RenderSettingsSection(int Section)
+{
+	switch(Section)
+	{
+	case SETTINGS_INTERFACE: RenderSettingsInterface(); break;
+	case SETTINGS_BACKGROUND: RenderSettingsBackground(); break;
+	case SETTINGS_PLAYER: RenderSettingsPlayer(); break;
+	case SETTINGS_ONLINE: RenderSettingsOnline(); break;
+	case SETTINGS_CONTROLS: RenderSettingsControls(); break;
+	case SETTINGS_SOUND: RenderSettingsSound(); break;
+	case SETTINGS_CHAT: RenderSettingsChat(); break;
+	case SETTINGS_GRAPHICS: RenderSettingsGraphics(); break;
+	case SETTINGS_TEXTURES: RenderSettingsTextures(); break;
+	case SETTINGS_WARLIST: RenderSettingsWarList(); break;
+	case SETTINGS_TCLIENT: RenderSettingsTClient(); break;
+	case SETTINGS_DDNET: RenderSettingsDDNet(); break;
+	default: RenderSettingsHud(); break;
+	}
+}
+
 void CXcMenu::RenderSettings()
 {
 	const char *apIcons[NUM_SETTINGS] = {XC_ICON_PALETTE, XC_ICON_IMAGE, XC_ICON_USER, XC_ICON_GLOBE, XC_ICON_KEYBOARD, XC_ICON_VOLUME, XC_ICON_COMMENTS, XC_ICON_DESKTOP, XC_ICON_LAYERS, XC_ICON_BRUSH, XC_ICON_CROSSHAIR, XC_ICON_SLIDERS, XC_ICON_GEAR};
@@ -150,22 +170,7 @@ void CXcMenu::RenderSettings()
 	BeginSmoothScroll("##settings_scroll", ImVec2(Avail.x, Avail.y));
 	Header(apLabels[m_SettingsSection]);
 	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-	switch(m_SettingsSection)
-	{
-	case SETTINGS_INTERFACE: RenderSettingsInterface(); break;
-	case SETTINGS_BACKGROUND: RenderSettingsBackground(); break;
-	case SETTINGS_PLAYER: RenderSettingsPlayer(); break;
-	case SETTINGS_ONLINE: RenderSettingsOnline(); break;
-	case SETTINGS_CONTROLS: RenderSettingsControls(); break;
-	case SETTINGS_SOUND: RenderSettingsSound(); break;
-	case SETTINGS_CHAT: RenderSettingsChat(); break;
-	case SETTINGS_GRAPHICS: RenderSettingsGraphics(); break;
-	case SETTINGS_TEXTURES: RenderSettingsTextures(); break;
-	case SETTINGS_WARLIST: RenderSettingsWarList(); break;
-	case SETTINGS_TCLIENT: RenderSettingsTClient(); break;
-	case SETTINGS_DDNET: RenderSettingsDDNet(); break;
-	default: RenderSettingsHud(); break;
-	}
+	RenderSettingsSection(m_SettingsSection);
 	// opened from the search: glide to the found card
 	if(m_ScrollToHighlight)
 	{

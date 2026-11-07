@@ -829,6 +829,16 @@ namespace XcUi
 	{
 		if(s_MergeGrids && !s_vGrids.empty())
 		{
+			// the outer grid starts where the first inner one does: what a page draws before its cards (a search, a
+			// button) stays above them
+			SCardGrid &Outer = s_vGrids.back();
+			if(Outer.m_NumCards == 0)
+			{
+				const ImVec2 Pos = ImGui::GetCursorScreenPos();
+				Outer.m_Start = Pos;
+				for(float &y : Outer.m_aColumnY)
+					y = Pos.y;
+			}
 			s_MergedDepth++;
 			ImGui::PushID(pId);
 			return;

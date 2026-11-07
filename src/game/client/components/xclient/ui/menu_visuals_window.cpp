@@ -34,16 +34,36 @@ namespace
 	}
 }
 
-void CXcMenu::RenderVisualsWindow(float Dt)
+void CXcMenu::RenderVisualsWindow(float Dt) { RenderPanelWindow(Dt, false); }
+void CXcMenu::RenderSettingsWindow(float Dt) { RenderPanelWindow(Dt, true); }
+
+// the visuals or the settings in one compact window: the same look, the same moves
+void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 {
 	const STheme &t = Theme();
+	const int Kind = SettingsKind ? 1 : 0;
 	ImGuiIO &Io = ImGui::GetIO();
 	const ImVec2 Display = Io.DisplaySize;
 	const float W = std::min(S(1120.0f), Display.x - S(32.0f));
 	const float H = std::min(S(700.0f), Display.y - S(40.0f));
 	const float RailW = S(64.0f), ColW = S(220.0f), TopH = S(60.0f);
-	const char *apIcons[NUM_VISUALS] = {XC_ICON_SLIDERS, XC_ICON_USER, XC_ICON_BOLT, XC_ICON_HAT, XC_ICON_HAMMER, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_USERS};
-	const char *apLabels[NUM_VISUALS] = {Tr("General"), Tr("Tee"), Tr("Movement"), Tr("Cosmetics"), Tr("Weapons"), Tr("Crosshair"), Tr("World"), Tr("Events"), Tr("Names")};
+	const char *apVisIcons[NUM_VISUALS] = {XC_ICON_SLIDERS, XC_ICON_USER, XC_ICON_BOLT, XC_ICON_HAT, XC_ICON_HAMMER, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_USERS};
+	const char *apVisLabels[NUM_VISUALS] = {Tr("General"), Tr("Tee"), Tr("Movement"), Tr("Cosmetics"), Tr("Weapons"), Tr("Crosshair"), Tr("World"), Tr("Events"), Tr("Names")};
+	const char *apSetIcons[NUM_SETTINGS] = {XC_ICON_PALETTE, XC_ICON_IMAGE, XC_ICON_USER, XC_ICON_GLOBE, XC_ICON_KEYBOARD, XC_ICON_VOLUME, XC_ICON_COMMENTS, XC_ICON_DESKTOP, XC_ICON_LAYERS, XC_ICON_BRUSH, XC_ICON_CROSSHAIR, XC_ICON_SLIDERS, XC_ICON_GEAR};
+	const char *apSetLabels[NUM_SETTINGS] = {Tr("Interface"), Tr("Background"), Tr("Player"), Tr("Online"), Tr("Controls"), Tr("Sound"), Tr("Chat"), Tr("Graphics"), Tr("HUD"), Tr("Textures"), Tr("War list"), "TClient", "DDNet"};
+	const char *const *apIcons = SettingsKind ? apSetIcons : apVisIcons;
+	const char *const *apLabels = SettingsKind ? apSetLabels : apVisLabels;
+	const int NumSections = SettingsKind ? (int)NUM_SETTINGS : (int)NUM_VISUALS;
+	int &Section = SettingsKind ? m_SettingsSection : m_VisualsSection;
+	std::string &Picked = m_aVisPickedCard[Kind];
+	const auto RenderSection = [&](int i) {
+		if(SettingsKind)
+			RenderSettingsSection(i);
+		else
+			RenderVisualsSection(i);
+	};
+	// the war list is one page of its own (a form and the rows): shown whole, the column scrolls to its parts
+	const auto Whole = [&](int i) { return SettingsKind && i == SETTINGS_WARLIST; };
 
 	// the place: the middle at first, then where it was dragged; it follows on a spring
 	if(m_aVisWinTarget[0] < 0.0f || m_VisWinOpen <= 0.0f)
@@ -116,33 +136,33 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		DrawLogo(pDraw, ImVec2(Min.x + RailW * 0.5f, Min.y + S(32.0f)), S(30.0f), t.m_Accent, 1.0f, false);
 		const float B = S(42.0f);
 		const float Top = Min.y + S(70.0f);
-		const float Step = std::min(S(48.0f), (H - S(140.0f)) / NUM_VISUALS);
-		const float KnobY = Animate(ImGui::GetID("##vis_rail_knob"), Top + m_VisualsSection * Step, 16.0f);
+		const float Step = std::min(S(48.0f), (H - S(140.0f)) / NumSections);
+		const float KnobY = Animate(ImGui::GetID("##vis_rail_knob"), Top + Section * Step, 16.0f);
 		if(!Searching)
 		{
 			const ImVec2 KMin(Min.x + (RailW - B) * 0.5f, KnobY), KMax(KMin.x + B, KMin.y + B);
 			pDraw->AddRectFilled(KMin, KMax, Col(ImVec4(1, 1, 1, 0.08f)), S(11.0f));
 			pDraw->AddRectFilled(ImVec2(Min.x + S(1.0f), KMin.y + S(12.0f)), ImVec2(Min.x + S(4.0f), KMax.y - S(12.0f)), Col(t.m_Accent), S(2.0f));
 		}
-		for(int i = 0; i < NUM_VISUALS; i++)
+		for(int i = 0; i < NumSections; i++)
 		{
 			const ImVec2 P(Min.x + (RailW - B) * 0.5f, Top + i * Step);
 			ImGui::SetCursorScreenPos(P);
 			ImGui::PushID(i);
 			const bool Clicked = ImGui::InvisibleButton("##vis_rail", ImVec2(B, B));
 			const bool Hovered = ImGui::IsItemHovered();
-			const float Hover = Animate(ImGui::GetID("##h"), (Hovered || (i == m_VisualsSection && !Searching)) ? 1.0f : 0.0f, 16.0f);
+			const float Hover = Animate(ImGui::GetID("##h"), (Hovered || (i == Section && !Searching)) ? 1.0f : 0.0f, 16.0f);
 			const float Press = Animate(ImGui::GetID("##p"), ImGui::IsItemActive() ? 1.0f : 0.0f, 22.0f);
 			ImGui::PopID();
 			DrawIcon(pDraw, Fonts().m_pIcons, Fonts().m_pIcons->FontSize * (1.0f - 0.1f * Press), ImVec2(P.x + B * 0.5f, P.y + B * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, Hover)), apIcons[i]);
 			if(Hovered)
 				ImGui::SetTooltip("%s", apLabels[i]);
-			if(Clicked && (i != m_VisualsSection || Searching))
+			if(Clicked && (i != Section || Searching))
 			{
-				m_VisualsSection = i;
+				Section = i;
 				m_aVisSearch[0] = '\0';
 				m_ScrollTarget = 0.0f;
-				m_VisPickedCard.clear();
+				Picked.clear();
 				PlayUiSound(SOUND_TAB);
 			}
 		}
@@ -151,13 +171,15 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		ImGui::SetCursorScreenPos(P);
 		const bool Clicked = ImGui::InvisibleButton("##vis_settings", ImVec2(B, B));
 		const float Hover = Animate(ImGui::GetID("##vis_settings_h"), ImGui::IsItemHovered() ? 1.0f : 0.0f, 16.0f);
-		DrawIcon(pDraw, Fonts().m_pIcons, Fonts().m_pIcons->FontSize, ImVec2(P.x + B * 0.5f, P.y + B * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, Hover)), XC_ICON_GEAR);
+		// the other window: the visuals from the settings, the settings from the visuals
+		DrawIcon(pDraw, Fonts().m_pIcons, Fonts().m_pIcons->FontSize, ImVec2(P.x + B * 0.5f, P.y + B * 0.5f), Col(Mix(t.m_TextMuted, t.m_Text, Hover)), SettingsKind ? XC_ICON_WAND : XC_ICON_GEAR);
 		if(ImGui::IsItemHovered())
-			ImGui::SetTooltip("%s", Tr("Settings"));
+			ImGui::SetTooltip("%s", SettingsKind ? Tr("Visuals") : Tr("Settings"));
 		if(Clicked)
 		{
 			PlayUiSound(SOUND_TAB);
-			m_Page = PAGE_SETTINGS;
+			m_Page = SettingsKind ? PAGE_VISUALS : PAGE_SETTINGS;
+			m_aVisSearch[0] = '\0';
 			m_PageAppear = 0.0f;
 		}
 	}
@@ -166,7 +188,7 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 	{
 		const float X = Min.x + RailW;
 		ImFont *pHead = Fonts().m_pTitle;
-		const char *pHeadText = Searching ? Tr("Search") : apLabels[m_VisualsSection];
+		const char *pHeadText = Searching ? Tr("Search") : apLabels[Section];
 		pDraw->AddText(pHead, pHead->FontSize * 1.1f, ImVec2(X + S(18.0f), Min.y + S(20.0f)), Col(t.m_Text), pHeadText);
 		const float Top = Min.y + S(60.0f);
 		const float RowH = S(34.0f);
@@ -174,14 +196,14 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		ImGui::BeginChild("##vis_cards_list", ImVec2(ColW - S(20.0f), Max.y - Top - S(12.0f)), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground);
 		ImDrawList *pList = ImGui::GetWindowDrawList();
 		const ImVec2 ListMin = ImGui::GetCursorScreenPos();
-		int Picked = -1;
+		int PickedRow = -1;
 		for(int i = 0; i < (int)m_vVisCards.size(); i++)
-			if(m_vVisCards[i].first == m_VisPickedCard)
-				Picked = i;
+			if(m_vVisCards[i].first == Picked)
+				PickedRow = i;
 		// rows sit RowH + the item spacing apart
 		const float Step = RowH + ImGui::GetStyle().ItemSpacing.y;
-		const float KnobY = Animate(ImGui::GetID("##vis_col_knob"), ListMin.y + std::max(Picked, 0) * Step, 16.0f);
-		const float KnobA = Animate(ImGui::GetID("##vis_col_knob_a"), Picked >= 0 ? 1.0f : 0.0f, 12.0f);
+		const float KnobY = Animate(ImGui::GetID("##vis_col_knob"), ListMin.y + std::max(PickedRow, 0) * Step, 16.0f);
+		const float KnobA = Animate(ImGui::GetID("##vis_col_knob_a"), PickedRow >= 0 ? 1.0f : 0.0f, 12.0f);
 		if(KnobA > 0.01f)
 			pList->AddRectFilled(ImVec2(ListMin.x, KnobY), ImVec2(ListMin.x + ColW - S(20.0f), KnobY + RowH), Col(ImVec4(1, 1, 1, 0.06f), KnobA), S(9.0f));
 		for(int i = 0; i < (int)m_vVisCards.size(); i++)
@@ -189,7 +211,7 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 			ImGui::PushID(i);
 			const ImVec2 P = ImGui::GetCursorScreenPos();
 			const bool Clicked = ImGui::InvisibleButton("##vis_card", ImVec2(ColW - S(20.0f), RowH));
-			const float Hover = Animate(ImGui::GetID("##h"), (ImGui::IsItemHovered() || i == Picked) ? 1.0f : 0.0f, 16.0f);
+			const float Hover = Animate(ImGui::GetID("##h"), (ImGui::IsItemHovered() || i == PickedRow) ? 1.0f : 0.0f, 16.0f);
 			// the rows come in one after another when the list changes
 			const float In = EaseOut((float)(ImGui::GetTime() - m_VisListTime) * 4.0f - i * 0.12f);
 			ImGui::PopID();
@@ -202,13 +224,20 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 				if(Searching)
 				{
 					// from the search: the card's own page
-					m_VisPickedCard = m_vVisCards[i].first;
-					if(m_aVisCardSection.count(m_VisPickedCard))
-						m_VisualsSection = m_aVisCardSection[m_VisPickedCard];
+					Picked = m_vVisCards[i].first;
+					if(m_aVisCardSection.count(Picked))
+						Section = m_aVisCardSection[Picked];
 					m_aVisSearch[0] = '\0';
 				}
 				else
-					m_VisPickedCard = m_vVisCards[i].first;
+				{
+					Picked = m_vVisCards[i].first;
+					if(Whole(Section))
+					{
+						HighlightCard(Picked.c_str());
+						m_ScrollToHighlight = true;
+					}
+				}
 			}
 		}
 		if(m_vVisCards.empty() && Searching)
@@ -242,7 +271,7 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		ImGui::PushStyleColor(ImGuiCol_TextDisabled, t.m_TextMuted);
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, S(3.0f)));
 		ImGui::SetNextItemWidth(FieldW - S(44.0f));
-		ImGui::InputTextWithHint("##vis_search", Tr("Search the visuals"), m_aVisSearch, sizeof(m_aVisSearch));
+		ImGui::InputTextWithHint("##vis_search", SettingsKind ? Tr("Search the settings") : Tr("Search the visuals"), m_aVisSearch, sizeof(m_aVisSearch));
 		ImGui::PopStyleVar();
 		ImGui::PopStyleColor(4);
 		ImGui::PopFont();
@@ -297,18 +326,25 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 	{
 		const float X = Min.x + RailW + ColW;
 		const std::string Query = m_aVisSearch;
-		if(m_VisualsSection != m_VisLastSection || Query != m_VisLastQuery || m_VisPickedCard != m_VisLastPicked)
+		if(Section != m_VisLastSection || Kind != m_VisLastKind || Query != m_VisLastQuery || Picked != m_VisLastPicked)
 		{
 			// the list on the left comes in again only for a new section or search; picking a card in it only
 			// changes the card on the right, the list stays as it is
-			if(m_VisualsSection != m_VisLastSection || Query != m_VisLastQuery)
+			if(Section != m_VisLastSection || Kind != m_VisLastKind || Query != m_VisLastQuery)
 				m_VisListTime = ImGui::GetTime();
-			m_VisLastPicked = m_VisPickedCard;
-			m_VisLastSection = m_VisualsSection;
+			m_VisLastKind = Kind;
+			m_VisLastPicked = Picked;
+			m_VisLastSection = Section;
 			m_VisLastQuery = Query;
 			PageEntered();
 			m_ScrollTarget = 0.0f;
-			g_Config.m_XcMenuVisualsSection = m_VisualsSection;
+			if(SettingsKind)
+			{
+				g_Config.m_XcMenuSettingsSection = Section;
+				m_BindWaiting = -1;
+			}
+			else
+				g_Config.m_XcMenuVisualsSection = Section;
 		}
 		ImGui::SetCursorScreenPos(ImVec2(X + S(18.0f), Min.y + TopH + S(16.0f)));
 		ClearDrawnCards();
@@ -318,10 +354,12 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 			SetCardFilter(m_aVisSearch);
 			BeginCardGrid("##vis_found", 2);
 			MergeCardGrids(true);
-			for(int i = 0; i < NUM_VISUALS; i++)
+			for(int i = 0; i < NumSections; i++)
 			{
+				if(Whole(i))
+					continue;
 				const size_t Before = DrawnCards().size();
-				RenderVisualsSection(i);
+				RenderSection(i);
 				for(size_t k = Before; k < DrawnCards().size(); k++)
 					m_aVisCardSection[DrawnCards()[k].m_Id] = i;
 			}
@@ -334,22 +372,24 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 				Description(Tr("Try another word: the search looks in the names and descriptions of the cards"));
 			}
 		}
+		else if(Whole(Section))
+			RenderSection(Section);
 		else
 		{
 			// one card at a time, the whole width: the column on the left picks it, like the modules of a click menu
-			if(m_VisPickedCard.empty() || std::none_of(m_vVisCards.begin(), m_vVisCards.end(), [&](const auto &Card) { return Card.first == m_VisPickedCard; }))
-				m_VisPickedCard = m_vVisCards.empty() ? std::string() : m_vVisCards.front().first;
-			SetCardOnly(m_VisPickedCard.empty() ? "\x01" : m_VisPickedCard.c_str());
+			if(Picked.empty() || std::none_of(m_vVisCards.begin(), m_vVisCards.end(), [&](const auto &Card) { return Card.first == Picked; }))
+				Picked = m_vVisCards.empty() ? std::string() : m_vVisCards.front().first;
+			SetCardOnly(Picked.empty() ? "\x01" : Picked.c_str());
 			BeginCardGrid("##vis_one", 1);
 			MergeCardGrids(true);
-			RenderVisualsSection(m_VisualsSection);
+			RenderSection(Section);
 			MergeCardGrids(false);
 			EndCardGrid();
 			SetCardOnly("");
 			for(const SDrawnCard &Card : DrawnCards())
-				m_aVisCardSection[Card.m_Id] = m_VisualsSection;
+				m_aVisCardSection[Card.m_Id] = Section;
 		}
-		if(m_VisualsSection != VISUALS_COSMETICS)
+		if(SettingsKind || Section != VISUALS_COSMETICS)
 			m_WheelCaptured = false;
 		if(m_ScrollToHighlight)
 		{

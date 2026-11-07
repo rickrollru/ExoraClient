@@ -131,6 +131,14 @@ void CXcMenu::OnShutdown()
 	m_Backend.Shutdown();
 }
 
+bool CXcMenu::PanelWindow() const
+{
+	if(m_Page == PAGE_VISUALS)
+		return g_Config.m_XcVisualsWindow;
+	// the settings as the window with the minimal home; the full menu (the detailed home) keeps its page
+	return m_Page == PAGE_SETTINGS && g_Config.m_XcSettingsWindow && g_Config.m_XcHomeStyle == 0;
+}
+
 bool CXcMenu::IsOnline() const
 {
 	return Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
@@ -589,7 +597,7 @@ void CXcMenu::OnRender()
 	m_Backend.Render();
 	// the HUD island stays on the screen over the menu in game
 	// (only where nothing of the menu is at the top: the home in game and the visuals window; the full menu has its bar)
-	if(Client()->State() == IClient::STATE_ONLINE && ((m_Page == PAGE_HOME && GameHome()) || (m_Page == PAGE_VISUALS && g_Config.m_XcVisualsWindow)))
+	if(Client()->State() == IClient::STATE_ONLINE && ((m_Page == PAGE_HOME && GameHome()) || PanelWindow()))
 	{
 		GameClient()->m_XcHud.RenderIslandOverMenu(m_OpenAnimation);
 		m_Backend.MakeCurrent();
@@ -623,7 +631,7 @@ void CXcMenu::RenderFrame()
 	ImDrawList *pBackground = ImGui::GetBackgroundDrawList();
 	const int Background = EffectiveBackground();
 	// the visuals window in game lies over the game itself, like the click menu of Minecraft clients
-	if(IsOnline() && m_Page == PAGE_VISUALS && g_Config.m_XcVisualsWindow)
+	if(IsOnline() && PanelWindow())
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, 0.25f * Open));
 	else if(Background == BG_ANIMATED)
 		RenderMenuBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
@@ -669,10 +677,13 @@ void CXcMenu::RenderFrame()
 	const float PageIn = 1.0f - std::pow(1.0f - m_PageAppear, 3.0f);
 
 	// the visuals: a compact window over the game or the background
-	if(m_Page == PAGE_VISUALS && g_Config.m_XcVisualsWindow)
+	if(PanelWindow())
 	{
 		ImGui::GetStyle().Alpha = Open * Settled();
-		RenderVisualsWindow(FrameDt);
+		if(m_Page == PAGE_SETTINGS)
+			RenderSettingsWindow(FrameDt);
+		else
+			RenderVisualsWindow(FrameDt);
 		if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
 			OpenSearch();
 		RenderSearch();
