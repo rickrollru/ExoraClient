@@ -70,6 +70,23 @@ else()
   project(TClient VERSION ${TCLIENT_VERSION_MAJOR}.${TCLIENT_VERSION_MINOR}.${TCLIENT_VERSION_PATCH})
 endif()
 
+# XClient: the Visual Studio compiler takes up to 1.5 GB for one big file; Ninja starts one per core, which can use up
+# the memory (C1060 "out of heap space"). As many at once as the memory holds, at least one.
+if(MSVC AND CMAKE_GENERATOR MATCHES "Ninja")
+  cmake_host_system_information(RESULT XC_TOTAL_MEMORY QUERY TOTAL_PHYSICAL_MEMORY)
+  cmake_host_system_information(RESULT XC_CORES QUERY NUMBER_OF_LOGICAL_CORES)
+  math(EXPR XC_COMPILE_JOBS "${XC_TOTAL_MEMORY} / 1600")
+  if(XC_COMPILE_JOBS LESS 1)
+    set(XC_COMPILE_JOBS 1)
+  endif()
+  if(XC_COMPILE_JOBS GREATER XC_CORES)
+    set(XC_COMPILE_JOBS ${XC_CORES})
+  endif()
+  set_property(GLOBAL APPEND PROPERTY JOB_POOLS xc_compile=${XC_COMPILE_JOBS})
+  set(CMAKE_JOB_POOL_COMPILE xc_compile)
+  message(STATUS "Compiling ${XC_COMPILE_JOBS} files at once (${XC_TOTAL_MEMORY} MB of memory)")
+endif()
+
 file(APPEND "${DATA_VERSION_FILE}" "TClient ${TCLIENT_VERSION_MAJOR}.${TCLIENT_VERSION_MINOR}.${TCLIENT_VERSION_PATCH}\n")
 
 # </TClient>

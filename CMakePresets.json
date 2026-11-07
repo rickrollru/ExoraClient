@@ -8,6 +8,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-release",
       "architecture": { "value": "x64", "strategy": "external" },
+      "toolset": { "value": "host=x64", "strategy": "external" },
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "VIDEORECORDER": "ON", "DOWNLOAD_GTEST": "OFF" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
     },
@@ -18,6 +19,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-debug",
       "architecture": { "value": "x64", "strategy": "external" },
+      "toolset": { "value": "host=x64", "strategy": "external" },
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "VIDEORECORDER": "ON", "DOWNLOAD_GTEST": "OFF" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
     }
