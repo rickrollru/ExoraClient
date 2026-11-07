@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -431,6 +432,8 @@ private:
 	std::string m_VisLastQuery;
 	std::vector<std::pair<std::string, std::string>> m_vVisCards; // the cards of the page drawn last frame
 	std::string m_VisPickedCard;
+	std::string m_VisLastPicked;
+	std::map<std::string, int> m_aVisCardSection; // which section a card is in (the search opens its page)
 	double m_VisListTime = 0.0;
 	int m_aLastFxStyle[32] = {}; // last chosen style of each style card, to turn it back on
 	bool StyleCard(const char *pId, const char *pTitle, const char *pDescription, const char *pConfig, int *pValue, const char *const *ppStyles, int NumStyles);

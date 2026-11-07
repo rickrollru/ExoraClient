@@ -615,6 +615,8 @@ void CXcHud::RenderIslandMenu(ImDrawList *pDraw, float Inner, float RowH, float 
 	};
 	if(Row("##island_lyrics", Tr("The line of the song"), g_Config.m_XcHudIslandLyrics))
 		g_Config.m_XcHudIslandLyrics ^= 1;
+	if(Row("##island_auto_player", Tr("Player on a new track"), g_Config.m_XcHudIslandAutoPlayer))
+		g_Config.m_XcHudIslandAutoPlayer ^= 1;
 	// an own text
 	{
 		const ImVec2 P = ImGui::GetCursorScreenPos();

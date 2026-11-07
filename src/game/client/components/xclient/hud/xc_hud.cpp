@@ -1099,7 +1099,9 @@ void CXcHud::OnRender()
 		Draw(ELEMENT_MINITOP, [&](float A) { RenderMiniTop(pDraw, A * (m_Editing ? 1.0f : 1.0f - m_ScoreboardOpen)); });
 		Draw(ELEMENT_LATENCY, [&](float A) { RenderLatency(pDraw, A); });
 		Draw(ELEMENT_EFFECTS, [&](float A) { RenderEffects(pDraw, A, Dt); });
-		Draw(ELEMENT_ISLAND, [&](float A) { RenderIsland(pDraw, A, Dt); });
+		// the island does not step back for the menu: over an open menu it is drawn after it (RenderIslandOverMenu)
+		if(m_Editing || !GameClient()->m_XcMenu.IsActive())
+			Draw(ELEMENT_ISLAND, [&](float A) { RenderIsland(pDraw, m_Editing ? A : Shown(ELEMENT_ISLAND), Dt); });
 		if(!m_Editing)
 			RenderBanner(ImGui::GetForegroundDrawList());
 		if(m_Editing)
@@ -1125,6 +1127,21 @@ void CXcHud::OnRender()
 		Graphics()->MapScreen(CScreenRect(0.0f, 0.0f, Width, Height));
 		RenderTools()->RenderCursor(Mouse, 24.0f * Height / 1080.0f);
 	}
+}
+
+void CXcHud::RenderIslandOverMenu(float Open)
+{
+	if(!m_Backend.IsReady() || m_Editing || !g_Config.m_XcHud || !g_Config.m_XcHudIsland || !g_Config.m_ClShowhud || !GameClient()->m_XcMenu.IsActive())
+		return;
+	(void)Open;
+	m_Backend.MakeCurrent();
+	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
+	// a second small frame of the HUD context: only the island (its time already moved this frame)
+	m_Backend.NewFrame(0.0001f, Ui()->UpdatedMousePos());
+	m_vChatBlurRects.clear();
+	RenderIsland(ImGui::GetForegroundDrawList(), m_aShown[ELEMENT_ISLAND], Dt);
+	m_vChatBlurRects.clear(); // no blur over the menu
+	m_Backend.Render();
 }
 
 bool CXcHud::OnCursorMove(float x, float y, IInput::ECursorType CursorType)

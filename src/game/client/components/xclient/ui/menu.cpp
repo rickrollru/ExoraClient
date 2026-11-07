@@ -537,7 +537,7 @@ void CXcMenu::OnRender()
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 
 	// own background: loaded only while it is chosen, so it does not hold video memory otherwise
-	m_Backgrounds.Update(g_Config.m_XcMenuBackground == 3 ? g_Config.m_XcMenuBgFile : "", Dt, g_Config.m_XcMenuBgGifSpeed / 100.0f);
+	m_Backgrounds.Update(g_Config.m_XcMenuBackground == 3 || g_Config.m_XcMenuBackgroundGame == 4 ? g_Config.m_XcMenuBgFile : "", Dt, g_Config.m_XcMenuBgGifSpeed / 100.0f);
 	// files dropped on the window while the background settings are open become backgrounds
 	// and while the cosmetics editor is open they become hats
 	const bool CaptureBackgrounds = m_Active && m_Page == PAGE_SETTINGS && m_SettingsSection == SETTINGS_BACKGROUND;
@@ -587,6 +587,12 @@ void CXcMenu::OnRender()
 	RenderFrame();
 	SetCursorSlowsDown(false);
 	m_Backend.Render();
+	// the HUD island stays on the screen over the menu in game
+	if(Client()->State() == IClient::STATE_ONLINE)
+	{
+		GameClient()->m_XcHud.RenderIslandOverMenu(m_OpenAnimation);
+		m_Backend.MakeCurrent();
+	}
 
 	if(m_Active)
 	{

@@ -89,12 +89,19 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	const SXcMediaState &State = Music.State();
 
 	// a new track opens the player for a few seconds
-	const std::string TrackKey = State.m_Artist + "\x1f" + State.m_Title;
-	if(Music.HasTrack() && TrackKey != m_IslandTrack)
+	// browsers change the title of a tab for many reasons (ads, a page title, the artist coming late): a track counts
+	// as new when it stays two seconds, while it plays, and with another title
+	const std::string TrackKey = State.m_Title;
+	if(Music.HasTrack() && TrackKey != m_IslandSeenTrack)
 	{
-		if(!m_IslandTrack.empty() && IslandHas('m'))
+		m_IslandSeenTrack = TrackKey;
+		m_IslandSeenTrackTime = Now;
+	}
+	if(Music.HasTrack() && State.m_Playing && m_IslandSeenTrack != m_IslandTrack && Now - m_IslandSeenTrackTime > 2.0f)
+	{
+		if(!m_IslandTrack.empty() && IslandHas('m') && g_Config.m_XcHudIslandAutoPlayer)
 			m_IslandPlayerUntil = Now + 5.0f;
-		m_IslandTrack = TrackKey;
+		m_IslandTrack = m_IslandSeenTrack;
 	}
 	const bool Note = IslandHas('n') && !m_Editing && Now - m_IslandNoteStart < 2.8f && m_IslandNoteStart > 0.0f;
 	// the player: a few seconds for a new track, or kept open (the bind, a click on the island in the HUD editor)
@@ -147,7 +154,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 			pText = (*pLines)[LineNow].m_Text.c_str();
 			m_IslandPillLyric = true;
 		}
-		XcFitText(pLabel, TextSize, pText, 300.0f * U, aPill, sizeof(aPill));
+		XcFitText(pLabel, TextSize, pText, 260.0f * U, aPill, sizeof(aPill));
 	}
 	if(str_comp(aPill, m_aIslandPill) != 0)
 	{
@@ -156,7 +163,14 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		m_IslandPillSwap = 0.0f;
 	}
 	m_IslandPillSwap = std::min(m_IslandPillSwap + Dt / 0.45f, 1.0f);
-	const float PillTextW = std::max(pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPill).x, m_IslandPillSwap < 1.0f ? pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPillOld).x * (1.0f - Smooth(m_IslandPillSwap)) : 0.0f);
+	// the room for the text: while the song is sung it stays one width (the lines differ, the parts next to it must
+	// not jump); otherwise the title, and every change of the width eases
+	const float LyricRoom = 260.0f * U;
+	const float TargetTextW = m_IslandPillLyric ? LyricRoom : std::min(pLabel->CalcTextSizeA(TextSize, FLT_MAX, 0.0f, m_aIslandPill).x, LyricRoom);
+	if(m_IslandPillTextW <= 0.0f)
+		m_IslandPillTextW = TargetTextW;
+	m_IslandPillTextW += (TargetTextW - m_IslandPillTextW) * (1.0f - std::exp(-Dt * 10.0f));
+	const float PillTextW = m_IslandPillTextW;
 
 	// the parts: the time as plain text, then the statuses in their order; like a phone island only the first of the
 	// watermark and the music is a whole pill, the others shrink to a circle; notifications are a small plane

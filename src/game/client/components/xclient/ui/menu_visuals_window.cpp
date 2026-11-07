@@ -51,8 +51,10 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		m_aVisWinTarget[0] = (Display.x - W) * 0.5f;
 		m_aVisWinTarget[1] = (Display.y - H) * 0.5f;
 	}
-	m_aVisWinTarget[0] = std::clamp(m_aVisWinTarget[0], S(60.0f) - W, Display.x - S(60.0f));
-	m_aVisWinTarget[1] = std::clamp(m_aVisWinTarget[1], 0.0f, Display.y - S(60.0f));
+	// it stays whole on the screen, so its round corners are always seen
+	const float Edge = S(8.0f);
+	m_aVisWinTarget[0] = std::clamp(m_aVisWinTarget[0], Edge, std::max(Edge, Display.x - W - Edge));
+	m_aVisWinTarget[1] = std::clamp(m_aVisWinTarget[1], Edge, std::max(Edge, Display.y - H - Edge));
 	if(m_aVisWinPos[0] < -9999.0f || m_VisWinOpen <= 0.0f)
 	{
 		m_aVisWinPos[0] = m_aVisWinTarget[0];
@@ -173,7 +175,9 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 		for(int i = 0; i < (int)m_vVisCards.size(); i++)
 			if(m_vVisCards[i].first == m_VisPickedCard)
 				Picked = i;
-		const float KnobY = Animate(ImGui::GetID("##vis_col_knob"), ListMin.y + std::max(Picked, 0) * RowH, 16.0f);
+		// rows sit RowH + the item spacing apart
+		const float Step = RowH + ImGui::GetStyle().ItemSpacing.y;
+		const float KnobY = Animate(ImGui::GetID("##vis_col_knob"), ListMin.y + std::max(Picked, 0) * Step, 16.0f);
 		const float KnobA = Animate(ImGui::GetID("##vis_col_knob_a"), Picked >= 0 ? 1.0f : 0.0f, 12.0f);
 		if(KnobA > 0.01f)
 			pList->AddRectFilled(ImVec2(ListMin.x, KnobY), ImVec2(ListMin.x + ColW - S(20.0f), KnobY + RowH), Col(ImVec4(1, 1, 1, 0.06f), KnobA), S(9.0f));
@@ -192,9 +196,16 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 			if(Clicked)
 			{
 				PlayUiSound(SOUND_CLICK);
-				m_VisPickedCard = m_vVisCards[i].first;
-				HighlightCard(m_VisPickedCard.c_str());
-				m_ScrollToHighlight = true;
+				if(Searching)
+				{
+					// from the search: the card's own page
+					m_VisPickedCard = m_vVisCards[i].first;
+					if(m_aVisCardSection.count(m_VisPickedCard))
+						m_VisualsSection = m_aVisCardSection[m_VisPickedCard];
+					m_aVisSearch[0] = '\0';
+				}
+				else
+					m_VisPickedCard = m_vVisCards[i].first;
 			}
 		}
 		if(m_vVisCards.empty() && Searching)
@@ -283,8 +294,9 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 	{
 		const float X = Min.x + RailW + ColW;
 		const std::string Query = m_aVisSearch;
-		if(m_VisualsSection != m_VisLastSection || Query != m_VisLastQuery)
+		if(m_VisualsSection != m_VisLastSection || Query != m_VisLastQuery || m_VisPickedCard != m_VisLastPicked)
 		{
+			m_VisLastPicked = m_VisPickedCard;
 			// a new page: its cards come in one after another, the list too
 			m_VisLastSection = m_VisualsSection;
 			m_VisLastQuery = Query;
@@ -302,7 +314,12 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 			BeginCardGrid("##vis_found", 2);
 			MergeCardGrids(true);
 			for(int i = 0; i < NUM_VISUALS; i++)
+			{
+				const size_t Before = DrawnCards().size();
 				RenderVisualsSection(i);
+				for(size_t k = Before; k < DrawnCards().size(); k++)
+					m_aVisCardSection[DrawnCards()[k].m_Id] = i;
+			}
 			MergeCardGrids(false);
 			EndCardGrid();
 			SetCardFilter("");
@@ -313,7 +330,20 @@ void CXcMenu::RenderVisualsWindow(float Dt)
 			}
 		}
 		else
+		{
+			// one card at a time, the whole width: the column on the left picks it, like the modules of a click menu
+			if(m_VisPickedCard.empty() || std::none_of(m_vVisCards.begin(), m_vVisCards.end(), [&](const auto &Card) { return Card.first == m_VisPickedCard; }))
+				m_VisPickedCard = m_vVisCards.empty() ? std::string() : m_vVisCards.front().first;
+			SetCardOnly(m_VisPickedCard.empty() ? "\x01" : m_VisPickedCard.c_str());
+			BeginCardGrid("##vis_one", 1);
+			MergeCardGrids(true);
 			RenderVisualsSection(m_VisualsSection);
+			MergeCardGrids(false);
+			EndCardGrid();
+			SetCardOnly("");
+			for(const SDrawnCard &Card : DrawnCards())
+				m_aVisCardSection[Card.m_Id] = m_VisualsSection;
+		}
 		if(m_VisualsSection != VISUALS_COSMETICS)
 			m_WheelCaptured = false;
 		if(m_ScrollToHighlight)

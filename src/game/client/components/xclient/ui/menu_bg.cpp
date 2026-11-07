@@ -22,6 +22,17 @@ using namespace XcUi;
 
 int CXcMenu::EffectiveBackground() const
 {
+	// in game it can be set apart: an own picture in the main menu, the map itself behind Esc
+	if(IsOnline() && g_Config.m_XcMenuBackgroundGame > 0)
+	{
+		switch(g_Config.m_XcMenuBackgroundGame)
+		{
+		case 1: return BG_BLUR_GAME;
+		case 2: return BG_MAP;
+		case 3: return BG_ANIMATED;
+		default: return m_Backgrounds.HasFrames() ? BG_CUSTOM : BG_BLUR_GAME;
+		}
+	}
 	switch(g_Config.m_XcMenuBackground)
 	{
 	case 0: return IsOnline() ? BG_BLUR_GAME : BG_ANIMATED; // nothing to blur in the main menu
@@ -254,14 +265,18 @@ void CXcMenu::RenderSettingsBackground()
 		case 2: pHint = Tr("An animated DDNet map, pick one below"); break;
 		default: pHint = Tr("Your picture or gif, pick one below"); break;
 		}
-		if(g_Config.m_XcMenuBackground == 1)
+		Description(pHint);
+		// in game (Esc) it can be another one
+		ParamLabel(Tr("In game (Esc)"));
+		const char *apGame[] = {Tr("Same"), Tr("Blur"), Tr("Game"), Tr("Animated"), Tr("Own")};
+		ConfigSegmented("##bg_game", "xc_menu_background_game", &g_Config.m_XcMenuBackgroundGame, apGame, 5);
+		if(g_Config.m_XcMenuBackground == 1 || g_Config.m_XcMenuBackgroundGame == 3)
 		{
 			ParamLabel(Tr("Animation"));
 			const char *apStyles[] = {Tr("Floating tees"), Tr("Waves"), Tr("Glows")};
 			ConfigSegmented("##bg_anim", "xc_menu_anim_style", &g_Config.m_XcMenuAnimStyle, apStyles, 3);
 		}
-		Description(pHint);
-		if(g_Config.m_XcMenuBackground == 3)
+		if(g_Config.m_XcMenuBackground == 3 || g_Config.m_XcMenuBackgroundGame == 4)
 		{
 			if(m_Backgrounds.IsLoading())
 				Description(Tr("Loading..."));

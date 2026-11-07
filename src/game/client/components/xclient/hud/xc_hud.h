@@ -92,6 +92,8 @@ public:
 	void ShowBanner(const char *pTitle, const char *pSubtitle, int Kind);
 	// a short notification on the island (Kind like the banner)
 	void IslandNotify(const char *pTitle, const char *pSubtitle, int Kind);
+	// the menu is open in game: the island is drawn over it (Open: how far the menu is open)
+	void RenderIslandOverMenu(float Open);
 	bool IslandTakesNotes() const;
 
 private:
@@ -216,6 +218,9 @@ private:
 	float m_IslandNoteStart = -100.0f;
 	float m_IslandLyricRoll = 0.0f;
 	bool m_IslandPillLyric = false;
+	float m_IslandPillTextW = 0.0f;
+	std::string m_IslandSeenTrack; // a new track opens the player only when it stays a moment
+	float m_IslandSeenTrackTime = 0.0f;
 	float m_aIslandPillRect[4] = {};
 	bool m_IslandOverControl = false; // the mouse is over a button of the player (the editor does not drag then)
 	float m_aDragStart[2] = {};

@@ -105,6 +105,8 @@ namespace XcUi
 	void HighlightCard(const char *pId);
 	// only the cards whose title or description has this text are drawn (empty: all)
 	void SetCardFilter(const char *pQuery);
+	// only the card with this id is drawn (the others are still listed in DrawnCards); empty: all
+	void SetCardOnly(const char *pId);
 	// while on, a card grid opened inside another one adds its cards to the outer grid
 	void MergeCardGrids(bool Merge);
 	// the cards drawn since ClearDrawnCards: their ids and titles (the visuals window lists them)

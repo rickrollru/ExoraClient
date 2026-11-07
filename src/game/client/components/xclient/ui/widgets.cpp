@@ -228,7 +228,9 @@ namespace XcUi
 
 	static std::string s_CardFilter;
 	static std::vector<SDrawnCard> s_vDrawnCards;
+	static std::string s_CardOnly;
 	void SetCardFilter(const char *pQuery) { s_CardFilter = pQuery ? pQuery : ""; }
+	void SetCardOnly(const char *pId) { s_CardOnly = pId ? pId : ""; }
 	void ClearDrawnCards() { s_vDrawnCards.clear(); }
 	const std::vector<SDrawnCard> &DrawnCards() { return s_vDrawnCards; }
 
@@ -867,6 +869,8 @@ namespace XcUi
 			return false;
 		if(s_vDrawnCards.size() < 256)
 			s_vDrawnCards.push_back({pId, pTitle});
+		if(!s_CardOnly.empty() && s_CardOnly != pId)
+			return false;
 		SCardGrid &Grid = s_vGrids.back();
 		const STheme &t = Theme();
 		// the shorter column gets the next card
