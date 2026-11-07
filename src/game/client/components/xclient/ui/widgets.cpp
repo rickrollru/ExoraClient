@@ -4,6 +4,8 @@
 #include "lang.h"
 #include "theme.h"
 
+#include <base/str.h>
+
 #include <engine/external/imgui/imgui_internal.h>
 
 #include <algorithm>
@@ -223,6 +225,12 @@ namespace XcUi
 	static double s_HighlightStart = -10.0;
 	static float s_HighlightY = -1.0f;
 	static constexpr double HIGHLIGHT_TIME = 2.2;
+
+	static std::string s_CardFilter;
+	static std::vector<SDrawnCard> s_vDrawnCards;
+	void SetCardFilter(const char *pQuery) { s_CardFilter = pQuery ? pQuery : ""; }
+	void ClearDrawnCards() { s_vDrawnCards.clear(); }
+	const std::vector<SDrawnCard> &DrawnCards() { return s_vDrawnCards; }
 
 	void HighlightCard(const char *pId)
 	{
@@ -810,8 +818,19 @@ namespace XcUi
 	// ---------------------------------------------------------------------------------------------
 	// cards
 
+	// the search of the visuals window: the cards of every section go into one grid
+	static bool s_MergeGrids = false;
+	static int s_MergedDepth = 0;
+	void MergeCardGrids(bool Merge) { s_MergeGrids = Merge; }
+
 	void BeginCardGrid(const char *pId, int Columns)
 	{
+		if(s_MergeGrids && !s_vGrids.empty())
+		{
+			s_MergedDepth++;
+			ImGui::PushID(pId);
+			return;
+		}
 		SCardGrid &Grid = s_vGrids.emplace_back();
 		Grid.m_Start = ImGui::GetCursorScreenPos();
 		Grid.m_Width = ImGui::GetContentRegionAvail().x;
@@ -826,6 +845,12 @@ namespace XcUi
 
 	void EndCardGrid()
 	{
+		if(s_MergedDepth > 0)
+		{
+			s_MergedDepth--;
+			ImGui::PopID();
+			return;
+		}
 		SCardGrid &Grid = s_vGrids.back();
 		float Bottom = Grid.m_Start.y;
 		for(int i = 0; i < Grid.m_Columns; i++)
@@ -838,6 +863,10 @@ namespace XcUi
 
 	bool BeginCard(const char *pId, const char *pTitle, const char *pDescription, int *pEnabled)
 	{
+		if(!s_CardFilter.empty() && !str_utf8_find_nocase(pTitle, s_CardFilter.c_str()) && !(pDescription && str_utf8_find_nocase(pDescription, s_CardFilter.c_str())))
+			return false;
+		if(s_vDrawnCards.size() < 256)
+			s_vDrawnCards.push_back({pId, pTitle});
 		SCardGrid &Grid = s_vGrids.back();
 		const STheme &t = Theme();
 		// the shorter column gets the next card

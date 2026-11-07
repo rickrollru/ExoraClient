@@ -2518,6 +2518,8 @@ namespace XcUi
 			{"The run is not finished: %s will be lost.", "Забег не закончен: время %s не сохранится."},
 			{"Stay", "Остаться"},
 			{"Island", "Остров"},
+			{"Search the visuals", "Поиск по визуалам"},
+			{"Try another word: the search looks in the names and descriptions of the cards", "Попробуй другое слово: поиск смотрит в названия и описания карточек"},
 			{"Left mouse: drag   Right mouse: settings   Right mouse on an empty place: add   Wheel: size", "ЛКМ — тащить   ПКМ — настройки   ПКМ по пустому месту — добавить   Колесо — размер"},
 			{"What do we add?", "Что добавляем?"},
 			{"Everything is on the screen already", "Всё уже на экране"},

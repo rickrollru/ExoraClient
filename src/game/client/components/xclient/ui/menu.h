@@ -416,6 +416,21 @@ private:
 	void DrawCommunityIcon(struct ImDrawList *pDraw, const char *pCommunityId, ImVec2 Min, float Height, bool Active = true);
 	// visuals page (menu_visuals.cpp)
 	int m_VisualsSection = VISUALS_GENERAL;
+	void RenderVisualsSection(int Section);
+	// the visuals as a compact window over the game (xc_visuals_window): an icon rail, the cards of the section,
+	// search, dragged by its top on a spring
+	void RenderVisualsWindow(float Dt);
+	float m_aVisWinPos[2] = {-1.0f, -1.0f};
+	float m_aVisWinTarget[2] = {-1.0f, -1.0f};
+	float m_aVisWinVel[2] = {};
+	float m_VisWinOpen = 0.0f;
+	bool m_VisWinDrag = false;
+	char m_aVisSearch[64] = {};
+	int m_VisLastSection = -1;
+	std::string m_VisLastQuery;
+	std::vector<std::pair<std::string, std::string>> m_vVisCards; // the cards of the page drawn last frame
+	std::string m_VisPickedCard;
+	double m_VisListTime = 0.0;
 	int m_aLastFxStyle[32] = {}; // last chosen style of each style card, to turn it back on
 	bool StyleCard(const char *pId, const char *pTitle, const char *pDescription, const char *pConfig, int *pValue, const char *const *ppStyles, int NumStyles);
 	void RenderVisualsGeneral();

@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <engine/external/imgui/imgui.h>
 
+#include <string>
+#include <vector>
+
 // XClient widgets in the style of the design spec. Every state change is animated,
 // the speed comes from the animation setting (instant when animations are off).
 namespace XcUi
@@ -100,6 +103,18 @@ namespace XcUi
 	void EndCard();
 	// search: the card with this id gets a pulsing frame for a moment
 	void HighlightCard(const char *pId);
+	// only the cards whose title or description has this text are drawn (empty: all)
+	void SetCardFilter(const char *pQuery);
+	// while on, a card grid opened inside another one adds its cards to the outer grid
+	void MergeCardGrids(bool Merge);
+	// the cards drawn since ClearDrawnCards: their ids and titles (the visuals window lists them)
+	struct SDrawnCard
+	{
+		std::string m_Id;
+		std::string m_Title;
+	};
+	void ClearDrawnCards();
+	const std::vector<SDrawnCard> &DrawnCards();
 	// y of the highlighted card inside the scrolled content if it was drawn since the last call, else -1
 	float HighlightedCardY();
 

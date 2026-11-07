@@ -1246,20 +1246,9 @@ void CXcMenu::RenderEventSoundsCard()
 	}
 }
 
-void CXcMenu::RenderVisuals()
+void CXcMenu::RenderVisualsSection(int Section)
 {
-	const char *apIcons[NUM_VISUALS] = {XC_ICON_SLIDERS, XC_ICON_USER, XC_ICON_BOLT, XC_ICON_HAT, XC_ICON_HAMMER, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_USERS};
-	const char *apLabels[NUM_VISUALS] = {Tr("General"), Tr("Tee"), Tr("Movement"), Tr("Cosmetics"), Tr("Weapons"), Tr("Crosshair"), Tr("World"), Tr("Events"), Tr("Names")};
-	const float NavWidth = S(210.0f);
-	const ImVec2 Start = ImGui::GetCursorScreenPos();
-	if(SideNav("##visual_sections", &m_VisualsSection, apIcons, apLabels, NUM_VISUALS, NavWidth))
-		m_ScrollTarget = 0.0f;
-	ImGui::SetCursorScreenPos(ImVec2(Start.x + NavWidth + S(20.0f), Start.y));
-	const ImVec2 Avail = ImGui::GetContentRegionAvail();
-	BeginSmoothScroll("##visuals_scroll", ImVec2(Avail.x, Avail.y));
-	Header(apLabels[m_VisualsSection]);
-	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
-	switch(m_VisualsSection)
+	switch(Section)
 	{
 	case VISUALS_TEE: RenderVisualsTee(); break;
 	case VISUALS_MOVEMENT: RenderVisualsMovement(); break;
@@ -1275,6 +1264,22 @@ void CXcMenu::RenderVisuals()
 	case VISUALS_NAMES: RenderVisualsNames(); break;
 	default: RenderVisualsGeneral(); break;
 	}
+}
+
+void CXcMenu::RenderVisuals()
+{
+	const char *apIcons[NUM_VISUALS] = {XC_ICON_SLIDERS, XC_ICON_USER, XC_ICON_BOLT, XC_ICON_HAT, XC_ICON_HAMMER, XC_ICON_CROSSHAIR, XC_ICON_GLOBE, XC_ICON_STAR, XC_ICON_USERS};
+	const char *apLabels[NUM_VISUALS] = {Tr("General"), Tr("Tee"), Tr("Movement"), Tr("Cosmetics"), Tr("Weapons"), Tr("Crosshair"), Tr("World"), Tr("Events"), Tr("Names")};
+	const float NavWidth = S(210.0f);
+	const ImVec2 Start = ImGui::GetCursorScreenPos();
+	if(SideNav("##visual_sections", &m_VisualsSection, apIcons, apLabels, NUM_VISUALS, NavWidth))
+		m_ScrollTarget = 0.0f;
+	ImGui::SetCursorScreenPos(ImVec2(Start.x + NavWidth + S(20.0f), Start.y));
+	const ImVec2 Avail = ImGui::GetContentRegionAvail();
+	BeginSmoothScroll("##visuals_scroll", ImVec2(Avail.x, Avail.y));
+	Header(apLabels[m_VisualsSection]);
+	ImGui::Dummy(ImVec2(0.0f, S(4.0f)));
+	RenderVisualsSection(m_VisualsSection);
 	if(m_VisualsSection != VISUALS_COSMETICS)
 		m_WheelCaptured = false;
 	if(m_ScrollToHighlight)

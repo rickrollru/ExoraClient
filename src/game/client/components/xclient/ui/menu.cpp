@@ -627,6 +627,20 @@ void CXcMenu::RenderFrame()
 	m_PageAppear = std::min(m_PageAppear + FrameDt / 0.5f, 1.0f);
 	const float PageIn = 1.0f - std::pow(1.0f - m_PageAppear, 3.0f);
 
+	// the visuals: a compact window over the game or the background
+	if(m_Page == PAGE_VISUALS && g_Config.m_XcVisualsWindow)
+	{
+		ImGui::GetStyle().Alpha = Open * Settled();
+		RenderVisualsWindow(FrameDt);
+		if(Io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F, false))
+			OpenSearch();
+		RenderSearch();
+		RenderConnectionPopup();
+		RenderToasts(ImGui::GetForegroundDrawList(), Io.DisplaySize, Client()->GlobalTime(), Open);
+		return;
+	}
+	m_VisWinOpen = 0.0f;
+
 	// the server list of the main menu with the minimal home: the whole screen too, over the background
 	m_ServersFullScreen = m_Page == PAGE_SERVERS && MinimalHome();
 	if(m_ServersFullScreen)
