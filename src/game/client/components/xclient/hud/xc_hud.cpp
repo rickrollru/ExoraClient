@@ -1129,6 +1129,24 @@ void CXcHud::OnRender()
 	}
 }
 
+bool CXcHud::OnIslandMenuInput(const IInput::CEvent &Event)
+{
+	if(Event.m_Key != KEY_MOUSE_1 || !(Event.m_Flags & IInput::FLAG_PRESS) ||
+		Client()->State() != IClient::STATE_ONLINE || !m_Backend.IsReady() || m_Editing ||
+		!g_Config.m_XcHud || !g_Config.m_XcHudIsland || !g_Config.m_ClShowhud || m_aShown[ELEMENT_ISLAND] <= 0.5f)
+		return false;
+
+	const vec2 Mouse = Ui()->UpdatedMousePos() * vec2(
+		Graphics()->ScreenWidth() / std::max((float)Graphics()->WindowWidth(), 1.0f),
+		Graphics()->ScreenHeight() / std::max((float)Graphics()->WindowHeight(), 1.0f));
+	const auto &aRect = m_aaRects[ELEMENT_ISLAND];
+	if(Mouse.x < aRect[0] || Mouse.y < aRect[1] || Mouse.x >= aRect[2] || Mouse.y >= aRect[3])
+		return false;
+
+	m_IslandMenuPressed = true;
+	return true;
+}
+
 void CXcHud::RenderIslandOverMenu(float Open)
 {
 	if(!m_Backend.IsReady() || m_Editing || !g_Config.m_XcHud || !g_Config.m_XcHudIsland || !g_Config.m_ClShowhud || !GameClient()->m_XcMenu.IsActive())
@@ -1139,7 +1157,7 @@ void CXcHud::RenderIslandOverMenu(float Open)
 	// a second small frame of the HUD context: only the island (its time already moved this frame)
 	m_Backend.NewFrame(0.0001f, Ui()->UpdatedMousePos());
 	m_vChatBlurRects.clear();
-	RenderIsland(ImGui::GetForegroundDrawList(), m_aShown[ELEMENT_ISLAND], Dt);
+	RenderIsland(ImGui::GetForegroundDrawList(), m_aShown[ELEMENT_ISLAND], Dt, true);
 	m_vChatBlurRects.clear(); // no blur over the menu
 	m_Backend.Render();
 }

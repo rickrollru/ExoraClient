@@ -94,6 +94,7 @@ public:
 	void IslandNotify(const char *pTitle, const char *pSubtitle, int Kind);
 	// the menu is open in game: the island is drawn over it (Open: how far the menu is open)
 	void RenderIslandOverMenu(float Open);
+	bool OnIslandMenuInput(const IInput::CEvent &Event);
 	bool IslandTakesNotes() const;
 
 private:
@@ -202,7 +203,8 @@ private:
 	int m_IslandRowDrag = -1;
 	float m_IslandRowGrab = 0.0f;
 	// xc_island.cpp: the island at the top
-	void RenderIsland(ImDrawList *pDraw, float Alpha, float Dt);
+	void RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMenu = false);
+	bool m_IslandMenuPressed = false;
 	bool IslandHas(char Part) const;
 	float m_IslandW = 0.0f, m_IslandH = 0.0f, m_IslandVelW = 0.0f, m_IslandVelH = 0.0f;
 	float m_aIslandLayer[3] = {}; // the small island, a notification, the player

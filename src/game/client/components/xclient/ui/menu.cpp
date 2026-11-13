@@ -242,6 +242,9 @@ bool CXcMenu::OnInput(const IInput::CEvent &Event)
 		return false;
 	}
 
+	if(((m_Page == PAGE_HOME && GameHome()) || PanelWindow()) && GameClient()->m_XcHud.OnIslandMenuInput(Event))
+		return true;
+
 	if(m_BindWaiting >= 0 && OnBindInput(Event))
 		return true;
 	// the key of the visuals window closes it again (the menu takes the keys otherwise), not while typing
@@ -704,7 +707,7 @@ void CXcMenu::RenderFrame()
 	m_VisWinOpen = 0.0f;
 
 	// the server list of the main menu with the minimal home: the whole screen too, over the background
-	m_ServersFullScreen = m_Page == PAGE_SERVERS && MinimalHome();
+	m_ServersFullScreen = m_Page == PAGE_SERVERS && (MinimalHome() || GameHome());
 	if(m_ServersFullScreen)
 	{
 		ImGui::GetStyle().Alpha = Open * Settled() * PageIn;

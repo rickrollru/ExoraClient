@@ -76,7 +76,7 @@ void CXcHud::ConIslandPlayer(IConsole::IResult *pResult, void *pUserData)
 	pSelf->m_IslandPlayerUntil = -1.0f;
 }
 
-void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
+void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMenu)
 {
 	const STheme &t = Theme();
 	const float U = Unit(ELEMENT_ISLAND);
@@ -107,6 +107,10 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 	// the player: a few seconds for a new track, or kept open (the bind, a click on the island in the HUD editor)
 	const bool Player = !Note && IslandHas('m') && (Music.HasTrack() || m_Editing) && (m_IslandPlayerPinned || Now < m_IslandPlayerUntil);
 	m_IslandOverControl = false;
+	const bool Clicked = OverMenu ? m_IslandMenuPressed : ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	if(OverMenu)
+		m_IslandMenuPressed = false;
+	const bool Interactive = m_Editing || (OverMenu && Player);
 	const int Mode = Note ? 1 : (Player ? 2 : 0);
 
 	// the line sung now (timed lyrics only)
@@ -439,10 +443,10 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		if(Duration > 0.0f && Position >= 0.0)
 			pDraw->AddRectFilled(ImVec2(BarL, BarY - 2.0f * U), ImVec2(BarL + (BarR - BarL) * std::clamp((float)Position / Duration, 0.0f, 1.0f), BarY + 2.0f * U), Col(t.m_Text, a), 2.0f * U);
 		// with a free mouse (the HUD editor) a click on the line jumps there
-		if(m_Editing && a > 0.5f && State.m_CanSeek && Duration > 0.0f && ImGui::IsMouseHoveringRect(ImVec2(BarL, BarY - 8.0f * U), ImVec2(BarR, BarY + 8.0f * U)))
+		if(Interactive && a > 0.5f && State.m_CanSeek && Duration > 0.0f && ImGui::IsMouseHoveringRect(ImVec2(BarL, BarY - 8.0f * U), ImVec2(BarR, BarY + 8.0f * U)))
 		{
 			m_IslandOverControl = true;
-			if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			if(Clicked)
 				GameClient()->m_XcMusic.Seek(std::clamp((ImGui::GetIO().MousePos.x - BarL) / (BarR - BarL), 0.0f, 1.0f) * Duration);
 		}
 		y += 12.0f * U;
@@ -505,7 +509,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 			for(const SButton &Button : aButtons)
 			{
 				const float R = 20.0f * U;
-				const bool Hover = m_Editing && a > 0.5f && ImGui::IsMouseHoveringRect(ImVec2(Button.m_X - R, MidY - R), ImVec2(Button.m_X + R, MidY + R));
+				const bool Hover = Interactive && a > 0.5f && ImGui::IsMouseHoveringRect(ImVec2(Button.m_X - R, MidY - R), ImVec2(Button.m_X + R, MidY + R));
 				if(Hover)
 				{
 					m_IslandOverControl = true;
@@ -530,7 +534,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 					continue;
 				}
 				DrawIcon(pDraw, pTitle, Button.m_Size, ImVec2(Button.m_X, MidY), Col(Button.m_Action == 0 ? (On ? t.m_TextSecondary : t.m_TextMuted) : t.m_Text, a), Button.m_pIcon);
-				if(!Hover || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				if(!Hover || !Clicked)
 					continue;
 				PlayUiSound(SOUND_CLICK);
 				CXcMusic &MusicCtl = GameClient()->m_XcMusic;
@@ -549,4 +553,11 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt)
 		}
 	}
 	pDraw->PopClipRect();
+
+	if(OverMenu && Clicked && !m_IslandOverControl && !Note && IslandHas('m') && Music.HasTrack())
+	{
+		m_IslandPlayerPinned = !Player;
+		m_IslandPlayerUntil = -1.0f;
+		PlayUiSound(SOUND_CLICK);
+	}
 }
