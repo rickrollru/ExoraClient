@@ -442,8 +442,8 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 		pDraw->AddRectFilled(ImVec2(BarL, BarY - 2.0f * U), ImVec2(BarR, BarY + 2.0f * U), Col(ImVec4(1, 1, 1, 0.1f), a), 2.0f * U);
 		if(Duration > 0.0f && Position >= 0.0)
 			pDraw->AddRectFilled(ImVec2(BarL, BarY - 2.0f * U), ImVec2(BarL + (BarR - BarL) * std::clamp((float)Position / Duration, 0.0f, 1.0f), BarY + 2.0f * U), Col(t.m_Text, a), 2.0f * U);
-		// with a free mouse (the HUD editor) a click on the line jumps there
-		if(Interactive && a > 0.5f && State.m_CanSeek && Duration > 0.0f && ImGui::IsMouseHoveringRect(ImVec2(BarL, BarY - 8.0f * U), ImVec2(BarR, BarY + 8.0f * U)))
+		// The island is drawn on the foreground list, outside the current ImGui window.
+		if(Interactive && a > 0.5f && State.m_CanSeek && Duration > 0.0f && ImGui::IsMouseHoveringRect(ImVec2(BarL, BarY - 8.0f * U), ImVec2(BarR, BarY + 8.0f * U), false))
 		{
 			m_IslandOverControl = true;
 			if(Clicked)
@@ -509,7 +509,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 			for(const SButton &Button : aButtons)
 			{
 				const float R = 20.0f * U;
-				const bool Hover = Interactive && a > 0.5f && ImGui::IsMouseHoveringRect(ImVec2(Button.m_X - R, MidY - R), ImVec2(Button.m_X + R, MidY + R));
+				const bool Hover = Interactive && a > 0.5f && ImGui::IsMouseHoveringRect(ImVec2(Button.m_X - R, MidY - R), ImVec2(Button.m_X + R, MidY + R), false);
 				if(Hover)
 				{
 					m_IslandOverControl = true;
