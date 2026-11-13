@@ -207,9 +207,14 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 			// the rows come in one after another when the list changes
 			const float In = EaseOut((float)(ImGui::GetTime() - m_VisListTime) * 4.0f - i * 0.12f);
 			ImGui::PopID();
+			ImFont *pLabel = Fonts().m_pLabel;
+			const float FontSize = pLabel->FontSize;
 			char aTitle[128];
-			XcFitText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, m_vVisCards[i].second.c_str(), ColW - S(44.0f), aTitle, sizeof(aTitle));
-			pList->AddText(Fonts().m_pLabel, Fonts().m_pLabel->FontSize, ImVec2(P.x + S(10.0f) - (1.0f - In) * S(8.0f), std::floor(P.y + RowH * 0.5f - TextMiddle(Fonts().m_pLabel, Fonts().m_pLabel->FontSize) + 0.5f)), Col(Mix(t.m_TextMuted, t.m_Text, Hover), In), aTitle);
+			XcFitText(pLabel, FontSize, m_vVisCards[i].second.c_str(), ColW - S(44.0f), aTitle, sizeof(aTitle));
+			const float TextWidth = pLabel->CalcTextSizeA(FontSize, FLT_MAX, 0.0f, aTitle).x;
+			const float TextX = std::floor(P.x + (ColW - S(20.0f) - TextWidth) * 0.5f + 0.5f);
+			const float TextY = std::floor(P.y + RowH * 0.5f - TextMiddle(pLabel, FontSize) + 0.5f);
+			pList->AddText(pLabel, FontSize, ImVec2(TextX, TextY), Col(Mix(t.m_TextMuted, t.m_Text, Hover), In), aTitle);
 			if(Clicked)
 			{
 				PlayUiSound(SOUND_CLICK);
