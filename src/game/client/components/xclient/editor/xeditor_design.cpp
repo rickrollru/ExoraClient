@@ -40,27 +40,40 @@ bool SegmentsIntersect(vec2 A, vec2 B, vec2 C, vec2 D)
 
 std::vector<std::array<int, 3>> Triangulate(const std::vector<vec2> &vPoints)
 {
-	const int Count = vPoints.size();
+	std::vector<int> vRing(vPoints.size());
+	std::iota(vRing.begin(), vRing.end(), 0);
+	// Extra clicks on a straight edge do not change the shape.
+	for(size_t i = 0; vRing.size() > 3 && i < vRing.size();)
+	{
+		const vec2 A = vPoints[vRing[(i + vRing.size() - 1) % vRing.size()]];
+		const vec2 B = vPoints[vRing[i]], C = vPoints[vRing[(i + 1) % vRing.size()]];
+		if(std::abs(Turn(A, B, C)) <= 0.001f && dot(B - A, B - C) <= 0.0f)
+		{
+			vRing.erase(vRing.begin() + i);
+			i = 0;
+		}
+		else
+			++i;
+	}
+	const int Count = vRing.size();
 	if(Count < 3)
 		return {};
 	float Area = 0.0f;
 	for(int i = 0; i < Count; ++i)
 	{
 		const int Next = (i + 1) % Count;
-		Area += Turn(vPoints[0], vPoints[i], vPoints[Next]);
+		Area += Turn(vPoints[vRing[0]], vPoints[vRing[i]], vPoints[vRing[Next]]);
 		for(int j = i + 2; j < Count; ++j)
 		{
 			if(i == 0 && j == Count - 1)
 				continue;
-			if(SegmentsIntersect(vPoints[i], vPoints[Next], vPoints[j], vPoints[(j + 1) % Count]))
+			if(SegmentsIntersect(vPoints[vRing[i]], vPoints[vRing[Next]], vPoints[vRing[j]], vPoints[vRing[(j + 1) % Count]]))
 				return {};
 		}
 	}
 	if(std::abs(Area) < 0.001f)
 		return {};
 
-	std::vector<int> vRing(Count);
-	std::iota(vRing.begin(), vRing.end(), 0);
 	if(Area < 0.0f)
 		std::reverse(vRing.begin(), vRing.end());
 	std::vector<std::array<int, 3>> vTriangles;
@@ -141,16 +154,25 @@ bool CXcEditorUi::DoQuadPen(vec2 WorldPos)
 	}
 	str_copy(E.m_aTooltip, Tr("Left click adds points, right click fills, Escape cancels"));
 
-	if(E.Ui()->MouseButtonClicked(0) && m_vPenPoints.size() < 128 &&
+	const bool AddPoint = E.Input()->KeyPress(KEY_MOUSE_1) || E.Ui()->MouseButtonClicked(0);
+	const float PointRadius = 6.0f * E.MapView()->MouseWorldScale();
+	const bool CloseContour = AddPoint && m_vPenPoints.size() >= 3 && distance(m_vPenPoints.front(), WorldPos) <= PointRadius;
+	if(AddPoint && !CloseContour && m_vPenPoints.size() < 128 &&
 		std::none_of(m_vPenPoints.begin(), m_vPenPoints.end(), [&](vec2 P) { return distance(P, WorldPos) < 0.01f; }))
 		m_vPenPoints.push_back(WorldPos);
 
-	if(E.Ui()->MouseButtonClicked(1) && !m_vPenPoints.empty())
+	const bool Fill = CloseContour || E.Input()->KeyPress(KEY_MOUSE_2) || E.Ui()->MouseButtonClicked(1);
+	if(Fill && !m_vPenPoints.empty())
 	{
+		if(m_vPenPoints.size() < 3)
+		{
+			ShowMessage(Tr("Add at least three points with the left mouse button."), Tr("Quad Pen"));
+			return true;
+		}
 		const auto vTriangles = Triangulate(m_vPenPoints);
 		if(vTriangles.empty())
 		{
-			ShowMessage(Tr("Use at least three points and avoid crossing edges."), Tr("Quad Pen"));
+			ShowMessage(Tr("The outline crosses itself or has no area."), Tr("Quad Pen"));
 			return true;
 		}
 		const auto pGroup = pMap->SelectedGroup();
@@ -184,6 +206,14 @@ bool CXcEditorUi::DoQuadPen(vec2 WorldPos)
 			E.Graphics()->LinesDraw(&Line, 1);
 		}
 		E.Graphics()->LinesEnd();
+		E.Graphics()->QuadsBegin();
+		E.Graphics()->SetColor(0.4f, 0.8f, 1.0f, 1.0f);
+		for(const vec2 Point : m_vPenPoints)
+		{
+			IGraphics::CQuadItem Marker(Point.x, Point.y, PointRadius, PointRadius);
+			E.Graphics()->QuadsDraw(&Marker, 1);
+		}
+		E.Graphics()->QuadsEnd();
 		E.Graphics()->MapScreen(Saved);
 	}
 	return true;
