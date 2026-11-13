@@ -437,16 +437,16 @@ void CImGuiBackend::RenderDrawData(ImDrawData *pDrawData)
 		const ImDrawIdx *pIndices = pList->IdxBuffer.Data;
 		for(const ImDrawCmd &Cmd : pList->CmdBuffer)
 		{
+			const ImVec4 Clip = Cmd.ClipRect;
+			if(Clip.z <= Clip.x || Clip.w <= Clip.y)
+				continue;
+			pGraphics->ClipEnable((int)Clip.x, (int)Clip.y, (int)(Clip.z - Clip.x + 0.5f), (int)(Clip.w - Clip.y + 0.5f));
 			if(Cmd.UserCallback)
 			{
 				if(Cmd.UserCallback != ImDrawCallback_ResetRenderState)
 					Cmd.UserCallback(pList, &Cmd);
 				continue;
 			}
-			const ImVec4 Clip = Cmd.ClipRect;
-			if(Clip.z <= Clip.x || Clip.w <= Clip.y)
-				continue;
-			pGraphics->ClipEnable((int)Clip.x, (int)Clip.y, (int)(Clip.z - Clip.x + 0.5f), (int)(Clip.w - Clip.y + 0.5f));
 
 			const size_t TextureIndex = (size_t)Cmd.GetTexID();
 			if(TextureIndex >= 1 && TextureIndex <= m_vTextures.size())
