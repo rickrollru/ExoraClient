@@ -405,13 +405,16 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 			m_vVisCards = std::move(vCards);
 		}
 	}
-	const bool OverRail = ImGui::IsMouseHoveringRect(Min, ImVec2(Min.x + RailW, Max.y));
+	const bool OverRail = !SettingsKind && ImGui::IsMouseHoveringRect(Min, ImVec2(Min.x + RailW, Max.y));
 	ResizeGrip(pDraw, Max);
 	ImGui::PopFont();
 	ImGui::End();
 
 	// the names of the sections slide out of the rail under the mouse: to the left of the window (to its right
 	// side over the column when there is no room on the left)
+	if(SettingsKind)
+		m_RailFly = 0.0f;
+	else
 	{
 		const float FlyW = S(190.0f);
 		const bool Left = Min.x - FlyW >= S(4.0f);

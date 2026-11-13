@@ -71,6 +71,9 @@ void CXcMenu::OnInit()
 	}
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
+	// Start decoding the saved background before the first clock frame.
+	if(m_StartLocked && g_Config.m_XcMenuBackground == 3)
+		m_Backgrounds.Update(g_Config.m_XcMenuBgFile, 0.0f, g_Config.m_XcMenuBgGifSpeed / 100.0f);
 	m_MapPreviews.Init(Graphics(), Storage(), GameClient()->Engine());
 
 	// interface sounds: our own set generated for XClient and the Flower set (data/xclient/sounds)
@@ -634,6 +637,8 @@ void CXcMenu::RenderFrame()
 	// the visuals window in game lies over the game itself, like the click menu of Minecraft clients
 	if(IsOnline() && PanelWindow())
 		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, 0.25f * Open));
+	else if(m_StartLocked && !IsOnline() && g_Config.m_XcMenuBackground == 3 && m_Backgrounds.IsLoading() && !m_Backgrounds.HasFrames())
+		pBackground->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background));
 	else if(Background == BG_ANIMATED)
 		RenderMenuBackground(pBackground, IsOnline() ? 0.94f * Open : 1.0f);
 	else if(Background == BG_CUSTOM)
