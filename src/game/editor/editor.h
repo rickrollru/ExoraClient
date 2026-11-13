@@ -741,6 +741,7 @@ public:
 	void XcHandleToolHotkeys();
 	// true when the tool used the mouse on the map this frame and the brush must not
 	bool XcDoMapTool(vec2 WorldPos, bool Inside);
+	bool m_XcGoresBrush = false;
 	// XClient: preferences (Ctrl+K), rulers and guides (xclient/editor/editor_prefs.cpp)
 	std::vector<float> m_vXcGuidesX; // world x of vertical guides
 	std::vector<float> m_vXcGuidesY;

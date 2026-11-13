@@ -39,6 +39,9 @@ static ImVec4 MemberColor(int Id, float Alpha = 1.0f)
 // map replaced by the room (a tab switch kept them, the next frame worked on a freed or another map and crashed)
 void CXcEditorUi::ForgetMap()
 {
+	m_vPenPoints.clear();
+	m_pPenLayer.reset();
+	m_pDesignPreview.reset();
 	m_pAdjustImage = nullptr;
 	std::fill(std::begin(m_aAdjust), std::end(m_aAdjust), 0);
 	m_vAdjustBackup.clear();

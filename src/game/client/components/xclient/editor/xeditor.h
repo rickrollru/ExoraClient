@@ -234,6 +234,7 @@ private:
 public:
 	// the shown map changed (CEditor::Reset): drop what points into the old one
 	void ForgetMap();
+	bool DoQuadPen(vec2 WorldPos);
 
 private:
 	void RenderLeftPanel();
@@ -433,6 +434,23 @@ private:
 	int m_DepthDark = 10;
 	int m_DepthPiece = 1;
 	void RenderDepthDialog();
+
+	void OpenArtImport(bool Quad);
+	void ToggleQuadPen();
+	void ToggleGoresBrush();
+	bool m_QuadPen = false;
+	std::weak_ptr<class CLayer> m_pPenLayer;
+	std::vector<vec2> m_vPenPoints;
+	bool m_DesignRequest = false;
+	int m_DesignImage = 0;
+	int m_DesignRule = 0;
+	int m_DesignMaterial = 0;
+	int m_DesignSeed = 1;
+	ImVec4 m_DesignTint = ImVec4(1, 1, 1, 1);
+	std::shared_ptr<CLayerTiles> m_pDesignPreview;
+	void RenderDesignDialog();
+	void RenderDesignPreview();
+	void BuildDesignPreview();
 	void MakeDepth(int Levels, int Step, int Dark, int Piece);
 
 public:

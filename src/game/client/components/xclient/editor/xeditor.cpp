@@ -320,6 +320,7 @@ void CXcEditorUi::Render()
 	if(E.m_Mode == MODE_LAYERS)
 	{
 		E.MapView()->Render(m_View);
+		RenderDesignPreview();
 		RenderCoopTees();
 		// another map opened: the hints, the way and the heat map of the last one do not belong to it (a run on
 		// a map came with 312 hints left from another one)
@@ -479,6 +480,7 @@ void CXcEditorUi::Render()
 		RenderThemes();
 		RenderAutomapBuilder();
 		RenderDepthDialog();
+		RenderDesignDialog();
 		if(!m_pAutomap)
 			RenderWiki(); // over the builder it is drawn inside the builder's window
 		RenderTuneZones();
@@ -599,6 +601,8 @@ void CXcEditorUi::Render()
 	E.FreeDynamicPopupMenus();
 	E.UpdateColorPipette();
 
+	if(m_QuadPen && E.m_Dialog == DIALOG_NONE && !m_WantsMouse && E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+		ToggleQuadPen();
 	if(E.m_Dialog == DIALOG_NONE && !E.m_PopupEventActivated && !DialogOpen() && E.Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
 	{
 		E.OnClose();
@@ -930,6 +934,11 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.m_GuiActive = false;
 				break;
 			case 3: // map
+				if(ImGui::MenuItem(Tr("Design map...")))
+					m_DesignRequest = true;
+				if(ImGui::MenuItem(Tr("Gores brush"), nullptr, E.m_XcGoresBrush))
+					ToggleGoresBrush();
+				ImGui::Separator();
 				QuickActionItem(E.m_QuickActionMapDetails, Tr("Map details..."));
 				QuickActionItem(E.m_QuickActionServerSettings, Tr("Server settings"));
 				QuickActionItem(E.m_QuickActionEnvelopes, Tr("Envelopes"));
@@ -1008,6 +1017,13 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 				}
 				break;
 			case 4: // layer
+				if(ImGui::MenuItem(Tr("Quad Pen"), nullptr, m_QuadPen))
+					ToggleQuadPen();
+				if(ImGui::MenuItem(Tr("Add tile art")))
+					OpenArtImport(false);
+				if(ImGui::MenuItem(Tr("Add quad art")))
+					OpenArtImport(true);
+				ImGui::Separator();
 				QuickActionItem(E.m_QuickActionAddGroup, Tr("New group"));
 				QuickActionItem(E.m_QuickActionAddTileLayer, Tr("New tile layer"));
 				QuickActionItem(E.m_QuickActionAddQuadsLayer, Tr("New quads layer"));
@@ -1973,7 +1989,7 @@ void CXcEditorUi::RenderCapsule()
 	const float Button = S(34.0f);
 	const float Gap = S(3.0f);
 	const float Divider = S(12.0f);
-	const int NumButtons = CEditor::XC_NUM_TOOLS + 4 + 4 + 2;
+	const int NumButtons = CEditor::XC_NUM_TOOLS + 1 + 4 + 4 + 2;
 	const float Width = NumButtons * (Button + Gap) + Divider * 3.0f + S(16.0f);
 	const float Height = Button + S(12.0f);
 	const ImVec2 Pos(m_View.x * k + m_View.w * k * 0.5f - Width * 0.5f, (m_View.y + m_View.h) * k - Height - S(14.0f));
@@ -2004,10 +2020,16 @@ void CXcEditorUi::RenderCapsule()
 			CEditor::XcToolInfo(Tool, &pIcon, &pName, &pHint);
 			char aId[16];
 			str_format(aId, sizeof(aId), "##tool%d", Tool);
-			if(IconButton(aId, pIcon, Tr(pHint), E.m_XcTool == Tool, true, Button))
+			if(IconButton(aId, pIcon, Tr(pHint), !m_QuadPen && E.m_XcTool == Tool, true, Button))
+			{
+				if(m_QuadPen)
+					ToggleQuadPen();
 				E.m_XcTool = Tool;
+			}
 			ImGui::SameLine();
 		}
+		if(IconButton("##quad_pen", FontIcon::PENCIL, Tr("Quad Pen"), m_QuadPen, true, Button))
+			ToggleQuadPen();
 		Separator();
 		// the brush
 		const bool Brush = !E.m_pBrush->IsEmpty();
@@ -2169,8 +2191,13 @@ void CXcEditorUi::RenderPalette()
 	// the own commands first, then every quick action of the editor
 	vEntries.push_back({Tr("Preferences..."), "Preferences", Tr("Look of the editor: interface brightness, transparency grid, rulers, cursor."), false, false, [&]() { E.XcOpenPreferences(); }});
 	vEntries.push_back({Tr("Animation presets..."), "Animation presets", Tr("Animation presets for the selected quads"), false, false, [&]() { E.XcOpenAnimate(); }});
-	vEntries.push_back({Tr("Add tile art"), "Tile art image", Tr("Generate tile art from image."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add tile art", "Open", "mapres", "", CEditor::CallbackAddTileArt, &E); }});
-	vEntries.push_back({Tr("Add quad art"), "Quad art image", Tr("Generate quad art from image."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add quad art", "Open", "mapres", "", CEditor::CallbackAddQuadArt, &E); }});
+	vEntries.push_back({Tr("Gores brush"), "Gores freeze brush", Tr("Add freeze around hookable tiles on the Game layer"), false, E.m_XcGoresBrush, [&]() { ToggleGoresBrush(); }});
+	vEntries.push_back({Tr("Quad Pen"), "Quad Pen polygon", Tr("Left click adds points, right click fills, Escape cancels"), false, m_QuadPen, [&]() {
+		ToggleQuadPen();
+	}});
+	vEntries.push_back({Tr("Design map..."), "Design map automapper", Tr("Preview a decorative layer generated from the Game layer"), false, false, [&]() { m_DesignRequest = true; }});
+	vEntries.push_back({Tr("Add tile art"), "Tile art image", Tr("Generate tile art from image."), false, false, [&]() { OpenArtImport(false); }});
+	vEntries.push_back({Tr("Add quad art"), "Quad art image", Tr("Generate quad art from image."), false, false, [&]() { OpenArtImport(true); }});
 	vEntries.push_back({Tr("Add a GIF animation..."), "Add gif", Tr("Put an animated gif on the map. It plays for every player, also in other clients."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Add", "mapres", "", CEditor::XcCallbackAddGif, &E); }});
 	vEntries.push_back({Tr("Add a sound..."), "Add sound", nullptr, false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::SOUND, "Add sound", "Add", "mapres", "", CEditor::AddSound, &E); }});
 	vEntries.push_back({Tr("Tune zones..."), "Tune zones gravity tuning", Tr("Gravity, jumps, the hook and more inside a zone, with explanations"), false, false, [&]() { m_TuneRequest = true; }});

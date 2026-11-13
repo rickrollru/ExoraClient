@@ -86,8 +86,12 @@ CTile CLayerTiles::GetTile(int x, int y) const
 void CLayerTiles::SetTile(int x, int y, CTile Tile)
 {
 	auto CurrentTile = m_pTiles[y * m_Width + x];
+	const bool WasGores = IsGoresFreeze(x, y) && (!m_TilesHistory.count(y) || !m_TilesHistory.at(y).count(x));
 	SetTileIgnoreHistory(x, y, Tile);
 	RecordStateChange(x, y, CurrentTile, Tile);
+	if(WasGores)
+		m_TilesHistory[y][x].m_PreviousGores = true;
+	m_TilesHistory[y][x].m_CurrentGores = false;
 
 	if(m_FillGameTile != -1 && m_LiveGameTiles)
 	{
@@ -112,9 +116,13 @@ void CLayerTiles::SetTile(int x, int y, CTile Tile)
 	}
 }
 
-void CLayerTiles::SetTileIgnoreHistory(int x, int y, CTile Tile) const
+void CLayerTiles::SetTileIgnoreHistory(int x, int y, CTile Tile, bool GoresFreeze) const
 {
 	m_pTiles[y * m_Width + x] = Tile;
+	if(GoresFreeze)
+		m_GoresFreeze.emplace(x, y);
+	else if(!m_GoresFreeze.empty())
+		m_GoresFreeze.erase({x, y});
 }
 
 void CLayerTiles::RecordStateChange(int x, int y, CTile Previous, CTile Tile)
@@ -528,6 +536,8 @@ void CLayerTiles::FillSelection(bool Empty, CLayer *pBrush, CUIRect Rect)
 	CLayerTiles *pLt = static_cast<CLayerTiles *>(pBrush);
 
 	bool Destructive = Editor()->m_BrushDrawDestructive || Empty || pLt->IsEmpty();
+	const bool Gores = m_HasGame && Editor()->XcNewUi() && Editor()->m_XcGoresBrush;
+	std::vector<ivec2> vAdded, vErased, vCarved;
 
 	for(int y = 0; y < h; y++)
 	{
@@ -552,12 +562,24 @@ void CLayerTiles::FillSelection(bool Empty, CLayer *pBrush, CUIRect Rect)
 				}
 			}
 
-			if(!Destructive && HasTile)
+			if(!Destructive && HasTile && !(Gores && IsGoresFreeze(fx, fy)))
 				continue;
 
+			const int Previous = Gores ? GetTile(fx, fy).m_Index : 0;
 			SetTile(fx, fy, Empty ? CTile{TILE_AIR} : pLt->m_pTiles[(y * pLt->m_Width + x % pLt->m_Width) % (pLt->m_Width * pLt->m_Height)]);
+			if(Gores)
+			{
+				const int Current = GetTile(fx, fy).m_Index;
+				if(Current == TILE_SOLID && Previous != TILE_SOLID)
+					vAdded.emplace_back(fx, fy);
+				if(Previous == TILE_SOLID && Current != TILE_SOLID)
+					vErased.emplace_back(fx, fy);
+				if(Current == TILE_AIR && Previous != TILE_AIR)
+					vCarved.emplace_back(fx, fy);
+			}
 		}
 	}
+	ApplyGoresBrush(vAdded, vErased, vCarved);
 	FlagModified(sx, sy, w, h);
 }
 
@@ -571,6 +593,8 @@ void CLayerTiles::BrushDraw(CLayer *pBrush, vec2 WorldPos)
 	int sy = ConvertY(WorldPos.y);
 
 	bool Destructive = Editor()->m_BrushDrawDestructive || pTileLayer->IsEmpty();
+	const bool Gores = m_HasGame && Editor()->XcNewUi() && Editor()->m_XcGoresBrush;
+	std::vector<ivec2> vAdded, vErased, vCarved;
 
 	for(int y = 0; y < pTileLayer->m_Height; y++)
 		for(int x = 0; x < pTileLayer->m_Width; x++)
@@ -594,17 +618,68 @@ void CLayerTiles::BrushDraw(CLayer *pBrush, vec2 WorldPos)
 				}
 			}
 
-			if(!Destructive && HasTile)
+			if(!Destructive && HasTile && !(Gores && IsGoresFreeze(fx, fy)))
 				continue;
 
+			const int Previous = Gores ? GetTile(fx, fy).m_Index : 0;
 			SetTile(fx, fy, pTileLayer->CLayerTiles::GetTile(x, y));
+			if(Gores)
+			{
+				const int Current = GetTile(fx, fy).m_Index;
+				if(Current == TILE_SOLID && Previous != TILE_SOLID)
+					vAdded.emplace_back(fx, fy);
+				if(Previous == TILE_SOLID && Current != TILE_SOLID)
+					vErased.emplace_back(fx, fy);
+				if(Current == TILE_AIR && Previous != TILE_AIR)
+					vCarved.emplace_back(fx, fy);
+			}
 		}
 
+	ApplyGoresBrush(vAdded, vErased, vCarved);
 	FlagModified(sx, sy, pTileLayer->m_Width, pTileLayer->m_Height);
+}
+
+void CLayerTiles::ApplyGoresBrush(const std::vector<ivec2> &vAdded, const std::vector<ivec2> &vErased, const std::vector<ivec2> &vCarved)
+{
+	const auto ForNeighbors = [&](ivec2 Pos, const auto &Visit) {
+		for(int y = std::max(0, Pos.y - 1); y <= std::min(m_Height - 1, Pos.y + 1); ++y)
+			for(int x = std::max(0, Pos.x - 1); x <= std::min(m_Width - 1, Pos.x + 1); ++x)
+				if(x != Pos.x || y != Pos.y)
+					Visit(x, y);
+	};
+	for(const ivec2 Pos : vAdded)
+	{
+		ForNeighbors(Pos, [&](int x, int y) {
+			if(GetTile(x, y).m_Index != TILE_AIR)
+				return;
+			SetTile(x, y, CTile{TILE_FREEZE});
+			m_GoresFreeze.emplace(x, y);
+			m_TilesHistory[y][x].m_CurrentGores = true;
+		});
+	}
+	for(const ivec2 Pos : vCarved)
+	{
+		ForNeighbors(Pos, [&](int x, int y) {
+			if(GetTile(x, y).m_Index == TILE_SOLID)
+				SetTile(x, y, CTile{TILE_FREEZE});
+		});
+	}
+	for(const ivec2 Pos : vErased)
+	{
+		ForNeighbors(Pos, [&](int x, int y) {
+			if(GetTile(x, y).m_Index != TILE_FREEZE || !IsGoresFreeze(x, y))
+				return;
+			bool HasSolid = false;
+			ForNeighbors(ivec2(x, y), [&](int nx, int ny) { HasSolid |= GetTile(nx, ny).m_Index == TILE_SOLID; });
+			if(!HasSolid)
+				SetTile(x, y, CTile{TILE_AIR});
+		});
+	}
 }
 
 void CLayerTiles::BrushFlipX()
 {
+	m_GoresFreeze.clear();
 	BrushFlipXImpl(m_pTiles);
 
 	if(m_HasTele || m_HasSpeedup || m_HasTune)
@@ -621,6 +696,7 @@ void CLayerTiles::BrushFlipX()
 
 void CLayerTiles::BrushFlipY()
 {
+	m_GoresFreeze.clear();
 	BrushFlipYImpl(m_pTiles);
 
 	if(m_HasTele || m_HasSpeedup || m_HasTune)
@@ -637,6 +713,7 @@ void CLayerTiles::BrushFlipY()
 
 void CLayerTiles::BrushRotate(float Amount)
 {
+	m_GoresFreeze.clear();
 	int Rotation = (round_to_int(360.0f * Amount / (pi * 2)) / 90) % 4; // 0=0°, 1=90°, 2=180°, 3=270°
 	if(Rotation < 0)
 		Rotation += 4;
@@ -685,6 +762,7 @@ const char *CLayerTiles::TypeName() const
 
 void CLayerTiles::Resize(int NewW, int NewH)
 {
+	m_GoresFreeze.clear();
 	CTile *pNewData = new CTile[NewW * NewH];
 	mem_zero(pNewData, (size_t)NewW * NewH * sizeof(CTile));
 
@@ -721,6 +799,7 @@ void CLayerTiles::Resize(int NewW, int NewH)
 
 void CLayerTiles::Shift(EShiftDirection Direction)
 {
+	m_GoresFreeze.clear();
 	ShiftImpl(m_pTiles, Direction, Map()->m_ShiftBy);
 }
 

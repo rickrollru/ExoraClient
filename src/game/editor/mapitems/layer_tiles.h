@@ -10,12 +10,15 @@
 #include <game/editor/enums.h>
 
 #include <map>
+#include <set>
 
 struct STileStateChange
 {
 	bool m_Changed;
 	CTile m_Previous;
 	CTile m_Current;
+	bool m_PreviousGores = false;
+	bool m_CurrentGores = false;
 };
 
 template<typename T>
@@ -114,7 +117,10 @@ public:
 
 	[[nodiscard]] virtual CTile GetTile(int x, int y) const;
 	virtual void SetTile(int x, int y, CTile Tile);
-	void SetTileIgnoreHistory(int x, int y, CTile Tile) const;
+	void SetTileIgnoreHistory(int x, int y, CTile Tile, bool GoresFreeze = false) const;
+	bool IsGoresFreeze(int x, int y) const { return m_GoresFreeze.count({x, y}) != 0; }
+	void ApplyGoresBrush(const std::vector<ivec2> &vAdded, const std::vector<ivec2> &vErased, const std::vector<ivec2> &vCarved);
+	mutable std::set<std::pair<int, int>> m_GoresFreeze;
 
 	virtual void Resize(int NewW, int NewH);
 	virtual void Shift(EShiftDirection Direction);

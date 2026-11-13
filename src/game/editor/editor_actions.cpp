@@ -155,7 +155,7 @@ void CEditorBrushDrawAction::Apply(bool Undo)
 				{
 					int x = Tile.first;
 					STileStateChange State = Tile.second;
-					pLayerTiles->SetTileIgnoreHistory(x, y, Undo ? State.m_Previous : State.m_Current);
+					pLayerTiles->SetTileIgnoreHistory(x, y, Undo ? State.m_Previous : State.m_Current, Undo ? State.m_PreviousGores : State.m_CurrentGores);
 				}
 			}
 		}
@@ -558,7 +558,7 @@ void CEditorActionTileChanges::Apply(bool Undo)
 		{
 			int x = Tile.first;
 			STileStateChange State = Tile.second;
-			pLayerTiles->SetTileIgnoreHistory(x, y, Undo ? State.m_Previous : State.m_Current);
+			pLayerTiles->SetTileIgnoreHistory(x, y, Undo ? State.m_Previous : State.m_Current, Undo ? State.m_PreviousGores : State.m_CurrentGores);
 		}
 	}
 

@@ -188,6 +188,8 @@ void CEditor::XcRenderToolStrip(CUIRect Strip)
 
 bool CEditor::XcDoMapTool(vec2 WorldPos, bool Inside)
 {
+	if(XcNewUi() && !m_ShowPicker && m_XcUi.DoQuadPen(WorldPos))
+		return true;
 	if(!XcPhotoshopLayout() || m_XcTool == XC_TOOL_BRUSH || m_ShowPicker)
 		return false;
 	// Ctrl + mouse keeps panning like in the classic editor
