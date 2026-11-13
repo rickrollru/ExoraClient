@@ -42,9 +42,15 @@ int CXcMenu::RenderStatusScreen(const char *pTitle, const char *pText, const cha
 	const STheme &t = Theme();
 	const float Width = (float)Graphics()->ScreenWidth();
 	const float Height = (float)Graphics()->ScreenHeight();
+	const bool CustomSelected = IsOnline() && g_Config.m_XcMenuBackgroundGame > 0 ? g_Config.m_XcMenuBackgroundGame == 4 : g_Config.m_XcMenuBackground == 3;
+	m_Backgrounds.Update(CustomSelected ? g_Config.m_XcMenuBgFile : "", Dt, g_Config.m_XcMenuBgGifSpeed / 100.0f);
 	const int Background = EffectiveBackground();
 	if(Background == BG_CUSTOM)
+	{
 		m_Backgrounds.Render(Width, Height, 1.0f);
+		if(g_Config.m_XcMenuBgBlur)
+			GameClient()->m_FxRenderer.BlurBackground(1.0f, true);
+	}
 
 	m_Backend.NewFrame(Dt, Ui()->UpdatedMousePos());
 	// the menu itself may be faded out right now
@@ -56,6 +62,8 @@ int CXcMenu::RenderStatusScreen(const char *pTitle, const char *pText, const cha
 		pDraw->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(ImVec4(0, 0, 0, 1), g_Config.m_XcMenuBgDim / 100.0f));
 	else if(Background == BG_MAP)
 		pDraw->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background, 0.35f)); // the menu map stays behind
+	else if(Client()->State() == IClient::STATE_OFFLINE && (CustomSelected || g_Config.m_XcMenuAnimStyle == 0))
+		pDraw->AddRectFilled(ImVec2(0, 0), Io.DisplaySize, Col(t.m_Background)); // skin textures may still be loading
 	else
 		RenderMenuBackground(pDraw, 1.0f); // no game to blur while connecting
 

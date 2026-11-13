@@ -71,8 +71,8 @@ void CXcMenu::OnInit()
 	}
 	m_Backend.Init(Graphics(), Input(), Storage());
 	m_Backgrounds.Init(Graphics(), Storage(), GameClient()->Engine());
-	// Start decoding the saved background before the first clock frame.
-	if(m_StartLocked && g_Config.m_XcMenuBackground == 3)
+	// Start decoding the saved background before the first loading frame.
+	if(g_Config.m_XcMenuBackground == 3)
 		m_Backgrounds.Update(g_Config.m_XcMenuBgFile, 0.0f, g_Config.m_XcMenuBgGifSpeed / 100.0f);
 	m_MapPreviews.Init(Graphics(), Storage(), GameClient()->Engine());
 
