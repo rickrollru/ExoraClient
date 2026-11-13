@@ -479,7 +479,6 @@ void CXcEditorUi::Render()
 		RenderThemes();
 		RenderAutomapBuilder();
 		RenderDepthDialog();
-		RenderDesignDialog();
 		if(!m_pAutomap)
 			RenderWiki(); // over the builder it is drawn inside the builder's window
 		RenderTuneZones();
@@ -933,8 +932,6 @@ float CXcEditorUi::RenderMenus(float x, float Mid)
 					E.m_GuiActive = false;
 				break;
 			case 3: // map
-				if(ImGui::MenuItem(Tr("Design map...")))
-					m_DesignRequest = true;
 				if(ImGui::MenuItem(Tr("Gores brush"), nullptr, E.m_XcGoresBrush))
 					ToggleGoresBrush();
 				ImGui::Separator();
@@ -2194,7 +2191,6 @@ void CXcEditorUi::RenderPalette()
 	vEntries.push_back({Tr("Quad Pen"), "Quad Pen polygon", Tr("Left click adds points, right click fills, Escape cancels"), false, m_QuadPen, [&]() {
 		ToggleQuadPen();
 	}});
-	vEntries.push_back({Tr("Design map..."), "Design map automapper", Tr("Preview a decorative layer generated from the Game layer"), false, false, [&]() { m_DesignRequest = true; }});
 	vEntries.push_back({Tr("Add tile art"), "Tile art image", Tr("Generate tile art from image."), false, false, [&]() { OpenArtImport(false); }});
 	vEntries.push_back({Tr("Add quad art"), "Quad art image", Tr("Generate quad art from image."), false, false, [&]() { OpenArtImport(true); }});
 	vEntries.push_back({Tr("Add a GIF animation..."), "Add gif", Tr("Put an animated gif on the map. It plays for every player, also in other clients."), false, false, [&]() { E.m_FileBrowser.ShowFileDialog(IStorage::TYPE_ALL, CFileBrowser::EFileType::IMAGE, "Add GIF animation", "Add", "mapres", "", CEditor::XcCallbackAddGif, &E); }});

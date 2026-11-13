@@ -3050,7 +3050,7 @@ if(CLIENT)
     components/xclient/editor/image_tools.cpp
     components/xclient/editor/image_tools.h
     components/xclient/editor/xeditor.cpp
-    components/xclient/editor/xeditor_design.cpp
+    components/xclient/editor/xeditor_pen.cpp
     components/xclient/editor/xeditor.h
     components/xclient/editor/xeditor_automap.cpp
     components/xclient/editor/xeditor_coop.cpp

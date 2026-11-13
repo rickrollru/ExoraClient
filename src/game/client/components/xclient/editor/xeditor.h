@@ -441,22 +441,6 @@ private:
 	bool m_QuadPen = false;
 	std::weak_ptr<class CLayer> m_pPenLayer;
 	std::vector<vec2> m_vPenPoints;
-	bool m_DesignRequest = false;
-	struct SDesignLayer
-	{
-		bool m_Enabled = true;
-		int m_Image = -1;
-		int m_Rule = 0;
-		ImVec4 m_Tint = ImVec4(1, 1, 1, 1);
-		std::shared_ptr<CLayerTiles> m_pPreview;
-	};
-	SDesignLayer m_aDesignLayers[3];
-	int m_DesignPreset = 0;
-	float m_DesignZoom = 1.0f;
-	ImVec2 m_DesignPan = {};
-	void RenderDesignDialog();
-	void RenderDesignCanvas(ImVec2 Size);
-	void BuildDesignPreview(int Material);
 	void MakeDepth(int Levels, int Step, int Dark, int Piece);
 
 public:
