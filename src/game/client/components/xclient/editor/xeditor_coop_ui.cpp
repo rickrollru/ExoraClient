@@ -41,7 +41,8 @@ void CXcEditorUi::ForgetMap()
 {
 	m_vPenPoints.clear();
 	m_pPenLayer.reset();
-	m_pDesignPreview.reset();
+	for(auto &Layer : m_aDesignLayers)
+		Layer.m_pPreview.reset();
 	m_pAdjustImage = nullptr;
 	std::fill(std::begin(m_aAdjust), std::end(m_aAdjust), 0);
 	m_vAdjustBackup.clear();

@@ -320,7 +320,6 @@ void CXcEditorUi::Render()
 	if(E.m_Mode == MODE_LAYERS)
 	{
 		E.MapView()->Render(m_View);
-		RenderDesignPreview();
 		RenderCoopTees();
 		// another map opened: the hints, the way and the heat map of the last one do not belong to it (a run on
 		// a map came with 312 hints left from another one)

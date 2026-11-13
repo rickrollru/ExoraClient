@@ -219,145 +219,281 @@ bool CXcEditorUi::DoQuadPen(vec2 WorldPos)
 	return true;
 }
 
-void CXcEditorUi::BuildDesignPreview()
+namespace
 {
-	m_pDesignPreview.reset();
+constexpr int s_aDesignTiles[] = {TILE_SOLID, TILE_NOHOOK, TILE_FREEZE};
+const char *const s_apDesignMaterials[] = {"Hookable", "Unhookable", "Freeze"};
+const char *const s_apDesignPresets[] = {"Meadow", "Stone", "Night"};
+const ImVec4 s_aaDesignColors[][3] = {
+	{{0.66f, 0.91f, 0.56f, 1}, {0.72f, 0.79f, 0.88f, 1}, {0.51f, 0.81f, 1, 0.65f}},
+	{{0.89f, 0.87f, 0.82f, 1}, {0.64f, 0.71f, 0.82f, 1}, {0.69f, 0.85f, 0.97f, 0.65f}},
+	{{0.63f, 0.58f, 0.89f, 1}, {0.54f, 0.62f, 0.79f, 1}, {0.47f, 0.63f, 1, 0.55f}},
+};
+
+bool HasDesignRules(const std::shared_ptr<CEditorImage> &pImage)
+{
+	return pImage->m_Width % 16 == 0 && pImage->m_Height % 16 == 0 && pImage->m_Automapper.ConfigNamesNum() > 0;
+}
+}
+
+void CXcEditorUi::BuildDesignPreview(int Material)
+{
+	auto &Layer = m_aDesignLayers[Material];
+	Layer.m_pPreview.reset();
 	CEditor &E = *m_pEditor;
 	CEditorMap *pMap = E.Map();
 	const auto &pGame = pMap->m_pGameLayer;
-	if(!pGame || m_DesignImage < 0 || m_DesignImage >= (int)pMap->m_vpImages.size())
+	if(!Layer.m_Enabled || !pGame || Layer.m_Image < 0 || Layer.m_Image >= (int)pMap->m_vpImages.size())
 		return;
 
 	char aPath[IO_MAX_PATH_LENGTH];
-	str_format(aPath, sizeof(aPath), "editor/automap/%s.rules", pMap->m_vpImages[m_DesignImage]->m_aName);
+	str_format(aPath, sizeof(aPath), "editor/automap/%s.rules", pMap->m_vpImages[Layer.m_Image]->m_aName);
 	char *pText = E.Storage()->ReadFileStr(aPath, IStorage::TYPE_ALL);
 	if(!pText)
 		return;
 	std::vector<XcAutomap::SConfig> vRules;
 	XcAutomap::Parse(pText, vRules);
 	free(pText);
-	if(m_DesignRule < 0 || m_DesignRule >= (int)vRules.size())
+	if(Layer.m_Rule < 0 || Layer.m_Rule >= (int)vRules.size())
 		return;
 
 	const int Width = pGame->m_Width, Height = pGame->m_Height;
 	std::vector<int> vIndices((size_t)Width * Height), vFlags, vWriters;
-	const int aMaterials[] = {TILE_SOLID, TILE_NOHOOK, TILE_FREEZE};
+	bool HasMaterial = false;
 	for(int y = 0; y < Height; ++y)
 		for(int x = 0; x < Width; ++x)
-			vIndices[(size_t)y * Width + x] = pGame->GetTile(x, y).m_Index == aMaterials[m_DesignMaterial] ? 1 : 0;
-	XcAutomap::Apply(vRules[m_DesignRule], Width, Height, vIndices, &vFlags, m_DesignSeed, &vWriters);
-	for(size_t i = 0; i < vIndices.size(); ++i)
-		if(vWriters[i] < 0 || vIndices[i] < 0 || vIndices[i] > 255)
-			vIndices[i] = 0;
-	if(std::none_of(vIndices.begin(), vIndices.end(), [](int Index) { return Index > 0 && Index <= 255; }))
+		{
+			const bool Match = pGame->GetTile(x, y).m_Index == s_aDesignTiles[Material];
+			HasMaterial |= Match;
+			vIndices[(size_t)y * Width + x] = Match ? 1 : 0;
+		}
+	if(!HasMaterial)
 		return;
-	m_pDesignPreview = std::make_shared<CLayerTiles>(pMap, Width, Height);
-	str_copy(m_pDesignPreview->m_aName, "Design");
-	m_pDesignPreview->m_Image = m_DesignImage;
+	XcAutomap::Apply(vRules[Layer.m_Rule], Width, Height, vIndices, &vFlags, 1, &vWriters);
+	auto pLayer = std::make_shared<CLayerTiles>(pMap, Width, Height);
+	pLayer->m_Image = Layer.m_Image;
+	str_copy(pLayer->m_aName, s_apDesignMaterials[Material]);
+	bool HasTiles = false;
 	for(int y = 0; y < Height; ++y)
 		for(int x = 0; x < Width; ++x)
 		{
 			const size_t Cell = (size_t)y * Width + x;
-			m_pDesignPreview->SetTileIgnoreHistory(x, y, CTile{(unsigned char)std::clamp(vIndices[Cell], 0, 255), (unsigned char)vFlags[Cell]});
+			if(vWriters[Cell] >= 0 && vIndices[Cell] > 0 && vIndices[Cell] <= 255)
+			{
+				pLayer->SetTileIgnoreHistory(x, y, CTile{(unsigned char)vIndices[Cell], (unsigned char)vFlags[Cell]});
+				HasTiles = true;
+			}
 		}
+	if(HasTiles)
+		Layer.m_pPreview = std::move(pLayer);
 }
 
-void CXcEditorUi::RenderDesignPreview()
+void CXcEditorUi::RenderDesignCanvas(ImVec2 Size)
 {
-	if(!m_pDesignPreview || m_pDesignPreview->Map() != m_pEditor->Map())
+	const CEditorMap *pMap = m_pEditor->Map();
+	const ImVec2 Min = ImGui::GetCursorScreenPos();
+	const ImVec2 Max(Min.x + Size.x, Min.y + Size.y);
+	ImGui::InvisibleButton("##design_canvas", Size, ImGuiButtonFlags_MouseButtonMiddle);
+	auto *pDraw = ImGui::GetWindowDrawList();
+	pDraw->AddRectFilled(Min, Max, Col(Theme().m_Background), S(10.0f));
+	if(!pMap->m_pGameLayer)
 		return;
-	CEditor &E = *m_pEditor;
-	const CScreenRect Saved = E.Graphics()->GetScreen();
-	E.Map()->m_pGameGroup->MapScreen();
-	m_pDesignPreview->Render(E.Map());
-	E.Graphics()->MapScreen(Saved);
+	const auto &Game = *pMap->m_pGameLayer;
+	const ImGuiIO &Io = ImGui::GetIO();
+	if(ImGui::IsItemHovered() && Io.MouseWheel != 0)
+		m_DesignZoom = std::clamp(m_DesignZoom * std::pow(1.25f, Io.MouseWheel), 1.0f, 64.0f);
+	if(ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+	{
+		m_DesignPan.x += Io.MouseDelta.x;
+		m_DesignPan.y += Io.MouseDelta.y;
+	}
+	const float Tile = std::max(0.05f, std::min(Size.x / Game.m_Width, Size.y / Game.m_Height) * 0.92f * m_DesignZoom);
+	const ImVec2 Origin(Min.x + (Size.x - Game.m_Width * Tile) * 0.5f + m_DesignPan.x,
+		Min.y + (Size.y - Game.m_Height * Tile) * 0.5f + m_DesignPan.y);
+	const int X0 = std::clamp((int)std::floor((Min.x - Origin.x) / Tile), 0, Game.m_Width);
+	const int Y0 = std::clamp((int)std::floor((Min.y - Origin.y) / Tile), 0, Game.m_Height);
+	const int X1 = std::clamp((int)std::ceil((Max.x - Origin.x) / Tile), 0, Game.m_Width);
+	const int Y1 = std::clamp((int)std::ceil((Max.y - Origin.y) / Tile), 0, Game.m_Height);
+	// Sample very large maps at overview scale to bound the number of preview vertices.
+	const int Step = std::max(1, (int)std::ceil(std::sqrt((double)(X1 - X0) * (Y1 - Y0) / 12000.0)));
+	pDraw->PushClipRect(Min, Max, true);
+	for(int y = Y0; y < Y1; y += Step)
+		for(int x = X0; x < X1; x += Step)
+		{
+			const int Index = Game.GetTile(x, y).m_Index;
+			if(Index != TILE_SOLID && Index != TILE_NOHOOK && Index != TILE_FREEZE)
+				continue;
+			const ImVec2 P(Origin.x + x * Tile, Origin.y + y * Tile);
+			pDraw->AddRectFilled(P, ImVec2(P.x + Tile * Step, P.y + Tile * Step), Col(Theme().m_TextMuted, 0.23f));
+		}
+	for(const auto &Layer : m_aDesignLayers)
+	{
+		if(!Layer.m_pPreview || Layer.m_Image < 0 || Layer.m_Image >= (int)pMap->m_vpImages.size())
+			continue;
+		const auto Texture = (ImTextureID)(uintptr_t)m_Gui.TextureId(pMap->m_vpImages[Layer.m_Image]->m_Texture);
+		const ImU32 Tint = ImGui::ColorConvertFloat4ToU32(Layer.m_Tint);
+		for(int y = Y0; y < Y1; y += Step)
+			for(int x = X0; x < X1; x += Step)
+			{
+				const CTile Data = Layer.m_pPreview->GetTile(x, y);
+				if(Data.m_Index == 0)
+					continue;
+				float aU[4], aV[4];
+				XcAutomap::TileUvs(Data.m_Flags, aU, aV);
+				ImVec2 aUv[4];
+				for(int i = 0; i < 4; ++i)
+					aUv[i] = ImVec2((Data.m_Index % 16 + aU[i]) / 16.0f, (Data.m_Index / 16 + aV[i]) / 16.0f);
+				const ImVec2 P(Origin.x + x * Tile, Origin.y + y * Tile);
+				const float Span = Tile * Step;
+				pDraw->AddImageQuad(Texture, P, ImVec2(P.x + Span, P.y), ImVec2(P.x + Span, P.y + Span), ImVec2(P.x, P.y + Span),
+					aUv[0], aUv[1], aUv[2], aUv[3], Tint);
+			}
+	}
+	pDraw->PopClipRect();
 }
 
 void CXcEditorUi::RenderDesignDialog()
 {
+	CEditorMap *pMap = m_pEditor->Map();
+	const auto LoadPreset = [&](int Preset) {
+		m_DesignPreset = Preset;
+		std::vector<int> vImages;
+		for(int i = 0; i < (int)pMap->m_vpImages.size(); ++i)
+			if(HasDesignRules(pMap->m_vpImages[i]))
+				vImages.push_back(i);
+		for(int i = 0; i < 3; ++i)
+		{
+			auto &Layer = m_aDesignLayers[i];
+			Layer.m_Enabled = true;
+			Layer.m_Image = vImages.empty() ? -1 : vImages[std::min(Preset, (int)vImages.size() - 1)];
+			Layer.m_Rule = 0;
+			Layer.m_Tint = s_aaDesignColors[Preset][i];
+			BuildDesignPreview(i);
+		}
+	};
+
+	const ImVec2 Display = ImGui::GetIO().DisplaySize;
+	const ImVec2 WindowSize(std::min(S(1160.0f), Display.x * 0.97f), std::min(S(700.0f), Display.y * 0.94f));
 	if(m_DesignRequest)
 	{
 		m_DesignRequest = false;
-		m_pDesignPreview.reset();
+		m_DesignZoom = 1.0f;
+		m_DesignPan = {};
+		LoadPreset(0);
 		ImGui::OpenPopup("##xe_design");
-		ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - S(20.0f), S(70.0f)), ImGuiCond_Appearing, ImVec2(1.0f, 0.0f));
 	}
-	if(!ImGui::BeginPopupModal("##xe_design", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+	ImGui::SetNextWindowPos(ImVec2(Display.x * 0.5f, Display.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(WindowSize);
+	if(!ImGui::BeginPopupModal("##xe_design", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar))
 		return;
 
-	CEditorMap *pMap = m_pEditor->Map();
 	Header(Tr("Design map..."));
-	Description(Tr("Choose a tileset and preview a decorative layer. The Game layer stays unchanged."), S(380.0f));
-	const auto HasRules = [](const auto &pImage) { return pImage->m_Width % 16 == 0 && pImage->m_Height % 16 == 0 && pImage->m_Automapper.ConfigNamesNum() > 0; };
-	if(m_DesignImage >= (int)pMap->m_vpImages.size() || (m_DesignImage >= 0 && !HasRules(pMap->m_vpImages[m_DesignImage])))
-		m_DesignImage = -1;
-	if(m_DesignImage < 0)
+	const float Width = ImGui::GetContentRegionAvail().x;
+	const float Height = std::max(S(100.0f), ImGui::GetContentRegionAvail().y - S(48.0f));
+	const float Gap = ImGui::GetStyle().ItemSpacing.x;
+	const float Left = Width * 0.18f, Right = Width * 0.27f;
+	ImGui::BeginChild("##design_presets", ImVec2(Left, Height));
+	Title(Tr("Presets"));
+	for(int i = 0; i < 3; ++i)
 	{
-		const auto It = std::find_if(pMap->m_vpImages.begin(), pMap->m_vpImages.end(), HasRules);
-		if(It != pMap->m_vpImages.end())
-			m_DesignImage = It - pMap->m_vpImages.begin();
+		ImGui::PushID(i);
+		const ImVec2 P = ImGui::GetCursorScreenPos();
+		auto *pDraw = ImGui::GetWindowDrawList();
+		const float CardWidth = ImGui::GetContentRegionAvail().x;
+		const float CardHeight = S(55.0f);
+		if(ImGui::InvisibleButton("##preset", ImVec2(CardWidth, CardHeight)))
+			LoadPreset(i);
+		pDraw->AddRectFilled(P, ImVec2(P.x + CardWidth, P.y + CardHeight), Col(Theme().m_Card), S(8.0f));
+		if(i == m_DesignPreset || ImGui::IsItemHovered())
+			pDraw->AddRect(P, ImVec2(P.x + CardWidth, P.y + CardHeight), Col(Theme().m_Accent), S(8.0f));
+		for(int j = 0; j < 3; ++j)
+		{
+			const float X = P.x + S(8.0f) + j * (CardWidth - S(16.0f)) / 3.0f;
+			pDraw->AddRectFilled(ImVec2(X, P.y + S(8.0f)), ImVec2(X + (CardWidth - S(20.0f)) / 3.0f, P.y + S(25.0f)), Col(s_aaDesignColors[i][j]), S(3.0f));
+		}
+		pDraw->AddText(ImVec2(P.x + S(8.0f), P.y + S(32.0f)), Col(Theme().m_Text), Tr(s_apDesignPresets[i]));
+		ImGui::PopID();
 	}
-	if(m_DesignImage >= 0 && pMap->m_pGameLayer && pMap->m_pGameGroup)
+	ImGui::EndChild();
+	ImGui::SameLine();
+	RenderDesignCanvas(ImVec2(Width - Left - Right - Gap * 2.0f, Height));
+	ImGui::SameLine();
+	ImGui::BeginChild("##design_customize", ImVec2(Right, Height));
+	Title(Tr("Customize"));
+	if(std::none_of(pMap->m_vpImages.begin(), pMap->m_vpImages.end(), HasDesignRules))
+		Description(Tr("Add a tileset with automapper rules first."));
+	for(int i = 0; i < 3; ++i)
 	{
-		ImGui::SetNextItemWidth(S(320.0f));
-		if(ImGui::BeginCombo(Tr("Tileset"), pMap->m_vpImages[m_DesignImage]->m_aName))
+		ImGui::PushID(i);
+		auto &Layer = m_aDesignLayers[i];
+		bool Rebuild = ImGui::Checkbox(Tr(s_apDesignMaterials[i]), &Layer.m_Enabled);
+		if(Layer.m_Enabled)
 		{
-			for(int i = 0; i < (int)pMap->m_vpImages.size(); ++i)
-				if(HasRules(pMap->m_vpImages[i]) && ImGui::Selectable(pMap->m_vpImages[i]->m_aName, i == m_DesignImage))
-				{
-					m_DesignImage = i;
-					m_DesignRule = 0;
-					m_pDesignPreview.reset();
-				}
-			ImGui::EndCombo();
-		}
-		const auto &Mapper = pMap->m_vpImages[m_DesignImage]->m_Automapper;
-		m_DesignRule = std::clamp(m_DesignRule, 0, Mapper.ConfigNamesNum() - 1);
-		ImGui::SetNextItemWidth(S(320.0f));
-		if(ImGui::BeginCombo(Tr("Style"), Mapper.GetConfigName(m_DesignRule)))
-		{
-			for(int i = 0; i < Mapper.ConfigNamesNum(); ++i)
-				if(ImGui::Selectable(Mapper.GetConfigName(i), i == m_DesignRule))
-				{
-					m_DesignRule = i;
-					m_pDesignPreview.reset();
-				}
-			ImGui::EndCombo();
-		}
-		const char *apMaterials[] = {Tr("Hookable"), Tr("Unhookable"), Tr("Freeze")};
-		if(ImGui::Combo(Tr("Game tiles"), &m_DesignMaterial, apMaterials, 3))
-			m_pDesignPreview.reset();
-		if(ImGui::InputInt(Tr("Seed"), &m_DesignSeed))
-			m_pDesignPreview.reset();
-		ImGui::ColorEdit4(Tr("Color"), &m_DesignTint.x);
-		if(Button(Tr("Preview"), false, S(130.0f)))
-		{
-			BuildDesignPreview();
-			if(!m_pDesignPreview)
-				ShowMessage(Tr("This style did not produce any tiles."), Tr("Design map..."));
-		}
-		if(m_pDesignPreview)
-		{
-			const ImU32 Color = ImGui::ColorConvertFloat4ToU32(m_DesignTint);
-			m_pDesignPreview->m_Color = {(int)(Color & 255), (int)((Color >> 8) & 255), (int)((Color >> 16) & 255), (int)((Color >> 24) & 255)};
-			ImGui::SameLine();
-			if(Button(Tr("Apply"), true, S(130.0f)))
+			const bool ValidImage = Layer.m_Image >= 0 && Layer.m_Image < (int)pMap->m_vpImages.size();
+			ImGui::TextUnformatted(Tr("Tileset"));
+			ImGui::SetNextItemWidth(-1.0f);
+			if(ImGui::BeginCombo("##tileset", ValidImage ? pMap->m_vpImages[Layer.m_Image]->m_aName : "-"))
 			{
-				const auto &pGroup = pMap->m_pGameGroup;
-				const int Group = std::find(pMap->m_vpGroups.begin(), pMap->m_vpGroups.end(), pGroup) - pMap->m_vpGroups.begin();
-				pGroup->AddLayer(m_pDesignPreview);
-				pMap->m_EditorHistory.RecordAction(std::make_shared<CEditorActionAddLayer>(pMap, Group, pGroup->m_vpLayers.size() - 1), "Design map");
-				m_pDesignPreview.reset();
-				ImGui::CloseCurrentPopup();
+				for(int j = 0; j < (int)pMap->m_vpImages.size(); ++j)
+					if(HasDesignRules(pMap->m_vpImages[j]) && ImGui::Selectable(pMap->m_vpImages[j]->m_aName, j == Layer.m_Image))
+					{
+						Layer.m_Image = j;
+						Layer.m_Rule = 0;
+						Rebuild = true;
+					}
+				ImGui::EndCombo();
 			}
+			if(Layer.m_Image >= 0 && Layer.m_Image < (int)pMap->m_vpImages.size())
+			{
+				const auto &Mapper = pMap->m_vpImages[Layer.m_Image]->m_Automapper;
+				ImGui::TextUnformatted(Tr("Style"));
+				ImGui::SetNextItemWidth(-1.0f);
+				if(Mapper.ConfigNamesNum() > 0 && ImGui::BeginCombo("##style", Mapper.GetConfigName(Layer.m_Rule)))
+				{
+					for(int j = 0; j < Mapper.ConfigNamesNum(); ++j)
+						if(ImGui::Selectable(Mapper.GetConfigName(j), j == Layer.m_Rule))
+						{
+							Layer.m_Rule = j;
+							Rebuild = true;
+						}
+					ImGui::EndCombo();
+				}
+			}
+			ImGui::ColorEdit4(Tr("Color"), &Layer.m_Tint.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
 		}
+		if(Rebuild)
+			BuildDesignPreview(i);
+		ImGui::Separator();
+		ImGui::PopID();
 	}
-	else
-		Description(Tr("Add a tileset with automapper rules first."), S(380.0f));
+	ImGui::EndChild();
 
-	if(Button(Tr("Cancel"), false, S(130.0f)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+	const bool Cancel = Button(Tr("Cancel"), false, S(120.0f)) || ImGui::IsKeyPressed(ImGuiKey_Escape);
+	ImGui::SameLine();
+	const bool HasPreview = std::any_of(std::begin(m_aDesignLayers), std::end(m_aDesignLayers), [](const auto &Layer) { return Layer.m_pPreview != nullptr; });
+	ImGui::BeginDisabled(!HasPreview || !pMap->m_pGameGroup);
+	const bool Apply = Button(Tr("Apply"), true, S(120.0f));
+	ImGui::EndDisabled();
+	if(Apply && !Cancel)
 	{
-		m_pDesignPreview.reset();
+		const auto &pGroup = pMap->m_pGameGroup;
+		const int Group = std::find(pMap->m_vpGroups.begin(), pMap->m_vpGroups.end(), pGroup) - pMap->m_vpGroups.begin();
+		pMap->m_EditorHistory.BeginBulk();
+		for(auto &Layer : m_aDesignLayers)
+		{
+			if(!Layer.m_pPreview)
+				continue;
+			const ImU32 Color = ImGui::ColorConvertFloat4ToU32(Layer.m_Tint);
+			Layer.m_pPreview->m_Color = {(int)(Color & 255), (int)((Color >> 8) & 255), (int)((Color >> 16) & 255), (int)((Color >> 24) & 255)};
+			pGroup->AddLayer(Layer.m_pPreview);
+			pMap->m_EditorHistory.RecordAction(std::make_shared<CEditorActionAddLayer>(pMap, Group, pGroup->m_vpLayers.size() - 1));
+		}
+		pMap->m_EditorHistory.EndBulk("Design map");
+	}
+	if(Cancel || Apply)
+	{
+		for(auto &Layer : m_aDesignLayers)
+			Layer.m_pPreview.reset();
 		ImGui::CloseCurrentPopup();
 	}
 	ImGui::EndPopup();
