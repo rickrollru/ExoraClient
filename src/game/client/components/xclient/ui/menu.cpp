@@ -156,6 +156,8 @@ void CXcMenu::SetActive(bool Active)
 	m_BindWaiting = -1;
 	if(Active)
 		GameClient()->m_Menus.SetActive(false);
+	else
+		GameClient()->m_XcHud.CloseMenuIsland();
 }
 
 void CXcMenu::OpenAt(int Page, int Section)

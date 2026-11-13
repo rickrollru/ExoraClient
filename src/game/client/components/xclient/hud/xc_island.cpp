@@ -105,7 +105,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 	}
 	const bool Note = IslandHas('n') && !m_Editing && Now - m_IslandNoteStart < 2.8f && m_IslandNoteStart > 0.0f;
 	// the player: a few seconds for a new track, or kept open (the bind, a click on the island in the HUD editor)
-	const bool Player = !Note && IslandHas('m') && (Music.HasTrack() || m_Editing) && (m_IslandPlayerPinned || Now < m_IslandPlayerUntil);
+	const bool Player = !Note && IslandHas('m') && (Music.HasTrack() || m_Editing) && (m_IslandPlayerPinned || m_IslandPlayerMenuPinned || Now < m_IslandPlayerUntil);
 	m_IslandOverControl = false;
 	const bool Clicked = OverMenu ? m_IslandMenuPressed : ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 	if(OverMenu)
@@ -541,7 +541,8 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 
 	if(OverMenu && Clicked && !m_IslandOverControl && !Note && IslandHas('m') && Music.HasTrack())
 	{
-		m_IslandPlayerPinned = !Player;
+		m_IslandPlayerPinned = false;
+		m_IslandPlayerMenuPinned = !Player;
 		m_IslandPlayerUntil = -1.0f;
 		PlayUiSound(SOUND_CLICK);
 	}

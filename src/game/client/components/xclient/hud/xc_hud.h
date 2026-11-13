@@ -95,6 +95,7 @@ public:
 	// the menu is open in game: the island is drawn over it (Open: how far the menu is open)
 	void RenderIslandOverMenu(float Open);
 	bool OnIslandMenuInput(const IInput::CEvent &Event);
+	void CloseMenuIsland();
 	bool IslandTakesNotes() const;
 
 private:
@@ -214,6 +215,7 @@ private:
 	std::string m_IslandTrack;
 	float m_IslandPlayerUntil = -1.0f;
 	bool m_IslandPlayerPinned = false;
+	bool m_IslandPlayerMenuPinned = false;
 	char m_aIslandNoteTitle[128] = {};
 	char m_aIslandNoteSub[128] = {};
 	int m_IslandNoteKind = 0;

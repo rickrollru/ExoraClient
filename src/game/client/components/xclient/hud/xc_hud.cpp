@@ -1129,6 +1129,16 @@ void CXcHud::OnRender()
 	}
 }
 
+void CXcHud::CloseMenuIsland()
+{
+	m_IslandMenuPressed = false;
+	if(m_IslandPlayerMenuPinned)
+	{
+		m_IslandPlayerMenuPinned = false;
+		m_IslandPlayerUntil = -1.0f;
+	}
+}
+
 bool CXcHud::OnIslandMenuInput(const IInput::CEvent &Event)
 {
 	if(Event.m_Key != KEY_MOUSE_1 || !(Event.m_Flags & IInput::FLAG_PRESS) ||
