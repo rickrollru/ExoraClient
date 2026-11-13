@@ -51,8 +51,8 @@ void CAccessory::UpdateState(int ClientId, vec2 Pos, float Dt)
 		return;
 	}
 
-	// lean into the running direction
-	const float TargetTilt = std::clamp(Vel.x / 2000.0f, -0.3f, 0.3f) * Physics;
+	// Lean against horizontal movement.
+	const float TargetTilt = std::clamp(-Vel.x / 2000.0f, -0.3f, 0.3f) * Physics;
 	State.m_Tilt = mix(State.m_Tilt, TargetTilt, SmoothFactor(8.0f, Dt));
 
 	// a jump or a landing pushes the accessory down, then it springs back
