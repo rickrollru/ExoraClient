@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <map>
 #include <vector>
 
 CQuadArt::CQuadArt(CQuadArtParameters Parameters, CImageInfo &&Img) :
@@ -185,13 +186,30 @@ void CEditorMap::AddQuadArt(CImageInfo &&Image, const CQuadArtParameters &Parame
 	pGroup->m_ClipH = std::ceil(Image.m_Height * 1.f * Parameters.m_QuadPixelSize / Parameters.m_ImagePixelSize) + 2;
 	pGroup->m_ClipW = std::ceil(Image.m_Width * 1.f * Parameters.m_QuadPixelSize / Parameters.m_ImagePixelSize) + 2;
 
-	std::shared_ptr<CLayerQuads> pLayer = std::make_shared<CLayerQuads>(this);
-	str_copy(pLayer->m_aName, aQuadArtName);
-	pGroup->AddLayer(pLayer);
-	pLayer->m_Flags |= LAYERFLAG_DETAIL;
-
+	// Keep exact RGBA colors separate, including different opacity levels.
+	auto pConverted = std::make_shared<CLayerQuads>(this);
 	CQuadArt QuadArt(Parameters, std::move(Image));
-	QuadArt.Create(pLayer);
+	QuadArt.Create(pConverted);
+
+	std::map<std::array<int, 4>, std::shared_ptr<CLayerQuads>> LayersByColor;
+	for(const CQuad &Quad : pConverted->m_vQuads)
+	{
+		const CColor &Color = Quad.m_aColors[0];
+		const std::array<int, 4> Key = {Color.r, Color.g, Color.b, Color.a};
+		auto [It, Inserted] = LayersByColor.try_emplace(Key);
+		if(Inserted)
+		{
+			auto pLayer = std::make_shared<CLayerQuads>(this);
+			if(Color.a == 255)
+				str_format(pLayer->m_aName, sizeof(pLayer->m_aName), "#%02X%02X%02X", (unsigned)Color.r, (unsigned)Color.g, (unsigned)Color.b);
+			else
+				str_format(pLayer->m_aName, sizeof(pLayer->m_aName), "#%02X%02X%02X%02X", (unsigned)Color.r, (unsigned)Color.g, (unsigned)Color.b, (unsigned)Color.a);
+			pLayer->m_Flags |= LAYERFLAG_DETAIL;
+			pGroup->AddLayer(pLayer);
+			It->second = std::move(pLayer);
+		}
+		It->second->m_vQuads.push_back(Quad);
+	}
 
 	if(!IgnoreHistory)
 		m_EditorHistory.RecordAction(std::make_shared<CEditorActionQuadArt>(this, pGroup));
