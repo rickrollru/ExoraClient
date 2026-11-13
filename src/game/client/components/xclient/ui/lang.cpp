@@ -1008,6 +1008,7 @@ namespace XcUi
 			{"Camera shake near explosions", "Тряска камеры у взрывов"},
 			{"Hits on blocks", "Попадания по блокам"},
 			{"Song lyrics", "Текст песни"},
+			{"Lyrics unavailable", "Текст песни недоступен"},
 			{"The words of the song in the player, in time with it: a plate on the screen and words on the map", "Слова песни из плеера в такт с ней: плашка на экране и слова на карте"},
 			{"Where", "Где"},
 			{"Plate", "Плашка"},

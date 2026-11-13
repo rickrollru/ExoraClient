@@ -233,9 +233,10 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 
 	// the player
 	const float PlayerW = 380.0f * U;
-	const bool ShowLyrics = pLines && !Approx && g_Config.m_XcHudIslandPlayerLyrics;
+	const bool ShowLyrics = g_Config.m_XcHudIslandPlayerLyrics;
+	const bool HasLyrics = pLines && !pLines->empty();
 	const float ControlsH = 44.0f * U;
-	const float PlayerH = 16.0f * U + 56.0f * U + 14.0f * U + 12.0f * U + (ShowLyrics ? 14.0f * U + 5.0f * 22.0f * U : 0.0f) + 10.0f * U + ControlsH + 10.0f * U;
+	const float PlayerH = 16.0f * U + 56.0f * U + 14.0f * U + 12.0f * U + (ShowLyrics ? 14.0f * U + (HasLyrics ? 5.0f : 1.0f) * 22.0f * U : 0.0f) + 10.0f * U + ControlsH + 10.0f * U;
 
 	const float TargetW = Mode == 1 ? NoteW : (Mode == 2 ? PlayerW : CompactW);
 	const float TargetH = Mode == 2 ? PlayerH : CompactH;
@@ -451,7 +452,13 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 		}
 		y += 12.0f * U;
 		// the lyrics: five lines, the one sung now bright in the middle, the list rolls softly
-		if(ShowLyrics)
+		if(ShowLyrics && !HasLyrics)
+		{
+			y += 14.0f * U;
+			pDraw->AddText(pLabel, 13.0f * U, ImVec2(L, y), Col(t.m_TextMuted, a), Tr("Lyrics unavailable"));
+			y += 22.0f * U;
+		}
+		else if(ShowLyrics)
 		{
 			y += 14.0f * U;
 			const float LineH = 22.0f * U;
@@ -486,7 +493,7 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 			pDraw->PopClipRect();
 			y += 5.0f * 22.0f * U;
 		}
-		// the buttons: the line of the song in the small island, back, play / pause, forward, close
+		// Player controls: lyrics, previous, play/pause, next.
 		{
 			y += 10.0f * U;
 			const float MidY = y + ControlsH * 0.5f;
@@ -504,7 +511,6 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 				{XC_ICON_SKIP_BACK, Mid - 62.0f * U, 17.0f * U, 1},
 				{Playing ? XC_ICON_PAUSE : XC_ICON_PLAY, Mid, 24.0f * U, 2},
 				{XC_ICON_SKIP_FORWARD, Mid + 62.0f * U, 17.0f * U, 3},
-				{"", Right - 18.0f * U, 13.0f * U, 4},
 			};
 			for(const SButton &Button : aButtons)
 			{
@@ -516,23 +522,6 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 					pDraw->AddCircleFilled(ImVec2(Button.m_X, MidY), R, Col(ImVec4(1, 1, 1, 0.08f), a), 24);
 				}
 				const bool On = Button.m_Action != 0 || g_Config.m_XcHudIslandPlayerLyrics;
-				if(Button.m_Action == 4)
-				{
-					// the app the music comes from: a round badge with its first letter
-					const char *pApp = Music.AppName();
-					char aLetter[8] = "?";
-					if(pApp && pApp[0])
-					{
-						const int Len = str_utf8_forward(pApp, 0);
-						str_copy(aLetter, pApp, std::min((int)sizeof(aLetter), Len + 1));
-					}
-					pDraw->AddCircleFilled(ImVec2(Button.m_X, MidY), 11.0f * U, Col(t.m_Accent, a), 24);
-					const ImVec2 LD = pTitle->CalcTextSizeA(12.0f * U, FLT_MAX, 0.0f, aLetter);
-					pDraw->AddText(pTitle, 12.0f * U, ImVec2(Button.m_X - LD.x * 0.5f, MidY - LD.y * 0.5f), Col(t.m_OnAccent, a), aLetter);
-					if(Hover && pApp && pApp[0])
-						ImGui::SetTooltip("%s", pApp);
-					continue;
-				}
 				DrawIcon(pDraw, pTitle, Button.m_Size, ImVec2(Button.m_X, MidY), Col(Button.m_Action == 0 ? (On ? t.m_TextSecondary : t.m_TextMuted) : t.m_Text, a), Button.m_pIcon);
 				if(!Hover || !Clicked)
 					continue;
@@ -544,10 +533,6 @@ void CXcHud::RenderIsland(ImDrawList *pDraw, float Alpha, float Dt, bool OverMen
 				case 1: MusicCtl.Previous(); break;
 				case 2: MusicCtl.PlayPause(); break;
 				case 3: MusicCtl.Next(); break;
-				default:
-					m_IslandPlayerPinned = false;
-					m_IslandPlayerUntil = -1.0f;
-					break;
 				}
 			}
 		}
