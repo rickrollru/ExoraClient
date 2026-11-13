@@ -62,7 +62,7 @@ const char *CXcHud::ElementIcon(int Index)
 void CXcHud::UpdateEditorMotion(float Dt)
 {
 	const ImVec2 Screen((float)Graphics()->ScreenWidth(), (float)Graphics()->ScreenHeight());
-	const float Stiff = AnimationSpeed() > 0.0f ? 230.0f * AnimationSpeed() * AnimationSpeed() : 0.0f;
+	const float Stiff = AnimationSpeed() > 0.0f ? 400.0f * AnimationSpeed() * AnimationSpeed() : 0.0f;
 	for(int i = 0; i < NUM_ELEMENTS; i++)
 	{
 		const SElementConfig Config = Element(i);
@@ -75,7 +75,7 @@ void CXcHud::UpdateEditorMotion(float Dt)
 			m_aLean[i] = 0.0f;
 			continue;
 		}
-		const float Damp = 2.0f * std::sqrt(Stiff) * 0.85f;
+		const float Damp = 2.0f * std::sqrt(Stiff);
 		for(int a = 0; a < 2; a++)
 		{
 			const float T = a ? Target.y : Target.x;
@@ -89,7 +89,7 @@ void CXcHud::UpdateEditorMotion(float Dt)
 			}
 		}
 		// it leans with its speed while held, and stands up again after
-		const float LeanTarget = i == m_Dragging ? std::clamp(m_aaDrawVel[i][0] * 0.0035f, -0.12f, 0.12f) : 0.0f;
+		const float LeanTarget = i == m_Dragging ? std::clamp(m_aaDrawVel[i][0] * 0.0002f, -0.055f, 0.055f) : 0.0f;
 		m_aLean[i] = Ease(m_aLean[i], LeanTarget, 14.0f, Dt);
 		m_aLift[i] = Ease(m_aLift[i], i == m_Dragging ? 1.0f : 0.0f, 16.0f, Dt);
 		m_aPop[i] = Ease(m_aPop[i], 1.0f, 10.0f, Dt);
@@ -103,7 +103,7 @@ void CXcHud::TransformElement(ImDrawList *pDraw, int VtxStart, int Index)
 	if(!m_Editing)
 		return;
 	const float Angle = m_aLean[Index];
-	const float Scale = (1.0f + 0.04f * m_aLift[Index]) * (0.6f + 0.4f * m_aPop[Index]);
+	const float Scale = (1.0f + 0.025f * m_aLift[Index]) * (0.6f + 0.4f * m_aPop[Index]);
 	if(std::abs(Angle) < 0.0005f && std::abs(Scale - 1.0f) < 0.0005f)
 		return;
 	const ImVec2 C((m_aaRects[Index][0] + m_aaRects[Index][2]) * 0.5f, (m_aaRects[Index][1] + m_aaRects[Index][3]) * 0.5f);
@@ -227,9 +227,8 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 		m_Dragging = Hovered;
 		m_aDragStart[0] = Io.MousePos.x;
 		m_aDragStart[1] = Io.MousePos.y;
-		const SElementConfig Config = Element(Hovered);
-		m_aDragOffset[0] = *Config.m_pX / 1000.0f * Screen.x - Io.MousePos.x;
-		m_aDragOffset[1] = *Config.m_pY / 1000.0f * Screen.y - Io.MousePos.y;
+		m_aDragOffset[0] = m_aaDrawPos[Hovered][0] - Io.MousePos.x;
+		m_aDragOffset[1] = m_aaDrawPos[Hovered][1] - Io.MousePos.y;
 	}
 	if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{
@@ -292,10 +291,11 @@ void CXcHud::RenderEditor(ImDrawList *pDraw)
 			continue;
 		const bool Active = i == m_Dragging || i == Hovered;
 		m_aFrame[i] = Ease(m_aFrame[i], Active ? 1.0f : 0.0f, 14.0f, Dt);
-		const float Lift = m_aLift[i] * 3.0f * U;
-		const ImVec2 Min(m_aaRects[i][0] - 6.0f * U, m_aaRects[i][1] - 6.0f * U - Lift);
-		const ImVec2 Max(m_aaRects[i][2] + 6.0f * U, m_aaRects[i][3] + 6.0f * U - Lift);
+		const ImVec2 Min(m_aaRects[i][0] - 6.0f * U, m_aaRects[i][1] - 6.0f * U);
+		const ImVec2 Max(m_aaRects[i][2] + 6.0f * U, m_aaRects[i][3] + 6.0f * U);
+		const int FrameVtxStart = pDraw->VtxBuffer.Size;
 		pDraw->AddRect(Min, Max, Col(Mix(ImVec4(1, 1, 1, 0.16f), ImVec4(t.m_Accent.x, t.m_Accent.y, t.m_Accent.z, 0.85f), m_aFrame[i]), Open * m_aPop[i]), 16.0f * U, 0, 1.0f + m_aFrame[i]);
+		TransformElement(pDraw, FrameVtxStart, i);
 		// the plate: an icon in the accent and the name, above the frame (below it at the top of the screen)
 		const char *pName = Tr(Config.m_pName);
 		const float NameSize = 12.5f * U;
