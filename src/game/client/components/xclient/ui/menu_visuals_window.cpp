@@ -405,68 +405,9 @@ void CXcMenu::RenderPanelWindow(float Dt, bool SettingsKind)
 			m_vVisCards = std::move(vCards);
 		}
 	}
-	const bool OverRail = !SettingsKind && ImGui::IsMouseHoveringRect(Min, ImVec2(Min.x + RailW, Max.y));
 	ResizeGrip(pDraw, Max);
 	ImGui::PopFont();
 	ImGui::End();
-
-	// the names of the sections slide out of the rail under the mouse: to the left of the window (to its right
-	// side over the column when there is no room on the left)
-	if(SettingsKind)
-		m_RailFly = 0.0f;
-	else
-	{
-		const float FlyW = S(190.0f);
-		const bool Left = Min.x - FlyW >= S(4.0f);
-		const float Top = Min.y + S(70.0f);
-		const float Step = std::min(S(48.0f), (H - S(140.0f)) / NumSections);
-		const float B = S(42.0f);
-		const ImVec2 FMin(Left ? Min.x - FlyW + S(6.0f) : Min.x + RailW, Min.y + S(56.0f));
-		const ImVec2 FMax(FMin.x + FlyW - S(6.0f), Top + NumSections * Step + S(8.0f));
-		const bool OverFly = m_RailFly > 0.5f && ImGui::IsMouseHoveringRect(FMin, FMax);
-		m_RailFly = std::clamp(m_RailFly + Dt / (OverRail || OverFly ? 0.18f : -0.22f), 0.0f, 1.0f);
-		if(m_RailFly > 0.0f)
-		{
-			const float k = EaseOut(m_RailFly);
-			const float Shift = (1.0f - k) * S(16.0f) * (Left ? 1.0f : -1.0f);
-			ImGui::SetNextWindowPos(ImVec2(FMin.x + Shift, FMin.y));
-			ImGui::SetNextWindowSize(ImVec2(FMax.x - FMin.x, FMax.y - FMin.y));
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * k);
-			ImGui::Begin("##rail_fly", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing);
-			ImDrawList *pFly = ImGui::GetWindowDrawList();
-			const ImVec2 PMin(FMin.x + Shift, FMin.y), PMax(FMax.x + Shift, FMax.y);
-			pFly->AddRectFilled(PMin, PMax, Col(ImVec4(t.m_Panel.x, t.m_Panel.y, t.m_Panel.z, 0.97f)), S(14.0f));
-			pFly->AddRect(PMin, PMax, Col(t.m_Border), S(14.0f), 0, 1.0f);
-			ImFont *pLabel = Fonts().m_pLabel;
-			for(int i = 0; i < NumSections; i++)
-			{
-				const float RowY = Top + i * Step;
-				ImGui::SetCursorScreenPos(ImVec2(PMin.x + S(6.0f), RowY));
-				ImGui::PushID(i);
-				const bool Clicked = ImGui::InvisibleButton("##fly_row", ImVec2(PMax.x - PMin.x - S(12.0f), B));
-				const float Hover = Animate(ImGui::GetID("##fly_h"), (ImGui::IsItemHovered() || (i == Section && !Searching)) ? 1.0f : 0.0f, 16.0f);
-				ImGui::PopID();
-				if(Hover > 0.01f)
-					pFly->AddRectFilled(ImVec2(PMin.x + S(6.0f), RowY), ImVec2(PMax.x - S(6.0f), RowY + B), Col(ImVec4(1, 1, 1, 0.07f * Hover)), S(10.0f));
-				// one after another, the names come in from the rail side
-				const float Each = EaseOut(m_RailFly * 1.6f - i * 0.04f);
-				const float TextX = PMin.x + S(18.0f) + (1.0f - Each) * S(10.0f) * (Left ? 1.0f : -1.0f);
-				pFly->AddText(pLabel, pLabel->FontSize, ImVec2(TextX, std::floor(RowY + B * 0.5f - TextMiddle(pLabel, pLabel->FontSize) + 0.5f)), Col(Mix(t.m_TextSecondary, t.m_Text, Hover), Each), apLabels[i]);
-				if(Clicked && (i != Section || Searching))
-				{
-					Section = i;
-					m_aVisSearch[0] = '\0';
-					m_ScrollTarget = 0.0f;
-					Picked.clear();
-					PlayUiSound(SOUND_TAB);
-				}
-			}
-			ImGui::End();
-			ImGui::PopStyleVar(3);
-		}
-	}
 }
 
 // a page that is not made of cards (the demos, the votes) in the same window: a title, a close button, the page

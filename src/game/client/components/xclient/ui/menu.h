@@ -429,7 +429,6 @@ private:
 	bool PanelWindow() const; // the visuals or the settings show as the compact window now
 	std::string m_aVisPickedCard[2];
 	int m_VisLastKind = -1;
-	float m_RailFly = 0.0f; // the names of the rail slid out
 	void ResizeGrip(ImDrawList *pDraw, ImVec2 Max);
 	float m_aGripSize[2] = {};
 	static void ConToggleVisuals(IConsole::IResult *pResult, void *pUserData);
