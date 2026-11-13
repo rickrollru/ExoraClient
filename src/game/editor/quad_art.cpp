@@ -1,3 +1,4 @@
+#include <game/client/components/xclient/editor/image_tools.h>
 #include "quad_art.h"
 
 #include "editor.h"
@@ -207,7 +208,7 @@ bool CEditor::CallbackAddQuadArt(const char *pFilepath, int StorageType, void *p
 	pEditor->m_QuadArtParameters.m_Optimize = true;
 	pEditor->m_QuadArtParameters.m_Centralize = false;
 
-	if(!pEditor->Graphics()->LoadPng(pEditor->m_QuadArtImageInfo, pFilepath, StorageType))
+	if(!XcImageTools::LoadAnyImage(pEditor->Storage(), pFilepath, StorageType, pEditor->m_QuadArtImageInfo))
 	{
 		pEditor->ShowFileDialogError("Failed to load image from file '%s'.", pFilepath);
 		return false;

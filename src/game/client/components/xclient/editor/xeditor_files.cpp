@@ -68,7 +68,7 @@ void CXcEditorUi::RenderFileDialog()
 
 	// a classic popup over the dialog (new folder, delete, overwrite) owns the keyboard
 	// our own small card over the dialog (new folder, delete) blocks the dialog the same way
-	const bool ClassicPopup = E.Ui()->IsPopupOpen() || m_FileSub != FILESUB_NONE;
+	const bool ClassicPopup = E.Ui()->IsPopupOpen() || m_FileSub != FILESUB_NONE || DialogOpen();
 	if(E.Ui()->IsPopupOpen() && ImGui::GetActiveID() != 0)
 	{
 		ImGui::ClearActiveID();
@@ -92,7 +92,7 @@ void CXcEditorUi::RenderFileDialog()
 	ImGui::PopStyleColor();
 	ImGui::SetNextWindowPos(ImVec2((Display.x - Width) * 0.5f, (Display.y - Height) * 0.5f));
 	ImGui::SetNextWindowSize(ImVec2(Width, Height));
-	if(m_FileSub == FILESUB_NONE) // focusing a window every frame would stop typing in the card over it
+	if(!ClassicPopup) // keep focus on the dialog over the file browser
 		ImGui::SetNextWindowFocus();
 	if(!ImGui::Begin("##xe_file", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings))
 	{
@@ -101,7 +101,7 @@ void CXcEditorUi::RenderFileDialog()
 		ImGui::PopStyleColor(2);
 		return;
 	}
-	ImGui::BeginDisabled(m_FileSub != FILESUB_NONE);
+	ImGui::BeginDisabled(ClassicPopup);
 	ImDrawList *pDraw = ImGui::GetWindowDrawList();
 	ImFont *pSmall = Fonts().m_pSmall;
 	ImFont *pLabel = Fonts().m_pLabel;

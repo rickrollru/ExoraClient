@@ -440,7 +440,7 @@ void CXcEditorUi::Render()
 		const float OldScale = XcUi::Scale();
 		UpdateFonts();
 		// the classic editor owns the mouse while it drags something, a popup of it is hovered or a dialog is open
-		const bool ClassicBusy = (E.m_Dialog != DIALOG_NONE && E.m_Dialog != DIALOG_FILE) || E.Ui()->IsPopupHovered() || (!m_WantsMouse && !E.Ui()->CheckActiveItem(nullptr));
+		const bool ClassicBusy = !DialogOpen() && ((E.m_Dialog != DIALOG_NONE && E.m_Dialog != DIALOG_FILE) || E.Ui()->IsPopupHovered() || (!m_WantsMouse && !E.Ui()->CheckActiveItem(nullptr)));
 		const vec2 Mouse = ClassicBusy ? vec2(-100000.0f, -100000.0f) : E.Ui()->UpdatedMousePos();
 		m_Gui.NewFrame(std::min(E.Client()->RenderFrameTime(), 0.1f), ClassicBusy ? Mouse : Mouse + m_HeldOffset);
 		m_DragThisFrame = false;

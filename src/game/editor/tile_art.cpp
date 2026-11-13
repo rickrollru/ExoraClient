@@ -1,3 +1,4 @@
+#include <game/client/components/xclient/editor/image_tools.h>
 #include "editor.h"
 #include "editor_actions.h"
 
@@ -194,7 +195,7 @@ bool CEditor::CallbackAddTileArt(const char *pFilepath, int StorageType, void *p
 {
 	CEditor *pEditor = (CEditor *)pUser;
 
-	if(!pEditor->Graphics()->LoadPng(pEditor->m_TileArtImageInfo, pFilepath, StorageType))
+	if(!XcImageTools::LoadAnyImage(pEditor->Storage(), pFilepath, StorageType, pEditor->m_TileArtImageInfo))
 	{
 		pEditor->ShowFileDialogError("Failed to load image from file '%s'.", pFilepath);
 		return false;

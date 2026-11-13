@@ -1,3 +1,4 @@
+#include <game/client/components/xclient/editor/image_tools.h>
 #include "editor_actions.h"
 
 #include <base/log.h>
@@ -1328,7 +1329,7 @@ void CEditorActionTileArt::Undo()
 void CEditorActionTileArt::Redo()
 {
 	CImageInfo Image;
-	if(!Graphics()->LoadPng(Image, m_aFilename, IStorage::TYPE_ALL))
+	if(!XcImageTools::LoadAnyImage(Storage(), m_aFilename, IStorage::TYPE_ALL, Image))
 	{
 		Editor()->ShowFileDialogError("Failed to load image from file '%s'.", m_aFilename);
 		return;
