@@ -363,10 +363,17 @@ void CXcLyrics::OnRender()
 	const float Dt = std::min(Client()->RenderFrameTime(), 0.1f);
 	const CXcMusic &Music = GameClient()->m_XcMusic;
 	const bool InGame = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
-	if(!g_Config.m_XcLyrics || !Music.HasTrack())
-	{
-		m_Fade = std::max(m_Fade - Dt * 3.0f, 0.0f);
+	const auto ClearOverlay = [&]() {
+		m_Fade = 0.0f;
 		m_vWords.clear();
+		m_PlateLine = -2;
+		m_LastLine = -1;
+	};
+	const bool IslandLyrics = InGame && g_Config.m_XcHud && g_Config.m_ClShowhud && g_Config.m_XcHudIsland &&
+				  (g_Config.m_XcHudIslandLyrics || g_Config.m_XcHudIslandPlayerLyrics) && str_find(g_Config.m_XcHudIslandParts, "m");
+	if((!g_Config.m_XcLyrics && !IslandLyrics) || !Music.HasTrack())
+	{
+		ClearOverlay();
 		return;
 	}
 
@@ -415,6 +422,13 @@ void CXcLyrics::OnRender()
 	}
 	if(m_pRequest && m_pRequest->Done())
 		TakeAnswer();
+
+	// The island reads the current lines directly; only the map and HUD plate use this overlay.
+	if(!g_Config.m_XcLyrics)
+	{
+		ClearOverlay();
+		return;
+	}
 
 	const double Position = Music.Position() + g_Config.m_XcLyricsOffset / 1000.0;
 	const bool Playing = Music.PausedFor() <= 0.0f;
