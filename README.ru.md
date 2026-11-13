@@ -92,6 +92,9 @@ Exora Client — клиент для [DDraceNetwork](https://ddnet.org) с со�
 - **GIF прямо в карту:** анимация играет у всех игроков на любом клиенте.
 - Пресеты анимаций как в After Effects: покачивание, вращение, парение, мигание, радуга…
 - Картинки jpg / bmp / gif / tga подхватываются без конвертации. Увеличение ×2 / ×4 для пиксель-арта.
+- **Кисть Gores** (Карта → Кисть Gores) добавляет фриз вокруг цепляемых блоков.
+- **Перо квадов** (Слой → Перо квадов) заполняет контур, нарисованный точками.
+- **Tile Art и Quad Art** (Слой или Ctrl+K) импортируют PNG и JPG. Quad Art помещает каждый цвет на отдельный слой.
 - Гид по редактору для новичков.
 
 ---
@@ -106,6 +109,8 @@ Exora Client — клиент для [DDraceNetwork](https://ddnet.org) с со�
    [Microsoft Visual C++ Redistributable x64](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
 В архиве должны быть `DDNet.exe`, `DDNet-Server.exe` (для локального сервера), папка `data` и все `.dll`.
+
+Готовые сборки доступны в [GitHub Releases](https://github.com/rickrollru/ExoraClient/releases). Если у тебя 0.4.1, установи 0.4.2 вручную. Начиная с 0.4.2 следующие версии можно устанавливать через **Настройки → Интерфейс → Обновления**.
 
 ### Сборка из исходников (Windows)
 Понадобятся: [Visual Studio 2022](https://visualstudio.microsoft.com/) с «Разработкой классических приложений на C++»,
@@ -166,6 +171,7 @@ cmake .. -G Ninja && ninja game-client game-server
 
 - [DDNet](https://github.com/ddnet/ddnet) и [TClient](https://github.com/sjrc6/TaterClient-ddnet) — основа клиента,
   лицензия zlib ([license.txt](license.txt)).
+- Спасибо [ejjie](https://github.com/ejjie) за [TW Editor](https://github.com/ejjie/tw_editor), откуда пришли идеи кисти Gores, пера квадов и инструментов импорта арта в редакторе Exora.
 - [Dear ImGui](https://github.com/ocornut/imgui) — MIT; [stb_image](https://github.com/nothings/stb) — public domain / MIT.
 - Шрифты [Manrope](https://fonts.google.com/specimen/Manrope), [Onest](https://fonts.google.com/specimen/Onest),
   [Unbounded](https://fonts.google.com/specimen/Unbounded) — SIL OFL; иконки [Font Awesome](https://fontawesome.com) Free.

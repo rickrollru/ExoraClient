@@ -91,6 +91,9 @@ Default DDNet effects (smoke, splashes, lasers) can be replaced with our own. Pe
 - **GIFs right into the map:** the animation plays for every player on any client.
 - After Effects-like animation presets: sway, spin, float, blink, rainbow…
 - jpg / bmp / gif / tga images work without converting. ×2 / ×4 upscaling for pixel art.
+- **Gores Brush** (Map → Gores Brush) adds freeze around hookable tiles.
+- **Quad Pen** (Layer → Quad Pen) fills an outline drawn point by point.
+- **Tile Art and Quad Art** (Layer or Ctrl+K) import PNG and JPG images. Quad Art puts each color on a separate layer.
 - An editor guide for beginners.
 
 ---
@@ -105,6 +108,8 @@ Default DDNet effects (smoke, splashes, lasers) can be replaced with our own. Pe
    [Microsoft Visual C++ Redistributable x64](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 
 The archive must contain `DDNet.exe`, `DDNet-Server.exe` (for the local server), the `data` folder and all `.dll` files.
+
+Download builds from [GitHub Releases](https://github.com/rickrollru/ExoraClient/releases). If you are on 0.4.1, install 0.4.2 manually. Starting with 0.4.2, use **Settings → Interface → Updates** for future releases.
 
 ### Building from source (Windows)
 You need [Visual Studio 2022](https://visualstudio.microsoft.com/) with "Desktop development with C++",
@@ -166,6 +171,7 @@ The original TClient documentation: [docs/tclient/README_TClient.md](docs/tclien
 
 - [DDNet](https://github.com/ddnet/ddnet) and [TClient](https://github.com/sjrc6/TaterClient-ddnet) — the base of the
   client, zlib license ([license.txt](license.txt)).
+- Thanks to [ejjie](https://github.com/ejjie) for [TW Editor](https://github.com/ejjie/tw_editor), which inspired the Gores Brush, Quad Pen, and art import tools in the Exora map editor.
 - [Dear ImGui](https://github.com/ocornut/imgui) — MIT; [stb_image](https://github.com/nothings/stb) — public domain / MIT.
 - Fonts [Manrope](https://fonts.google.com/specimen/Manrope), [Onest](https://fonts.google.com/specimen/Onest),
   [Unbounded](https://fonts.google.com/specimen/Unbounded) — SIL OFL; icons [Font Awesome](https://fontawesome.com) Free.
